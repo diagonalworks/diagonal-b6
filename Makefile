@@ -5,7 +5,7 @@ all:
 	cd src/diagonal.works/diagonal/experimental/osm; go build
 
 test:
-	cd src/diagonal.works/diagonal; go test diagonal.works/diagonal/...
+	cd src/diagonal.works/diagonal; go test -v diagonal.works/diagonal/...
 
 clean:
 	find . -type f -perm +a+x | xargs rm
