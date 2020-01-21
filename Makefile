@@ -5,6 +5,7 @@ all:
 	cd src/diagonal.works/diagonal/cmd/fe; go build
 	cd src/diagonal.works/diagonal/cmd/osm; go build
 	cd src/diagonal.works/diagonal/experimental/publiclife; go build
+	cd src/diagonal.works/diagonal/experimental/geojson; go build
 	make -C data
 
 test:
