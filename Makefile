@@ -1,4 +1,4 @@
-all:
+all: experimental
 	protoc -I=proto --go_out=src proto/geography.proto
 	protoc -I=proto --go_out=src proto/tiles.proto
 	protoc -I=proto --go_out=src proto/osm.proto
@@ -7,10 +7,10 @@ all:
 	cd src/diagonal.works/diagonal/cmd/fe; go build
 	cd src/diagonal.works/diagonal/cmd/osm; go build
 	cd src/diagonal.works/diagonal/cmd/osmbeam; go build
-	cd src/diagonal.works/diagonal/experimental/publiclife; go build
-	cd src/diagonal.works/diagonal/experimental/geojson; go build
-	cd src/diagonal.works/diagonal/experimental/beam; go build
 	make -C data
+
+experimental:
+	cd src/diagonal.works/diagonal/experimental/mr; go build
 
 test:
 	cd src/diagonal.works/diagonal; go test -v diagonal.works/diagonal/...
