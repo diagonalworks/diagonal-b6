@@ -7,6 +7,7 @@ all: experimental
 	cd src/diagonal.works/diagonal/cmd/fe; go build
 	cd src/diagonal.works/diagonal/cmd/osm; go build
 	cd src/diagonal.works/diagonal/cmd/osmbeam; go build
+	cd src/diagonal.works/diagonal/cmd/inspect; go build
 	make -C data
 
 experimental:
