@@ -11,9 +11,12 @@ docker: protos
 	mkdir -p docker/bin/linux-amd64
 	cd src/diagonal.works/diagonal/cmd/osm; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/osm
 	cd src/diagonal.works/diagonal/cmd/splitosm; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/splitosm
-	docker build docker -t diagonal
+	docker build -f docker/Dockerfile.diagonal -t diagonal docker
 	docker tag diagonal eu.gcr.io/diagonal-platform/diagonal
 	docker push eu.gcr.io/diagonal-platform/diagonal
+	docker build -f docker/Dockerfile.monitoring -t monitoring docker
+	docker tag monitoring eu.gcr.io/diagonal-platform/monitoring
+	docker push eu.gcr.io/diagonal-platform/monitoring
 
 protos:
 	protoc -I=proto --go_out=src proto/geography.proto
