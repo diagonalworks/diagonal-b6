@@ -5,11 +5,12 @@ all: protos experimental
 	cd src/diagonal.works/diagonal/cmd/osmbeam; go build
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
 	cd src/diagonal.works/diagonal/cmd/splitosm; go build
+	cd src/diagonal.works/diagonal/cmd/ingest; go build
 	make -C data
 
 docker: protos
 	mkdir -p docker/bin/linux-amd64
-	cd src/diagonal.works/diagonal/cmd/osm; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/osm
+	cd src/diagonal.works/diagonal/cmd/ingest; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/ingest
 	cd src/diagonal.works/diagonal/cmd/splitosm; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/splitosm
 	docker build -f docker/Dockerfile.diagonal -t diagonal docker
 	docker tag diagonal eu.gcr.io/diagonal-platform/diagonal
