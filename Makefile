@@ -1,4 +1,4 @@
-all: protos experimental fe ingest
+all: protos experimental fe ingest fe-js
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
 	cd src/diagonal.works/diagonal/cmd/osm; go build
 	cd src/diagonal.works/diagonal/cmd/osmbeam; go build
@@ -8,6 +8,9 @@ all: protos experimental fe ingest
 
 fe: protos
 	cd src/diagonal.works/diagonal/cmd/fe; go build
+
+fe-js:
+	cd js; npx webpack
 
 ingest: protos
 	cd src/diagonal.works/diagonal/cmd/ingest; go build
