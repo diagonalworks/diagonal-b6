@@ -10,7 +10,7 @@ fe: protos
 	cd src/diagonal.works/diagonal/cmd/fe; go build
 
 fe-js:
-	cd js; npx webpack
+	make -C js
 
 ingest: protos
 	cd src/diagonal.works/diagonal/cmd/ingest; go build
