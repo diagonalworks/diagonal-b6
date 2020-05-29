@@ -35,9 +35,11 @@ protos:
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/index.fbs
 	flatc -o python/diagonal --python src/diagonal.works/diagonal/ingest/fbs/index.fbs
 
-experimental:
+experimental: experimental_transit
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
+
+experimental_transit:
 	cd src/diagonal.works/diagonal/experimental/transit; go build
 
 test:
