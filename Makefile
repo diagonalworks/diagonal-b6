@@ -38,6 +38,7 @@ protos:
 experimental:
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
+	cd src/diagonal.works/diagonal/experimental/transit; go build
 
 test:
 	cd src/diagonal.works/diagonal; go test -v diagonal.works/diagonal/...
