@@ -1,4 +1,4 @@
-all: protos experimental fe ingest fe-js
+all: protos experimental fe ingest transit fe-js
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
 	cd src/diagonal.works/diagonal/cmd/osm; go build
 	cd src/diagonal.works/diagonal/cmd/osmbeam; go build
@@ -14,6 +14,9 @@ fe-js:
 
 ingest: protos
 	cd src/diagonal.works/diagonal/cmd/ingest; go build
+
+transit: protos
+	cd src/diagonal.works/diagonal/cmd/transit; go build
 
 docker: protos
 	mkdir -p docker/bin/linux-amd64
