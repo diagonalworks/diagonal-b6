@@ -38,12 +38,15 @@ protos:
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/index.fbs
 	flatc -o python/diagonal --python src/diagonal.works/diagonal/ingest/fbs/index.fbs
 
-experimental: experimental_geojson
+experimental: experimental_geojson experimental_earth
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
 
 experimental_geojson:
 	cd src/diagonal.works/diagonal/experimental/geojson; go build
+
+experimental_earth:
+	cd src/diagonal.works/diagonal/experimental/earth; go build
 
 test:
 	cd src/diagonal.works/diagonal; go test -v diagonal.works/diagonal/...
