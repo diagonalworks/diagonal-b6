@@ -36,6 +36,7 @@ protos:
 	protoc -I=src/diagonal.works/diagonal/osm --go_out=src src/diagonal.works/diagonal/osm/import.proto
 	protoc -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/index.fbs
+	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/new.fbs
 	flatc -o python/diagonal --python src/diagonal.works/diagonal/ingest/fbs/index.fbs
 
 experimental: experimental_geojson experimental_earth
