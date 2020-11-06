@@ -4,6 +4,7 @@ all: protos experimental fe ingest transit fe-js
 	cd src/diagonal.works/diagonal/cmd/osmbeam; go build
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
 	cd src/diagonal.works/diagonal/cmd/splitosm; go build
+	cd src/diagonal.works/diagonal/cmd/tile; go build
 	make -C data
 
 fe: protos
