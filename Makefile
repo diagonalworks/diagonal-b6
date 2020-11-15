@@ -36,19 +36,14 @@ protos:
 	protoc -I=proto --go_out=src proto/osm.proto
 	protoc -I=src/diagonal.works/diagonal/osm --go_out=src src/diagonal.works/diagonal/osm/import.proto
 	protoc -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
-	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/index.fbs
-	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/new.fbs
-	flatc -o python/diagonal --python src/diagonal.works/diagonal/ingest/fbs/index.fbs
+	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs_/new.fbs
 
-experimental: experimental_geojson experimental_earth
+experimental: experimental_geojson
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
 
 experimental_geojson:
 	cd src/diagonal.works/diagonal/experimental/geojson; go build
-
-experimental_earth:
-	cd src/diagonal.works/diagonal/experimental/earth; go build
 
 test:
 	cd src/diagonal.works/diagonal; go test -v diagonal.works/diagonal/...
