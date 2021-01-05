@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package geometry;
+
+option go_package = "diagonal.works/diagonal/proto";
+
+message LineProto {
+    repeated PointProto points = 1;
+}
+
+message PolygonProto {
+    // All loops are ordered counter-clockwise, and a point is defined to be
+    // inside the polygon if it's enclosed by an odd number of loops.
+    repeated LoopProto loops = 1;
+}
+
+message LoopProto {
+    repeated PointProto points = 1;
+}
+
+message PointProto {
+    int32 lat_e7 = 1;
+    int32 lng_e7 = 2;
+}
+
