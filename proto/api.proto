@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package api;
+
+import "features.proto";
+
+option go_package = "diagonal.works/diagonal/proto";
+
+message FindFeatureByIDRequestProto {
+    features.FeatureIDProto id = 1;
+}
+
+message FindFeatureByIDResponseProto {
+    features.FeatureProto2 feature = 1;
+}
+
+service WorldService {
+    rpc FindFeatureByID(FindFeatureByIDRequestProto) returns (FindFeatureByIDResponseProto);
+}
