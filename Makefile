@@ -1,7 +1,5 @@
 all: protos experimental fe ingest transit fe-js
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
-	cd src/diagonal.works/diagonal/cmd/osm; go build
-	cd src/diagonal.works/diagonal/cmd/osmbeam; go build
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
 	cd src/diagonal.works/diagonal/cmd/splitosm; go build
 	cd src/diagonal.works/diagonal/cmd/tile; go build
@@ -31,7 +29,6 @@ docker: protos
 	docker push eu.gcr.io/diagonal-platform/monitoring
 
 protos:
-	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/geography.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/tiles.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/osm.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/geometry.proto
