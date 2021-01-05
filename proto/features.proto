@@ -69,8 +69,7 @@ message RelationFeatureProto {
     repeated RelationMemberProto members = 3;
 }
 
-// TODO: Rename to FeatureProto once we remove the legacy geography.proto
-message FeatureProto2 {
+message FeatureProto {
     oneof feature {
         PointFeatureProto point = 1;
         PathFeatureProto path = 2;

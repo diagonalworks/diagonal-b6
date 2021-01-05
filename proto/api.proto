@@ -11,7 +11,7 @@ message FindFeatureByIDRequestProto {
 }
 
 message FindFeatureByIDResponseProto {
-    features.FeatureProto2 feature = 1;
+    features.FeatureProto feature = 1;
 }
 
 service WorldService {
