@@ -6,6 +6,37 @@ import "features.proto";
 
 option go_package = "diagonal.works/diagonal/proto";
 
+message KeyQueryProto {
+    string key = 1;
+}
+
+message KeyValueQueryProto {
+    string key = 1;
+    string value = 2;
+}
+
+message SpatialQueryProto {
+    repeated uint64 cellIds = 1;
+}
+
+message IntersectionQueryProto {
+    repeated QueryProto queries = 1;
+}
+
+message UnionQueryProto {
+    repeated QueryProto queries = 1;
+}
+
+message QueryProto {
+    oneof query {
+        KeyQueryProto key = 1;
+        KeyValueQueryProto keyValue = 2;
+        SpatialQueryProto spatial = 3;
+        IntersectionQueryProto intersection = 4;
+        UnionQueryProto union = 5;
+    }
+}
+
 message FindFeatureByIDRequestProto {
     features.FeatureIDProto id = 1;
 }
@@ -14,6 +45,15 @@ message FindFeatureByIDResponseProto {
     features.FeatureProto feature = 1;
 }
 
+message FindFeaturesRequestProto {
+    QueryProto query = 1;
+}
+
+message FindFeaturesResponseProto {
+    repeated features.FeatureProto features = 1;
+}
+
 service WorldService {
     rpc FindFeatureByID(FindFeatureByIDRequestProto) returns (FindFeatureByIDResponseProto);
+    rpc FindFeatures(FindFeaturesRequestProto) returns (FindFeaturesResponseProto);
 }
