@@ -12,13 +12,13 @@ message TagProto {
 }
 
 message FeatureIDProto {
-    enum Type {
-        Point = 0;
-        Path = 1;
-        Area = 2;
-        Relation = 3;
+    enum FeatureType {
+        FeatureTypePoint = 0;
+        FeatureTypePath = 1;
+        FeatureTypeArea = 2;
+        FeatureTypeRelation = 3;
     }
-    Type type = 1;
+    FeatureType type = 1;
 
     enum Namespace {
         NamespaceInvalid = 0;
