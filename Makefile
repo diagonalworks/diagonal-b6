@@ -36,10 +36,6 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src --go-grpc_out=src proto/api.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm --go_out=src src/diagonal.works/diagonal/osm/import.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
-	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto --grpc_python_out=python/diagonal/proto proto/api.proto
-	sed -i"" -e 's|import geometry_pb2|import diagonal.proto.geometry_pb2|' python/diagonal/proto/*.py
-	sed -i"" -e 's|import features_pb2|import diagonal.proto.features_pb2|' python/diagonal/proto/*.py
-	sed -i"" -e 's|import api_pb2|import diagonal.proto.api_pb2|' python/diagonal/proto/*.py
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/ingest.fbs
 
 experimental: experimental_geojson experimental_grpc
@@ -52,9 +48,19 @@ experimental_geojson:
 experimental_grpc:
 	cd src/diagonal.works/diagonal/experimental/grpc; go build
 
+python:
+	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto --grpc_python_out=python/diagonal/proto proto/api.proto
+	sed -i"" -e 's|import geometry_pb2|import diagonal.proto.geometry_pb2|' python/diagonal/proto/*.py
+	sed -i"" -e 's|import features_pb2|import diagonal.proto.features_pb2|' python/diagonal/proto/*.py
+	sed -i"" -e 's|import api_pb2|import diagonal.proto.api_pb2|' python/diagonal/proto/*.py
+
+python_test: python
+	PYTHONPATH=python python3 python/tests/all.py
+
 test:
 	cd src/diagonal.works/diagonal; go test -v diagonal.works/diagonal/...
 
 clean:
 	find . -type f -perm +a+x | xargs rm
 
+.PHONY: python
