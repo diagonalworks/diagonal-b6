@@ -27,6 +27,19 @@ docker: protos
 	docker build -f docker/Dockerfile.monitoring -t monitoring docker
 	docker tag monitoring eu.gcr.io/diagonal-platform/monitoring
 	docker push eu.gcr.io/diagonal-platform/monitoring
+	docker build -f docker/Dockerfile.planet -t planet docker
+	docker tag planet eu.gcr.io/diagonal-platform/planet
+	docker push eu.gcr.io/diagonal-platform/planet
+
+docker-atlas-internal: fe-js
+	mkdir -p docker/bin/linux-amd64
+	cd src/diagonal.works/diagonal/cmd/fe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/fe
+	mkdir -p docker/js
+	rm -rf docker/js/dist
+	cp -r js/dist docker/js/dist
+	cp data/earth/ne_10m_land.shp docker/data/atlas-internal
+	cp data/earth/ne_10m_land.prj docker/data/atlas-internal
+	docker build -f docker/Dockerfile.atlas-internal -t atlas-internal docker
 
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/tiles.proto
