@@ -41,6 +41,18 @@ docker-atlas-internal: fe-js
 	cp data/earth/ne_10m_land.prj docker/data/atlas-internal
 	docker build -f docker/Dockerfile.atlas-internal -t atlas-internal docker
 
+docker-atlas-dev: fe-js
+	mkdir -p docker/bin/linux-amd64
+	cd src/diagonal.works/diagonal/cmd/fe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/fe
+	mkdir -p docker/js
+	rm -rf docker/js/dist
+	cp -r js/dist docker/js/dist
+	cp data/earth/ne_10m_land.shp docker/data/atlas-dev
+	cp data/earth/ne_10m_land.prj docker/data/atlas-dev
+	docker build -f docker/Dockerfile.atlas-dev -t atlas-dev docker
+	docker tag atlas-dev eu.gcr.io/diagonal-platform/planet
+	docker push eu.gcr.io/diagonal-platform/atlas-dev
+
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/tiles.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/osm.proto
