@@ -79,7 +79,7 @@ python:
 	sed -i"" -e 's|import features_pb2|import diagonal.proto.features_pb2|' python/diagonal/proto/*.py
 	sed -i"" -e 's|import api_pb2|import diagonal.proto.api_pb2|' python/diagonal/proto/*.py
 
-python_test: python
+python_test: python fe
 	PYTHONPATH=python python3 python/tests/all.py
 
 test:
