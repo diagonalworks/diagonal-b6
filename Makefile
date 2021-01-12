@@ -50,7 +50,7 @@ docker-atlas-dev: fe-js
 	cp data/earth/ne_10m_land.shp docker/data/atlas-dev
 	cp data/earth/ne_10m_land.prj docker/data/atlas-dev
 	docker build -f docker/Dockerfile.atlas-dev -t atlas-dev docker
-	docker tag atlas-dev eu.gcr.io/diagonal-platform/planet
+	docker tag atlas-dev eu.gcr.io/diagonal-platform/atlas-dev
 	docker push eu.gcr.io/diagonal-platform/atlas-dev
 
 protos:
