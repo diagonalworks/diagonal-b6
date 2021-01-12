@@ -53,7 +53,21 @@ message FindFeaturesResponseProto {
     repeated features.FeatureProto features = 1;
 }
 
+message ModifyTagsRequestProto {
+    features.FeatureIDProto id = 1;
+    repeated features.TagProto tags = 2;
+}
+
+message ModifyTagsBatchRequestProto {
+    repeated ModifyTagsRequestProto requests = 1;
+}
+
+message ModifyTagsBatchResponseProto {
+}
+
 service WorldService {
     rpc FindFeatureByID(FindFeatureByIDRequestProto) returns (FindFeatureByIDResponseProto);
     rpc FindFeatures(FindFeaturesRequestProto) returns (FindFeaturesResponseProto);
+
+    rpc ModifyTags(ModifyTagsBatchRequestProto) returns (ModifyTagsBatchResponseProto);
 }
