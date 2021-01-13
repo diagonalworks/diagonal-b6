@@ -56,8 +56,8 @@ docker-atlas-dev: fe-js
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/tiles.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/osm.proto
-	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src --python_out=python/diagonal/proto proto/geometry.proto
-	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src --python_out=python/diagonal/proto proto/features.proto
+	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/geometry.proto
+	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/features.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src --go-grpc_out=src proto/api.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm --go_out=src src/diagonal.works/diagonal/osm/import.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
@@ -74,10 +74,15 @@ experimental_grpc:
 	cd src/diagonal.works/diagonal/experimental/grpc; go build
 
 python:
+	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
+	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/features.proto
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto --grpc_python_out=python/diagonal/proto proto/api.proto
-	sed -e 's|import geometry_pb2|import diagonal.proto.geometry_pb2|' -i "" python/diagonal/proto/*.py
-	sed -e 's|import features_pb2|import diagonal.proto.features_pb2|' -i "" python/diagonal/proto/*.py
-	sed -e 's|import api_pb2|import diagonal.proto.api_pb2|' -i "" python/diagonal/proto/*.py
+	sed -e 's/import geometry_pb2/import diagonal.proto.geometry_pb2/' python/diagonal/proto/features_pb2.py > python/diagonal/proto/features_pb2.py.new
+	mv python/diagonal/proto/features_pb2.py.new python/diagonal/proto/features_pb2.py
+	sed -e 's/import features_pb2/import diagonal.proto.features_pb2/' python/diagonal/proto/api_pb2.py > python/diagonal/proto/api_pb2.py.new
+	mv python/diagonal/proto/api_pb2.py.new python/diagonal/proto/api_pb2.py
+	sed -e 's/import api_pb2/import diagonal.proto.api_pb2/' python/diagonal/proto/api_pb2_grpc.py > python/diagonal/proto/api_pb2_grpc.py.new
+	mv python/diagonal/proto/api_pb2_grpc.py.new python/diagonal/proto/api_pb2_grpc.py
 
 python_test: python fe
 	PYTHONPATH=python python3 python/tests/all.py
