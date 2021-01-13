@@ -75,9 +75,9 @@ experimental_grpc:
 
 python:
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto --grpc_python_out=python/diagonal/proto proto/api.proto
-	sed -i"" -e 's|import geometry_pb2|import diagonal.proto.geometry_pb2|' python/diagonal/proto/*.py
-	sed -i"" -e 's|import features_pb2|import diagonal.proto.features_pb2|' python/diagonal/proto/*.py
-	sed -i"" -e 's|import api_pb2|import diagonal.proto.api_pb2|' python/diagonal/proto/*.py
+	sed -e 's|import geometry_pb2|import diagonal.proto.geometry_pb2|' -i "" python/diagonal/proto/*.py
+	sed -e 's|import features_pb2|import diagonal.proto.features_pb2|' -i "" python/diagonal/proto/*.py
+	sed -e 's|import api_pb2|import diagonal.proto.api_pb2|' -i "" python/diagonal/proto/*.py
 
 python_test: python fe
 	PYTHONPATH=python python3 python/tests/all.py
