@@ -1,4 +1,5 @@
 all: protos experimental fe ingest transit fe-js
+	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
 	cd src/diagonal.works/diagonal/cmd/splitosm; go build
@@ -6,6 +7,7 @@ all: protos experimental fe ingest transit fe-js
 	make -C data
 
 fe: protos
+	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/cmd/fe; go build
 
 fe-js:
