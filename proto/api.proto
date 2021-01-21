@@ -6,6 +6,35 @@ import "features.proto";
 
 option go_package = "diagonal.works/diagonal/proto";
 
+message ValueProto {
+    oneof value {
+        string stringValue = 1;
+        ListValueProto listValue = 2;
+        features.FeatureProto featureValue = 3;
+    }
+}
+
+message ListValueProto {
+    repeated ValueProto values = 1;
+}
+
+message InputProto {
+    oneof input {
+        ValueProto literal = 1;        
+        uint32 node = 2;
+    }
+}
+
+message NodeProto {
+    uint32 id = 1;
+    string operation = 2;
+    repeated InputProto inputs = 3;
+}
+
+message GraphProto {
+    repeated NodeProto nodes = 1;
+}
+
 message KeyQueryProto {
     string key = 1;
 }
