@@ -65,15 +65,12 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/ingest.fbs
 
-experimental: experimental_geojson experimental_grpc
+experimental: experimental_geojson
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
 
 experimental_geojson:
 	cd src/diagonal.works/diagonal/experimental/geojson; go build
-
-experimental_grpc:
-	cd src/diagonal.works/diagonal/experimental/grpc; go build
 
 python:
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto

@@ -9,13 +9,16 @@ option go_package = "diagonal.works/diagonal/proto";
 message ValueProto {
     oneof value {
         string stringValue = 1;
-        ListValueProto listValue = 2;
-        features.FeatureProto featureValue = 3;
+        double floatValue = 2;
+        CollectionValueProto collectionValue = 3;
+        features.FeatureProto featureValue = 4;
+        QueryProto queryValue = 5; // TODO: Consider representing as pairs of strings
     }
 }
 
-message ListValueProto {
-    repeated ValueProto values = 1;
+message CollectionValueProto {
+    repeated string keys = 1;
+    repeated ValueProto values = 2;
 }
 
 message InputProto {
@@ -44,6 +47,11 @@ message KeyValueQueryProto {
     string value = 2;
 }
 
+message TypeQueryProto {
+    features.FeatureType type = 1;
+    QueryProto query = 2;
+}
+
 message SpatialQueryProto {
     repeated uint64 cellIds = 1;
 }
@@ -61,8 +69,9 @@ message QueryProto {
         KeyQueryProto key = 1;
         KeyValueQueryProto keyValue = 2;
         SpatialQueryProto spatial = 3;
-        IntersectionQueryProto intersection = 4;
-        UnionQueryProto union = 5;
+        TypeQueryProto type = 4;
+        IntersectionQueryProto intersection = 5;
+        UnionQueryProto union = 6;
     }
 }
 
@@ -94,9 +103,28 @@ message ModifyTagsBatchRequestProto {
 message ModifyTagsBatchResponseProto {
 }
 
+message RunGraphRequestProto {
+    GraphProto graph = 1;
+}
+
+message RunGraphResponseProto {
+    ValueProto result = 2;
+}
+
+message SetTagFromGraphRequestProto {
+    string key = 1;
+    GraphProto graph = 2;
+}
+
+message SetTagFromGraphResponseProto {
+}
+
 service WorldService {
     rpc FindFeatureByID(FindFeatureByIDRequestProto) returns (FindFeatureByIDResponseProto);
     rpc FindFeatures(FindFeaturesRequestProto) returns (FindFeaturesResponseProto);
 
     rpc ModifyTags(ModifyTagsBatchRequestProto) returns (ModifyTagsBatchResponseProto);
+
+    rpc RunGraph(RunGraphRequestProto) returns (RunGraphResponseProto);
+    rpc SetTagFromGraph(SetTagFromGraphRequestProto) returns (SetTagFromGraphResponseProto);
 }

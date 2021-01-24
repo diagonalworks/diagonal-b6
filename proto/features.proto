@@ -11,15 +11,14 @@ message TagProto {
     string value = 2;
 }
 
-message FeatureIDProto {
-    enum FeatureType {
-        FeatureTypePoint = 0;
-        FeatureTypePath = 1;
-        FeatureTypeArea = 2;
-        FeatureTypeRelation = 3;
-    }
-    FeatureType type = 1;
+enum FeatureType {
+    FeatureTypePoint = 0;
+    FeatureTypePath = 1;
+    FeatureTypeArea = 2;
+    FeatureTypeRelation = 3;
+}
 
+message FeatureIDProto {
     enum Namespace {
         NamespaceInvalid = 0;
         NamespaceOSMNode = 1;
@@ -31,8 +30,9 @@ message FeatureIDProto {
         NamespaceUKCensusBoundaries = 7;
     	NamespaceTFLBus = 8;
     }
-    Namespace namespace = 2;
 
+    FeatureType type = 1;
+    Namespace namespace = 2;
     uint64 value = 3;
 }
 
