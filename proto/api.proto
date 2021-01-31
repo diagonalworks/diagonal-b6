@@ -28,10 +28,17 @@ message InputProto {
     }
 }
 
+enum NodeType {
+    Call = 0;
+    MapValues = 1;
+    Join = 2;
+}
+
 message NodeProto {
     uint32 id = 1;
-    string operation = 2;
-    repeated InputProto inputs = 3;
+    NodeType type = 2;
+    string operation = 3;
+    repeated InputProto inputs = 4;
 }
 
 message GraphProto {
