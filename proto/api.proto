@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package api;
 
+import "geometry.proto";
 import "features.proto";
 
 option go_package = "diagonal.works/diagonal/proto";
@@ -19,6 +20,17 @@ message ValueProto {
 message CollectionValueProto {
     repeated string keys = 1;
     repeated ValueProto values = 2;
+}
+
+message CapProto {
+    geometry.PointProto center = 1;
+    double radiusMeters = 2;
+}
+
+message AreaProto {
+    oneof area {
+        CapProto cap = 1;
+    }
 }
 
 message InputProto {
@@ -60,7 +72,7 @@ message TypeQueryProto {
 }
 
 message SpatialQueryProto {
-    repeated uint64 cellIds = 1;
+    AreaProto area = 1;
 }
 
 message IntersectionQueryProto {
