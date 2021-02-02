@@ -65,7 +65,7 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/ingest.fbs
 
-experimental: experimental_geojson
+experimental: experimental_geojsondex5,6
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
 
@@ -78,6 +78,8 @@ python:
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto --grpc_python_out=python/diagonal/proto proto/api.proto
 	sed -e 's/import geometry_pb2/import diagonal.proto.geometry_pb2/' python/diagonal/proto/features_pb2.py > python/diagonal/proto/features_pb2.py.new
 	mv python/diagonal/proto/features_pb2.py.new python/diagonal/proto/features_pb2.py
+	sed -e 's/import geometry_pb2/import diagonal.proto.geometry_pb2/' python/diagonal/proto/api_pb2.py > python/diagonal/proto/api_pb2.py.new
+	mv python/diagonal/proto/api_pb2.py.new python/diagonal/proto/api_pb2.py
 	sed -e 's/import features_pb2/import diagonal.proto.features_pb2/' python/diagonal/proto/api_pb2.py > python/diagonal/proto/api_pb2.py.new
 	mv python/diagonal/proto/api_pb2.py.new python/diagonal/proto/api_pb2.py
 	sed -e 's/import api_pb2/import diagonal.proto.api_pb2/' python/diagonal/proto/api_pb2_grpc.py > python/diagonal/proto/api_pb2_grpc.py.new
