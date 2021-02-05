@@ -1,4 +1,4 @@
-all: protos experimental fe ingest transit fe-js
+all: protos experimental fe ingest ingestons transit fe-js
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
@@ -15,6 +15,9 @@ fe-js:
 
 ingest: protos
 	cd src/diagonal.works/diagonal/cmd/ingest; go build
+
+ingestons: protos
+	cd src/diagonal.works/diagonal/cmd/ingestons; go build
 
 transit: protos
 	cd src/diagonal.works/diagonal/cmd/transit; go build
@@ -67,7 +70,7 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/ingest.fbs
 
-experimental: experimental_geojsondex5,6
+experimental: experimental_geojson
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
 
