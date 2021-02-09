@@ -22,15 +22,15 @@ message FeatureIDProto {
     enum Namespace {
         NamespaceInvalid = 0;
         NamespaceOSMNode = 1;
-	    NamespaceOSMWay = 2;
-	    NamespaceOSMRelation = 3;
+    	NamespaceOSMWay = 2;
+    	NamespaceOSMRelation = 3;
     	NamespaceLatLng = 4;
 	    NamespaceDiagonalEntrances = 5;
     	NamespaceDiagonalAccessPaths = 6;
-        NamespaceUKCensusBoundaries = 7;
+    	NamespaceUKCensusBoundaries = 7;
     	NamespaceTFLBus = 8;
+        NamespaceUKONSBoundaries = 9;
     }
-
     FeatureType type = 1;
     Namespace namespace = 2;
     uint64 value = 3;

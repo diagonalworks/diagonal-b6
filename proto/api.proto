@@ -43,7 +43,8 @@ message InputProto {
 enum NodeType {
     Call = 0;
     MapValues = 1;
-    Join = 2;
+    MapKeyValues = 2;
+    Join = 3;
 }
 
 message NodeProto {
@@ -83,6 +84,8 @@ message UnionQueryProto {
     repeated QueryProto queries = 1;
 }
 
+message AllQueryProto {}
+
 message QueryProto {
     oneof query {
         KeyQueryProto key = 1;
@@ -91,6 +94,7 @@ message QueryProto {
         TypeQueryProto type = 4;
         IntersectionQueryProto intersection = 5;
         UnionQueryProto union = 6;
+        AllQueryProto all = 7;
     }
 }
 
