@@ -95,7 +95,7 @@ python_test: python fe
 
 test:
 	make -C data test
-	cd src/diagonal.works/diagonal; go test -v diagonal.works/diagonal/...
+	cd src/diagonal.works/diagonal; go test diagonal.works/diagonal/...
 
 clean:
 	find . -type f -perm +a+x | xargs rm
