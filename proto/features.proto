@@ -46,6 +46,7 @@ message PathFeatureProto {
     FeatureIDProto id = 1;
     repeated TagProto tags = 2;
     repeated PointFeatureProto features = 3;
+    double lengthMeters = 4;
 }
 
 message PathFeaturesProto {
