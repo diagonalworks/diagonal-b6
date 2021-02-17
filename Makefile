@@ -22,6 +22,9 @@ ingestons: protos
 transit: protos
 	cd src/diagonal.works/diagonal/cmd/transit; go build
 
+mbtiles:
+	cd src/diagonal.works/diagonal/cmd/mbtiles; go build
+
 docker: protos
 	mkdir -p docker/bin/linux-amd64
 	cd src/diagonal.works/diagonal/cmd/ingest; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/ingest
