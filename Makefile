@@ -60,7 +60,7 @@ docker-atlas-dev: fe-js
 	docker build -f docker/Dockerfile.atlas-dev -t atlas-dev docker
 	docker tag atlas-dev eu.gcr.io/diagonal-platform/atlas-dev
 	docker push eu.gcr.io/diagonal-platform/atlas-dev
-	docker tag ghcr.io/diagonalworks/atlas-dev
+	docker tag atlas-dev ghcr.io/diagonalworks/atlas-dev
 	docker push ghcr.io/diagonalworks/atlas-dev
 
 protos:
