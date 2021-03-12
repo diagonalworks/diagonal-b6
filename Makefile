@@ -1,4 +1,4 @@
-all: protos experimental fe ingest ingestons transit fe-js
+all: protos experimental fe ingest ingestons transit fe-js dfe
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
@@ -24,6 +24,9 @@ transit: protos
 
 mbtiles:
 	cd src/diagonal.works/diagonal/cmd/mbtiles; go build
+
+dfe:
+	cd src/diagonal.works/diagonal/cmd/dfe; go build
 
 docker: protos
 	mkdir -p docker/bin/linux-amd64
@@ -62,6 +65,16 @@ docker-atlas-dev: fe-js
 	docker push eu.gcr.io/diagonal-platform/atlas-dev
 	docker tag atlas-dev ghcr.io/diagonalworks/atlas-dev
 	docker push ghcr.io/diagonalworks/atlas-dev
+
+docker-dfe: dfe
+	mkdir -p docker/bin/linux-amd64
+	cd src/diagonal.works/diagonal/cmd/dfe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/dfe
+	rm -rf docker/www/
+	mkdir -p docker/www/
+	cp -r src/diagonal.works/diagonal/experimental/website docker/www/staging.diagonal.works
+	docker build -f docker/Dockerfile.staging -t staging docker
+	docker tag staging eu.gcr.io/diagonal-platform/staging
+	docker push eu.gcr.io/diagonal-platform/staging
 
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/cookie.proto
