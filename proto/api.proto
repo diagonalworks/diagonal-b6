@@ -135,6 +135,14 @@ message RunGraphResponseProto {
     ValueProto result = 2;
 }
 
+message RunGraphGeoJSONRequestProto {
+    GraphProto graph = 1;
+}
+
+message RunGraphGeoJSONResponseProto {
+    bytes gzjson = 1;
+}
+
 message SetTagFromGraphRequestProto {
     string key = 1;
     GraphProto graph = 2;
@@ -150,5 +158,6 @@ service WorldService {
     rpc ModifyTags(ModifyTagsBatchRequestProto) returns (ModifyTagsBatchResponseProto);
 
     rpc RunGraph(RunGraphRequestProto) returns (RunGraphResponseProto);
+    rpc RunGraphGeoJSON(RunGraphGeoJSONRequestProto) returns (RunGraphGeoJSONResponseProto);
     rpc SetTagFromGraph(SetTagFromGraphRequestProto) returns (SetTagFromGraphResponseProto);
 }
