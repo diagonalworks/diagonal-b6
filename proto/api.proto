@@ -11,10 +11,11 @@ message ValueProto {
     oneof value {
         string stringValue = 1;
         double floatValue = 2;
-        CollectionValueProto collectionValue = 3;
-        features.FeatureProto featureValue = 4;
-        QueryProto queryValue = 5; // TODO: Consider representing as pairs of strings
-        features.FeatureIDProto featureIDValue = 6;
+        int64 intValue = 3;
+        CollectionValueProto collectionValue = 4;
+        features.FeatureProto featureValue = 5;
+        QueryProto queryValue = 6;
+        features.FeatureIDProto featureIDValue = 7;
     }
 }
 
