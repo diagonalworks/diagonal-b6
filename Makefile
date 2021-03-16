@@ -42,16 +42,6 @@ docker: protos
 	docker tag planet eu.gcr.io/diagonal-platform/planet
 	docker push eu.gcr.io/diagonal-platform/planet
 
-docker-atlas-internal: fe-js
-	mkdir -p docker/bin/linux-amd64
-	cd src/diagonal.works/diagonal/cmd/fe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/fe
-	mkdir -p docker/js
-	rm -rf docker/js/dist
-	cp -r js/dist docker/js/dist
-	cp data/earth/ne_10m_land.shp docker/data/atlas-internal
-	cp data/earth/ne_10m_land.prj docker/data/atlas-internal
-	docker build -f docker/Dockerfile.atlas-internal -t atlas-internal docker
-
 docker-atlas-dev: fe-js
 	mkdir -p docker/bin/linux-amd64
 	cd src/diagonal.works/diagonal/cmd/fe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/fe
@@ -63,8 +53,6 @@ docker-atlas-dev: fe-js
 	docker build -f docker/Dockerfile.atlas-dev -t atlas-dev docker
 	docker tag atlas-dev eu.gcr.io/diagonal-platform/atlas-dev
 	docker push eu.gcr.io/diagonal-platform/atlas-dev
-	docker tag atlas-dev ghcr.io/diagonalworks/atlas-dev
-	docker push ghcr.io/diagonalworks/atlas-dev
 
 docker-dfe: dfe
 	mkdir -p docker/bin/linux-amd64
@@ -72,9 +60,9 @@ docker-dfe: dfe
 	rm -rf docker/www/
 	mkdir -p docker/www/
 	cp -r src/diagonal.works/diagonal/experimental/website docker/www/staging.diagonal.works
-	docker build -f docker/Dockerfile.staging -t staging docker
-	docker tag staging eu.gcr.io/diagonal-platform/staging
-	docker push eu.gcr.io/diagonal-platform/staging
+	docker build -f docker/Dockerfile.dfe -t dfe docker
+	docker tag dfe eu.gcr.io/diagonal-platform/dfe
+	docker push eu.gcr.io/diagonal-platform/dfe
 
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/cookie.proto
