@@ -136,6 +136,15 @@ message RunGraphResponseProto {
     ValueProto result = 2;
 }
 
+message RunGraphWithProgressRequestProto {
+    GraphProto graph = 1;
+}
+
+message RunGraphWithProgressResponseProto {
+    string status = 1;
+    ValueProto result = 2;
+}
+
 message RunGraphGeoJSONRequestProto {
     GraphProto graph = 1;
 }
@@ -160,5 +169,6 @@ service WorldService {
 
     rpc RunGraph(RunGraphRequestProto) returns (RunGraphResponseProto);
     rpc RunGraphGeoJSON(RunGraphGeoJSONRequestProto) returns (RunGraphGeoJSONResponseProto);
+    rpc RunGraphWithProgress(RunGraphWithProgressRequestProto) returns (stream RunGraphWithProgressResponseProto);
     rpc SetTagFromGraph(SetTagFromGraphRequestProto) returns (SetTagFromGraphResponseProto);
 }
