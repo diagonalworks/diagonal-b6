@@ -159,6 +159,18 @@ message SetTagFromGraphRequestProto {
 }
 
 message SetTagFromGraphResponseProto {
+    string status = 1;
+    uint32 modified = 2;
+}
+
+message SetTagFromGraphWithProgressRequestProto {
+    string key = 1;
+    GraphProto graph = 2;
+}
+
+message SetTagFromGraphWithProgressResponseProto {
+    string status = 1;
+    uint32 modified = 2;
 }
 
 service WorldService {
@@ -171,4 +183,5 @@ service WorldService {
     rpc RunGraphGeoJSON(RunGraphGeoJSONRequestProto) returns (RunGraphGeoJSONResponseProto);
     rpc RunGraphWithProgress(RunGraphWithProgressRequestProto) returns (stream RunGraphWithProgressResponseProto);
     rpc SetTagFromGraph(SetTagFromGraphRequestProto) returns (SetTagFromGraphResponseProto);
+    rpc SetTagFromGraphWithProgress(SetTagFromGraphWithProgressRequestProto) returns (stream SetTagFromGraphWithProgressResponseProto);
 }
