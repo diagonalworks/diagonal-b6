@@ -98,7 +98,7 @@ python:
 	sed -e 's/import api_pb2/import diagonal.proto.api_pb2/' python/diagonal/proto/api_pb2_grpc.py > python/diagonal/proto/api_pb2_grpc.py.new
 	mv python/diagonal/proto/api_pb2_grpc.py.new python/diagonal/proto/api_pb2_grpc.py
 
-python_test: python fe
+python-test: python fe
 	PYTHONPATH=python python3 python/tests/all.py
 
 test:

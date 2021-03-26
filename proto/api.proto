@@ -141,10 +141,11 @@ message RunGraphWithProgressRequestProto {
     GraphProto graph = 1;
 }
 
-// TODO: Consider replacing with a oneof, which more accurately reflects what's happening.
 message RunGraphWithProgressResponseProto {
-    string status = 1;
-    ValueProto result = 2;
+    oneof response {
+        string status = 1;
+        ValueProto result = 2;
+    }
 }
 
 message RunGraphGeoJSONRequestProto {
@@ -161,8 +162,7 @@ message SetTagFromGraphRequestProto {
 }
 
 message SetTagFromGraphResponseProto {
-    string status = 1;
-    uint32 modified = 2;
+    uint32 modified = 1;
 }
 
 message SetTagFromGraphWithProgressRequestProto {
@@ -171,8 +171,10 @@ message SetTagFromGraphWithProgressRequestProto {
 }
 
 message SetTagFromGraphWithProgressResponseProto {
-    string status = 1;
-    uint32 modified = 2;
+    oneof response {
+        string status = 1;
+        uint32 modified = 2;
+    }
 }
 
 service WorldService {
