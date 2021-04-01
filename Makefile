@@ -1,4 +1,4 @@
-all: protos experimental fe ingest ingestons transit fe-js dfe
+all: protos experimental fe ingest ingestons transit fe-js dfe scaffold
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
@@ -27,6 +27,9 @@ mbtiles:
 
 dfe:
 	cd src/diagonal.works/diagonal/cmd/dfe; go build
+
+scaffold:
+	cd src/diagonal.works/diagonal/cmd/scaffold; go build
 
 docker: protos
 	mkdir -p docker/bin/linux-amd64
@@ -97,6 +100,9 @@ python:
 	mv python/diagonal/proto/api_pb2.py.new python/diagonal/proto/api_pb2.py
 	sed -e 's/import api_pb2/import diagonal.proto.api_pb2/' python/diagonal/proto/api_pb2_grpc.py > python/diagonal/proto/api_pb2_grpc.py.new
 	mv python/diagonal/proto/api_pb2_grpc.py.new python/diagonal/proto/api_pb2_grpc.py
+
+ipython: python
+	cd python; pip3 install . --upgrade --target ${HOME}/.ipython/
 
 python-test: python fe
 	PYTHONPATH=python python3 python/tests/all.py

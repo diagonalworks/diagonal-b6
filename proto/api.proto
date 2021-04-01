@@ -143,8 +143,8 @@ message RunGraphWithProgressRequestProto {
 
 message RunGraphWithProgressResponseProto {
     oneof response {
-        string status = 1;
-        ValueProto result = 2;
+        uint64 tracker = 1;
+        ValueProto result = 3;
     }
 }
 
@@ -172,7 +172,7 @@ message SetTagFromGraphWithProgressRequestProto {
 
 message SetTagFromGraphWithProgressResponseProto {
     oneof response {
-        string status = 1;
+        uint64 tracker = 1;
         uint32 modified = 2;
     }
 }
