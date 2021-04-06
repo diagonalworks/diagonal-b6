@@ -45,14 +45,19 @@ docker: protos
 	docker tag planet eu.gcr.io/diagonal-platform/planet
 	docker push eu.gcr.io/diagonal-platform/planet
 
-docker-atlas-dev: fe-js
+docker-atlas-dev-data:
+	cp data/earth/ne_10m_land.shp docker/data/atlas-dev
+	cp data/earth/ne_10m_land.prj docker/data/atlas-dev
+	docker build -f docker/Dockerfile.atlas-dev-data -t atlas-dev-data docker
+	docker tag atlas-dev-data eu.gcr.io/diagonal-platform/atlas-dev-data
+	docker push eu.gcr.io/diagonal-platform/atlas-dev-data
+
+docker-atlas-dev: fe-js docker-atlas-dev-data
 	mkdir -p docker/bin/linux-amd64
 	cd src/diagonal.works/diagonal/cmd/fe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/fe
 	mkdir -p docker/js
 	rm -rf docker/js/dist
 	cp -r js/dist docker/js/dist
-	cp data/earth/ne_10m_land.shp docker/data/atlas-dev
-	cp data/earth/ne_10m_land.prj docker/data/atlas-dev
 	docker build -f docker/Dockerfile.atlas-dev -t atlas-dev docker
 	docker tag atlas-dev eu.gcr.io/diagonal-platform/atlas-dev
 	docker push eu.gcr.io/diagonal-platform/atlas-dev
