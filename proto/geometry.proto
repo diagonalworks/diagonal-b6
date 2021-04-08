@@ -8,6 +8,10 @@ message LineProto {
     repeated PointProto points = 1;
 }
 
+message MultiPolygonProto {
+    repeated PolygonProto polygons = 1;
+}
+
 message PolygonProto {
     // All loops are ordered counter-clockwise, and a point is defined to be
     // inside the polygon if it's enclosed by an odd number of loops.
