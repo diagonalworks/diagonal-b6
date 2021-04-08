@@ -33,6 +33,7 @@ message AreaProto {
     oneof area {
         CapProto cap = 1;
         features.FeatureIDProto id = 2;
+        geometry.MultiPolygonProto multiPolygon = 3;
     }
 }
 
