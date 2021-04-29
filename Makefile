@@ -67,7 +67,7 @@ docker-dfe: dfe
 	cd src/diagonal.works/diagonal/cmd/dfe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/dfe
 	rm -rf docker/www/
 	mkdir -p docker/www/
-	cp -r src/diagonal.works/diagonal/experimental/website docker/www/staging.diagonal.works
+	cp -r src/diagonal.works/diagonal/experimental/hugo docker/www/staging.diagonal.works
 	docker build -f docker/Dockerfile.dfe -t dfe docker
 	docker tag dfe eu.gcr.io/diagonal-platform/dfe
 	docker push eu.gcr.io/diagonal-platform/dfe
