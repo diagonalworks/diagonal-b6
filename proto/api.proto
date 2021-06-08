@@ -16,6 +16,7 @@ message ValueProto {
         features.FeatureProto featureValue = 5;
         QueryProto queryValue = 6;
         features.FeatureIDProto featureIDValue = 7;
+        string nilValue = 8;
     }
 }
 
