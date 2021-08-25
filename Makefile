@@ -93,6 +93,9 @@ experimental_geojson:
 experimental_staging:
 	cd src/diagonal.works/diagonal/experimental/staging; go build
 
+experimental_gazetteer:
+	cd src/diagonal.works/diagonal/experimental/gazetteer; go build
+
 python:
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/features.proto
