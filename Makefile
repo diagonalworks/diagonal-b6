@@ -83,15 +83,12 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/ingest.fbs
 
-experimental: experimental_geojson experimental_staging
+experimental: experimental_geojson
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
 
 experimental_geojson:
 	cd src/diagonal.works/diagonal/experimental/geojson; go build
-
-experimental_staging:
-	cd src/diagonal.works/diagonal/experimental/staging; go build
 
 experimental_gazetteer:
 	cd src/diagonal.works/diagonal/experimental/gazetteer; go build
