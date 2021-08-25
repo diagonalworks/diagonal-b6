@@ -18,6 +18,7 @@ message ValueProto {
         features.FeatureIDProto featureIDValue = 7;
         string nilValue = 8;
         geometry.PointProto pointValue = 9;
+        geometry.MultiPolygonProto areaValue = 10;
     }
 }
 
@@ -31,6 +32,8 @@ message CapProto {
     double radiusMeters = 2;
 }
 
+// TODO: Now we have richer support for representing areas, we can replace these with
+// functions that return a multipolygon
 message AreaProto {
     oneof area {
         CapProto cap = 1;
