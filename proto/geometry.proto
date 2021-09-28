@@ -4,8 +4,9 @@ package geometry;
 
 option go_package = "diagonal.works/diagonal/proto";
 
-message LineProto {
+message PolylineProto {
     repeated PointProto points = 1;
+    double length_meters = 2;
 }
 
 message MultiPolygonProto {
