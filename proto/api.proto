@@ -18,7 +18,8 @@ message ValueProto {
         features.FeatureIDProto featureIDValue = 7;
         string nilValue = 8;
         geometry.PointProto pointValue = 9;
-        geometry.MultiPolygonProto areaValue = 10;
+        geometry.PolylineProto pathValue = 10;
+        geometry.MultiPolygonProto areaValue = 11;
     }
 }
 
