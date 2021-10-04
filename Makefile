@@ -52,6 +52,13 @@ docker-atlas-dev-data:
 	docker tag atlas-dev-data eu.gcr.io/diagonal-platform/atlas-dev-data
 	docker push eu.gcr.io/diagonal-platform/atlas-dev-data
 
+docker-ingest:
+	mkdir -p docker/bin/linux-amd64
+	cd src/diagonal.works/diagonal/cmd/ingest; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/ingest
+	docker build -f docker/Dockerfile.ingest -t ingest docker
+	docker tag ingest eu.gcr.io/diagonal-platform/ingest
+	docker push eu.gcr.io/diagonal-platform/ingest
+
 docker-atlas-dev: fe-js docker-atlas-dev-data
 	mkdir -p docker/bin/linux-amd64
 	cd src/diagonal.works/diagonal/cmd/fe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/fe
