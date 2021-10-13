@@ -28,6 +28,9 @@ mbtiles:
 dfe:
 	cd src/diagonal.works/diagonal/cmd/dfe; go build
 
+tiles:
+	cd src/diagonal.works/diagonal/cmd/tiles; go build
+
 scaffold:
 	cd src/diagonal.works/diagonal/cmd/scaffold; go build
 
