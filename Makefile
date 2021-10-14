@@ -82,6 +82,13 @@ docker-dfe: dfe
 	docker tag dfe eu.gcr.io/diagonal-platform/dfe
 	docker push eu.gcr.io/diagonal-platform/dfe
 
+docker-tiles:
+	mkdir -p docker/bin/linux-amd64
+	cd src/diagonal.works/diagonal/cmd/tiles; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/tiles
+	docker build -f docker/Dockerfile.tiles -t tiles docker
+	docker tag tiles eu.gcr.io/diagonal-platform/tiles
+	docker push eu.gcr.io/diagonal-platform/tiles
+
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/cookie.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/tiles.proto
