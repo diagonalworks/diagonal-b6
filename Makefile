@@ -1,3 +1,5 @@
+TARGETPLATFORM ?= $(shell uname -s | tr A-Z a-z)/$(shell uname -m | tr A-Z a-z)
+
 all: protos experimental fe ingest ingestons transit fe-js dfe scaffold
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
@@ -28,8 +30,9 @@ mbtiles:
 dfe:
 	cd src/diagonal.works/diagonal/cmd/dfe; go build
 
-tiles:
-	cd src/diagonal.works/diagonal/cmd/tiles; go build
+tiles: protos
+	mkdir -p bin/${TARGETPLATFORM}
+	cd src/diagonal.works/diagonal/cmd/tiles; go build -o ../../../../../docker/bin/${TARGETPLATFORM}/tiles
 
 scaffold:
 	cd src/diagonal.works/diagonal/cmd/scaffold; go build
