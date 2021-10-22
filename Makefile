@@ -1,3 +1,6 @@
+# Sets TARGETARCH to something linke amd64 or aarch64
+TARGETARCH ?= $(shell uname -m | tr A-Z a-z)
+# Sets TARGETPLATFORM to something like linux/amd64 or darwin/aarch64
 TARGETPLATFORM ?= $(shell uname -s | tr A-Z a-z)/$(shell uname -m | tr A-Z a-z)
 
 all: protos experimental fe ingest ingestons transit fe-js dfe scaffold
@@ -28,11 +31,12 @@ mbtiles:
 	cd src/diagonal.works/diagonal/cmd/mbtiles; go build
 
 dfe:
-	cd src/diagonal.works/diagonal/cmd/dfe; go build
+	mkdir -p bin/${TARGETPLATFORM}
+	cd src/diagonal.works/diagonal/cmd/dfe; go build -o ../../../../../bin/${TARGETPLATFORM}/dfe
 
 tiles: protos
 	mkdir -p bin/${TARGETPLATFORM}
-	cd src/diagonal.works/diagonal/cmd/tiles; go build -o ../../../../../docker/bin/${TARGETPLATFORM}/tiles
+	cd src/diagonal.works/diagonal/cmd/tiles; go build -o ../../../../../bin/${TARGETPLATFORM}/tiles
 
 scaffold:
 	cd src/diagonal.works/diagonal/cmd/scaffold; go build
@@ -75,22 +79,19 @@ docker-atlas-dev: fe-js docker-atlas-dev-data
 	docker tag atlas-dev eu.gcr.io/diagonal-platform/atlas-dev
 	docker push eu.gcr.io/diagonal-platform/atlas-dev
 
-docker-dfe: dfe
-	mkdir -p docker/bin/linux-amd64
-	cd src/diagonal.works/diagonal/cmd/dfe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/dfe
-	rm -rf docker/www/
-	mkdir -p docker/www/
-	cp -r src/diagonal.works/diagonal/experimental/hugo docker/www/staging.diagonal.works
-	docker build -f docker/Dockerfile.dfe -t dfe docker
-	docker tag dfe eu.gcr.io/diagonal-platform/dfe
-	docker push eu.gcr.io/diagonal-platform/dfe
+docker-dfe:
+	mkdir -p docker/bin/${TARGETPLATFORM}
+	cp bin/${TARGETPLATFORM}/dfe docker/bin/${TARGETPLATFORM}
+	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.dfe -t dfe-${TARGETARCH} docker
+	docker tag tiles eu.gcr.io/diagonal-platform/dfe-${TARGETARCH}
+	docker push eu.gcr.io/diagonal-platform/dfe-${TARGETARCH}
 
 docker-tiles:
-	mkdir -p docker/bin/linux-amd64
-	cd src/diagonal.works/diagonal/cmd/tiles; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/tiles
-	docker build -f docker/Dockerfile.tiles -t tiles docker
-	docker tag tiles eu.gcr.io/diagonal-platform/tiles
-	docker push eu.gcr.io/diagonal-platform/tiles
+	mkdir -p docker/bin/${TARGETPLATFORM}
+	cp bin/${TARGETPLATFORM}/tiles docker/bin/${TARGETPLATFORM}
+	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.tiles -t tiles-${TARGETARCH} docker
+	docker tag tiles eu.gcr.io/diagonal-platform/tiles-${TARGETARCH}
+	docker push eu.gcr.io/diagonal-platform/tiles-${TARGETARCH}
 
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/cookie.proto
