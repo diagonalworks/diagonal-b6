@@ -1,7 +1,9 @@
 # Sets TARGETARCH to something linke amd64 or aarch64
 TARGETARCH ?= $(shell uname -m | tr A-Z a-z)
+# Sets TARGETOS to something like linux or darwin
+TARGETOS ?= $(shell uname -s | tr A-Z a-z)
 # Sets TARGETPLATFORM to something like linux/amd64 or darwin/aarch64
-TARGETPLATFORM ?= $(shell uname -s | tr A-Z a-z)/$(shell uname -m | tr A-Z a-z)
+TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
 
 all: protos experimental fe ingest ingestons transit fe-js dfe scaffold
 	cd src/diagonal.works/diagonal/monitoring; go generate
@@ -83,14 +85,14 @@ docker-dfe:
 	mkdir -p docker/bin/${TARGETPLATFORM}
 	cp bin/${TARGETPLATFORM}/dfe docker/bin/${TARGETPLATFORM}
 	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.dfe -t dfe-${TARGETARCH} docker
-	docker tag tiles eu.gcr.io/diagonal-platform/dfe-${TARGETARCH}
+	docker tag dfe-${TARGETARCH} eu.gcr.io/diagonal-platform/dfe-${TARGETARCH}
 	docker push eu.gcr.io/diagonal-platform/dfe-${TARGETARCH}
 
 docker-tiles:
 	mkdir -p docker/bin/${TARGETPLATFORM}
 	cp bin/${TARGETPLATFORM}/tiles docker/bin/${TARGETPLATFORM}
 	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.tiles -t tiles-${TARGETARCH} docker
-	docker tag tiles eu.gcr.io/diagonal-platform/tiles-${TARGETARCH}
+	docker tag tiles-${TARGETARCH} eu.gcr.io/diagonal-platform/tiles-${TARGETARCH}
 	docker push eu.gcr.io/diagonal-platform/tiles-${TARGETARCH}
 
 protos:
