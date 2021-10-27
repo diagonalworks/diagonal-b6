@@ -11,6 +11,7 @@ all: protos experimental fe ingest ingestons transit fe-js dfe scaffold
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
 	cd src/diagonal.works/diagonal/cmd/splitosm; go build
 	cd src/diagonal.works/diagonal/cmd/tile; go build
+	cd src/diagonal.works/diagonal/experimental/sightline-tiles; go build
 	make -C data
 
 fe: protos
@@ -117,7 +118,8 @@ experimental_gazetteer:
 	cd src/diagonal.works/diagonal/experimental/gazetteer; go build
 
 experimental_sightline_tiles:
-	cd src/diagonal.works/diagonal/experimental/sightline-tiles; go build
+	cd src/diagonal.works/diagonal/monitoring; go generate
+	cd src/diagonal.works/diagonal/experimental/sightline-tiles; go build -o ../../../../../bin/${TARGETPLATFORM}/sightline-tiles
 
 python:
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
