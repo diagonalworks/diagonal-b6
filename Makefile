@@ -121,6 +121,10 @@ experimental_sightline_tiles:
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/experimental/sightline-tiles; go build -o ../../../../../bin/${TARGETPLATFORM}/sightline-tiles
 
+experimental_pyramid_tiles:
+	cd src/diagonal.works/diagonal/monitoring; go generate
+	cd src/diagonal.works/diagonal/experimental/pyramid-tiles; go build -o ../../../../../bin/${TARGETPLATFORM}/pyramid-tiles
+
 python:
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/features.proto
