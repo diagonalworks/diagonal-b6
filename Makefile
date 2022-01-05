@@ -22,6 +22,7 @@ fe-js:
 	make -C js
 
 ingest: protos
+	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/cmd/ingest; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest
 
 ingestons: protos
