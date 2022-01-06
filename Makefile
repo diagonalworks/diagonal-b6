@@ -25,6 +25,9 @@ ingest: protos
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/cmd/ingest; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest
 
+ingest-beam: protos
+	cd src/diagonal.works/diagonal/cmd/ingest-beam; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-beam
+
 ingestons: protos
 	cd src/diagonal.works/diagonal/cmd/ingestons; go build
 
