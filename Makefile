@@ -70,11 +70,12 @@ docker-atlas-dev-data:
 	docker push eu.gcr.io/diagonal-platform/atlas-dev-data
 
 docker-ingest:
-	mkdir -p docker/bin/linux-amd64
-	cd src/diagonal.works/diagonal/cmd/ingest; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/ingest
-	docker build -f docker/Dockerfile.ingest -t ingest docker
-	docker tag ingest eu.gcr.io/diagonal-platform/ingest
-	docker push eu.gcr.io/diagonal-platform/ingest
+	scripts/make-in-docker.sh ingest
+	mkdir -p docker/bin/${TARGETPLATFORM}
+	cp bin/${TARGETPLATFORM}/ingest docker/bin/${TARGETPLATFORM}
+	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.ingest -t ingest-${TARGETARCH} docker
+	docker tag ingest-${TARGETARCH} eu.gcr.io/diagonal-platform/ingest-${TARGETARCH}
+	docker push eu.gcr.io/diagonal-platform/ingest-${TARGETARCH}
 
 docker-atlas-dev: fe-js docker-atlas-dev-data
 	mkdir -p docker/bin/linux-amd64
