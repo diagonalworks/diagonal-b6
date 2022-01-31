@@ -133,6 +133,9 @@ experimental_pyramid_tiles:
 experimental_planet_index:
 	cd src/diagonal.works/diagonal/experimental/planet-index; go build -o ../../../../../bin/${TARGETPLATFORM}/planet-index
 
+experimental_posting_lists:
+	cd src/diagonal.works/diagonal/experimental/posting-lists; go build -o ../../../../../bin/${TARGETPLATFORM}/posting-lists
+
 python:
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
 	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/features.proto
