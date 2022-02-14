@@ -16,7 +16,7 @@ all: protos experimental fe ingest ingestons transit fe-js dfe scaffold
 
 fe: protos
 	cd src/diagonal.works/diagonal/monitoring; go generate
-	cd src/diagonal.works/diagonal/cmd/fe; go build
+	cd src/diagonal.works/diagonal/cmd/fe; go build -o ../../../../../bin/${TARGETPLATFORM}/fe
 
 fe-js:
 	make -C js
@@ -77,9 +77,11 @@ docker-ingest:
 	docker tag ingest-${TARGETARCH} eu.gcr.io/diagonal-platform/ingest-${TARGETARCH}
 	docker push eu.gcr.io/diagonal-platform/ingest-${TARGETARCH}
 
+# Use TARGETARCH=x86_64 TARGETOS=linux for GCP
 docker-atlas-dev: fe-js docker-atlas-dev-data
-	mkdir -p docker/bin/linux-amd64
-	cd src/diagonal.works/diagonal/cmd/fe; GOOS=linux GOARCH=amd64 go build -o ../../../../../docker/bin/linux-amd64/fe
+	mkdir -p docker/bin/${TARGETPLATFORM}
+	scripts/make-in-docker.sh fe
+	cp bin/${TARGETPLATFORM}/fe docker/bin/${TARGETPLATFORM}
 	mkdir -p docker/js
 	rm -rf docker/js/dist
 	cp -r js/dist docker/js/dist
