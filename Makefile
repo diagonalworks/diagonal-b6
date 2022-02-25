@@ -157,7 +157,7 @@ ipython: python
 	cd python; pip3 install . --upgrade --target ${HOME}/.ipython/
 
 python-test: python fe
-	PYTHONPATH=python python3 python/tests/all.py
+	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/tests/all.py
 
 test:
 	make -C data test
