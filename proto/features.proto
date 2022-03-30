@@ -30,6 +30,9 @@ message FeatureIDProto {
     	NamespaceUKCensusBoundaries = 7;
     	NamespaceTFLBus = 8;
         NamespaceUKONSBoundaries = 9;
+        NamespacePrivate = 10;
+    	NamespaceMHCLGBrownfield = 11;
+	    NamespaceDiagonalConnections = 12;
     }
     FeatureType type = 1;
     Namespace namespace = 2;
