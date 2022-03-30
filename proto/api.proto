@@ -20,6 +20,7 @@ message ValueProto {
         geometry.PointProto pointValue = 9;
         geometry.PolylineProto pathValue = 10;
         geometry.MultiPolygonProto areaValue = 11;
+        ModifiedFeaturesProto modifiedFeaturesValue = 12;
     }
 }
 
@@ -41,6 +42,10 @@ message AreaProto {
         features.FeatureIDProto id = 2;
         geometry.MultiPolygonProto multiPolygon = 3;
     }
+}
+
+message ModifiedFeaturesProto {
+    repeated features.FeatureIDProto ids = 1;
 }
 
 message InputProto {
