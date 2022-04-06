@@ -7,26 +7,9 @@ import "features.proto";
 
 option go_package = "diagonal.works/diagonal/proto";
 
-message ValueProto {
-    oneof value {
-        string stringValue = 1;
-        double floatValue = 2;
-        int64 intValue = 3;
-        CollectionValueProto collectionValue = 4;
-        features.FeatureProto featureValue = 5;
-        QueryProto queryValue = 6;
-        features.FeatureIDProto featureIDValue = 7;
-        string nilValue = 8;
-        geometry.PointProto pointValue = 9;
-        geometry.PolylineProto pathValue = 10;
-        geometry.MultiPolygonProto areaValue = 11;
-        ModifiedFeaturesProto modifiedFeaturesValue = 12;
-    }
-}
-
-message CollectionValueProto {
-    repeated string keys = 1;
-    repeated ValueProto values = 2;
+message CollectionProto {
+    repeated NodeProto keys = 1;
+    repeated NodeProto values = 2;
 }
 
 message CapProto {
@@ -48,29 +31,48 @@ message ModifiedFeaturesProto {
     repeated features.FeatureIDProto ids = 1;
 }
 
-message InputProto {
-    oneof input {
-        ValueProto literal = 1;        
-        uint32 node = 2;
-    }
-}
-
-enum NodeType {
-    Call = 0;
-    MapValues = 1;
-    MapKeyValues = 2;
-    Join = 3;
+message AppliedChangeProto {
+    repeated features.FeatureIDProto original = 1;
+    repeated features.FeatureIDProto modified = 2;
 }
 
 message NodeProto {
-    uint32 id = 1;
-    NodeType type = 2;
-    string operation = 3;
-    repeated InputProto inputs = 4;
+    oneof node {
+        string symbol = 1;
+        LiteralNodeProto literal = 2;
+        CallNodeProto call = 3;
+        LambdaNodeProto lambda_ = 4;
+        int32 arg = 5;
+    }
 }
 
-message GraphProto {
-    repeated NodeProto nodes = 1;
+message LiteralNodeProto {
+    oneof value {
+        bool nilValue = 1;
+        bool boolValue = 2;
+        string stringValue = 3;
+        int64 intValue = 4;
+        double floatValue = 5;
+        CollectionProto collectionValue = 6;
+        features.FeatureProto featureValue = 7;
+        QueryProto queryValue = 8;
+        features.FeatureIDProto featureIDValue = 9;
+        geometry.PointProto pointValue = 10;
+        geometry.PolylineProto pathValue = 11;
+        geometry.MultiPolygonProto areaValue = 12;
+        AppliedChangeProto appliedChangeValue = 13;
+        bytes geoJSONValue = 14; // gzipped
+    }
+}
+
+message CallNodeProto {
+    NodeProto function = 1;
+    repeated NodeProto args = 2;
+}
+
+message LambdaNodeProto {
+    NodeProto node = 1;
+    int32 args = 2;
 }
 
 message KeyQueryProto {
@@ -141,52 +143,12 @@ message ModifyTagsBatchRequestProto {
 message ModifyTagsBatchResponseProto {
 }
 
-message RunGraphRequestProto {
-    GraphProto graph = 1;
+message EvaluateRequestProto {
+    NodeProto request = 1;
 }
 
-message RunGraphResponseProto {
-    ValueProto result = 2;
-}
-
-message RunGraphWithProgressRequestProto {
-    GraphProto graph = 1;
-}
-
-message RunGraphWithProgressResponseProto {
-    oneof response {
-        uint64 tracker = 1;
-        ValueProto result = 3;
-    }
-}
-
-message RunGraphGeoJSONRequestProto {
-    GraphProto graph = 1;
-}
-
-message RunGraphGeoJSONResponseProto {
-    bytes gzjson = 1;
-}
-
-message SetTagFromGraphRequestProto {
-    string key = 1;
-    GraphProto graph = 2;
-}
-
-message SetTagFromGraphResponseProto {
-    uint32 modified = 1;
-}
-
-message SetTagFromGraphWithProgressRequestProto {
-    string key = 1;
-    GraphProto graph = 2;
-}
-
-message SetTagFromGraphWithProgressResponseProto {
-    oneof response {
-        uint64 tracker = 1;
-        uint32 modified = 2;
-    }
+message EvaluateResponseProto {
+    NodeProto result = 1;
 }
 
 service WorldService {
@@ -195,9 +157,5 @@ service WorldService {
 
     rpc ModifyTags(ModifyTagsBatchRequestProto) returns (ModifyTagsBatchResponseProto);
 
-    rpc RunGraph(RunGraphRequestProto) returns (RunGraphResponseProto);
-    rpc RunGraphGeoJSON(RunGraphGeoJSONRequestProto) returns (RunGraphGeoJSONResponseProto);
-    rpc RunGraphWithProgress(RunGraphWithProgressRequestProto) returns (stream RunGraphWithProgressResponseProto);
-    rpc SetTagFromGraph(SetTagFromGraphRequestProto) returns (SetTagFromGraphResponseProto);
-    rpc SetTagFromGraphWithProgress(SetTagFromGraphWithProgressRequestProto) returns (stream SetTagFromGraphWithProgressResponseProto);
+    rpc Evaluate(EvaluateRequestProto) returns (EvaluateResponseProto);
 }
