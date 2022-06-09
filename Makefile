@@ -5,7 +5,7 @@ TARGETOS ?= $(shell uname -s | tr A-Z a-z)
 # Sets TARGETPLATFORM to something like linux/amd64 or darwin/aarch64
 TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
 
-all: protos experimental fe ingest ingestons transit fe-js dfe scaffold
+all: protos experimental fe ingest ingestons transit fe-js dfe
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
@@ -44,9 +44,6 @@ dfe:
 tiles: protos
 	mkdir -p bin/${TARGETPLATFORM}
 	cd src/diagonal.works/diagonal/cmd/tiles; go build -o ../../../../../bin/${TARGETPLATFORM}/tiles
-
-scaffold:
-	cd src/diagonal.works/diagonal/cmd/scaffold; go build
 
 docker: protos
 	mkdir -p docker/bin/linux-amd64
