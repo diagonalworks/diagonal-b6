@@ -111,12 +111,9 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/ingest.fbs
 
-experimental: experimental_geojson
+experimental:
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
-
-experimental_geojson:
-	cd src/diagonal.works/diagonal/experimental/geojson; go build
 
 experimental_gazetteer:
 	cd src/diagonal.works/diagonal/experimental/gazetteer; go build
@@ -134,6 +131,7 @@ experimental_planet_index:
 
 experimental_posting_lists:
 	cd src/diagonal.works/diagonal/experimental/posting-lists; go build -o ../../../../../bin/${TARGETPLATFORM}/posting-lists
+
 experimental_s2-sharding:
 	cd src/diagonal.works/diagonal/experimental/s2-sharding; go build -o ../../../../../bin/${TARGETPLATFORM}/s2-sharding
 
