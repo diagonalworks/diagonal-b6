@@ -16,6 +16,7 @@ enum FeatureType {
     FeatureTypePath = 1;
     FeatureTypeArea = 2;
     FeatureTypeRelation = 3;
+    FeatureTypeInvalid = 4;
 }
 
 message FeatureIDProto {
