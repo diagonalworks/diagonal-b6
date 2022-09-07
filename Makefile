@@ -136,9 +136,9 @@ experimental_s2-sharding:
 	cd src/diagonal.works/diagonal/experimental/s2-sharding; go build -o ../../../../../bin/${TARGETPLATFORM}/s2-sharding
 
 python:
-	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
-	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto proto/features.proto
-	python3 -m grpc.tools.protoc -Iproto --python_out=python/diagonal/proto --grpc_python_out=python/diagonal/proto proto/api.proto
+	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
+	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal/proto proto/features.proto
+	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal/proto --grpc_python_out=python/diagonal/proto proto/api.proto
 	sed -e 's/import geometry_pb2/import diagonal.proto.geometry_pb2/' python/diagonal/proto/features_pb2.py > python/diagonal/proto/features_pb2.py.new
 	mv python/diagonal/proto/features_pb2.py.new python/diagonal/proto/features_pb2.py
 	sed -e 's/import geometry_pb2/import diagonal.proto.geometry_pb2/' python/diagonal/proto/api_pb2.py > python/diagonal/proto/api_pb2.py.new
