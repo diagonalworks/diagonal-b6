@@ -3,7 +3,7 @@ TARGETARCH ?= $(shell uname -m | tr A-Z a-z)
 # Sets TARGETOS to something like linux or darwin
 TARGETOS ?= $(shell uname -s | tr A-Z a-z)
 # Sets TARGETPLATFORM to something like linux/amd64 or darwin/aarch64
-TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
+export TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
 
 all: protos experimental fe ingest ingestons transit fe-js dfe
 	cd src/diagonal.works/diagonal/monitoring; go generate
@@ -36,6 +36,9 @@ transit: protos
 
 mbtiles:
 	cd src/diagonal.works/diagonal/cmd/mbtiles; go build
+
+baseline:
+	make -C src/diagonal.works/diagonal/cmd/baseline
 
 dfe:
 	mkdir -p bin/${TARGETPLATFORM}
