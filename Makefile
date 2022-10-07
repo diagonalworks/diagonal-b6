@@ -37,6 +37,9 @@ transit: protos
 mbtiles:
 	cd src/diagonal.works/diagonal/cmd/mbtiles; go build
 
+tile-profile:
+	cd src/diagonal.works/diagonal/cmd/tile-profile; go build -o ../../../../../bin/${TARGETPLATFORM}/tile-profile
+
 baseline:
 	make -C src/diagonal.works/diagonal/cmd/baseline
 
