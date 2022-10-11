@@ -40,7 +40,7 @@ mbtiles:
 tile-profile:
 	cd src/diagonal.works/diagonal/cmd/tile-profile; go build -o ../../../../../bin/${TARGETPLATFORM}/tile-profile
 
-baseline:
+baseline: src/diagonal.works/diagonal/a5/y.go
 	make -C src/diagonal.works/diagonal/cmd/baseline
 
 dfe:
@@ -117,6 +117,9 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
 	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/ingest.fbs
 
+src/diagonal.works/diagonal/a5/y.go: src/diagonal.works/diagonal/a5/a5.y
+	cd src/diagonal.works/diagonal/a5; goyacc a5.y
+
 experimental:
 	cd src/diagonal.works/diagonal/experimental/mr; go build
 	cd src/diagonal.works/diagonal/experimental/osmpbf; go build
@@ -140,6 +143,9 @@ experimental_posting_lists:
 
 experimental_s2-sharding:
 	cd src/diagonal.works/diagonal/experimental/s2-sharding; go build -o ../../../../../bin/${TARGETPLATFORM}/s2-sharding
+
+experimental_atlas: src/diagonal.works/diagonal/a5/y.go
+	make -C src/diagonal.works/diagonal/experimental/atlas
 
 python:
 	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
