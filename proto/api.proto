@@ -46,6 +46,11 @@ message CollectionProto {
     repeated LiteralNodeProto values = 4;
 }
 
+message PairProto {
+    LiteralNodeProto first = 1;
+    LiteralNodeProto second = 2;
+}
+
 message CapProto {
     geometry.PointProto center = 1;
     double radiusMeters = 2;
@@ -88,14 +93,15 @@ message LiteralNodeProto {
         int64 intValue = 4;
         double floatValue = 5;
         CollectionProto collectionValue = 6;
-        features.FeatureProto featureValue = 7;
-        QueryProto queryValue = 8;
-        features.FeatureIDProto featureIDValue = 9;
-        geometry.PointProto pointValue = 10;
-        geometry.PolylineProto pathValue = 11;
-        geometry.MultiPolygonProto areaValue = 12;
-        AppliedChangeProto appliedChangeValue = 13;
-        bytes geoJSONValue = 14; // gzipped
+        PairProto pairValue = 7;
+        features.FeatureProto featureValue = 8;
+        QueryProto queryValue = 9;
+        features.FeatureIDProto featureIDValue = 10;
+        geometry.PointProto pointValue = 11;
+        geometry.PolylineProto pathValue = 12;
+        geometry.MultiPolygonProto areaValue = 13;
+        AppliedChangeProto appliedChangeValue = 14;
+        bytes geoJSONValue = 15; // gzipped
     }
 }
 
