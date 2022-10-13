@@ -106,6 +106,35 @@ docker-tiles:
 	docker tag tiles-${TARGETARCH} eu.gcr.io/diagonal-platform/tiles-${TARGETARCH}
 	docker push eu.gcr.io/diagonal-platform/tiles-${TARGETARCH}
 
+data/region/scottish-borders.index:
+	gsutil cp gs://diagonal.works/region/scottish-borders.index data/region/scottish-borders.index
+
+data/region/scottish-borders.connected.overlay:
+	gsutil cp gs://diagonal.works/region/scottish-borders.connected.overlay data/region/scottish-borders.connected.overlay
+
+# Use TARGETARCH=x86_64 TARGETOS=linux for GCP
+docker-baseline: data/region/scottish-borders.index data/region/scottish-borders.connected.overlay
+	mkdir -p docker/bin/${TARGETPLATFORM}
+	cp bin/${TARGETPLATFORM}/baseline docker/bin/${TARGETPLATFORM}
+	mkdir -p docker/baseline/assets/fonts
+	cp -r js/dist/fonts/national-* docker/baseline/assets/fonts
+	cp -r js/dist/fonts/unica77-* docker/baseline/assets/fonts
+	mkdir -p docker/baseline/assets/images
+	cp js/dist/images/logo.svg docker/baseline/assets/images
+	cp js/dist/images/zoom-in.svg docker/baseline/assets/images
+	cp js/dist/images/zoom-out.svg docker/baseline/assets/images
+	mkdir -p docker/baseline/static
+	cp src/diagonal.works/diagonal/cmd/baseline/bundle.js docker/baseline/static
+	cp src/diagonal.works/diagonal/cmd/baseline/main.css docker/baseline/static
+	cp src/diagonal.works/diagonal/cmd/baseline/index.html docker/baseline/static
+	mkdir -p docker/baseline/data
+	cp data/region/scottish-borders.index docker/baseline/data
+	cp data/region/scottish-borders.connected.overlay docker/baseline/data
+	cp src/diagonal.works/diagonal/cmd/baseline/galashiels.geojson docker/baseline/data
+	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.baseline -t baseline-${TARGETARCH} docker
+	docker tag baseline-${TARGETARCH} eu.gcr.io/diagonal-platform/baseline-${TARGETARCH}
+	docker push eu.gcr.io/diagonal-platform/baseline-${TARGETARCH}
+
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/cookie.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/tiles.proto
