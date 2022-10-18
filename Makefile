@@ -192,7 +192,7 @@ python:
 ipython: python
 	cd python; pip3 install . --upgrade --target ${HOME}/.ipython/
 
-python-test: python fe
+python-test: python fe src/diagonal.works/diagonal/a5/y.go
 	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/tests/all.py
 
 test:
