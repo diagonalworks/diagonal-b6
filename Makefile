@@ -34,6 +34,9 @@ ingestons: protos
 ingest-shp:
 	cd src/diagonal.works/diagonal/cmd/ingest-shp; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-shp
 
+ingest-uprn:
+	cd src/diagonal.works/diagonal/cmd/ingest-uprn; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-uprn
+
 transit: protos
 	cd src/diagonal.works/diagonal/cmd/transit; go build
 
