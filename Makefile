@@ -46,7 +46,7 @@ mbtiles:
 tile-profile:
 	cd src/diagonal.works/diagonal/cmd/tile-profile; go build -o ../../../../../bin/${TARGETPLATFORM}/tile-profile
 
-baseline: src/diagonal.works/diagonal/a5/y.go
+baseline: protos src/diagonal.works/diagonal/a5/y.go
 	make -C src/diagonal.works/diagonal/cmd/baseline
 
 dfe:
@@ -119,7 +119,8 @@ data/region/scottish-borders.connected.overlay:
 	gsutil cp gs://diagonal.works/region/scottish-borders.connected.overlay data/region/scottish-borders.connected.overlay
 
 # Use TARGETARCH=x86_64 TARGETOS=linux for GCP
-docker-baseline: data/region/scottish-borders.index data/region/scottish-borders.connected.overlay
+docker-baseline:
+	rm -rf docker/baseline
 	mkdir -p docker/bin/${TARGETPLATFORM}
 	cp bin/${TARGETPLATFORM}/baseline docker/bin/${TARGETPLATFORM}
 	mkdir -p docker/baseline/assets/fonts
@@ -134,8 +135,6 @@ docker-baseline: data/region/scottish-borders.index data/region/scottish-borders
 	cp src/diagonal.works/diagonal/cmd/baseline/main.css docker/baseline/static
 	cp src/diagonal.works/diagonal/cmd/baseline/index.html docker/baseline/static
 	mkdir -p docker/baseline/data
-	cp data/region/scottish-borders.index docker/baseline/data
-	cp data/region/scottish-borders.connected.overlay docker/baseline/data
 	cp src/diagonal.works/diagonal/cmd/baseline/galashiels.geojson docker/baseline/data
 	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.baseline -t baseline-${TARGETARCH} docker
 	docker tag baseline-${TARGETARCH} eu.gcr.io/diagonal-platform/baseline-${TARGETARCH}
