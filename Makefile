@@ -37,6 +37,9 @@ ingest-shp:
 ingest-uprn:
 	cd src/diagonal.works/diagonal/cmd/ingest-uprn; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-uprn
 
+connect:
+	cd src/diagonal.works/diagonal/cmd/connect; go build -o ../../../../../bin/${TARGETPLATFORM}/connect
+
 transit: protos
 	cd src/diagonal.works/diagonal/cmd/transit; go build
 
