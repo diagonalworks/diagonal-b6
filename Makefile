@@ -40,7 +40,6 @@ ingest-uprn:
 ingest-terrain:
 	cd src/diagonal.works/diagonal/cmd/ingest-terrain; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-terrain
 
-
 connect:
 	cd src/diagonal.works/diagonal/cmd/connect; go build -o ../../../../../bin/${TARGETPLATFORM}/connect
 
