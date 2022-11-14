@@ -77,6 +77,9 @@ docker: protos
 	docker tag planet eu.gcr.io/diagonal-platform/planet
 	docker push eu.gcr.io/diagonal-platform/planet
 
+docker-build:
+	docker build -f docker/Dockerfile.build -t build docker
+
 docker-atlas-dev-data:
 	cp data/earth/ne_10m_land.shp docker/data/atlas-dev
 	cp data/earth/ne_10m_land.prj docker/data/atlas-dev
