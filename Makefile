@@ -139,6 +139,9 @@ docker-baseline:
 	cp js/dist/images/logo.svg docker/baseline/assets/images
 	cp js/dist/images/zoom-in.svg docker/baseline/assets/images
 	cp js/dist/images/zoom-out.svg docker/baseline/assets/images
+	cp js/dist/images/zoom-out.svg docker/baseline/assets/images
+	mkdir -p docker/baseline/assets/icons
+	cp js/dist/icons/hardware.svg docker/baseline/assets/icons
 	mkdir -p docker/baseline/static
 	cp src/diagonal.works/diagonal/cmd/baseline/bundle.js docker/baseline/static
 	cp src/diagonal.works/diagonal/cmd/baseline/main.css docker/baseline/static
