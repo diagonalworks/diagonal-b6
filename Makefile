@@ -150,6 +150,7 @@ docker-baseline:
 	cp js/dist/icons/cycle.svg docker/baseline/assets/icons
 	cp js/dist/icons/rail.svg docker/baseline/assets/icons
 	cp js/dist/icons/town.svg docker/baseline/assets/icons
+	cp js/dist/icons/vacant.svg docker/baseline/assets/icons
 	cp js/dist/icons/select-arrow.svg docker/baseline/assets/icons
 	cp js/dist/icons/select-missing.svg docker/baseline/assets/icons
 	mkdir -p docker/baseline/static
