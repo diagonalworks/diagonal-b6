@@ -228,7 +228,6 @@ python-test: python fe src/diagonal.works/diagonal/a5/y.go
 	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/tests/all.py
 
 test:
-	make -C data test
 	cd src/diagonal.works/diagonal; go test diagonal.works/diagonal/...
 
 clean:
