@@ -202,9 +202,6 @@ experimental_posting_lists:
 experimental_s2-sharding:
 	cd src/diagonal.works/diagonal/experimental/s2-sharding; go build -o ../../../../../bin/${TARGETPLATFORM}/s2-sharding
 
-experimental_atlas: src/diagonal.works/diagonal/a5/y.go
-	make -C src/diagonal.works/diagonal/experimental/atlas
-
 experimental_collada:
 	cd src/diagonal.works/diagonal/experimental/collada; go build -o ../../../../../bin/${TARGETPLATFORM}/collada
 
