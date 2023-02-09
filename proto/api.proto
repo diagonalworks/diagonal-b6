@@ -102,6 +102,7 @@ message LiteralNodeProto {
         geometry.MultiPolygonProto areaValue = 13;
         AppliedChangeProto appliedChangeValue = 14;
         bytes geoJSONValue = 15; // gzipped
+        features.TagProto tagValue = 16;
     }
 }
 
