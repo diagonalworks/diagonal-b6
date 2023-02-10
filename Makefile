@@ -141,8 +141,8 @@ docker-baseline:
 	cp js/dist/images/zoom-out.svg docker/baseline/assets/images
 	cp js/dist/images/zoom-out.svg docker/baseline/assets/images
 	mkdir -p docker/baseline/assets/icons
-	cp js/dist/icons/favicon-16x16.svg docker/baseline/assets/icons
-	cp js/dist/icons/favicon-32x32.svg docker/baseline/assets/icons
+	cp js/dist/icons/favicon-16x16.png docker/baseline/assets/icons
+	cp js/dist/icons/favicon-32x32.png docker/baseline/assets/icons
 	cp js/dist/icons/hardware.svg docker/baseline/assets/icons
 	cp js/dist/icons/grocery.svg docker/baseline/assets/icons
 	cp js/dist/icons/school.svg docker/baseline/assets/icons
