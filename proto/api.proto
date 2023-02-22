@@ -81,7 +81,6 @@ message NodeProto {
         LiteralNodeProto literal = 2;
         CallNodeProto call = 3;
         LambdaNodeProto lambda_ = 4;
-        int32 arg = 5;
     }
     int32 Begin = 6;
     int32 End = 7;
@@ -114,8 +113,8 @@ message CallNodeProto {
 }
 
 message LambdaNodeProto {
-    NodeProto node = 1;
-    int32 args = 2;
+    repeated string args = 1;
+    NodeProto node = 2;
 }
 
 message KeyQueryProto {
