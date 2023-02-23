@@ -1,3 +1,3 @@
-# Diagonal
+# Diagonal's Python codebase
 
-A Python client library that communicates with Atlas via GRPC.
+Primarily a Python client library to evaluate B6 expressions over GRPC.
