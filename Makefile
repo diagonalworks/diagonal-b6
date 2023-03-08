@@ -43,6 +43,9 @@ ingest-terrain:
 connect:
 	cd src/diagonal.works/diagonal/cmd/connect; go build -o ../../../../../bin/${TARGETPLATFORM}/connect
 
+b6-api:
+	cd src/diagonal.works/diagonal/cmd/b6-api; go build -o ../../../../../bin/${TARGETPLATFORM}/b6-api
+
 transit: protos
 	cd src/diagonal.works/diagonal/cmd/transit; go build
 
@@ -54,6 +57,9 @@ tile-profile:
 
 baseline: protos src/diagonal.works/diagonal/a5/y.go
 	make -C src/diagonal.works/diagonal/cmd/baseline
+
+baseline-backend: protos src/diagonal.works/diagonal/a5/y.go
+	make -C src/diagonal.works/diagonal/cmd/baseline baseline
 
 dfe:
 	mkdir -p bin/${TARGETPLATFORM}
@@ -208,24 +214,21 @@ experimental_s2-sharding:
 experimental_collada:
 	cd src/diagonal.works/diagonal/experimental/collada; go build -o ../../../../../bin/${TARGETPLATFORM}/collada
 
-python:
-	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal/proto proto/geometry.proto
-	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal/proto proto/features.proto
-	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal/proto --grpc_python_out=python/diagonal/proto proto/api.proto
-	sed -e 's/import geometry_pb2/import diagonal.proto.geometry_pb2/' python/diagonal/proto/features_pb2.py > python/diagonal/proto/features_pb2.py.new
-	mv python/diagonal/proto/features_pb2.py.new python/diagonal/proto/features_pb2.py
-	sed -e 's/import geometry_pb2/import diagonal.proto.geometry_pb2/' python/diagonal/proto/api_pb2.py > python/diagonal/proto/api_pb2.py.new
-	mv python/diagonal/proto/api_pb2.py.new python/diagonal/proto/api_pb2.py
-	sed -e 's/import features_pb2/import diagonal.proto.features_pb2/' python/diagonal/proto/api_pb2.py > python/diagonal/proto/api_pb2.py.new
-	mv python/diagonal/proto/api_pb2.py.new python/diagonal/proto/api_pb2.py
-	sed -e 's/import api_pb2/import diagonal.proto.api_pb2/' python/diagonal/proto/api_pb2_grpc.py > python/diagonal/proto/api_pb2_grpc.py.new
-	mv python/diagonal/proto/api_pb2_grpc.py.new python/diagonal/proto/api_pb2_grpc.py
+python: python/diagonal_b6/api_generated.py
+
+python/diagonal_b6/api_generated.py: b6-api
+	bin/${TARGETPLATFORM}/b6-api | python/diagonal_b6/generate_api.py > $@
+	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal_b6 --grpc_python_out=python/diagonal_b6  proto/geometry.proto proto/features.proto proto/api.proto
+	sed -e 's/import geometry_pb2/import diagonal_b6.geometry_pb2/' -i "" python/diagonal_b6/features_pb2.py
+	sed -e 's/import geometry_pb2/import diagonal_b6.geometry_pb2/' -i "" python/diagonal_b6/api_pb2.py
+	sed -e 's/import features_pb2/import diagonal_b6.features_pb2/' -i "" python/diagonal_b6/api_pb2.py
+	sed -e 's/import api_pb2/import diagonal_b6.api_pb2/' -i "" python/diagonal_b6/api_pb2_grpc.py
 
 ipython: python
 	cd python; pip3 install . --upgrade --target ${HOME}/.ipython/
 
-python-test: python fe src/diagonal.works/diagonal/a5/y.go
-	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/tests/all.py
+python-test: python baseline-backend src/diagonal.works/diagonal/a5/y.go
+	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/diagonal_b6/b6_test.py
 
 test:
 	cd src/diagonal.works/diagonal; go test diagonal.works/diagonal/...
