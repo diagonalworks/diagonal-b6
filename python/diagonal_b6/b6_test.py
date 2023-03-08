@@ -44,7 +44,7 @@ class B6Test(unittest.TestCase):
         self.connection = connection
 
     def test_find_areas(self):
-        names = [building.tag("name") for (id, building) in self.connection(b6.find_areas(b6.keyed("#building")))]
+        names = [building.get_string("name") for (id, building) in self.connection(b6.find_areas(b6.keyed("#building")))]
         self.assertEqual(len(names), BUILDINGS_IN_GRANARY_SQUARE)
 
     def test_find_point_by_id(self):        
@@ -72,7 +72,7 @@ class B6Test(unittest.TestCase):
         self.assertLess(len(paths), 800)
 
     def test_or_query(self):
-        names = [amenity.tag("name") for (id, amenity) in self.connection(b6.find(b6.tagged("#amenity", "restaurant").or_(b6.tagged("#amenity", "cafe"))))]
+        names = [amenity.get_string("name") for (id, amenity) in self.connection(b6.find(b6.tagged("#amenity", "restaurant").or_(b6.tagged("#amenity", "cafe"))))]
         self.assertIn("Le Cafe Alain Ducasse", names)
 
     def test_point_degree(self):
@@ -90,11 +90,11 @@ class B6Test(unittest.TestCase):
             self.assertLess(l, 1000)
 
     def test_relation_names(self):
-        names = [r.tag("name") for (id, r) in self.connection(b6.find_relations(b6.keyed("#route")))]
+        names = [r.get_string("name") for (id, r) in self.connection(b6.find_relations(b6.keyed("#route")))]
         self.assertIn("Jubilee Greenway", names)
 
     def test_reachable_areas_from_point(self):
-        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).tag("name")
+        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).get_string("name")
         names = set([name for (_, name) in self.connection(expression)])
         self.assertIn("The Lighterman", names)
 
@@ -114,7 +114,7 @@ class B6Test(unittest.TestCase):
     def test_closest_from_point(self):
         expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "pub"))
         pub = self.connection(expression)
-        self.assertEqual("The Lighterman", pub.tag("name"))
+        self.assertEqual("The Lighterman", pub.get_string("name"))
 
     def test_closest_from_point_distance(self):
         expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest_distance("walk", 1000.0, b6.tagged("#amenity", "pub"))
@@ -125,14 +125,14 @@ class B6Test(unittest.TestCase):
     def test_closest_from_area(self):
         expression = b6.find_area(b6.osm_way_area_id(COAL_DROPS_YARD_WEST_BUILDING_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "pub"))
         pub = self.connection(expression)
-        self.assertEqual("The Lighterman", pub.tag("name"))
+        self.assertEqual("The Lighterman", pub.get_string("name"))
 
     def test_closest_from_point_non_existant(self):
         expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "nonexistant"))
         self.assertEqual(None, self.connection(expression))
 
     def test_containing_areas_from_point(self):
-        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable_points("walk", 1000.0, b6.all()).containing_areas(b6.keyed("#shop")).tag("name")
+        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable_points("walk", 1000.0, b6.all()).containing_areas(b6.keyed("#shop")).get_string("name")
         names = set([name for (_, name) in self.connection(expression)])
         self.assertIn("Coal Drops Yard", names)
 
@@ -149,10 +149,10 @@ class B6Test(unittest.TestCase):
         self.assertAlmostEqual(self.connection(b6.find_points(b6.tagged("#amenity", "bicycle_parking")).count().divide(10.0)), BIKE_PARKING_IN_GRANARY_SQUARE / 10.0)
 
     def test_filter(self):
-        filtered = self.connection(b6.find_areas(b6.keyed("#amenity")).filter(lambda a: b6.has_tag(a, "addr:postcode")))
+        filtered = self.connection(b6.find_areas(b6.keyed("#amenity")).filter(lambda a: b6.has_key(a, "addr:postcode")))
         self.assertGreater(len(filtered), 0)
         for (_, feature) in filtered:
-            self.assertNotEqual(feature.tag("addr:postcode"), "")
+            self.assertNotEqual(feature.get_string("addr:postcode"), "")
 
     def test_to_geojson_collection(self):
         geojson = self.connection(b6.to_geojson_collection(b6.find_areas(b6.keyed("#building"))))
@@ -178,17 +178,17 @@ class B6Test(unittest.TestCase):
         self.assertEqual(self.connection(b6.find_areas(b6.tagged("#amenity", "fountain").and_(b6.intersecting(granarySquare))).count()), FOUNTAINS_IN_GRANARY_SQUARE)
 
     def test_add_tags(self):
-        applied = self.connection(b6.add_tags(b6.find_areas(b6.keyed("#building")).map(lambda building: b6.make_tag("diagonal:colour", building.tag("building:levels")))))
+        applied = self.connection(b6.add_tags(b6.find_areas(b6.keyed("#building")).map(lambda building: b6.tag("diagonal:colour", building.get_string("building:levels")))))
         self.assertEqual(len(applied), BUILDINGS_IN_GRANARY_SQUARE)
 
     def test_add_tags_with_filter(self):
-        applied = self.connection(b6.add_tags(b6.find_paths(b6.tagged("#highway", "footway")).filter(lambda h: b6.has_tag(h, "bicycle")).map(lambda h: b6.make_tag("#bicycle", h.tag("bicycle")))))
+        applied = self.connection(b6.add_tags(b6.find_paths(b6.tagged("#highway", "footway")).filter(lambda h: b6.has_key(h, "bicycle")).map(lambda h: b6.tag("#bicycle", h.get_string("bicycle")))))
         self.assertGreater(len(applied), 0)
         self.assertEqual(self.connection(b6.find_paths(b6.keyed("#bicycle")).count()), len(applied))
 
     def test_search_for_newly_added_tag(self):
         reachable = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 1000.0, b6.keyed("#amenity"))
-        modified = self.connection(b6.add_tags(reachable.map(lambda building: b6.make_tag("#reachable", "yes"))))
+        modified = self.connection(b6.add_tags(reachable.map(lambda building: b6.tag("#reachable", "yes"))))
         self.assertGreater(len(modified), 1)
         self.assertEqual(self.connection(b6.find(b6.keyed("#reachable")).count()), len(modified))
 
@@ -327,7 +327,7 @@ class B6Test(unittest.TestCase):
     def test_find_building_intersecting_point(self):
         point = b6.ll(51.5352611, -0.1243803)
         features = self.connection(b6.find(b6.and_(b6.tagged("#building", "yes"), b6.intersecting(point))))
-        self.assertIn("The Lighterman", [f.tag("name") for (_, f) in features])
+        self.assertIn("The Lighterman", [f.get_string("name") for (_, f) in features])
 
     def test_map_area(self):
         areas = list(self.connection(b6.find_areas(b6.keyed("#building")).map(lambda building: building.area())))
@@ -379,7 +379,7 @@ class B6Test(unittest.TestCase):
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
         id = list(ids.values())[0]
-        self.assertEqual(self.connection(b6.find_point(id).tag("name")), "Ruby Violet Truck")
+        self.assertEqual(self.connection(b6.find_point(id).get_string("name")), "Ruby Violet Truck")
 
     def test_import_geojson_path(self):
         g = {
@@ -400,7 +400,7 @@ class B6Test(unittest.TestCase):
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
         id = list(ids.values())[0]
-        self.assertEqual(self.connection(b6.find_path(id)).tag("bridge"), "yes")
+        self.assertEqual(self.connection(b6.find_path(id)).get_string("bridge"), "yes")
 
     def test_import_geojson_polygon(self):
         g = {
@@ -421,7 +421,7 @@ class B6Test(unittest.TestCase):
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
         id = list(ids.values())[0]
-        self.assertEqual(self.connection(b6.find_area(id)).tag("building"), "yes")
+        self.assertEqual(self.connection(b6.find_area(id)).get_string("building"), "yes")
 
     def test_import_geojson_multipolygon(self):
         g = {
@@ -445,7 +445,7 @@ class B6Test(unittest.TestCase):
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
         id = list(ids.values())[0]
-        self.assertEqual(self.connection(b6.find_area(id)).tag("building"), "yes")
+        self.assertEqual(self.connection(b6.find_area(id)).get_string("building"), "yes")
 
     def test_import_geojson_file(self):
         ids = self.connection(b6.import_geojson_file("data/tests/sightline.geojson", "diagonal.works/test"))

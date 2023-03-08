@@ -72,11 +72,35 @@ class Feature:
     def is_relation(self):
         return self.id.is_relation()
 
-    def tag(self, key, default=None):
+    def get(self, key):
         for tag in self._pb.tags:
             if tag.key == key:
-                return tag.value
-        return default
+                return (key, tag.value)
+        return (None, None)
+
+    def get_string(self, key):
+        _, value = self.get(key)
+        if value is not None:
+            return value
+        return ""
+
+    def get_int(self, key):
+        _, value = self.get(key)
+        if value is not None:
+            try:
+                return int(value)
+            except:
+                pass
+        return 0
+
+    def get_float(self, key):
+        _, value = self.get(key)
+        if value is not None:
+            try:
+                return float(value)
+            except:
+                pass
+        return 0
 
     def all_tags(self):
         return [(tag.key, tag.value) for tag in self._pb.tags]
