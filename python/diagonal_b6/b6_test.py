@@ -186,7 +186,6 @@ class B6Test(unittest.TestCase):
         self.assertGreater(len(applied), 0)
         self.assertEqual(self.connection(b6.find_paths(b6.keyed("#bicycle")).count()), len(applied))
 
-    @unittest.skip("Connectivity for modified features is broken")
     def test_search_for_newly_added_tag(self):
         reachable = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 1000.0, b6.keyed("#amenity"))
         modified = self.connection(b6.add_tags(reachable.map(lambda building: b6.make_tag("#reachable", "yes"))))
