@@ -25,9 +25,6 @@ ingest: protos
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/cmd/ingest; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest
 
-ingest-beam: protos
-	cd src/diagonal.works/diagonal/cmd/ingest-beam; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-beam
-
 ingestons: protos
 	cd src/diagonal.works/diagonal/cmd/ingestons; go build
 
@@ -182,7 +179,6 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go --plugin=${HOME}/go/bin/protoc-gen-go-grpc -I=proto --go_out=src --go-grpc_out=src proto/api.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm --go_out=src src/diagonal.works/diagonal/osm/import.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
-	flatc -o src/diagonal.works/diagonal/ingest --go src/diagonal.works/diagonal/ingest/fbs/ingest.fbs
 
 src/diagonal.works/diagonal/a5/y.go: src/diagonal.works/diagonal/a5/a5.y
 	cd src/diagonal.works/diagonal/a5; goyacc a5.y
