@@ -5,7 +5,7 @@ package api;
 import "geometry.proto";
 import "features.proto";
 
-option go_package = "diagonal.works/diagonal/proto";
+option go_package = "diagonal.works/b6/proto";
 
 message TypeProto {
     enum Kind {

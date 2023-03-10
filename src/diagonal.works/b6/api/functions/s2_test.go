@@ -1,0 +1,125 @@
+package functions
+
+import (
+	"testing"
+
+	"diagonal.works/b6"
+	"diagonal.works/b6/api"
+	"diagonal.works/b6/test/camden"
+
+	"github.com/golang/geo/s2"
+)
+
+func TestS2Points(t *testing.T) {
+	granarySquare := camden.BuildGranarySquareForTests(t)
+
+	context := &api.Context{
+		World: granarySquare,
+	}
+
+	area := b6.FindAreaByID(camden.GranarySquareID, granarySquare)
+	if area == nil {
+		t.Errorf("Failed to find Granary Square")
+		return
+	}
+
+	center := s2.PointFromLatLng(s2.LatLngFromDegrees(51.53536, -0.12539))
+	points, err := s2Points(area, 21, 21, context)
+	if err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+
+	count := 0
+	maxDistance := 0.0
+	i := points.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			t.Errorf("Expected no error, found %s", err)
+			return
+		}
+		if !ok {
+			break
+		}
+		count++
+		if d := b6.AngleToMeters(center.Distance(i.Value().(b6.Point).Point())); d > maxDistance {
+			maxDistance = d
+		}
+	}
+
+	if count < 400 || count > 500 {
+		t.Errorf("Number of points outside expected range: %d", count)
+	}
+	if maxDistance < 50.0 || maxDistance > 70.0 {
+		t.Errorf("Maximum point distance from the center of Granary Square outside expected range: %fm", maxDistance)
+	}
+}
+
+func TestS2Grid(t *testing.T) {
+	context := &api.Context{}
+	topLeft := b6.PointFromLatLngDegrees(51.5146, -0.1140)
+	bottomRight := b6.PointFromLatLngDegrees(51.5124, -0.0951)
+	rectangle, _ := rectanglePolygon(topLeft, bottomRight, context)
+
+	grid, err := s2Grid(rectangle, 21, context)
+	if err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+		return
+	}
+
+	bounds := rectangle.Polygon(0).RectBound()
+
+	i := grid.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			t.Errorf("Expected no error, found: %s", err)
+			return
+		}
+		if !ok {
+			break
+		}
+		cellID := s2.CellIDFromToken(i.Value().(string))
+		if cellID.Level() != 21 {
+			t.Errorf("Expected cell level 21, found: %d", cellID.Level())
+			return
+		}
+		if !s2.CellFromCellID(cellID).RectBound().Intersects(bounds) {
+			t.Errorf("Expected cell to intersect rectangle bounds")
+			return
+		}
+	}
+}
+
+func TestS2Covering(t *testing.T) {
+	context := &api.Context{}
+	topLeft := b6.PointFromLatLngDegrees(51.5146, -0.1140)
+	bottomRight := b6.PointFromLatLngDegrees(51.5124, -0.0951)
+	rectangle, _ := rectanglePolygon(topLeft, bottomRight, context)
+
+	covering, err := s2Covering(rectangle, 1, 21, context)
+	if err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+		return
+	}
+
+	bounds := rectangle.Polygon(0).RectBound()
+
+	i := covering.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			t.Errorf("Expected no error, found: %s", err)
+			return
+		}
+		if !ok {
+			break
+		}
+		cellID := s2.CellIDFromToken(i.Value().(string))
+		if !s2.CellFromCellID(cellID).RectBound().Intersects(bounds) {
+			t.Errorf("Expected cell to intersect rectangle bounds")
+			return
+		}
+	}
+}
