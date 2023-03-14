@@ -1,4 +1,4 @@
-package region
+package compact
 
 import (
 	"context"
@@ -20,8 +20,8 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 
 	osmSource := ingest.MemoryOSMSource{Nodes: nodes, Ways: ways, Relations: relations}
 	source, err := ingest.NewFeatureSourceFromPBF(&osmSource, 2, context.Background())
-	config := Config{Cores: 2, PointsWorkOutputType: OutputTypeMemory}
-	index, err := BuildRegionFromPBFInMemory(source, &config)
+	options := Options{Cores: 2, PointsWorkOutputType: OutputTypeMemory}
+	index, err := BuildInMemory(source, &options)
 	if err != nil {
 		t.Errorf("Failed to build base index: %s", err)
 		return
@@ -38,7 +38,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 		t.Errorf("Failed to create base world: %s", err)
 	}
 	source = ingest.MemoryFeatureSource([]ingest.Feature{path})
-	overlay, err := BuildOverlayRegionInMemory(source, &config, w)
+	overlay, err := BuildOverlayInMemory(source, &options, w)
 	if err != nil {
 		t.Errorf("Failed to build overlay index: %s", err)
 		return

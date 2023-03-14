@@ -1,4 +1,4 @@
-package region
+package compact
 
 import (
 	"context"
@@ -19,14 +19,14 @@ func mergeOSM(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, base b
 	if err != nil {
 		return err
 	}
-	config := Config{Cores: 2, PointsWorkOutputType: OutputTypeMemory}
+	options := Options{Cores: 2, PointsWorkOutputType: OutputTypeMemory}
 	var index []byte
 	if base == nil {
-		if index, err = BuildRegionFromPBFInMemory(source, &config); err != nil {
+		if index, err = BuildInMemory(source, &options); err != nil {
 			return err
 		}
 	} else {
-		if index, err = BuildOverlayRegionInMemory(source, &config, base); err != nil {
+		if index, err = BuildOverlayInMemory(source, &options, base); err != nil {
 			return err
 		}
 	}
@@ -113,9 +113,9 @@ func mustBuildCamdenForBenchmarks() b6.World {
 		panic(err)
 	}
 
-	config := Config{Cores: 2, PointsWorkOutputType: OutputTypeMemory}
+	options := Options{Cores: 2, PointsWorkOutputType: OutputTypeMemory}
 	var index []byte
-	if index, err = BuildRegionFromPBFInMemory(source, &config); err != nil {
+	if index, err = BuildInMemory(source, &options); err != nil {
 		panic(err)
 	}
 

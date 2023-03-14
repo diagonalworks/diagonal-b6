@@ -11,7 +11,7 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/ingest/region"
+	"diagonal.works/b6/ingest/compact"
 	"diagonal.works/b6/search"
 
 	"github.com/golang/geo/s1"
@@ -67,7 +67,7 @@ func main() {
 		log.Fatal("Must specific --base or --input")
 	}
 
-	b, err := region.ReadWorld(*base, *cores)
+	b, err := compact.ReadWorld(*base, *cores)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func main() {
 	if *input == *base {
 		i = b
 	} else {
-		i, err = region.ReadWorld(*input, *cores)
+		i, err = compact.ReadWorld(*input, *cores)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -109,19 +109,19 @@ func main() {
 	strategy.Finish()
 	log.Printf(connections.String())
 	log.Printf("Output")
-	config := region.Config{
+	options := compact.Options{
 		OutputFilename:       *output,
 		Cores:                *cores,
 		WorkDirectory:        "",
-		PointsWorkOutputType: region.OutputTypeMemory,
+		PointsWorkOutputType: compact.OutputTypeMemory,
 	}
 	if i == b {
-		if region.BuildRegionFromPBF(strategy.Output(), &config); err != nil {
+		if compact.Build(strategy.Output(), &options); err != nil {
 			log.Fatal(err)
 		}
 	} else {
 		overlay := ingest.NewOverlayWorld(i, b)
-		if region.BuildOverlayRegion(strategy.Output(), &config, overlay); err != nil {
+		if compact.BuildOverlay(strategy.Output(), &options, overlay); err != nil {
 			log.Fatal(err)
 		}
 	}

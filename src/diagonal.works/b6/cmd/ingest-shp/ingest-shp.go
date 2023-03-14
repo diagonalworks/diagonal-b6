@@ -15,7 +15,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/ingest/region"
+	"diagonal.works/b6/ingest/compact"
 	"diagonal.works/b6/ingest/shp"
 	"github.com/golang/geo/s2"
 )
@@ -124,11 +124,11 @@ func main() {
 		}
 	}
 
-	config := region.Config{
+	options := compact.Options{
 		OutputFilename:       *output,
 		Cores:                *cores,
 		WorkDirectory:        "",
-		PointsWorkOutputType: region.OutputTypeMemory,
+		PointsWorkOutputType: compact.OutputTypeMemory,
 	}
 
 	var source ingest.FeatureSource
@@ -139,8 +139,7 @@ func main() {
 		source = &recursiveSource{Root: *input, Zip: *zip, Source: s}
 	}
 
-	// TODO: rename, it's not a PBF
-	if err := region.BuildRegionFromPBF(source, &config); err != nil {
+	if err := compact.Build(source, &options); err != nil {
 		log.Fatal(err)
 	}
 }
