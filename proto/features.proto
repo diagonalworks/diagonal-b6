@@ -4,7 +4,7 @@ package features;
 
 import "geometry.proto";
 
-option go_package = "diagonal.works/diagonal/proto";
+option go_package = "diagonal.works/b6/proto";
 
 message TagProto {
     string key = 1;

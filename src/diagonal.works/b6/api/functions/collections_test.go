@@ -1,0 +1,171 @@
+package functions
+
+import (
+	"fmt"
+	"math/rand"
+	"reflect"
+	"testing"
+
+	"diagonal.works/b6/api"
+)
+
+func TestTake(t *testing.T) {
+	r := rand.New(rand.NewSource(42))
+	values := make([]float64, 1000)
+	for i := range values {
+		values[i] = r.Float64()
+	}
+	keys := make([]interface{}, len(values))
+	for i := range keys {
+		keys[i] = fmt.Sprintf("%d", i)
+	}
+
+	n := 100
+	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
+	took, err := take(collection, n, &api.Context{})
+	if err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+		return
+	}
+
+	filled := make(map[interface{}]float64)
+	if err := api.FillMap(took, filled); err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+
+	if n != len(filled) {
+		t.Errorf("Expected %d values, found %d", n, len(filled))
+	}
+
+	for i := 0; i < n; i++ {
+		if filled[keys[i]] != values[i] {
+			t.Errorf("Expected %f at index %d, found %f", values[i], i, filled[keys[i]])
+		}
+	}
+}
+
+func TestFilter(t *testing.T) {
+	r := rand.New(rand.NewSource(42))
+	values := make([]float64, 1000)
+	for i := range values {
+		values[i] = r.Float64()
+	}
+	keys := make([]interface{}, len(values))
+	for i := range keys {
+		keys[i] = fmt.Sprintf("%d", i)
+	}
+
+	limit := 0.5
+	f := func(v interface{}, _ *api.Context) (bool, error) { return v.(float64) > limit, nil }
+	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
+	filtered, err := filter(collection, f, &api.Context{})
+	if err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+	}
+
+	filled := make(map[interface{}]float64)
+	if err := api.FillMap(filtered, filled); err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+
+	if len(filled) == 0 {
+		t.Errorf("Expected at least 1 value")
+	} else {
+		for _, f := range filled {
+			if f <= limit {
+				t.Errorf("Expected %f to be below %f", f, limit)
+			}
+		}
+	}
+}
+
+func TestSumByKey(t *testing.T) {
+	collection := &api.ArrayAnyIntCollection{
+		Keys:   []interface{}{"population:total", "population:children", "population:total"},
+		Values: []int{100, 50, 200},
+	}
+
+	byKey, err := sumByKey(collection, nil)
+	if err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+	filled := make(map[string]int)
+	if err := api.FillMap(byKey, filled); err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+	expected := map[string]int{
+		"population:total":    300,
+		"population:children": 50,
+	}
+	if !reflect.DeepEqual(expected, filled) {
+		t.Errorf("Expected %+v, found %+v", expected, filled)
+	}
+}
+
+func TestCountValues(t *testing.T) {
+	collection := &api.ArrayAnyIntCollection{
+		Keys:   []interface{}{"epc:habitablerooms", "epc:habitablerooms", "epc:habitablerooms"},
+		Values: []int{2, 3, 2},
+	}
+
+	counted, err := countValues(collection, nil)
+	if err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+	filled := make(map[int]int)
+	if err := api.FillMap(counted, filled); err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+	expected := map[int]int{
+		2: 2,
+		3: 1,
+	}
+	if !reflect.DeepEqual(expected, filled) {
+		t.Errorf("Expected %+v, found %+v", expected, filled)
+	}
+}
+
+func TestFlattern(t *testing.T) {
+	c1 := api.ArrayStringStringCollection{
+		Keys:   []string{"ka", "kb", "kc"},
+		Values: []string{"va", "vb", "vc"},
+	}
+	c2 := api.ArrayStringStringCollection{
+		Keys:   []string{"kd", "ke", "kf"},
+		Values: []string{"vd", "ve", "vf"},
+	}
+	c := api.ArrayAnyCollection{
+		Keys:   []interface{}{0, 1},
+		Values: []interface{}{&c1, &c2},
+	}
+
+	flatterned, err := flattern(&c, nil)
+	if err != nil {
+		t.Errorf("Expected no error, found %q", err)
+		return
+	}
+
+	filled := make(map[string]string)
+	if err := api.FillMap(flatterned, filled); err != nil {
+		t.Errorf("Expected no error, found %q", err)
+		return
+	}
+
+	expected := map[string]string{
+		"ka": "va",
+		"kb": "vb",
+		"kc": "vc",
+		"kd": "vd",
+		"ke": "ve",
+		"kf": "vf",
+	}
+	if !reflect.DeepEqual(expected, filled) {
+		t.Errorf("Expected %+v, found %+v", expected, filled)
+	}
+}

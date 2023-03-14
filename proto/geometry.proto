@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package geometry;
 
-option go_package = "diagonal.works/diagonal/proto";
+option go_package = "diagonal.works/b6/proto";
 
 message PolylineProto {
     repeated PointProto points = 1;

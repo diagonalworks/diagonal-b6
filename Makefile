@@ -29,19 +29,19 @@ ingestons: protos
 	cd src/diagonal.works/diagonal/cmd/ingestons; go build
 
 ingest-shp:
-	cd src/diagonal.works/diagonal/cmd/ingest-shp; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-shp
+	cd src/diagonal.works/b6/cmd/ingest-shp; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-shp
 
 ingest-uprn:
-	cd src/diagonal.works/diagonal/cmd/ingest-uprn; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-uprn
+	cd src/diagonal.works/b6/cmd/ingest-uprn; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-uprn
 
 ingest-terrain:
-	cd src/diagonal.works/diagonal/cmd/ingest-terrain; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-terrain
+	cd src/diagonal.works/b6/cmd/ingest-terrain; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-terrain
 
 connect:
-	cd src/diagonal.works/diagonal/cmd/connect; go build -o ../../../../../bin/${TARGETPLATFORM}/connect
+	cd src/diagonal.works/b6/cmd/connect; go build -o ../../../../../bin/${TARGETPLATFORM}/connect
 
 b6-api:
-	cd src/diagonal.works/diagonal/cmd/b6-api; go build -o ../../../../../bin/${TARGETPLATFORM}/b6-api
+	cd src/diagonal.works/b6/cmd/b6-api; go build -o ../../../../../bin/${TARGETPLATFORM}/b6-api
 
 transit: protos
 	cd src/diagonal.works/diagonal/cmd/transit; go build
@@ -52,10 +52,10 @@ mbtiles:
 tile-profile:
 	cd src/diagonal.works/diagonal/cmd/tile-profile; go build -o ../../../../../bin/${TARGETPLATFORM}/tile-profile
 
-baseline: protos src/diagonal.works/diagonal/a5/y.go
+baseline: protos src/diagonal.works/b6/api/y.go
 	make -C src/diagonal.works/diagonal/cmd/baseline
 
-baseline-backend: protos src/diagonal.works/diagonal/a5/y.go
+baseline-backend: protos src/diagonal.works/b6/api/y.go
 	make -C src/diagonal.works/diagonal/cmd/baseline baseline
 
 dfe:
@@ -178,10 +178,10 @@ protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/features.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go --plugin=${HOME}/go/bin/protoc-gen-go-grpc -I=proto --go_out=src --go-grpc_out=src proto/api.proto
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm --go_out=src src/diagonal.works/diagonal/osm/import.proto
-	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/diagonal/osm/pbf --go_out=src src/diagonal.works/diagonal/osm/pbf/pbf.proto
+	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=src/diagonal.works/b6/osm/proto --go_out=src src/diagonal.works/b6/osm/proto/pbf.proto
 
-src/diagonal.works/diagonal/a5/y.go: src/diagonal.works/diagonal/a5/a5.y
-	cd src/diagonal.works/diagonal/a5; goyacc a5.y
+src/diagonal.works/b6/api/y.go: src/diagonal.works/b6/api/shell.y
+	cd src/diagonal.works/b6/api; goyacc shell.y
 
 experimental:
 	cd src/diagonal.works/diagonal/experimental/mr; go build
@@ -223,7 +223,7 @@ python/diagonal_b6/api_generated.py: b6-api
 ipython: python
 	cd python; pip3 install . --upgrade --target ${HOME}/.ipython/
 
-python-test: python baseline-backend src/diagonal.works/diagonal/a5/y.go
+python-test: python baseline-backend
 	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/diagonal_b6/b6_test.py
 
 test:
