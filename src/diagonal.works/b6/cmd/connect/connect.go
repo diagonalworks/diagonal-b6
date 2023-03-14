@@ -9,20 +9,20 @@ import (
 	"sync"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/region"
 	"diagonal.works/b6/search"
-	"diagonal.works/b6/transit"
 
 	"github.com/golang/geo/s1"
 )
 
-func connectFeatures(features b6.Features, network transit.PathIDSet, threshold s1.Angle, w b6.World, s transit.ConnectionStrategy, cores int) {
+func connectFeatures(features b6.Features, network graph.PathIDSet, threshold s1.Angle, w b6.World, s graph.ConnectionStrategy, cores int) {
 	c := make(chan b6.Feature, cores)
 	var wg sync.WaitGroup
 	f := func() {
 		for feature := range c {
-			transit.ConnectFeature(feature, network, threshold, w, s)
+			graph.ConnectFeature(feature, network, threshold, w, s)
 		}
 		wg.Done()
 	}
@@ -83,23 +83,23 @@ func main() {
 	}
 
 	highways := b6.FindPaths(search.TokenPrefix{Prefix: "highway"}, b)
-	weights := transit.SimpleHighwayWeights{}
+	weights := graph.SimpleHighwayWeights{}
 	log.Printf("Build street network")
-	network := transit.BuildStreetNetwork(highways, b6.MetersToAngle(*networkThreshold), weights, nil, b)
+	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(*networkThreshold), weights, nil, b)
 	log.Printf("  %d paths", len(network))
 	features := i.FindFeatures(search.Union{search.TokenPrefix{Prefix: "building="}, search.TokenPrefix{Prefix: "amenity="}, search.All{Token: "landuse=vacant"}})
 
-	var strategy transit.ConnectionStrategy
-	connections := transit.NewConnections()
+	var strategy graph.ConnectionStrategy
+	connections := graph.NewConnections()
 	if *modifyPaths {
-		strategy = transit.InsertNewPointsIntoPaths{
+		strategy = graph.InsertNewPointsIntoPaths{
 			Connections:      connections,
 			World:            b,
 			ClusterThreshold: b6.MetersToAngle(*clusterThreshold),
 		}
 
 	} else {
-		strategy = transit.UseExisitingPoints{
+		strategy = graph.UseExisitingPoints{
 			Connections: connections,
 		}
 	}

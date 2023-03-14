@@ -52,7 +52,7 @@ mbtiles:
 tile-profile:
 	cd src/diagonal.works/diagonal/cmd/tile-profile; go build -o ../../../../../bin/${TARGETPLATFORM}/tile-profile
 
-baseline: protos src/diagonal.works/b6/api/y.go
+baseline: protos src/diagonal.works/b6/api/y.go	
 	make -C src/diagonal.works/diagonal/cmd/baseline
 
 baseline-backend: protos src/diagonal.works/b6/api/y.go
@@ -198,9 +198,6 @@ experimental_pyramid_tiles:
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/experimental/pyramid-tiles; go build -o ../../../../../bin/${TARGETPLATFORM}/pyramid-tiles
 
-experimental_planet_index:
-	cd src/diagonal.works/diagonal/experimental/planet-index; go build -o ../../../../../bin/${TARGETPLATFORM}/planet-index
-
 experimental_posting_lists:
 	cd src/diagonal.works/diagonal/experimental/posting-lists; go build -o ../../../../../bin/${TARGETPLATFORM}/posting-lists
 
@@ -227,6 +224,7 @@ python-test: python baseline-backend
 	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/diagonal_b6/b6_test.py
 
 test:
+	cd src/diagonal.works/b6; go test diagonal.works/b6/...
 	cd src/diagonal.works/diagonal; go test diagonal.works/diagonal/...
 
 clean:

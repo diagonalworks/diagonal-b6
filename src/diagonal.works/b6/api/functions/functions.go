@@ -80,7 +80,7 @@ var functions = api.FunctionSymbols{
 	"clamp":       clamp,
 	"percentiles": percentiles,
 	"count":       count,
-	// transit
+	// graph
 	"reachable-area":     ReachableArea,
 	"reachable-points":   ReachablePoints,
 	"reachable":          ReachableFeatures,
