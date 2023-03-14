@@ -14,7 +14,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/ingest/region"
+	"diagonal.works/b6/ingest/compact"
 
 	"github.com/golang/geo/s2"
 )
@@ -170,14 +170,13 @@ func main() {
 		Join:     join,
 	}
 
-	config := region.Config{
+	config := compact.Options{
 		OutputFilename:       *outputFlag,
 		Cores:                1,
 		WorkDirectory:        "",
-		PointsWorkOutputType: region.OutputTypeMemory,
+		PointsWorkOutputType: compact.OutputTypeMemory,
 	}
-	// TODO: rename, it's not a PBF
-	if err := region.BuildRegionFromPBF(source, &config); err != nil {
+	if err := compact.Build(source, &config); err != nil {
 		log.Fatal(err)
 	}
 }

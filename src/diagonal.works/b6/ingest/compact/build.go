@@ -1,4 +1,4 @@
-package region
+package compact
 
 import (
 	"context"
@@ -104,22 +104,22 @@ const (
 	OutputTypeDisk              = 1
 )
 
-type Config struct {
+type Options struct {
 	Cores                int
 	WorkDirectory        string
 	OutputFilename       string
 	PointsWorkOutputType OutputType
 }
 
-func (c *Config) Output() Output {
-	return FileOutput(c.OutputFilename)
+func (o *Options) Output() Output {
+	return FileOutput(o.OutputFilename)
 }
 
-func (c *Config) PointsWorkOutput() Output {
-	if c.PointsWorkOutputType == OutputTypeMemory {
+func (o *Options) PointsWorkOutput() Output {
+	if o.PointsWorkOutputType == OutputTypeMemory {
 		return &MemoryOutput{}
 	} else {
-		return FileOutput(path.Join(c.WorkDirectory, "points.work"))
+		return FileOutput(path.Join(o.WorkDirectory, "points.work"))
 	}
 }
 
@@ -146,8 +146,8 @@ var tagBits = map[b6.FeatureType]int{
 
 type toMap func(id FeatureID, tag encoding.Tag, buffer []byte) error
 
-func emitPoints(source ingest.FeatureSource, c *Config, s *encoding.StringTableBuilder, nt *NamespaceTable, emit toMap) error {
-	goroutines := c.Cores * 2
+func emitPoints(source ingest.FeatureSource, o *Options, s *encoding.StringTableBuilder, nt *NamespaceTable, emit toMap) error {
+	goroutines := o.Cores * 2
 	buffers := make([][]byte, goroutines)
 	for i := range buffers {
 		buffers[i] = make([]byte, maxEncodedFeatureSize)
@@ -259,14 +259,14 @@ func newFeatureBlockBuilders(nt *NamespaceTable, summary *Summary) FeatureBlockB
 	return builders
 }
 
-func writePointsWork(source ingest.FeatureSource, c *Config, strings *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, w io.WriterAt) error {
+func writePointsWork(source ingest.FeatureSource, o *Options, strings *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, w io.WriterAt) error {
 	builders := newFeatureBlockBuilders(nt, summary)
 	emit := func(id FeatureID, tag encoding.Tag, buffer []byte) error {
 		builders.Reserve(id, tag, len(buffer))
 		return nil
 	}
 	log.Printf("writePointsWork: reserve")
-	if err := emitPoints(source, c, strings, nt, emit); err != nil {
+	if err := emitPoints(source, o, strings, nt, emit); err != nil {
 		return err
 	}
 
@@ -279,7 +279,7 @@ func writePointsWork(source ingest.FeatureSource, c *Config, strings *encoding.S
 		return builders.WriteItem(id, tag, buffer, w)
 	}
 	log.Printf("writePointsWork: write entries")
-	if err := emitPoints(source, c, strings, nt, emit); err != nil {
+	if err := emitPoints(source, o, strings, nt, emit); err != nil {
 		return err
 	}
 	return nil
@@ -345,7 +345,7 @@ func combinePoints(points *encoding.Uint64Map, nss *Namespaces, goroutines int, 
 	return nil
 }
 
-func writePoints(c *Config, points FeatureBlocks, strings *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, offset encoding.Offset, w io.WriterAt) (encoding.Offset, error) {
+func writePoints(o *Options, points FeatureBlocks, strings *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, offset encoding.Offset, w io.WriterAt) (encoding.Offset, error) {
 	builders := newFeatureBlockBuilders(nt, summary)
 	log.Printf("writePoints: reserve")
 	var ns Namespace
@@ -357,7 +357,7 @@ func writePoints(c *Config, points FeatureBlocks, strings *encoding.StringTableB
 	osmNamespaces := OSMNamespaces(nt)
 	for _, b := range points {
 		ns = b.Namespaces[b6.FeatureTypePoint]
-		if err := combinePoints(b.Map, &osmNamespaces, c.Cores, emit); err != nil {
+		if err := combinePoints(b.Map, &osmNamespaces, o.Cores, emit); err != nil {
 			return 0, err
 		}
 	}
@@ -376,7 +376,7 @@ func writePoints(c *Config, points FeatureBlocks, strings *encoding.StringTableB
 	}
 	for _, b := range points {
 		ns = b.Namespaces[b6.FeatureTypePoint]
-		if err := combinePoints(b.Map, &osmNamespaces, c.Cores, emit); err != nil {
+		if err := combinePoints(b.Map, &osmNamespaces, o.Cores, emit); err != nil {
 			return 0, err
 		}
 	}
@@ -506,8 +506,8 @@ func (v *Validator) validateQueue(fs []ingest.Feature) []ingest.Feature {
 	return fs
 }
 
-func emitPathsAreasAndRelations(source ingest.FeatureSource, c *Config, s *encoding.StringTableBuilder, nt *NamespaceTable, locations b6.LocationsByID, summary *Summary, emit toMap) error {
-	goroutines := c.Cores * 2
+func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *encoding.StringTableBuilder, nt *NamespaceTable, locations b6.LocationsByID, summary *Summary, emit toMap) error {
+	goroutines := o.Cores * 2
 	buffers := make([][]byte, goroutines)
 	for i := range buffers {
 		buffers[i] = make([]byte, maxEncodedFeatureSize)
@@ -589,14 +589,14 @@ func emitPathsAreasAndRelations(source ingest.FeatureSource, c *Config, s *encod
 	return nil
 }
 
-func writePathsAreasAndRelations(source ingest.FeatureSource, c *Config, strings *encoding.StringTableBuilder, nt *NamespaceTable, locations b6.LocationsByID, summary *Summary, offset encoding.Offset, w io.WriterAt) (encoding.Offset, error) {
+func writePathsAreasAndRelations(source ingest.FeatureSource, o *Options, strings *encoding.StringTableBuilder, nt *NamespaceTable, locations b6.LocationsByID, summary *Summary, offset encoding.Offset, w io.WriterAt) (encoding.Offset, error) {
 	builders := newFeatureBlockBuilders(nt, summary)
 	emit := func(id FeatureID, tag encoding.Tag, buffer []byte) error {
 		builders.Reserve(id, tag, len(buffer))
 		return nil
 	}
 	log.Printf("writePathsAreasAndRelations: reserve")
-	if err := emitPathsAreasAndRelations(source, c, strings, nt, locations, summary, emit); err != nil {
+	if err := emitPathsAreasAndRelations(source, o, strings, nt, locations, summary, emit); err != nil {
 		return offset, err
 	}
 
@@ -610,7 +610,7 @@ func writePathsAreasAndRelations(source ingest.FeatureSource, c *Config, strings
 		return builders.WriteItem(id, tag, buffer, w)
 	}
 	log.Printf("writePathsAreasAndRelations: write entries")
-	if err := emitPathsAreasAndRelations(source, c, strings, nt, locations, summary, emit); err != nil {
+	if err := emitPathsAreasAndRelations(source, o, strings, nt, locations, summary, emit); err != nil {
 		return offset, err
 	}
 	return offset, nil
@@ -729,7 +729,7 @@ func isRelationMultiPolygon(relation *osm.Relation) bool {
 	return false
 }
 
-func fillStringTableAndSummary(source ingest.FeatureSource, c *Config, strings *encoding.StringTableBuilder, summary *Summary) error {
+func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings *encoding.StringTableBuilder, summary *Summary) error {
 	var relationshipsLock sync.Mutex
 	var closedPathsLock sync.Mutex
 	emit := func(feature ingest.Feature, _ int) error {
@@ -790,7 +790,7 @@ func fillStringTableAndSummary(source ingest.FeatureSource, c *Config, strings *
 	}
 
 	options := ingest.ReadOptions{
-		Parallelism: c.Cores,
+		Parallelism: o.Cores,
 	}
 	if err := source.Read(options, emit, context.Background()); err != nil {
 		return err
@@ -837,14 +837,14 @@ func fillNamespaceTableFromSummary(summary *Summary, nt *NamespaceTable) {
 	nt.FillFromNamespaces(nss)
 }
 
-func buildFeatures(source ingest.FeatureSource, c *Config, header *Header, nt *NamespaceTable, base b6.LocationsByID, w io.WriterAt) (encoding.Offset, error) {
+func buildFeatures(source ingest.FeatureSource, o *Options, header *Header, nt *NamespaceTable, base b6.LocationsByID, w io.WriterAt) (encoding.Offset, error) {
 	log.Printf("buildFeatures: build strings and summary")
 	var buffer [HeaderLength]byte
 	header.StringsOffset = encoding.Offset(header.Marshal(buffer[0:]))
 
 	summary := NewSummary()
 	s := encoding.NewStringTableBuilder()
-	if err := fillStringTableAndSummary(source, c, s, summary); err != nil {
+	if err := fillStringTableAndSummary(source, o, s, summary); err != nil {
 		return 0, fmt.Errorf("Failed to build string table: %w", err)
 	}
 	log.Printf("buildFeatures: write strings")
@@ -860,14 +860,14 @@ func buildFeatures(source ingest.FeatureSource, c *Config, header *Header, nt *N
 	}
 	header.BlockOffset = offset
 
-	work := c.PointsWorkOutput()
+	work := o.PointsWorkOutput()
 	workW, err := work.Write()
 	if err != nil {
 		return 0, err
 	}
 
 	log.Printf("buildFeatures: points")
-	err = writePointsWork(source, c, s, nt, summary, workW)
+	err = writePointsWork(source, o, s, nt, summary, workW)
 	if err != nil {
 		return 0, err
 	}
@@ -882,14 +882,14 @@ func buildFeatures(source ingest.FeatureSource, c *Config, header *Header, nt *N
 	points := make(FeatureBlocks, 0)
 	points.Unmarshal(data)
 
-	offset, err = writePoints(c, points, s, nt, summary, header.BlockOffset, w)
+	offset, err = writePoints(o, points, s, nt, summary, header.BlockOffset, w)
 	log.Printf("writePoints: %d", offset)
 	if err != nil {
 		return 0, err
 	}
 
 	locations := overlayLocationsByID{overlay: NewLocationsByID(points, nt), base: base}
-	offset, err = writePathsAreasAndRelations(source, c, s, nt, &locations, summary, offset, w)
+	offset, err = writePathsAreasAndRelations(source, o, s, nt, &locations, summary, offset, w)
 	log.Printf("writePathsAreasAndRelations: %d", offset)
 	if err != nil {
 		return 0, err
@@ -1002,7 +1002,7 @@ func buildIndex(byID *FeaturesByID, nt *NamespaceTable, offset encoding.Offset, 
 	return o.Close()
 }
 
-func buildRegionFromPBF(source ingest.FeatureSource, base b6.FeaturesByID, c *Config, output Output) error {
+func build(source ingest.FeatureSource, base b6.FeaturesByID, o *Options, output Output) error {
 	var header Header
 	header.Magic = HeaderMagic
 	header.Version = HeaderVersion
@@ -1013,7 +1013,7 @@ func buildRegionFromPBF(source ingest.FeatureSource, base b6.FeaturesByID, c *Co
 	}
 
 	var nt NamespaceTable
-	offset, err := buildFeatures(source, c, &header, &nt, base, w)
+	offset, err := buildFeatures(source, o, &header, &nt, base, w)
 	if err != nil {
 		return err
 	}
@@ -1040,13 +1040,13 @@ func buildRegionFromPBF(source ingest.FeatureSource, base b6.FeaturesByID, c *Co
 	return buildIndex(byID, &nt, offset, output)
 }
 
-func BuildRegionFromPBF(source ingest.FeatureSource, c *Config) error {
-	return buildRegionFromPBF(source, emptyFeaturesByID{}, c, c.Output())
+func Build(source ingest.FeatureSource, o *Options) error {
+	return build(source, emptyFeaturesByID{}, o, o.Output())
 }
 
-func BuildRegionFromPBFInMemory(source ingest.FeatureSource, c *Config) ([]byte, error) {
+func BuildInMemory(source ingest.FeatureSource, o *Options) ([]byte, error) {
 	var output MemoryOutput
-	if err := buildRegionFromPBF(source, emptyFeaturesByID{}, c, &output); err != nil {
+	if err := build(source, emptyFeaturesByID{}, o, &output); err != nil {
 		return nil, err
 	}
 	bytes, _, _ := output.Bytes()

@@ -24,7 +24,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/ingest/region"
+	"diagonal.works/b6/ingest/compact"
 
 	"github.com/golang/geo/s2"
 	"github.com/lukeroth/gdal"
@@ -221,19 +221,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	w, err := region.ReadWorld(*worldFlag, *coresFlag)
+	w, err := compact.ReadWorld(*worldFlag, *coresFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	config := region.Config{
+	options := compact.Options{
 		OutputFilename:       *outputFlag,
 		Cores:                *coresFlag,
 		WorkDirectory:        "",
-		PointsWorkOutputType: region.OutputTypeMemory,
+		PointsWorkOutputType: compact.OutputTypeMemory,
 	}
 	source := elevationSource{World: w, Elevations: elevations}
-	if region.BuildRegionFromPBF(&source, &config); err != nil {
+	if compact.Build(&source, &options); err != nil {
 		log.Fatal(err)
 	}
 }

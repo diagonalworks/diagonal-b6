@@ -1,4 +1,4 @@
-package region
+package compact
 
 import (
 	"context"
