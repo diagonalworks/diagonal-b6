@@ -7,33 +7,33 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/geojson"
+	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/search"
-	"diagonal.works/b6/transit"
 
 	"github.com/golang/geo/s2"
 )
 
-func newShortestPathSearch(origin b6.Feature, mode string, distance float64, features transit.ShortestPathFeatures, w b6.World) (*transit.ShortestPathSearch, error) {
-	var weights transit.Weights
+func newShortestPathSearch(origin b6.Feature, mode string, distance float64, features graph.ShortestPathFeatures, w b6.World) (*graph.ShortestPathSearch, error) {
+	var weights graph.Weights
 	switch mode {
 	case "bus":
-		weights = transit.BusWeights{}
+		weights = graph.BusWeights{}
 	case "car":
-		weights = transit.CarWeights{}
+		weights = graph.CarWeights{}
 	case "walk":
-		weights = transit.SimpleHighwayWeights{}
+		weights = graph.SimpleHighwayWeights{}
 	default:
 		return nil, fmt.Errorf("Unknown travel mode %q", mode)
 	}
 
-	var s *transit.ShortestPathSearch
+	var s *graph.ShortestPathSearch
 	switch origin := origin.(type) {
 	case b6.PointFeature:
-		s = transit.NewShortestPathSearchFromPoint(origin.PointID())
+		s = graph.NewShortestPathSearchFromPoint(origin.PointID())
 	case b6.AreaFeature:
-		s = transit.NewShortestPathSearchFromBuilding(origin, weights, w)
+		s = graph.NewShortestPathSearchFromBuilding(origin, weights, w)
 	default:
 		return nil, fmt.Errorf("Can't find paths from feature type %s", origin.FeatureID().Type)
 	}
@@ -43,7 +43,7 @@ func newShortestPathSearch(origin b6.Feature, mode string, distance float64, fea
 
 func ReachablePoints(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (api.PointFeatureCollection, error) {
 	points := &api.ArrayPointFeatureCollection{Features: make([]b6.PointFeature, 0)}
-	s, err := newShortestPathSearch(origin, mode, distance, transit.Points, context.World)
+	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
 	if err == nil {
 		for id := range s.PointDistances() {
 			if point := b6.FindPointByID(id, context.World); point != nil {
@@ -58,7 +58,7 @@ func ReachablePoints(origin b6.Feature, mode string, distance float64, query *pb
 
 func FindReachableFeaturesWithPathStates(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, pathStates *geojson.FeatureCollection, context *api.Context) (api.FeatureCollection, error) {
 	features := &api.ArrayFeatureCollection{Features: make([]b6.Feature, 0)}
-	s, err := newShortestPathSearch(origin, mode, distance, transit.PointsAndAreas, context.World)
+	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		for id := range s.PointDistances() {
 			if point := b6.FindPointByID(id, context.World); point != nil {
@@ -83,13 +83,13 @@ func FindReachableFeaturesWithPathStates(origin b6.Feature, mode string, distanc
 				pathStates.AddFeature(shape)
 				label := geojson.NewFeatureFromS2Point(polyline.Centroid())
 				switch state {
-				case transit.PathStateTraversed:
+				case graph.PathStateTraversed:
 					shape.Properties["colour"] = "#00ff00"
-				case transit.PathStateTooFar:
+				case graph.PathStateTooFar:
 					shape.Properties["colour"] = "#ff0000"
 					label.Properties["label"] = "Too far"
 					pathStates.AddFeature(label)
-				case transit.PathStateNotUseable:
+				case graph.PathStateNotUseable:
 					shape.Properties["colour"] = "#ff0000"
 					label.Properties["label"] = "Not useable"
 					pathStates.AddFeature(label)
@@ -121,7 +121,7 @@ func ClosestFeatureDistance(origin b6.Feature, mode string, distance float64, qu
 }
 
 func findClosest(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (b6.Feature, float64, error) {
-	s, err := newShortestPathSearch(origin, mode, distance, transit.PointsAndAreas, context.World)
+	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		// TODO: This expands the search everywhere up to the maximum distance, and we
 		// can actually stop early.
@@ -156,7 +156,7 @@ func findClosest(origin b6.Feature, mode string, distance float64, query *pb.Que
 
 func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (api.FeatureIDIntCollection, error) {
 	features := &api.ArrayFeatureIDIntCollection{Keys: make([]b6.FeatureID, 0), Values: make([]int, 0)}
-	s, err := newShortestPathSearch(origin, mode, distance, transit.PointsAndAreas, context.World)
+	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		points := 0
 		counts := make(map[b6.PathID]int)
@@ -203,7 +203,7 @@ func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, quer
 
 func ReachableArea(origin b6.Feature, mode string, distance float64, context *api.Context) (float64, error) {
 	area := 0.0
-	s, err := newShortestPathSearch(origin, mode, distance, transit.Points, context.World)
+	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
 	if err == nil {
 		distances := s.PointDistances()
 		query := s2.NewConvexHullQuery()
@@ -242,14 +242,14 @@ func connect(a b6.PointFeature, b b6.PointFeature, c *api.Context) (ingest.Chang
 
 func connectToNetwork(feature b6.Feature, c *api.Context) (ingest.Change, error) {
 	highways := b6.FindPaths(search.TokenPrefix{Prefix: "highway"}, c.World)
-	network := transit.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), transit.SimpleHighwayWeights{}, nil, c.World)
-	connections := transit.NewConnections()
-	strategy := transit.InsertNewPointsIntoPaths{
+	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
+	connections := graph.NewConnections()
+	strategy := graph.InsertNewPointsIntoPaths{
 		Connections:      connections,
 		World:            c.World,
 		ClusterThreshold: b6.MetersToAngle(4.0),
 	}
-	transit.ConnectFeature(feature, network, b6.MetersToAngle(500.0), c.World, strategy)
+	graph.ConnectFeature(feature, network, b6.MetersToAngle(500.0), c.World, strategy)
 	strategy.Finish()
 	return strategy.Connections.Change(c.World), nil
 }
