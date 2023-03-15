@@ -117,7 +117,7 @@ type ReadOptions struct {
 	SkipNodes     bool
 	SkipWays      bool
 	SkipRelations bool
-	Parallelism   int
+	Cores         int
 }
 
 func ReadPBF(r io.Reader, emit Emit) error {
@@ -128,24 +128,24 @@ func ReadPBF(r io.Reader, emit Emit) error {
 }
 
 func ReadPBFWithOptions(r io.Reader, emit EmitWithGoroutine, options ReadOptions) error {
-	p := options.Parallelism
-	if p == 0 {
-		p = 1
+	cores := options.Cores
+	if cores < 1 {
+		cores = 1
 	}
-	c := make(chan *blob, p)
+	c := make(chan *blob, cores)
 	ctx, cancel := context.WithCancel(context.Background())
 	var readBlobErr error
 	wg := sync.WaitGroup{}
-	wg.Add(p + 1)
+	wg.Add(cores + 1)
 	go func() {
 		readBlobErr = readBlobs(r, c, ctx)
-		for i := 0; i < p; i++ {
+		for i := 0; i < cores; i++ {
 			c <- &blob{Type: blobTypeDone}
 		}
 		wg.Done()
 	}()
 	var readOSMDataErr error
-	for i := 0; i < p; i++ {
+	for i := 0; i < cores; i++ {
 		go func(goroutine int) {
 			defer wg.Done()
 			for {

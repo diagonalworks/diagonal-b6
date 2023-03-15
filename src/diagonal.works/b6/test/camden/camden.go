@@ -69,7 +69,8 @@ func BuildCamdenForTests(t *testing.T) b6.World {
 }
 
 func build(filename string, t *testing.T) b6.World {
-	w, err := ingest.NewWorldFromPBFFile(filename, 2, ingest.FailOnInvalidFeatures)
+	o := &ingest.BuildOptions{Cores: 2}
+	w, err := ingest.NewWorldFromPBFFile(filename, o)
 	if err != nil {
 		if t != nil {
 			t.Errorf("Failed to build world: %s", err)

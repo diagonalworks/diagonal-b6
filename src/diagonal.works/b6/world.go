@@ -754,7 +754,7 @@ type EachFeatureOptions struct {
 	SkipPaths     bool
 	SkipAreas     bool
 	SkipRelations bool
-	Parallelism   int
+	Cores         int
 }
 
 type World interface {

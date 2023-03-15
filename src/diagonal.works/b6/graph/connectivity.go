@@ -417,7 +417,7 @@ func (m *modifyWorldSource) Read(options ingest.ReadOptions, emit ingest.Emit, c
 		SkipPaths:     options.SkipPaths,
 		SkipAreas:     options.SkipAreas,
 		SkipRelations: options.SkipRelations,
-		Parallelism:   options.Parallelism,
+		Cores:         options.Cores,
 	}
 	each := func(f b6.Feature, goroutine int) error {
 		switch f := f.(type) {

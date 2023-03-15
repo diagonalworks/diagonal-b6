@@ -204,7 +204,7 @@ func emitPoints(source ingest.FeatureSource, o *Options, s *encoding.StringTable
 		SkipTags:      false,
 		SkipPaths:     false,
 		SkipRelations: false,
-		Parallelism:   goroutines,
+		Cores:         goroutines,
 	}
 	if err := source.Read(options, emitFeature, context.Background()); err != nil {
 		return err
@@ -286,6 +286,9 @@ func writePointsWork(source ingest.FeatureSource, o *Options, strings *encoding.
 }
 
 func combinePoints(points *encoding.Uint64Map, nss *Namespaces, goroutines int, emit func(id uint64, tag encoding.Tag, buffer []byte) error) error {
+	if goroutines < 1 {
+		goroutines = 1
+	}
 	buffers := make([][]byte, goroutines)
 	for i := range buffers {
 		buffers[i] = make([]byte, points.MaxBucketLength())
@@ -432,7 +435,8 @@ func NewValidator(locations b6.LocationsByID) *Validator {
 
 func (v *Validator) ValidatePath(p *ingest.PathFeature, fs []ingest.Feature) []ingest.Feature {
 	var state ValidationState
-	if err := ingest.ValidatePath(p, ingest.ClockwisePathsAreCorrected, v.locations); err == nil {
+	o := ingest.ValidateOptions{InvertClockwisePaths: true}
+	if err := ingest.ValidatePath(p, &o, v.locations); err == nil {
 		fs = append(fs, p)
 		state = ValidationStateValid
 	} else {
@@ -508,6 +512,9 @@ func (v *Validator) validateQueue(fs []ingest.Feature) []ingest.Feature {
 
 func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *encoding.StringTableBuilder, nt *NamespaceTable, locations b6.LocationsByID, summary *Summary, emit toMap) error {
 	goroutines := o.Cores * 2
+	if goroutines == 0 {
+		goroutines = 1
+	}
 	buffers := make([][]byte, goroutines)
 	for i := range buffers {
 		buffers[i] = make([]byte, maxEncodedFeatureSize)
@@ -581,7 +588,7 @@ func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *enco
 		SkipPaths:     false,
 		SkipRelations: false,
 		SkipTags:      false,
-		Parallelism:   goroutines,
+		Cores:         goroutines,
 	}
 	if err := source.Read(options, validateFeature, context.Background()); err != nil {
 		return err
@@ -790,7 +797,7 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 	}
 
 	options := ingest.ReadOptions{
-		Parallelism: o.Cores,
+		Cores: o.Cores,
 	}
 	if err := source.Read(options, emit, context.Background()); err != nil {
 		return err
@@ -927,7 +934,7 @@ func buildIndex(byID *FeaturesByID, nt *NamespaceTable, offset encoding.Offset, 
 		}
 		return nil
 	}
-	options := b6.EachFeatureOptions{Parallelism: runtime.NumCPU()}
+	options := b6.EachFeatureOptions{Cores: runtime.NumCPU()}
 	if err := byID.EachFeature(emit, &options); err != nil {
 		return err
 	}

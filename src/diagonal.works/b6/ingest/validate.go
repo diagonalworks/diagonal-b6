@@ -15,14 +15,13 @@ func ValidatePoint(p *PointFeature) error {
 	return nil
 }
 
-type ClockwisePaths int
+type ValidateOptions struct {
+	// Invert clockwise paths to anticlockwise if true, otherwise, consider them
+	// invalid
+	InvertClockwisePaths bool
+}
 
-const (
-	ClockwisePathsAreInvalid   ClockwisePaths = 0
-	ClockwisePathsAreCorrected                = 1
-)
-
-func ValidatePath(p *PathFeature, clockwise ClockwisePaths, features b6.LocationsByID) error {
+func ValidatePath(p *PathFeature, o *ValidateOptions, features b6.LocationsByID) error {
 	if p == nil {
 		return fmt.Errorf("ValidatePath: path is nil")
 	}
@@ -42,11 +41,10 @@ func ValidatePath(p *PathFeature, clockwise ClockwisePaths, features b6.Location
 			return fmt.Errorf("%s: invalid loop: %s", p.FeatureID(), err)
 		}
 		if loop.Area() > 2.0*math.Pi {
-			switch clockwise {
-			case ClockwisePathsAreInvalid:
-				return fmt.Errorf("%s: ordered clockwise", p.FeatureID())
-			case ClockwisePathsAreCorrected:
+			if o.InvertClockwisePaths {
 				p.Invert()
+			} else {
+				return fmt.Errorf("%s: ordered clockwise", p.FeatureID())
 			}
 		}
 	}

@@ -178,7 +178,7 @@ func (s *elevationSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx
 		SkipPaths:     options.SkipPaths,
 		SkipAreas:     options.SkipAreas,
 		SkipRelations: options.SkipRelations,
-		Parallelism:   options.Parallelism,
+		Cores:         options.Cores,
 	}
 	points := uint64(0)
 	elevations := uint64(0)

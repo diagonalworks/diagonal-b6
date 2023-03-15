@@ -15,7 +15,8 @@ import (
 
 func mergeOSM(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, base b6.World, w *World) error {
 	osmSource := ingest.MemoryOSMSource{Nodes: nodes, Ways: ways, Relations: relations}
-	source, err := ingest.NewFeatureSourceFromPBF(&osmSource, 2, context.Background())
+	o := ingest.BuildOptions{Cores: 2}
+	source, err := ingest.NewFeatureSourceFromPBF(&osmSource, &o, context.Background())
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,8 @@ func TestPathSegmentsWithSameNamespaceInMultipleBlocks(t *testing.T) {
 
 func mustBuildCamdenForBenchmarks() b6.World {
 	pbf := ingest.PBFFilesOSMSource{Glob: test.Data(test.CamdenPBF), FailWhenNoFiles: true}
-	source, err := ingest.NewFeatureSourceFromPBF(&pbf, 2, context.Background())
+	o := ingest.BuildOptions{Cores: 2}
+	source, err := ingest.NewFeatureSourceFromPBF(&pbf, &o, context.Background())
 	if err != nil {
 		panic(err)
 	}
