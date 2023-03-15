@@ -131,7 +131,7 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 	}
 
 	layer := source.LayerByIndex(0)
-	if err := s.fillTransformers(layer, options.Parallelism); err != nil {
+	if err := s.fillTransformers(layer, options.Cores); err != nil {
 		return err
 	}
 
@@ -157,7 +157,7 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 	}
 
 	outside := uint64(0)
-	done := make(chan error, options.Parallelism)
+	done := make(chan error, options.Cores)
 	convert := func(toConvert <-chan feature, goroutine int) {
 		var err error
 		for feature := range toConvert {
@@ -227,12 +227,16 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 	}
 
 	c := make(chan feature)
-	for i := 0; i < options.Parallelism; i++ {
+	cores := options.Cores
+	if cores < 1 {
+		cores = 1
+	}
+	for i := 0; i < cores; i++ {
 		go convert(c, i)
 	}
 
 	i := 0
-	running := options.Parallelism
+	running := cores
 	// TODO: also read context cancel channel
 	var err error
 	for err == nil && running > 0 {

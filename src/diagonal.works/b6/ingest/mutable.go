@@ -179,7 +179,8 @@ func (m *BasicMutableWorld) AddPoint(p *PointFeature) error {
 }
 
 func (m *BasicMutableWorld) AddPath(p *PathFeature) error {
-	if err := ValidatePath(p, ClockwisePathsAreInvalid, m); err != nil {
+	o := ValidateOptions{InvertClockwisePaths: false}
+	if err := ValidatePath(p, &o, m); err != nil {
 		return err
 	}
 	if err := validateAreasWithNewPath(p, m.byID, m.references, m); err != nil {
@@ -254,7 +255,7 @@ func wrapFeature(f Feature, w b6.FeaturesByID) b6.PhysicalFeature {
 	panic("Invalid feature type")
 }
 
-func NewMutableWorldFromSource(source FeatureSource, cores int, validity FeatureValidity) (b6.World, error) {
+func NewMutableWorldFromSource(source FeatureSource, cores int) (b6.World, error) {
 	w := NewBasicMutableWorld()
 	var lock sync.Mutex
 	f := func(feature Feature, g int) error {
@@ -273,7 +274,7 @@ func NewMutableWorldFromSource(source FeatureSource, cores int, validity Feature
 		lock.Unlock()
 		return nil
 	}
-	options := ReadOptions{Parallelism: cores}
+	options := ReadOptions{Cores: cores}
 	err := source.Read(options, f, context.Background())
 	return w, err
 }
@@ -704,7 +705,8 @@ func (m *MutableOverlayWorld) AddPoint(p *PointFeature) error {
 }
 
 func (m *MutableOverlayWorld) AddPath(p *PathFeature) error {
-	if err := ValidatePath(p, ClockwisePathsAreInvalid, m); err != nil {
+	o := ValidateOptions{InvertClockwisePaths: false}
+	if err := ValidatePath(p, &o, m); err != nil {
 		return err
 	}
 	features := listFeaturesReferencedByPath(p, m)
@@ -833,9 +835,10 @@ func validatePathsWithNewPoint(new *PointFeature, byID *FeaturesByID, references
 
 func validatePaths(paths []PathPosition, w b6.World) error {
 	seen := make(map[b6.PathID]struct{})
+	o := ValidateOptions{InvertClockwisePaths: false}
 	for _, path := range paths {
 		if _, ok := seen[path.Path.PathID]; !ok {
-			if err := ValidatePath(path.Path, ClockwisePathsAreInvalid, w); err != nil {
+			if err := ValidatePath(path.Path, &o, w); err != nil {
 				return err
 			}
 			seen[path.Path.PathID] = struct{}{}

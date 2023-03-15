@@ -37,7 +37,7 @@ func TestOverlayWorldReturnsPathsFromAllIndices(t *testing.T) {
 	worlds := make([]b6.World, len(ways))
 	for i, w := range ways {
 		var err error
-		if worlds[i], err = BuildWorldFromOSM(nodes, w, []osm.Relation{}, 2, FailOnInvalidFeatures); err != nil {
+		if worlds[i], err = BuildWorldFromOSM(nodes, w, []osm.Relation{}, &BuildOptions{Cores: 2}); err != nil {
 			t.Errorf("Failed to build world: %s", err)
 			return
 		}
@@ -95,7 +95,7 @@ func TestOverlayWorldReplacesPathsFromOneIndexWithAnother(t *testing.T) {
 	worlds := make([]b6.World, len(ways))
 	for i, w := range ways {
 		var err error
-		if worlds[i], err = BuildWorldFromOSM(nodes, w, []osm.Relation{}, 2, FailOnInvalidFeatures); err != nil {
+		if worlds[i], err = BuildWorldFromOSM(nodes, w, []osm.Relation{}, &BuildOptions{Cores: 2}); err != nil {
 			t.Errorf("Failed to build world: %s", err)
 			return
 		}

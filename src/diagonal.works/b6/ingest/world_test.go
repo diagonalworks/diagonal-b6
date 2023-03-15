@@ -9,7 +9,8 @@ import (
 )
 
 func buildBasicWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
-	return BuildWorldFromOSM(nodes, ways, relations, 2, DeleteInvalidFeatures)
+	o := BuildOptions{Cores: 2}
+	return BuildWorldFromOSM(nodes, ways, relations, &o)
 }
 
 func buildOverlayWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
@@ -26,7 +27,8 @@ func buildOverlayWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relatio
 }
 
 func buildBasicMutableWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
-	return BuildMutableWorldFromOSM(nodes, ways, relations, 2, DeleteInvalidFeatures)
+	o := BuildOptions{Cores: 2}
+	return BuildMutableWorldFromOSM(nodes, ways, relations, &o)
 }
 
 func buildMutableOverlayWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
@@ -47,7 +49,8 @@ func buildMutableOverlayWorldOnBasic(nodes []osm.Node, ways []osm.Way, relations
 	w := NewMutableOverlayWorld(basic)
 
 	osmSource := MemoryOSMSource{Nodes: nodes, Ways: ways, Relations: relations}
-	source, err := NewFeatureSourceFromPBF(&osmSource, 2, context.Background())
+	o := BuildOptions{Cores: 2}
+	source, err := NewFeatureSourceFromPBF(&osmSource, &o, context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +68,7 @@ func buildMutableOverlayWorldOnBasic(nodes []osm.Node, ways []osm.Way, relations
 		}
 		return nil
 	}
-	options := ReadOptions{Parallelism: 2}
+	options := ReadOptions{Cores: 2}
 	if err := source.Read(options, emit, context.Background()); err != nil {
 		return nil, err
 	}

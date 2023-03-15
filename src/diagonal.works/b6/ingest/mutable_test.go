@@ -1256,7 +1256,8 @@ func TestRemoveTag(t *testing.T) {
 }
 
 func TestConnectivityUnchangedFollowingTagModification(t *testing.T) {
-	w, err := NewWorldFromPBFFile(test.Data(test.CamdenPBF), 2, FailOnInvalidFeatures)
+	o := BuildOptions{Cores: 2}
+	w, err := NewWorldFromPBFFile(test.Data(test.CamdenPBF), &o)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

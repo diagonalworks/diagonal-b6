@@ -79,7 +79,7 @@ func TestShortestPathWithOverriddenWeight(t *testing.T) {
 		{ID: 835622319, Nodes: []osm.NodeID{7799663850, 4931754288, 5336117979}},
 	}
 
-	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, 2, ingest.FailOnInvalidFeatures)
+	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return
@@ -94,7 +94,7 @@ func TestShortestPathWithOverriddenWeight(t *testing.T) {
 
 	// Override the weight of the cyclepath, and ensure we're routed down it
 	ways[1].Tags = []osm.Tag{{Key: "diagonal:weight", Value: "0.1"}}
-	w, err = ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, 2, ingest.FailOnInvalidFeatures)
+	w, err = ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return
@@ -118,7 +118,7 @@ func TestShortestPathWithTwoJoinedPaths(t *testing.T) {
 		{ID: 558345054, Nodes: []osm.NodeID{5384190494, 5384190476}},
 	}
 
-	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, 2, ingest.FailOnInvalidFeatures)
+	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return
@@ -150,7 +150,7 @@ func TestAccessibilityWithTwoJoinedPaths(t *testing.T) {
 		{ID: 558345054, Nodes: []osm.NodeID{5384190494, 5384190476}},
 	}
 
-	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, 2, ingest.FailOnInvalidFeatures)
+	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return
@@ -227,7 +227,7 @@ func TestInterpolateShortestPathDistances(t *testing.T) {
 		{ID: 558345071, Nodes: []osm.NodeID{5384190463, 5384190445, 7788210688, 5384190494}},
 	}
 
-	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, 2, ingest.FailOnInvalidFeatures)
+	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return

@@ -43,7 +43,7 @@ func TestMergeInsertions(t *testing.T) {
 		},
 	}
 
-	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, 1, ingest.FailOnInvalidFeatures)
+	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return
@@ -94,7 +94,7 @@ func TestClusterCloseInsertions(t *testing.T) {
 		},
 	}
 
-	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, 1, ingest.FailOnInvalidFeatures)
+	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return
@@ -168,7 +168,7 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 		},
 	}
 
-	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, 1, ingest.FailOnInvalidFeatures)
+	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return
@@ -217,7 +217,7 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 	}
 
 	source := c.ModifyWorld(w)
-	connected, err := ingest.NewWorldFromSource(source, 1, ingest.DeleteInvalidFeatures)
+	connected, err := ingest.NewWorldFromSource(source, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Error(err)
 		return
@@ -326,7 +326,7 @@ func ValidateConnectInsertingNewPoints(features b6.Features, network PathIDSet, 
 	}
 	s.Finish()
 	source := s.Output()
-	connected, err := ingest.NewWorldFromSource(source, 1, ingest.DeleteInvalidFeatures)
+	connected, err := ingest.NewWorldFromSource(source, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Expected no error, found %s", err)
 		return nil

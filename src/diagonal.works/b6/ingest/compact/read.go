@@ -99,7 +99,8 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 				FS:       fss[i],
 				Ctx:      ctx,
 			}
-			w, err := ingest.NewWorldFromOSMSource(&pbf, cores, ingest.DeleteInvalidFeatures)
+			o := ingest.BuildOptions{Cores: cores}
+			w, err := ingest.NewWorldFromOSMSource(&pbf, &o)
 			if err != nil {
 				return nil, err
 			}

@@ -440,12 +440,14 @@ func (b *basicWorld) Tokens() []string {
 	return search.AllTokens(b.index.Tokens())
 }
 
-type FeatureValidity int
-
-const (
-	DeleteInvalidFeatures FeatureValidity = iota
-	FailOnInvalidFeatures
-)
+type BuildOptions struct {
+	// Return an error when paths have points ordered clockwise if true, otherwise,
+	// invert them
+	FailClockwisePaths bool
+	// Return an error when featues are invalid, otherwise, delete them
+	FailInvalidFeatures bool
+	Cores               int
+}
 
 type BasicWorldBuilder struct {
 	byID *FeaturesByID
@@ -486,7 +488,7 @@ func (b BrokenFeatures) Error() string {
 	return strings.Join(messages, "\n")
 }
 
-func (b *BasicWorldBuilder) Finish(cores int, clockwise ClockwisePaths, validity FeatureValidity) (b6.World, error) {
+func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 	stages := []func(toIndex chan<- Feature, byID *FeaturesByID){
 		func(c chan<- Feature, byID *FeaturesByID) {
 			for _, point := range byID.Points {
@@ -521,7 +523,8 @@ func (b *BasicWorldBuilder) Finish(cores int, clockwise ClockwisePaths, validity
 			case *PointFeature:
 				err = ValidatePoint(f)
 			case *PathFeature:
-				err = ValidatePath(f, clockwise, b.byID)
+				vo := ValidateOptions{InvertClockwisePaths: !o.FailClockwisePaths}
+				err = ValidatePath(f, &vo, b.byID)
 			case *AreaFeature:
 				err = ValidateArea(f, b.byID)
 			case *RelationFeature:
@@ -535,6 +538,10 @@ func (b *BasicWorldBuilder) Finish(cores int, clockwise ClockwisePaths, validity
 		}
 	}
 
+	cores := o.Cores
+	if cores < 1 {
+		cores = 1
+	}
 	for _, feed := range stages {
 		toValidate := make(chan Feature, cores)
 		wg.Add(cores)
@@ -545,21 +552,20 @@ func (b *BasicWorldBuilder) Finish(cores int, clockwise ClockwisePaths, validity
 		close(toValidate)
 		wg.Wait()
 		if len(broken) > 0 {
-			if validity == DeleteInvalidFeatures {
-				for _, br := range broken {
-					switch br.ID.Type {
-					case b6.FeatureTypePoint:
-						delete(b.byID.Points, br.ID.ToPointID())
-					case b6.FeatureTypePath:
-						delete(b.byID.Paths, br.ID.ToPathID())
-					case b6.FeatureTypeArea:
-						delete(b.byID.Areas, br.ID.ToAreaID())
-					case b6.FeatureTypeRelation:
-						delete(b.byID.Relations, br.ID.ToRelationID())
-					}
-				}
-			} else {
+			if o.FailInvalidFeatures {
 				return nil, broken
+			}
+			for _, br := range broken {
+				switch br.ID.Type {
+				case b6.FeatureTypePoint:
+					delete(b.byID.Points, br.ID.ToPointID())
+				case b6.FeatureTypePath:
+					delete(b.byID.Paths, br.ID.ToPathID())
+				case b6.FeatureTypeArea:
+					delete(b.byID.Areas, br.ID.ToAreaID())
+				case b6.FeatureTypeRelation:
+					delete(b.byID.Relations, br.ID.ToRelationID())
+				}
 			}
 		}
 	}
@@ -600,7 +606,7 @@ type BrokenFeature struct {
 	Err error
 }
 
-func NewWorldFromSource(source FeatureSource, cores int, validity FeatureValidity) (b6.World, error) {
+func NewWorldFromSource(source FeatureSource, o *BuildOptions) (b6.World, error) {
 	b := NewBasicWorldBuilder()
 	var lock sync.Mutex
 	f := func(feature Feature, g int) error {
@@ -619,7 +625,7 @@ func NewWorldFromSource(source FeatureSource, cores int, validity FeatureValidit
 		lock.Unlock()
 		return nil
 	}
-	options := ReadOptions{Parallelism: cores}
+	options := ReadOptions{Cores: o.Cores}
 	source.Read(options, f, context.Background())
-	return b.Finish(cores, ClockwisePathsAreCorrected, validity)
+	return b.Finish(o)
 }
