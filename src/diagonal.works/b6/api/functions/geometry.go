@@ -3,8 +3,6 @@ package functions
 import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/search"
 
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
@@ -123,11 +121,7 @@ func projectEdgesOntoPolylines(loop *s2.Loop, polylines []*s2.Polyline, threshol
 	return edges
 }
 
-func snapAreaEdges(g b6.Area, query *pb.QueryProto, threshold float64, context *api.Context) (b6.Area, error) {
-	q, err := api.NewQueryFromProto(query, context.World)
-	if err != nil {
-		return nil, err
-	}
+func snapAreaEdges(g b6.Area, query b6.Query, threshold float64, context *api.Context) (b6.Area, error) {
 	thresholdAngle := b6.MetersToAngle(threshold)
 	snapped := make([]*s2.Polygon, 0, g.Len())
 	for i := 0; i < g.Len(); i++ {
@@ -135,7 +129,7 @@ func snapAreaEdges(g b6.Area, query *pb.QueryProto, threshold float64, context *
 		cap := polygon.CapBound()
 		buffered := s2.CapFromCenterAngle(cap.Center(), cap.Radius()+b6.MetersToAngle(threshold))
 		polylines := make([]*s2.Polyline, 0, 4)
-		paths := b6.FindPaths(search.Intersection{q, search.NewSpatialFromRegion(buffered)}, context.World)
+		paths := b6.FindPaths(b6.Intersection{query, b6.MightIntersect{buffered}}, context.World)
 		for paths.Next() {
 			polylines = append(polylines, paths.Feature().Polyline())
 		}

@@ -877,10 +877,10 @@ func (w *World) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
 	return w.byID.FindLocationByID(id)
 }
 
-func (w *World) FindFeatures(q search.Query) b6.Features {
+func (w *World) FindFeatures(q b6.Query) b6.Features {
 	features := make([]b6.Features, len(w.indices))
 	for i, index := range w.indices {
-		features[i] = b6.NewFeatureIterator(q.Compile(index), index)
+		features[i] = b6.NewFeatureIterator(q.Compile(index, w), index)
 	}
 	return b6.MergeFeatures(features...)
 }
@@ -1079,12 +1079,4 @@ func (i *Index) CompareKey(v search.Value, k search.Key) search.Comparison {
 
 func (i *Index) Key(v search.Value) search.Key {
 	return v
-}
-
-func (i *Index) RewriteSpatialQuery(q search.Spatial) search.Query {
-	return ingest.RewriteSpatialQuery(q)
-}
-
-func (i *Index) RewriteFeatureTypeQuery(q b6.FeatureTypeQuery) search.Query {
-	return ingest.RewriteFeatureTypeQuery(q)
 }

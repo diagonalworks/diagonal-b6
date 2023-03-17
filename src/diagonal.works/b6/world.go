@@ -3,12 +3,10 @@ package b6
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
 	"diagonal.works/b6/geojson"
-	"diagonal.works/b6/search"
 	"diagonal.works/b6/units"
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
@@ -45,7 +43,7 @@ func InvalidTag() Tag {
 	return Tag{}
 }
 
-type Tagged interface {
+type Taggable interface {
 	AllTags() []Tag
 	Get(key string) Tag
 }
@@ -86,28 +84,6 @@ func FeatureTypeFromString(s string) FeatureType {
 		}
 	}
 	return FeatureTypeInvalid
-}
-
-type FeatureTypeIndex interface {
-	RewriteFeatureTypeQuery(query FeatureTypeQuery) search.Query
-}
-
-type FeatureTypeQuery struct {
-	Type  FeatureType
-	Query search.Query
-}
-
-func (f FeatureTypeQuery) String() string {
-	return fmt.Sprintf("(feature-type %s %s)", f.Type.String(), f.Query.String())
-}
-
-func (f FeatureTypeQuery) Compile(index search.Index) search.Iterator {
-	if featureTypeIndex, ok := index.(FeatureTypeIndex); ok {
-		return featureTypeIndex.RewriteFeatureTypeQuery(f).Compile(index)
-	}
-	log.Printf("Using expensive All query for %s", f.String())
-	return search.All{Token: search.AllToken}.Compile(index)
-
 }
 
 type Namespace string
@@ -409,7 +385,7 @@ type Geometry interface {
 
 type Feature interface {
 	FeatureID() FeatureID
-	Tagged
+	Taggable
 	Renderable
 }
 
@@ -744,11 +720,6 @@ type FeaturesByID interface {
 	HasFeatureWithID(id FeatureID) bool
 }
 
-type FeatureQuery interface {
-	search.Query
-	Matches(Feature) bool
-}
-
 type EachFeatureOptions struct {
 	SkipPoints    bool
 	SkipPaths     bool
@@ -763,7 +734,7 @@ type World interface {
 	HasFeatureWithID(id FeatureID) bool
 	FindLocationByID(id PointID) (s2.LatLng, bool)
 	// TODO: make the query type more specific to Features, similar to the level in api.proto
-	FindFeatures(query search.Query) Features
+	FindFeatures(query Query) Features
 	FindRelationsByFeature(id FeatureID) RelationFeatures
 	FindPathsByPoint(id PointID) PathSegments
 	FindAreasByPoint(id PointID) AreaFeatures
@@ -971,59 +942,28 @@ func NewRelationFeatures(features Features) RelationFeatures {
 	return relationFeatures{features: features}
 }
 
-func FindPoints(q search.Query, w World) PointFeatures {
-	q = FeatureTypeQuery{Type: FeatureTypePoint, Query: q}
+func FindPoints(q Query, w World) PointFeatures {
+	q = Typed{Type: FeatureTypePoint, Query: q}
 	return NewPointFeatures(w.FindFeatures(q))
 }
 
-func FindPaths(q search.Query, w World) PathFeatures {
-	q = FeatureTypeQuery{Type: FeatureTypePath, Query: q}
+func FindPaths(q Query, w World) PathFeatures {
+	q = Typed{Type: FeatureTypePath, Query: q}
 	return NewPathFeatures(w.FindFeatures(q))
 }
 
-func FindAreas(q search.Query, w World) AreaFeatures {
-	q = FeatureTypeQuery{Type: FeatureTypeArea, Query: q}
+func FindAreas(q Query, w World) AreaFeatures {
+	q = Typed{Type: FeatureTypeArea, Query: q}
 	return NewAreaFeatures(w.FindFeatures(q))
 }
 
-func FindRelations(q search.Query, w World) RelationFeatures {
-	q = FeatureTypeQuery{Type: FeatureTypeRelation, Query: q}
+func FindRelations(q Query, w World) RelationFeatures {
+	q = Typed{Type: FeatureTypeRelation, Query: q}
 	return NewRelationFeatures(w.FindFeatures(q))
 }
 
-type FeatureValues interface {
-	Feature(v search.Value) Feature
-	ID(v search.Value) FeatureID
-}
-
-type FeatureIndex interface {
-	search.Index
-	FeatureValues
-}
-
-type FeatureIterator struct {
-	i     search.Iterator
-	index FeatureIndex
-}
-
-func NewFeatureIterator(i search.Iterator, index FeatureIndex) *FeatureIterator {
-	return &FeatureIterator{i: i, index: index}
-}
-
-func (f *FeatureIterator) Next() bool {
-	return f.i.Next()
-}
-
-func (f *FeatureIterator) Feature() Feature {
-	return f.index.Feature(f.i.Value())
-}
-
-func (f *FeatureIterator) FeatureID() FeatureID {
-	return f.index.ID(f.i.Value())
-}
-
-func fillPropertiesFromTags(tagged Tagged, feature *geojson.Feature) {
-	for _, tag := range tagged.AllTags() {
+func fillPropertiesFromTags(t Taggable, feature *geojson.Feature) {
+	for _, tag := range t.AllTags() {
 		feature.Properties[tag.Key] = tag.Value
 	}
 }

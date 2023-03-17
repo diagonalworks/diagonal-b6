@@ -47,14 +47,6 @@ func NewFeatureIndex(byID b6.FeaturesByID) *FeatureIndex {
 	return &FeatureIndex{ArrayIndex: *search.NewArrayIndex(featureValues{}), byID: byID}
 }
 
-func (f *FeatureIndex) RewriteSpatialQuery(query search.Spatial) search.Query {
-	return RewriteSpatialQuery(query)
-}
-
-func (f *FeatureIndex) RewriteFeatureTypeQuery(q b6.FeatureTypeQuery) search.Query {
-	return RewriteFeatureTypeQuery(q)
-}
-
 func (f *FeatureIndex) Feature(v search.Value) b6.Feature {
 	switch feature := v.(type) {
 	case *PointFeature:
@@ -387,8 +379,8 @@ func (b *basicWorld) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
 	return b.byID.FindLocationByID(id)
 }
 
-func (b *basicWorld) FindFeatures(q search.Query) b6.Features {
-	return b6.NewFeatureIterator(q.Compile(b.index), b.index)
+func (b *basicWorld) FindFeatures(q b6.Query) b6.Features {
+	return b6.NewFeatureIterator(q.Compile(b.index, b), b.index)
 }
 
 type relationFeatures struct {

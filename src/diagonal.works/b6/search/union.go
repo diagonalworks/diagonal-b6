@@ -109,14 +109,6 @@ func (u *union) EstimateLength() int {
 	return max
 }
 
-func (u *union) ToQuery() Query {
-	query := make(Union, len(u.iterators))
-	for i, iterator := range u.iterators {
-		query[i] = iterator.ToQuery()
-	}
-	return query
-}
-
 func NewUnion(iterators []Iterator, values Values) Iterator {
 	return &union{iterators: iterators, started: false, values: values}
 }

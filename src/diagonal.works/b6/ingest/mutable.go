@@ -63,14 +63,6 @@ func newMutableFeatureIndex(byID b6.FeaturesByID) *mutableFeatureIndex {
 	return &mutableFeatureIndex{TreeIndex: *search.NewTreeIndex(featureValues{}), byID: byID}
 }
 
-func (m *mutableFeatureIndex) RewriteSpatialQuery(query search.Spatial) search.Query {
-	return RewriteSpatialQuery(query)
-}
-
-func (m *mutableFeatureIndex) RewriteFeatureTypeQuery(q b6.FeatureTypeQuery) search.Query {
-	return RewriteFeatureTypeQuery(q)
-}
-
 func (f *mutableFeatureIndex) Feature(v search.Value) b6.Feature {
 	switch feature := v.(type) {
 	case *PointFeature:
@@ -127,11 +119,11 @@ func (m *BasicMutableWorld) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
 	return m.byID.FindLocationByID(id)
 }
 
-func (m *BasicMutableWorld) FindFeatures(q search.Query) b6.Features {
+func (m *BasicMutableWorld) FindFeatures(q b6.Query) b6.Features {
 	// TODO: Iterators created here will be invalidated if the search index is modified.
 	// We should keep an epoch number to track whether the world has been modified since
 	// the iterator was created, and panic when methods are called on it.
-	return b6.NewFeatureIterator(q.Compile(m.index), m.index)
+	return b6.NewFeatureIterator(q.Compile(m.index, m), m.index)
 }
 
 func (m *BasicMutableWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
@@ -211,12 +203,12 @@ func (m *BasicMutableWorld) AddRelation(r *RelationFeature) error {
 }
 
 func (m *BasicMutableWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
-	tokenAfter, indexedAfter := TokenForTag(tag)
+	tokenAfter, indexedAfter := b6.TokenForTag(tag)
 	if f := m.byID.FindMutableFeatureByID(id); f != nil {
 		var tokenBefore string
 		var indexedBefore bool
 		if before := f.Get(tag.Key); before.IsValid() {
-			if tokenBefore, indexedBefore = TokenForTag(before); indexedBefore && (!indexedAfter || tokenBefore != tokenAfter) {
+			if tokenBefore, indexedBefore = b6.TokenForTag(before); indexedBefore && (!indexedAfter || tokenBefore != tokenAfter) {
 				m.index.Remove(f, []string{tokenBefore})
 			}
 		}
@@ -232,7 +224,7 @@ func (m *BasicMutableWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 func (m *BasicMutableWorld) RemoveTag(id b6.FeatureID, key string) error {
 	if f := m.byID.FindMutableFeatureByID(id); f != nil {
 		if tag := f.Get(key); tag.IsValid() {
-			if token, indexed := TokenForTag(tag); indexed {
+			if token, indexed := b6.TokenForTag(tag); indexed {
 				m.index.Remove(f, []string{token})
 			}
 		}
@@ -284,10 +276,10 @@ type modifiedTag struct {
 	deleted bool
 }
 
-func modifyTags(tagged b6.Tagged, modifications map[string]modifiedTag) []b6.Tag {
+func modifyTags(t b6.Taggable, modifications map[string]modifiedTag) []b6.Tag {
 	// TODO: Consider enforcing AllTags() to return sorted tags, then we could merge
 	// sorted lists here.
-	original := tagged.AllTags()
+	original := t.AllTags()
 	modified := make([]b6.Tag, 0, len(original))
 	seen := make(map[string]struct{})
 	for _, tag := range original {
@@ -311,14 +303,14 @@ func modifyTags(tagged b6.Tagged, modifications map[string]modifiedTag) []b6.Tag
 
 }
 
-func modifyTag(tagged b6.Tagged, key string, modifications map[string]modifiedTag) b6.Tag {
+func modifyTag(t b6.Taggable, key string, modifications map[string]modifiedTag) b6.Tag {
 	if modification, ok := modifications[key]; ok {
 		if modification.deleted {
 			return b6.InvalidTag()
 		}
 		return b6.Tag{Key: key, Value: modification.value}
 	}
-	return tagged.Get(key)
+	return t.Get(key)
 }
 
 type modifiedTagsPoint struct {
@@ -558,8 +550,8 @@ func (f *mutableFeatureIterator) FeatureID() b6.FeatureID {
 	return f.i.FeatureID()
 }
 
-func (m *MutableOverlayWorld) FindFeatures(q search.Query) b6.Features {
-	overlay := b6.NewFeatureIterator(q.Compile(m.index), m.index)
+func (m *MutableOverlayWorld) FindFeatures(q b6.Query) b6.Features {
+	overlay := b6.NewFeatureIterator(q.Compile(m.index, m), m.index)
 	return &mutableFeatureIterator{
 		i:     newOverlayFeatures(m.tags.WrapFeatures(m.base.FindFeatures(q)), overlay, m.byID),
 		epoch: m.epoch,
@@ -743,12 +735,12 @@ func (m *MutableOverlayWorld) AddRelation(r *RelationFeature) error {
 }
 
 func (m *MutableOverlayWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
-	tokenAfter, indexedAfter := TokenForTag(tag)
+	tokenAfter, indexedAfter := b6.TokenForTag(tag)
 	if f := m.byID.FindMutableFeatureByID(id); f != nil {
 		var tokenBefore string
 		var indexedBefore bool
 		if before := f.Get(tag.Key); before.IsValid() {
-			if tokenBefore, indexedBefore = TokenForTag(before); indexedBefore && (!indexedAfter || tokenBefore != tokenAfter) {
+			if tokenBefore, indexedBefore = b6.TokenForTag(before); indexedBefore && (!indexedAfter || tokenBefore != tokenAfter) {
 				m.index.Remove(f, []string{tokenBefore})
 			}
 		}
@@ -777,7 +769,7 @@ func (m *MutableOverlayWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 func (m *MutableOverlayWorld) RemoveTag(id b6.FeatureID, key string) error {
 	if f := m.byID.FindMutableFeatureByID(id); f != nil {
 		if tag := f.Get(key); tag.IsValid() {
-			if token, indexed := TokenForTag(tag); indexed {
+			if token, indexed := b6.TokenForTag(tag); indexed {
 				m.index.Remove(f, []string{token})
 			}
 		}
@@ -788,7 +780,7 @@ func (m *MutableOverlayWorld) RemoveTag(id b6.FeatureID, key string) error {
 			return fmt.Errorf("No feature with ID %s", id)
 		}
 		if tag := base.Get(key); tag.IsValid() {
-			if _, indexed := TokenForTag(tag); indexed {
+			if _, indexed := b6.TokenForTag(tag); indexed {
 				f = NewFeatureFromWorld(base)
 				f.RemoveTag(key)
 				m.byID.AddFeature(f)
@@ -1162,7 +1154,7 @@ func (m *MutableTagsOverlayWorld) FindLocationByID(id b6.PointID) (s2.LatLng, bo
 	return m.base.FindLocationByID(id)
 }
 
-func (m *MutableTagsOverlayWorld) FindFeatures(query search.Query) b6.Features {
+func (m *MutableTagsOverlayWorld) FindFeatures(query b6.Query) b6.Features {
 	return m.tags.WrapFeatures(m.base.FindFeatures(query))
 }
 

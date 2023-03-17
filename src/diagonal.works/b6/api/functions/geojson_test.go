@@ -6,7 +6,6 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/geojson"
-	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/test/camden"
 )
 
@@ -19,17 +18,7 @@ func TestGeoJSON(t *testing.T) {
 	context := &api.Context{
 		World: granarySquare,
 	}
-
-	q := &pb.QueryProto{
-		Query: &pb.QueryProto_Key{
-			Key: &pb.KeyQueryProto{
-				Key: "#building",
-			},
-		},
-	}
-	qq, _ := api.NewQueryFromProto(q, granarySquare)
-
-	features, err := Find(qq, context)
+	features, err := Find(b6.Keyed{"#building"}, context)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

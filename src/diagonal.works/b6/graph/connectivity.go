@@ -11,7 +11,6 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/search"
 
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
@@ -564,7 +563,7 @@ func ConnectArea(area b6.AreaFeature, network PathIDSet, threshold s1.Angle, w b
 			}
 		}
 		cap := area.Polygon(i).CapBound().Expanded(threshold)
-		highways := b6.FindPaths(search.Intersection{search.TokenPrefix{Prefix: "highway"}, search.NewSpatialFromRegion(cap)}, w)
+		highways := b6.FindPaths(b6.Intersection{b6.Keyed{"#highway"}, b6.MightIntersect{cap}}, w)
 		candidates := make([]candidate, 0, 16)
 		for highways.Next() {
 			if _, ok := network[highways.FeatureID().ToPathID()]; ok {
@@ -604,7 +603,7 @@ func ConnectPoint(point b6.PointFeature, network PathIDSet, threshold s1.Angle, 
 		return
 	}
 	cap := s2.CapFromCenterAngle(point.Point(), threshold)
-	highways := b6.FindPaths(search.Intersection{search.TokenPrefix{Prefix: "highway"}, search.NewSpatialFromRegion(cap)}, w)
+	highways := b6.FindPaths(b6.Intersection{b6.Keyed{"#highway"}, b6.MightIntersect{cap}}, w)
 	candidates := make([]candidate, 0, 16)
 	for highways.Next() {
 		if _, ok := network[highways.FeatureID().ToPathID()]; ok {

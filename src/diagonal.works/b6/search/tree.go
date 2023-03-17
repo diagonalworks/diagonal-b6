@@ -636,10 +636,6 @@ type treeIndexEntryIterator struct {
 	token string
 }
 
-func (t treeIndexEntryIterator) ToQuery() Query {
-	return All{Token: t.token}
-}
-
 func (t *TreeIndex) Begin(token string) Iterator {
 	if entry, ok := t.lists.Lookup(token); ok {
 		list := entry.(treeIndexEntry).list

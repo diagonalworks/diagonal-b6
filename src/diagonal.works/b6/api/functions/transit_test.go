@@ -6,7 +6,6 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
-	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/test/camden"
 )
 
@@ -26,14 +25,7 @@ func TestFindReachablePoints(t *testing.T) {
 		World: m,
 	}
 
-	query := &pb.QueryProto{
-		Query: &pb.QueryProto_KeyValue{
-			KeyValue: &pb.KeyValueQueryProto{
-				Key:   "#barrier",
-				Value: "gate",
-			},
-		},
-	}
+	query := b6.Tagged{Key: "#barrier", Value: "gate"}
 	collection, err := ReachablePoints(origin, "walk", 1000.0, query, &context)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
@@ -73,14 +65,7 @@ func TestFindReachableFeatures(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	query := &pb.QueryProto{
-		Query: &pb.QueryProto_Key{
-			Key: &pb.KeyQueryProto{
-				Key: "#amenity",
-			},
-		},
-	}
-	collection, err := ReachableFeatures(origin, "walk", 1000.0, query, &context)
+	collection, err := ReachableFeatures(origin, "walk", 1000.0, b6.Keyed{"#amenity"}, &context)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -119,14 +104,7 @@ func TestPathsToReachFeatures(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	query := &pb.QueryProto{
-		Query: &pb.QueryProto_Key{
-			Key: &pb.KeyQueryProto{
-				Key: "#amenity",
-			},
-		},
-	}
-	collection, err := PathsToReachFeatures(origin, "walk", 1000.0, query, &context)
+	collection, err := PathsToReachFeatures(origin, "walk", 1000.0, b6.Keyed{"#amenity"}, &context)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

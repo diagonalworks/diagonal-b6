@@ -53,7 +53,3 @@ func (t *tokenPrefix) EstimateLength() int {
 func (t *tokenPrefix) Value() Value {
 	return t.iterator.Value()
 }
-
-func (t *tokenPrefix) ToQuery() Query {
-	return TokenPrefix{Prefix: t.prefix}
-}

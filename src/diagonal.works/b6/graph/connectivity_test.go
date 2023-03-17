@@ -6,7 +6,6 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/search"
 	"diagonal.works/b6/test/camden"
 )
 
@@ -15,7 +14,7 @@ func TestBuildStreetNetwork(t *testing.T) {
 	if granarySquare == nil {
 		return
 	}
-	highways := b6.FindPaths(search.TokenPrefix{Prefix: "highway"}, granarySquare)
+	highways := b6.FindPaths(b6.Keyed{"#highway"}, granarySquare)
 	network := BuildStreetNetwork(highways, b6.MetersToAngle(100.0), SimpleHighwayWeights{}, nil, granarySquare)
 
 	if len(network) < 100 {
@@ -289,12 +288,12 @@ func TestConnectGranarySquare(t *testing.T) {
 		return
 	}
 
-	highways := b6.FindPaths(search.TokenPrefix{Prefix: "highway"}, granarySquare)
+	highways := b6.FindPaths(b6.Keyed{"#highway"}, granarySquare)
 	weights := SimpleHighwayWeights{}
 	network := BuildStreetNetwork(highways, b6.MetersToAngle(100), weights, nil, granarySquare)
 
 	for _, test := range tests {
-		features := granarySquare.FindFeatures(search.Union{search.TokenPrefix{Prefix: "building="}, search.TokenPrefix{Prefix: "amenity="}})
+		features := granarySquare.FindFeatures(b6.Union{b6.Keyed{"#building"}, b6.Keyed{"#amenity"}})
 		t.Run(test.name, func(t *testing.T) {
 			connected := test.f(features, network, granarySquare, t)
 			if connected != nil {

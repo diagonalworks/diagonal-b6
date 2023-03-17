@@ -26,7 +26,6 @@ type Iterator interface {
 	Advance(key Key) bool
 	Value() Value
 	EstimateLength() int
-	ToQuery() Query
 }
 
 type TokenIterator interface {
@@ -81,10 +80,6 @@ func (e emptyIterator) EstimateLength() int {
 
 func (e emptyIterator) Value() Value {
 	return nil
-}
-
-func (e emptyIterator) ToQuery() Query {
-	return Empty{}
 }
 
 func NewEmptyIterator() Iterator {

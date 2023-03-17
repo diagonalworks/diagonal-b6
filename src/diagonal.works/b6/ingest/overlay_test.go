@@ -5,7 +5,6 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/search"
 
 	"github.com/golang/geo/s2"
 )
@@ -45,7 +44,7 @@ func TestOverlayWorldReturnsPathsFromAllIndices(t *testing.T) {
 	overlay := NewOverlayWorld(worlds[0], worlds[1])
 
 	cap := s2.CapFromCenterAngle(nodes[0].Location.ToS2Point(), b6.MetersToAngle(500))
-	found := b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(cap), overlay))
+	found := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(cap), overlay))
 
 	expected := []osm.WayID{140633010, 557698825, 642639444, 807925586}
 	if len(found) != len(expected) {
@@ -102,12 +101,12 @@ func TestOverlayWorldReplacesPathsFromOneIndexWithAnother(t *testing.T) {
 	}
 	overlay := NewOverlayWorld(worlds[1], worlds[0])
 
-	paths := b6.AllPaths(b6.FindPaths(search.All{"highway=path"}, overlay))
+	paths := b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#highway", Value: "path"}, overlay))
 	if len(paths) > 0 {
 		t.Errorf("Expected to find 0 paths, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(search.All{"highway=cycleway"}, overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#highway", Value: "cycleway"}, overlay))
 	if len(paths) == 1 {
 		expectedValue := "cycleway"
 		if highway := paths[0].Get("#highway"); highway.Value != expectedValue {

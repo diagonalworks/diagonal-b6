@@ -12,7 +12,6 @@ import (
 	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
-	"diagonal.works/b6/search"
 
 	"github.com/golang/geo/s1"
 )
@@ -82,12 +81,12 @@ func main() {
 		}
 	}
 
-	highways := b6.FindPaths(search.TokenPrefix{Prefix: "highway"}, b)
+	highways := b6.FindPaths(b6.Keyed{"#highway"}, b)
 	weights := graph.SimpleHighwayWeights{}
 	log.Printf("Build street network")
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(*networkThreshold), weights, nil, b)
 	log.Printf("  %d paths", len(network))
-	features := i.FindFeatures(search.Union{search.TokenPrefix{Prefix: "building="}, search.TokenPrefix{Prefix: "amenity="}, search.All{Token: "landuse=vacant"}})
+	features := i.FindFeatures(b6.Union{b6.Keyed{"#building"}, b6.Keyed{"#amenity"}, b6.Tagged{Key: "#landuse", Value: "vacant"}})
 
 	var strategy graph.ConnectionStrategy
 	connections := graph.NewConnections()

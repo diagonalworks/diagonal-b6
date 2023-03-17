@@ -11,25 +11,11 @@ import (
 )
 
 func NewProtoFromFeatureID(id FeatureID) *pb.FeatureIDProto {
-	p := &pb.FeatureIDProto{
+	return &pb.FeatureIDProto{
 		Namespace: string(id.Namespace),
+		Type:      NewProtoFromFeatureType(id.Type),
 		Value:     id.Value,
 	}
-	switch id.Type {
-	case FeatureTypePoint:
-		p.Type = pb.FeatureType_FeatureTypePoint
-	case FeatureTypePath:
-		p.Type = pb.FeatureType_FeatureTypePath
-	case FeatureTypeArea:
-		p.Type = pb.FeatureType_FeatureTypeArea
-	case FeatureTypeRelation:
-		p.Type = pb.FeatureType_FeatureTypeRelation
-	case FeatureTypeInvalid:
-		p.Type = pb.FeatureType_FeatureTypeInvalid
-	default:
-		panic(fmt.Sprintf("Invalid FeatureID.Type(): %s", id.Type))
-	}
-	return p
 }
 
 func NewFeatureIDFromProto(p *pb.FeatureIDProto) FeatureID {
@@ -48,8 +34,8 @@ func NewFeatureIDFromProto(p *pb.FeatureIDProto) FeatureID {
 	panic(fmt.Sprintf("Invalid FeatureType: %s", p.Type))
 }
 
-func NewFeatureTypeFromProto(p pb.FeatureType) FeatureType {
-	switch p {
+func NewFeatureTypeFromProto(t pb.FeatureType) FeatureType {
+	switch t {
 	case pb.FeatureType_FeatureTypePoint:
 		return FeatureTypePoint
 	case pb.FeatureType_FeatureTypePath:
@@ -59,11 +45,25 @@ func NewFeatureTypeFromProto(p pb.FeatureType) FeatureType {
 	case pb.FeatureType_FeatureTypeRelation:
 		return FeatureTypeRelation
 	}
-	panic(fmt.Sprintf("Invalid FeatureType: %s", p))
+	panic(fmt.Sprintf("Invalid pb.FeatureType: %s", t))
 }
 
-func newProtoFromTagged(tagged Tagged) []*pb.TagProto {
-	tags := tagged.AllTags()
+func NewProtoFromFeatureType(t FeatureType) pb.FeatureType {
+	switch t {
+	case FeatureTypePoint:
+		return pb.FeatureType_FeatureTypePoint
+	case FeatureTypePath:
+		return pb.FeatureType_FeatureTypePath
+	case FeatureTypeArea:
+		return pb.FeatureType_FeatureTypeArea
+	case FeatureTypeRelation:
+		return pb.FeatureType_FeatureTypeRelation
+	}
+	panic(fmt.Sprintf("Invalid FeatureType: %s", t))
+}
+
+func newProtoFromTagged(t Taggable) []*pb.TagProto {
+	tags := t.AllTags()
 	p := make([]*pb.TagProto, len(tags))
 	for i, tag := range tags {
 		p[i] = &pb.TagProto{Key: tag.Key, Value: tag.Value}

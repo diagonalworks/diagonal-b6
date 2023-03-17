@@ -5,8 +5,6 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	"diagonal.works/b6/ingest"
-	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/search"
 
 	"github.com/golang/geo/s1"
@@ -94,7 +92,7 @@ func (a *arrayAreaFeatureCollection) Next() (bool, error) {
 var _ api.Collection = &arrayAreaFeatureCollection{}
 var _ api.Countable = &arrayAreaFeatureCollection{}
 
-func findAreasContainingPoints(points api.PointFeatureCollection, q *pb.QueryProto, context *api.Context) (api.AreaFeatureCollection, error) {
+func findAreasContainingPoints(points api.PointFeatureCollection, q b6.Query, context *api.Context) (api.AreaFeatureCollection, error) {
 	cells := make(map[s2.CellID][]s2.Point)
 	i := points.Begin()
 	for {
@@ -106,7 +104,7 @@ func findAreasContainingPoints(points api.PointFeatureCollection, q *pb.QueryPro
 			break
 		}
 		p := i.Value().(b6.PointFeature).Point()
-		id := s2.CellFromPoint(p).ID().Parent(ingest.MaxIndexedCellLevel)
+		id := s2.CellFromPoint(p).ID().Parent(search.MaxIndexedCellLevel)
 		points, ok := cells[id]
 		if !ok {
 			points = make([]s2.Point, 0, 2)
@@ -115,15 +113,9 @@ func findAreasContainingPoints(points api.PointFeatureCollection, q *pb.QueryPro
 	}
 
 	matched := make(map[b6.AreaID]b6.AreaFeature)
-	// TODO: Extend the search.Query interface to allow filtering, avoiding the need to use both the proto and
-	// native representations of Query at this level.
-	query, err := api.NewQueryFromProto(q, context.World)
-	if err != nil {
-		return nil, err
-	}
 	for cell, points := range cells {
 		region := s2.CellUnion{cell}
-		areas := b6.FindAreas(search.Intersection{query, search.NewSpatialFromRegion(&region)}, context.World)
+		areas := b6.FindAreas(b6.Intersection{q, b6.MightIntersect{&region}}, context.World)
 		for areas.Next() {
 			id := areas.Feature().AreaID()
 			if _, ok := matched[id]; !ok {

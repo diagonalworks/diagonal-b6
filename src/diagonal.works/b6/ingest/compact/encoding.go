@@ -447,7 +447,7 @@ func (t *Tags) FromOSM(tags osm.Tags, s *encoding.StringTableBuilder) {
 	}
 }
 
-func (t *Tags) FromFeature(tagged b6.Tagged, s *encoding.StringTableBuilder) {
+func (t *Tags) FromFeature(tagged b6.Taggable, s *encoding.StringTableBuilder) {
 	tags := tagged.AllTags()
 	for len(*t) < len(tags) {
 		*t = append(*t, Tag{})
@@ -527,7 +527,7 @@ func (m MarshalledPoint) Location() s2.LatLng {
 	return s2.LatLngFromDegrees(float64(latE7)/1e7, float64(lngE7)/1e7)
 }
 
-func (m MarshalledPoint) Tags(s encoding.Strings) b6.Tagged {
+func (m MarshalledPoint) Tags(s encoding.Strings) b6.Taggable {
 	return MarshalledTags{Tags: m[8:], Strings: s}
 }
 
@@ -1049,7 +1049,7 @@ func (p *Path) FromFeature(f *ingest.PathFeature, s *encoding.StringTableBuilder
 
 type MarshalledPath []byte
 
-func (m MarshalledPath) Tags(s encoding.Strings) b6.Tagged {
+func (m MarshalledPath) Tags(s encoding.Strings) b6.Taggable {
 	return MarshalledTags{Tags: m, Strings: s}
 }
 
@@ -1439,7 +1439,7 @@ func (a *Area) FromFeature(f *ingest.AreaFeature, s *encoding.StringTableBuilder
 
 type MarshalledArea []byte
 
-func (m MarshalledArea) Tags(s encoding.Strings) b6.Tagged {
+func (m MarshalledArea) Tags(s encoding.Strings) b6.Taggable {
 	return MarshalledTags{Tags: m, Strings: s}
 }
 
@@ -1567,7 +1567,7 @@ func (r *Relation) FromFeature(f *ingest.RelationFeature, s *encoding.StringTabl
 
 type MarshalledRelation []byte
 
-func (m MarshalledRelation) Tags(s encoding.Strings) b6.Tagged {
+func (m MarshalledRelation) Tags(s encoding.Strings) b6.Taggable {
 	return MarshalledTags{Tags: m, Strings: s}
 }
 
@@ -1877,10 +1877,6 @@ func (i *Iterator) FeatureID() b6.FeatureID {
 
 func (i *Iterator) EstimateLength() int {
 	return (len(i.ids) - i.i) / 3
-}
-
-func (i *Iterator) ToQuery() search.Query {
-	return search.All{Token: i.header.Token}
 }
 
 type FeatureBlockHeader struct {

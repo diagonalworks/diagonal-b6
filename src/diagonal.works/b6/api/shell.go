@@ -11,7 +11,6 @@ import (
 
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/search"
 )
 
 type SymbolArgCounts interface {
@@ -726,18 +725,14 @@ func EscapeTagValue(v string) string {
 	return v
 }
 
-func QueryToExpression(q search.Query) (string, bool) {
-	// TODO: Make query API more semantically meaningful at this level
+func QueryToExpression(q b6.Query) (string, bool) {
+	// TODO: Escape query literals properly
 	switch q := q.(type) {
-	case search.TokenPrefix:
-		if strings.HasSuffix(q.Prefix, "=") {
-			return "#" + q.Prefix[0:len(q.Prefix)-1], true
-		}
-	case search.All:
-		if i := strings.Index(q.Token, "="); i > 0 {
-			return "#" + q.Token[0:i] + "=" + EscapeTagValue(q.Token[i+1:]), true
-		}
-	case search.Intersection:
+	case b6.Tagged:
+		return fmt.Sprintf("%s=%s", q.Key, q.Value), true
+	case b6.Keyed:
+		return q.Key, true
+	case b6.Intersection:
 		qs := make([]string, len(q))
 		for i := range q {
 			var ok bool
@@ -746,7 +741,7 @@ func QueryToExpression(q search.Query) (string, bool) {
 			}
 		}
 		return "[" + strings.Join(qs, "&") + "]", true
-	case search.Union:
+	case b6.Union:
 		qs := make([]string, len(q))
 		for i := range q {
 			var ok bool

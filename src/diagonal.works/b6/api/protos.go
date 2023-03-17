@@ -5,15 +5,12 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/geometry"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/search"
-	ws "diagonal.works/b6/search/world"
 
 	"github.com/golang/geo/s2"
 	"google.golang.org/protobuf/proto"
@@ -242,9 +239,9 @@ func ToProto(v interface{}) (*pb.NodeProto, error) {
 		}
 		proto.Merge(n.GetLiteral().GetQueryValue(), v)
 		return n, nil
-	case search.Query:
-		if q, err := QueryToProto(v); err == nil {
-			return ToProto(q)
+	case b6.Query:
+		if q, err := v.ToProto(); err == nil {
+			return ToProto(q) // Wrap in a NodeProto
 		} else {
 			return nil, err
 		}
@@ -316,130 +313,4 @@ func collectionToProto(collection Collection) (*pb.NodeProto, error) {
 			},
 		},
 	}, nil
-}
-
-func NewQueryFromProto(p *pb.QueryProto, w b6.World) (search.Query, error) {
-	switch q := p.Query.(type) {
-	case *pb.QueryProto_Key:
-		return ingest.QueryForAllValues(q.Key.Key)
-	case *pb.QueryProto_KeyValue:
-		return ingest.QueryForKeyValue(q.KeyValue.Key, q.KeyValue.Value)
-	case *pb.QueryProto_Spatial:
-		// TODO: rename spatial to intersects?
-		return NewIntersectQueryFromArea(q.Spatial.Area, w), nil
-	case *pb.QueryProto_Type:
-		if q.Type.Query != nil {
-			child, err := NewQueryFromProto(q.Type.Query, w)
-			if err != nil {
-				return search.Empty{}, err
-			}
-			return b6.FeatureTypeQuery{Type: b6.NewFeatureTypeFromProto(q.Type.Type), Query: child}, nil
-		}
-	case *pb.QueryProto_Intersection:
-		intersection := make(search.Intersection, len(q.Intersection.Queries))
-		for i, next := range q.Intersection.Queries {
-			if child, err := NewQueryFromProto(next, w); err == nil {
-				intersection[i] = child
-			} else {
-				return search.Empty{}, err
-			}
-		}
-		return intersection, nil
-	case *pb.QueryProto_Union:
-		union := make(search.Union, len(q.Union.Queries))
-		for i, next := range q.Union.Queries {
-			if child, err := NewQueryFromProto(next, w); err == nil {
-				union[i] = child
-			} else {
-				return search.Empty{}, err
-			}
-		}
-		return union, nil
-	case *pb.QueryProto_All:
-		return search.All{Token: search.AllToken}, nil
-	}
-	return search.Empty{}, fmt.Errorf("Can't handle query %v", p)
-}
-
-func QueryToProto(q search.Query) (*pb.QueryProto, error) {
-	switch q := q.(type) {
-	case search.All:
-		if q.Token == search.AllToken {
-			return &pb.QueryProto{
-				Query: &pb.QueryProto_All{},
-			}, nil
-		} else if i := strings.Index(q.Token, "="); i >= 0 {
-			return &pb.QueryProto{
-				Query: &pb.QueryProto_KeyValue{
-					KeyValue: &pb.KeyValueQueryProto{
-						Key:   "#" + q.Token[0:i],
-						Value: q.Token[i+1:],
-					},
-				},
-			}, nil
-		}
-	case search.TokenPrefix:
-		if strings.Index(q.Prefix, "=") == len(q.Prefix)-1 {
-			return &pb.QueryProto{
-				Query: &pb.QueryProto_Key{
-					Key: &pb.KeyQueryProto{
-						Key: "#" + q.Prefix[0:len(q.Prefix)-1],
-					},
-				},
-			}, nil
-		}
-	case search.Intersection:
-		p := &pb.IntersectionQueryProto{
-			Queries: make([]*pb.QueryProto, len(q)),
-		}
-		for i, qq := range q {
-			if pp, err := QueryToProto(qq); err == nil {
-				p.Queries[i] = pp
-			} else {
-				return nil, err
-			}
-		}
-		return &pb.QueryProto{
-			Query: &pb.QueryProto_Intersection{
-				Intersection: p,
-			},
-		}, nil
-	case search.Union:
-		p := &pb.UnionQueryProto{
-			Queries: make([]*pb.QueryProto, len(q)),
-		}
-		for i, qq := range q {
-			if pp, err := QueryToProto(qq); err == nil {
-				p.Queries[i] = pp
-			} else {
-				return nil, err
-			}
-		}
-		return &pb.QueryProto{
-			Query: &pb.QueryProto_Union{
-				Union: p,
-			},
-		}, nil
-	}
-	return nil, fmt.Errorf("Can't convert query %s", q)
-}
-
-func NewIntersectQueryFromArea(p *pb.AreaProto, w b6.World) b6.FeatureQuery {
-	switch a := p.Area.(type) {
-	case *pb.AreaProto_Cap:
-		ll := b6.PointProtoToS2LatLng(a.Cap.Center)
-		cap := s2.CapFromCenterAngle(s2.PointFromLatLng(ll), b6.MetersToAngle(a.Cap.RadiusMeters))
-		return ws.NewIntersectsCap(cap)
-	case *pb.AreaProto_Id:
-		if f := w.FindFeatureByID(b6.NewFeatureIDFromProto(a.Id)); f != nil {
-			if p, ok := f.(b6.PhysicalFeature); ok {
-				return ws.NewIntersectsFeature(p)
-			}
-		}
-		return ws.Empty{}
-	case *pb.AreaProto_MultiPolygon:
-		return ws.NewIntersectsMultiPolygon(b6.MultiPolygonProtoToS2MultiPolygon(a.MultiPolygon))
-	default:
-		panic(fmt.Sprintf("Unhandled area: %s", p))
-	}
 }

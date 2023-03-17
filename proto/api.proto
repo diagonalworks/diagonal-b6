@@ -145,6 +145,8 @@ message UnionQueryProto {
 
 message AllQueryProto {}
 
+message EmptyQueryProto {}
+
 message QueryProto {
     oneof query {
         KeyQueryProto key = 1;
@@ -154,6 +156,7 @@ message QueryProto {
         IntersectionQueryProto intersection = 5;
         UnionQueryProto union = 6;
         AllQueryProto all = 7;
+        EmptyQueryProto empty = 8;
     }
 }
 
