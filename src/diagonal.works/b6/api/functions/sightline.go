@@ -10,7 +10,6 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/geometry"
-	"diagonal.works/b6/search"
 
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
@@ -98,7 +97,7 @@ func SightlineUsingPolarCoordinates(center s2.Point, radius s1.Angle, w b6.World
 	containsPoint := s2.NewContainsPointQuery(index, s2.VertexModelOpen)
 	tolerance := b6.MetersToAngle(0.01)
 	cap := s2.CapFromCenterAngle(center, radius)
-	features := b6.FindAreas(search.Intersection{search.NewSpatialFromRegion(cap), search.TokenPrefix{Prefix: "building="}}, w)
+	features := b6.FindAreas(b6.Intersection{b6.NewIntersectsCap(cap), b6.Keyed{"#building"}}, w)
 	edges := make([][2]s2.Point, 0, 8)
 	occlusions := make([]*s2.Loop, 0, 2)
 	for features.Next() {
@@ -339,7 +338,7 @@ func SightlineUsingPolygonIntersection(from s2.Point, radius s1.Angle, w b6.Worl
 	sightline := s2.PolygonFromLoops([]*s2.Loop{s2.RegularLoop(from, radius, 128)})
 
 	cap := s2.CapFromCenterAngle(from, radius)
-	features := b6.FindAreas(search.Intersection{search.NewSpatialFromRegion(cap), search.TokenPrefix{Prefix: "building="}}, w)
+	features := b6.FindAreas(b6.Intersection{b6.MightIntersect{cap}, b6.Keyed{"#building"}}, w)
 	for features.Next() {
 		area := features.Feature()
 		for i := 0; i < area.Len(); i++ {
@@ -584,7 +583,7 @@ func SightlineUsingPolarCoordinates2(center s2.Point, radius s1.Angle, w b6.Worl
 
 	barriers := make([]s2.Edge, 0, 64)
 	cap := s2.CapFromCenterAngle(center, radius)
-	features := b6.FindAreas(search.Intersection{search.NewSpatialFromRegion(cap), search.TokenPrefix{Prefix: "building="}}, w)
+	features := b6.FindAreas(b6.Intersection{b6.MightIntersect{cap}, b6.Keyed{"#building"}}, w)
 	for features.Next() {
 		area := features.Feature()
 		for i := 0; i < area.Len(); i++ {

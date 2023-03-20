@@ -9,7 +9,6 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/search"
 	"diagonal.works/b6/test"
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
@@ -76,7 +75,7 @@ func ValidateGranarySquareSeemsReasonable(buildWorld BuildOSMWorld, t *testing.T
 	}
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(100))
-	found := w.FindFeatures(search.NewSpatialFromRegion(cap))
+	found := w.FindFeatures(b6.MightIntersect{cap})
 	buildings := 0
 	streets := 0
 
@@ -162,16 +161,16 @@ func ValidateGranarySquareSeemsReasonable(buildWorld BuildOSMWorld, t *testing.T
 
 	expectedTrees := 26
 	expectedBenches := 12
-	found = w.FindFeatures(search.NewSpatialFromRegion(cap))
+	found = w.FindFeatures(b6.MightIntersect{cap})
 
 	benches := 0
 	trees := 0
 	for found.Next() {
 		feature := found.Feature()
-		if amenity := feature.Get("#amenity"); amenity.Value == "bench" {
+		if feature.Get("#amenity").Value == "bench" {
 			benches++
 		}
-		if natural := feature.Get("#natural"); natural.Value == "tree" {
+		if feature.Get("#natural").Value == "tree" {
 			trees++
 		}
 	}
@@ -192,7 +191,7 @@ func ValidateGranarySquareSeemsReasonable(buildWorld BuildOSMWorld, t *testing.T
 		}
 	}
 
-	found = w.FindFeatures(search.Intersection{search.TokenPrefix{Prefix: "highway="}, search.NewSpatialFromRegion(cap)})
+	found = w.FindFeatures(b6.Intersection{b6.Keyed{"#highway"}, b6.MightIntersect{cap}})
 	if n := len(b6.AllFeatures(found)); n != streets {
 		t.Errorf("Expected streets for intersection search to equal streets from filter (%d vs %d)", n, streets)
 	}
@@ -225,7 +224,7 @@ func ValidateWaysWithMissingNodesArentIndexed(buildWorld BuildOSMWorld, t *testi
 		return
 	}
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(100))
-	paths := b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(cap), w))
+	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(cap), w))
 
 	expected := 1
 	if len(paths) != expected {
@@ -249,7 +248,7 @@ func ValidatePointsWithoutTagsArentIndexed(buildWorld BuildOSMWorld, t *testing.
 		return
 	}
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(100))
-	points := b6.AllPoints(b6.FindPoints(search.NewSpatialFromRegion(cap), w))
+	points := b6.AllPoints(b6.FindPoints(b6.NewIntersectsCap(cap), w))
 
 	if len(points) == 1 {
 		if points[0].FeatureID().Value != uint64(nodes[0].ID) {
@@ -275,7 +274,7 @@ func ValidateWaysFallingExactlyWithinSearchCellAreFound(buildWorld BuildOSMWorld
 		t.Errorf("Failed to build world: %s", err)
 		return
 	}
-	paths := b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(cell), w))
+	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCell(cell), w))
 
 	expected := 1
 	if len(paths) != expected {
@@ -304,7 +303,7 @@ func ValidateClockwisePolygonsAreIndexedCorrectly(buildWorld BuildOSMWorld, t *t
 		t.Errorf("Failed to build world: %s", err)
 		return
 	}
-	paths := b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(s2.CellFromLatLng(s2.LatLngFromDegrees(51.53634, -0.12422))), w))
+	paths := b6.AllPaths(b6.FindPaths(b6.MightIntersect{s2.CellFromLatLng(s2.LatLngFromDegrees(51.53634, -0.12422))}, w))
 
 	if len(paths) == 1 {
 		if paths[0].Point(1).Distance(s2.PointFromLatLng(nodes[1].Location.ToS2LatLng())) < s1.Angle(0.00001) {
@@ -333,7 +332,7 @@ func ValidatePolygonsWithInvalidGeometryAreSkipped(buildWorld BuildOSMWorld, t *
 		t.Errorf("Failed to build world: %s", err)
 		return
 	}
-	paths := b6.AllAreas(b6.FindAreas(search.NewSpatialFromRegion(s2.CellFromLatLng(s2.LatLngFromDegrees(33.5526155, -0.2648717))), w))
+	paths := b6.AllAreas(b6.FindAreas(b6.NewIntersectsCell(s2.CellFromLatLng(s2.LatLngFromDegrees(33.5526155, -0.2648717))), w))
 
 	if len(paths) != 0 {
 		t.Errorf("Expected to find no paths, found %d", len(paths))
@@ -414,7 +413,7 @@ func ValidateRelationsAsAreas(buildWorld BuildOSMWorld, t *testing.T) {
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(500))
 
 	expectedAreas := 1
-	q := search.Intersection{search.NewSpatialFromRegion(cap), search.All{Token: "building=yes"}}
+	q := b6.Intersection{b6.NewIntersectsCap(cap), b6.Tagged{Key: "#building", Value: "yes"}}
 	if areas := b6.AllAreas(b6.FindAreas(q, w)); len(areas) != expectedAreas {
 		t.Errorf("Expected %d area, found %d", expectedAreas, len(areas))
 	} else {
@@ -489,7 +488,7 @@ func ValidateAllQueryOnATokenThatDoesntExistReturnsNothing(buildWorld BuildOSMWo
 		return
 	}
 
-	paths := b6.AllPaths(b6.FindPaths(search.All{Token: "missing"}, w))
+	paths := b6.AllPaths(b6.FindPaths(b6.Keyed{"#missing"}, w))
 	if len(paths) != 0 {
 		t.Errorf("Expected to not find any paths, found %d", len(paths))
 	}
@@ -607,7 +606,7 @@ func ValidateFindWithIntersectionQuery(buildWorld BuildOSMWorld, t *testing.T) {
 		return
 	}
 
-	q := search.Intersection{search.All{Token: "amenity=school"}, search.All{Token: "building=yes"}}
+	q := b6.Intersection{b6.Tagged{Key: "#amenity", Value: "school"}, b6.Tagged{Key: "#building", Value: "yes"}}
 	fs := b6.AllFeatures(w.FindFeatures(q))
 	if len(fs) != 1 {
 		t.Errorf("Expected one feature, found %d", len(fs))
@@ -1122,7 +1121,7 @@ func ValidateSpatialQueriesOnAnEmptyIndexReturnNothing(buildWorld BuildOSMWorld,
 	}
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(500))
-	query := search.NewSpatialFromRegion(cap)
+	query := b6.NewIntersectsCap(cap)
 	if paths := b6.AllPaths(b6.FindPaths(query, w)); len(paths) != 0 {
 		// The most likely failure mode is a panic()/nil pointer, rather than
 		// imaginary ways, but both are covered.
@@ -1164,7 +1163,7 @@ func ValidateSpatialQueriesRecallParentCells(buildWorld BuildOSMWorld, t *testin
 		t.Errorf("Expected search region to contain our test area")
 		return
 	}
-	areas := b6.AllAreas(b6.FindAreas(search.NewSpatialFromRegion(s2.CellFromCellID(searchRegion)), w))
+	areas := b6.AllAreas(b6.FindAreas(b6.NewIntersectsCellID(searchRegion), w))
 	if len(areas) != 1 || areas[0].AreaID().Value != uint64(ways[0].ID) {
 		t.Errorf("Expected to find area")
 	}
@@ -1332,7 +1331,7 @@ func ValidateTagsAreSearchable(buildWorld BuildOSMWorld, t *testing.T) {
 	}
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052)), b6.MetersToAngle(100))
-	points := b6.AllPoints(b6.FindPoints(search.NewSpatialFromRegion(cap), w))
+	points := b6.AllPoints(b6.FindPoints(b6.NewIntersectsCap(cap), w))
 	if len(points) != 1 {
 		t.Errorf("Expected to find 1 point, found %d", len(points))
 	}
@@ -1444,7 +1443,7 @@ func ValidateThinBuilding(buildWorld BuildOSMWorld, t *testing.T) {
 	}
 
 	// Ensure the invalid features are correctly filtered from all indices.
-	fs := w.FindFeatures(search.All{Token: search.AllToken})
+	fs := w.FindFeatures(b6.All{})
 	for fs.Next() {
 		fs.Feature().FeatureID()
 	}

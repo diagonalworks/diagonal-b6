@@ -146,10 +146,6 @@ func (a *arrayIndexIterator) Value() Value {
 	return a.list[a.i]
 }
 
-func (a *arrayIndexIterator) ToQuery() Query {
-	return All{Token: a.token}
-}
-
 func (a *ArrayIndex) Begin(token string) Iterator {
 	if i, ok := a.tokens.Lookup(token); ok {
 		return &arrayIndexIterator{i: -1, list: a.lists[i], token: token, values: a.values}

@@ -6,8 +6,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/test/camden"
 )
 
@@ -57,20 +57,10 @@ func TestCount(t *testing.T) {
 		return
 	}
 
-	q := &pb.QueryProto{
-		Query: &pb.QueryProto_Key{
-			Key: &pb.KeyQueryProto{
-				Key: "#building",
-			},
-		},
-	}
-	qq, _ := api.NewQueryFromProto(q, granarySquare)
-
 	context := &api.Context{
 		World: granarySquare,
 	}
-
-	collection, err := Find(qq, context)
+	collection, err := Find(b6.Keyed{"#building"}, context)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

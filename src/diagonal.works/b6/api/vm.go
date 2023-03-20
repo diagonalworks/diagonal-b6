@@ -280,7 +280,11 @@ func compileLiteral(literal *pb.LiteralNodeProto, c *compilation) error {
 	case *pb.LiteralNodeProto_FloatValue:
 		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(v.FloatValue)})
 	case *pb.LiteralNodeProto_QueryValue:
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(v.QueryValue)})
+		if q, err := b6.NewQueryFromProto(v.QueryValue); err == nil {
+			c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(q)})
+		} else {
+			return err
+		}
 	case *pb.LiteralNodeProto_FeatureIDValue:
 		id := b6.NewFeatureIDFromProto(v.FeatureIDValue)
 		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(id)})
@@ -632,14 +636,14 @@ func convertArg(v reflect.Value, t reflect.Type, vm *VM) (reflect.Value, error) 
 
 func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {
 	ok := t.Kind() == reflect.Func
-	ok = ok || v.Type() == reflect.TypeOf(&pb.QueryProto{})
+	ok = ok || v.Type().Implements(queryInterface)
 	ok = ok || t.NumIn() == 2
 	ok = ok || t.Out(0).Kind() == reflect.Bool
 	ok = ok || t.In(0).Implements(featureInterface)
 	if ok {
-		q := v.Interface().(*pb.QueryProto)
+		q := v.Interface().(b6.Query)
 		f := func(feature b6.Feature, c *Context) (bool, error) {
-			return Matches(feature, q, c.World), nil
+			return q.Matches(feature, c.World), nil
 		}
 		return goCall{f: reflect.ValueOf(f), name: fmt.Sprintf("matches %s", q)}, true
 	}

@@ -98,8 +98,8 @@ func (t ByTagKey) Len() int           { return len(t) }
 func (t ByTagKey) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
 func (t ByTagKey) Less(i, j int) bool { return t[i].Key < t[j].Key }
 
-func NewTagsFromWorld(tagged b6.Tagged) Tags {
-	all := tagged.AllTags()
+func NewTagsFromWorld(t b6.Taggable) Tags {
+	all := t.AllTags()
 	tags := make([]b6.Tag, len(all))
 	for i := range all {
 		tags[i] = all[i]
@@ -109,7 +109,7 @@ func NewTagsFromWorld(tagged b6.Tagged) Tags {
 
 type Feature interface {
 	FeatureID() b6.FeatureID
-	b6.Tagged
+	b6.Taggable
 	AddTag(tag b6.Tag)
 	ModifyOrAddTag(tag b6.Tag) (bool, string)
 	RemoveTag(key string)

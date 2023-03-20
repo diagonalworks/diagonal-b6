@@ -9,7 +9,6 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/search"
 	"diagonal.works/b6/test/camden"
 
 	"github.com/golang/geo/s2"
@@ -43,7 +42,7 @@ func TestMap(t *testing.T) {
 			t.Errorf("Expected no error, found %q", err)
 		} else {
 			expected := []string{
-				"Caravan", "Yumchaa", "", "", "", "", "University of the Arts London, Central Saint Martins",
+				"Caravan", "", "Yumchaa", "", "", "", "", "",
 			}
 			if !reflect.DeepEqual(expected, values) {
 				t.Errorf("Expected %q, found %q", expected, values)
@@ -68,7 +67,7 @@ func TestMapWithPartialFunction(t *testing.T) {
 			t.Errorf("Expected no error, found %q", err)
 		} else {
 			expected := []string{
-				"Caravan", "Yumchaa", "", "", "", "", "University of the Arts London, Central Saint Martins",
+				"Caravan", "", "Yumchaa", "", "", "", "", "",
 			}
 			if !reflect.DeepEqual(expected, values) {
 				t.Errorf("Expected %q, found %q", expected, values)
@@ -243,27 +242,6 @@ func TestConvertQueryToFunctionReturningBoolWithSpecificFeature(t *testing.T) {
 	functions := make(api.FunctionSymbols)
 	functions["apply-to-example-point"] = apply
 	e := "apply-to-example-point [#amenity]"
-	if v, err := api.EvaluateString(e, granarySquare, functions, FunctionConvertors()); err != nil {
-		t.Error(err)
-	} else if !v.(bool) {
-		t.Error("Expected true, found false")
-	}
-}
-
-func TestConvertQueryProtoToWorldQuery(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
-	if granarySquare == nil {
-		return
-	}
-	find := func(q search.Query, c *api.Context) (bool, error) {
-		if qq, ok := q.(search.All); ok {
-			return qq.Token == "highway=cycleway", nil
-		}
-		return false, nil
-	}
-	functions := make(api.FunctionSymbols)
-	functions["find-with-world-query"] = find
-	e := "find-with-world-query [#highway=cycleway]"
 	if v, err := api.EvaluateString(e, granarySquare, functions, FunctionConvertors()); err != nil {
 		t.Error(err)
 	} else if !v.(bool) {

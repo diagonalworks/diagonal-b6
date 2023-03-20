@@ -76,14 +76,6 @@ func (in *intersection) EstimateLength() int {
 	return in.iterators[0].EstimateLength()
 }
 
-func (in *intersection) ToQuery() Query {
-	query := make(Intersection, len(in.iterators))
-	for i, iterator := range in.iterators {
-		query[i] = iterator.ToQuery()
-	}
-	return query
-}
-
 func newIntersection(iterators []Iterator, values Values) *intersection {
 	// We make an assumption here that the shortest doesn't change during
 	// intersection. We use a stable sort to ensure unit tests are

@@ -3,17 +3,13 @@ package functions
 import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	"diagonal.works/b6/geometry"
-	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/search"
-	ws "diagonal.works/b6/search/world"
 
 	"github.com/golang/geo/s2"
 )
 
 type SearchFeatureCollection struct {
-	query search.Query
+	query b6.Query
 	w     b6.World
 	i     b6.Features
 }
@@ -59,64 +55,40 @@ func (s *SearchFeatureCollection) Count() int {
 
 var _ api.Collection = &SearchFeatureCollection{}
 
-func Find(query search.Query, context *api.Context) (api.FeatureCollection, error) {
+func Find(query b6.Query, context *api.Context) (api.FeatureCollection, error) {
 	return &SearchFeatureCollection{query: query, w: context.World}, nil
 }
 
-func FindPointFeatures(query search.Query, context *api.Context) (api.PointFeatureCollection, error) {
-	tq := b6.FeatureTypeQuery{Type: b6.FeatureTypePoint, Query: query}
+func FindPointFeatures(query b6.Query, context *api.Context) (api.PointFeatureCollection, error) {
+	tq := b6.Typed{Type: b6.FeatureTypePoint, Query: query}
 	return &SearchFeatureCollection{query: tq, w: context.World}, nil
 }
 
-func FindPathFeatures(query search.Query, context *api.Context) (api.PathFeatureCollection, error) {
-	tq := b6.FeatureTypeQuery{Type: b6.FeatureTypePath, Query: query}
+func FindPathFeatures(query b6.Query, context *api.Context) (api.PathFeatureCollection, error) {
+	tq := b6.Typed{Type: b6.FeatureTypePath, Query: query}
 	return &SearchFeatureCollection{query: tq, w: context.World}, nil
 }
 
-func FindAreaFeatures(query search.Query, context *api.Context) (api.AreaFeatureCollection, error) {
-	tq := b6.FeatureTypeQuery{Type: b6.FeatureTypeArea, Query: query}
+func FindAreaFeatures(query b6.Query, context *api.Context) (api.AreaFeatureCollection, error) {
+	tq := b6.Typed{Type: b6.FeatureTypeArea, Query: query}
 	return &SearchFeatureCollection{query: tq, w: context.World}, nil
 }
 
-func FindRelationFeatures(query search.Query, context *api.Context) (api.RelationFeatureCollection, error) {
-	tq := b6.FeatureTypeQuery{Type: b6.FeatureTypeRelation, Query: query}
+func FindRelationFeatures(query b6.Query, context *api.Context) (api.RelationFeatureCollection, error) {
+	tq := b6.Typed{Type: b6.FeatureTypeRelation, Query: query}
 	return &SearchFeatureCollection{query: tq, w: context.World}, nil
 }
 
-func intersecting(g b6.Geometry, context *api.Context) (*pb.QueryProto, error) {
-	// TODO: Clean up the definition of SpatialQueryProto, which dates from a time
-	// before we had the full power of a5, allowing queries to be constructed server-side.
-	// This also causes issues in the exact matching sematics, since we have both exact and
-	// rough matching implemented.
+func intersecting(g b6.Geometry, context *api.Context) (b6.Query, error) {
 	switch g := g.(type) {
 	case b6.Point:
-		return queryFromCap(s2.CapFromCenterAngle(g.Point(), b6.MetersToAngle(1.0))), nil
+		return b6.NewIntersectsPoint(g.Point()), nil
 	case b6.Path:
-		return queryFromCap(g.Polyline().CapBound()), nil
+		return b6.NewIntersectsPath(g), nil
 	case b6.Area:
-		p := make(geometry.MultiPolygon, g.Len())
-		for i := range p {
-			p[i] = g.Polygon(i)
-		}
-		return &pb.QueryProto{
-			Query: &pb.QueryProto_Spatial{
-				Spatial: &pb.SpatialQueryProto{
-					Area: &pb.AreaProto{
-						Area: &pb.AreaProto_MultiPolygon{
-							MultiPolygon: b6.NewMultiPolygonProto(p),
-						},
-					},
-				},
-			},
-		}, nil
+		return b6.NewIntersectsArea(g), nil
 	}
-	return &pb.QueryProto{
-		Query: &pb.QueryProto_Intersection{
-			Intersection: &pb.IntersectionQueryProto{
-				Queries: []*pb.QueryProto{},
-			},
-		},
-	}, nil
+	return b6.Empty{}, nil
 }
 
 func typePoint(context *api.Context) (*pb.QueryProto, error) {
@@ -164,32 +136,32 @@ func typeArea(context *api.Context) (*pb.QueryProto, error) {
 	}, nil
 }
 
-func within(a b6.Area, context *api.Context) (search.Query, error) {
-	return ws.NewIntersectsArea(a), nil
+func within(a b6.Area, context *api.Context) (b6.Query, error) {
+	return b6.NewIntersectsArea(a), nil
 }
 
-func withinCap(p b6.Point, radius float64, context *api.Context) (search.Query, error) {
-	return ws.NewIntersectsCap(s2.CapFromCenterAngle(p.Point(), b6.MetersToAngle(radius))), nil
+func withinCap(p b6.Point, radius float64, context *api.Context) (b6.Query, error) {
+	return b6.NewIntersectsCap(s2.CapFromCenterAngle(p.Point(), b6.MetersToAngle(radius))), nil
 }
 
-func tagged(key string, value string, context *api.Context) (search.Query, error) {
-	return ingest.QueryForKeyValue(key, value)
+func tagged(key string, value string, context *api.Context) (b6.Query, error) {
+	return b6.Tagged{Key: key, Value: value}, nil
 }
 
-func keyed(key string, context *api.Context) (search.Query, error) {
-	return ingest.QueryForAllValues(key)
+func keyed(key string, context *api.Context) (b6.Query, error) {
+	return b6.Keyed{key}, nil
 }
 
-func and(a search.Query, b search.Query, context *api.Context) (search.Query, error) {
-	return search.Intersection{a, b}, nil
+func and(a b6.Query, b b6.Query, context *api.Context) (b6.Query, error) {
+	return b6.Intersection{a, b}, nil
 }
 
-func or(a search.Query, b search.Query, context *api.Context) (search.Query, error) {
-	return search.Union{a, b}, nil
+func or(a b6.Query, b b6.Query, context *api.Context) (b6.Query, error) {
+	return b6.Union{a, b}, nil
 }
 
-func all(context *api.Context) (search.Query, error) {
-	return search.All{Token: search.AllToken}, nil
+func all(context *api.Context) (b6.Query, error) {
+	return b6.All{}, nil
 }
 
 func queryFromCap(cap s2.Cap) *pb.QueryProto {

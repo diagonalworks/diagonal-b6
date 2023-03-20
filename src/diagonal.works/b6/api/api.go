@@ -7,7 +7,6 @@ import (
 
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/search"
 )
 
 type Context struct {
@@ -122,7 +121,7 @@ type FloatNumber float64
 func (_ FloatNumber) isNumber() {}
 
 var featureInterface = reflect.TypeOf((*b6.Feature)(nil)).Elem()
-var queryInterface = reflect.TypeOf((*search.Query)(nil)).Elem()
+var queryInterface = reflect.TypeOf((*b6.Query)(nil)).Elem()
 var numberInterface = reflect.TypeOf((*Number)(nil)).Elem()
 var queryProtoPtrType = reflect.TypeOf((*pb.QueryProto)(nil))
 var featureIDType = reflect.TypeOf(b6.FeatureID{})
@@ -140,23 +139,6 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 		return vv, nil
 	}
 	switch t {
-	case queryInterface:
-		// TODO: Harmonise query interfaces
-		if vv, ok := v.Interface().(*pb.QueryProto); ok {
-			if q, err := NewQueryFromProto(vv, w); err == nil {
-				return reflect.ValueOf(q), nil
-			} else {
-				return reflect.Value{}, err
-			}
-		}
-	case queryProtoPtrType:
-		if vv, ok := v.Interface().(search.Query); ok {
-			if q, err := QueryToProto(vv); err == nil {
-				return reflect.ValueOf(q), nil
-			} else {
-				return reflect.Value{}, err
-			}
-		}
 	case featureIDType:
 		if vv, ok := v.Interface().(b6.Identifiable); ok {
 			return reflect.ValueOf(vv.FeatureID()), nil

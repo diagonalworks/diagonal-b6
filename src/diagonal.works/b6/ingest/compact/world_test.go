@@ -7,7 +7,6 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/search"
 	"diagonal.works/b6/test"
 
 	"github.com/golang/geo/s2"
@@ -128,9 +127,9 @@ func mustBuildCamdenForBenchmarks() b6.World {
 	return w
 }
 
-var benchmarkSearchQuery = search.Intersection{
-	search.TokenPrefix{Prefix: "building="},
-	search.NewSpatialFromRegion(s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5305, -0.1232)), b6.MetersToAngle(1000.0))),
+var benchmarkSearchQuery = b6.Intersection{
+	b6.Keyed{"#building"},
+	b6.NewIntersectsCap(s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5305, -0.1232)), b6.MetersToAngle(1000.0))),
 }
 
 func BenchmarkSearchWorld(b *testing.B) {
@@ -156,7 +155,7 @@ func BenchmarkSearchModifiedWorld(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		features := mutable.FindFeatures(search.TokenPrefix{Prefix: "building="})
+		features := mutable.FindFeatures(b6.Keyed{"#building"})
 		for features.Next() {
 		}
 	}

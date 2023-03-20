@@ -9,8 +9,6 @@ import (
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
-	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/search"
 
 	"github.com/golang/geo/s2"
 )
@@ -41,13 +39,13 @@ func newShortestPathSearch(origin b6.Feature, mode string, distance float64, fea
 	return s, nil
 }
 
-func ReachablePoints(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (api.PointFeatureCollection, error) {
+func ReachablePoints(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (api.PointFeatureCollection, error) {
 	points := &api.ArrayPointFeatureCollection{Features: make([]b6.PointFeature, 0)}
 	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
 	if err == nil {
 		for id := range s.PointDistances() {
 			if point := b6.FindPointByID(id, context.World); point != nil {
-				if api.Matches(point, query, context.World) {
+				if query.Matches(point, context.World) {
 					points.Features = append(points.Features, point)
 				}
 			}
@@ -56,20 +54,20 @@ func ReachablePoints(origin b6.Feature, mode string, distance float64, query *pb
 	return points, nil
 }
 
-func FindReachableFeaturesWithPathStates(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, pathStates *geojson.FeatureCollection, context *api.Context) (api.FeatureCollection, error) {
+func FindReachableFeaturesWithPathStates(origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection, context *api.Context) (api.FeatureCollection, error) {
 	features := &api.ArrayFeatureCollection{Features: make([]b6.Feature, 0)}
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		for id := range s.PointDistances() {
 			if point := b6.FindPointByID(id, context.World); point != nil {
-				if api.Matches(point, query, context.World) {
+				if query.Matches(point, context.World) {
 					features.Features = append(features.Features, point)
 				}
 			}
 		}
 		for id := range s.AreaDistances() {
 			if area := b6.FindAreaByID(id, context.World); area != nil {
-				if api.Matches(area, query, context.World) {
+				if query.Matches(area, context.World) {
 					features.Features = append(features.Features, area)
 				}
 			}
@@ -101,11 +99,11 @@ func FindReachableFeaturesWithPathStates(origin b6.Feature, mode string, distanc
 	return features, err
 }
 
-func ReachableFeatures(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (api.FeatureCollection, error) {
+func ReachableFeatures(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (api.FeatureCollection, error) {
 	return FindReachableFeaturesWithPathStates(origin, mode, distance, query, nil, context)
 }
 
-func ClosestFeature(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (b6.Feature, error) {
+func ClosestFeature(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (b6.Feature, error) {
 	feature, _, err := findClosest(origin, mode, distance, query, context)
 	return feature, err
 }
@@ -115,12 +113,12 @@ func ClosestFeature(origin b6.Feature, mode string, distance float64, query *pb.
 // return a new primitive Route instance that described the route to that feature,
 // allowing distance to be derived. Neither are possible right now, so this is a
 // stopgap. TODO: Improve this API.
-func ClosestFeatureDistance(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (float64, error) {
+func ClosestFeatureDistance(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (float64, error) {
 	_, distance, err := findClosest(origin, mode, distance, query, context)
 	return distance, err
 }
 
-func findClosest(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (b6.Feature, float64, error) {
+func findClosest(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (b6.Feature, float64, error) {
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		// TODO: This expands the search everywhere up to the maximum distance, and we
@@ -130,7 +128,7 @@ func findClosest(origin b6.Feature, mode string, distance float64, query *pb.Que
 		for id, d := range s.PointDistances() {
 			if d < distance {
 				if point := b6.FindPointByID(id, context.World); point != nil {
-					if api.Matches(point, query, context.World) {
+					if query.Matches(point, context.World) {
 						distance = d
 						closest = point
 					}
@@ -140,7 +138,7 @@ func findClosest(origin b6.Feature, mode string, distance float64, query *pb.Que
 		for id, d := range s.AreaDistances() {
 			if d < distance {
 				if area := b6.FindAreaByID(id, context.World); area != nil {
-					if api.Matches(area, query, context.World) {
+					if query.Matches(area, context.World) {
 						distance = d
 						closest = area
 					}
@@ -154,7 +152,7 @@ func findClosest(origin b6.Feature, mode string, distance float64, query *pb.Que
 	return nil, 0.0, err
 }
 
-func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, query *pb.QueryProto, context *api.Context) (api.FeatureIDIntCollection, error) {
+func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (api.FeatureIDIntCollection, error) {
 	features := &api.ArrayFeatureIDIntCollection{Keys: make([]b6.FeatureID, 0), Values: make([]int, 0)}
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
@@ -162,7 +160,7 @@ func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, quer
 		counts := make(map[b6.PathID]int)
 		for id := range s.PointDistances() {
 			if point := b6.FindPointByID(id, context.World); point != nil {
-				if api.Matches(point, query, context.World) {
+				if query.Matches(point, context.World) {
 					points++
 					last := b6.PathIDInvalid
 					for _, segment := range s.BuildPath(id) {
@@ -178,7 +176,7 @@ func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, quer
 		areas := 0
 		for areaID, pointID := range s.AreaEntrances() {
 			if area := b6.FindAreaByID(areaID, context.World); area != nil {
-				if api.Matches(area, query, context.World) {
+				if query.Matches(area, context.World) {
 					areas++
 					if point := b6.FindPointByID(pointID, context.World); point != nil {
 						last := b6.PathIDInvalid
@@ -241,7 +239,7 @@ func connect(a b6.PointFeature, b b6.PointFeature, c *api.Context) (ingest.Chang
 }
 
 func connectToNetwork(feature b6.Feature, c *api.Context) (ingest.Change, error) {
-	highways := b6.FindPaths(search.TokenPrefix{Prefix: "highway"}, c.World)
+	highways := b6.FindPaths(b6.Keyed{"#highway"}, c.World)
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
 	connections := graph.NewConnections()
 	strategy := graph.InsertNewPointsIntoPaths{

@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"diagonal.works/b6"
-	"diagonal.works/b6/search"
 	"github.com/golang/geo/s2"
 )
 
@@ -112,7 +111,7 @@ func (o *overlayFeatures) Feature() b6.Feature {
 	return o.base.Feature()
 }
 
-func (o *OverlayWorld) FindFeatures(q search.Query) b6.Features {
+func (o *OverlayWorld) FindFeatures(q b6.Query) b6.Features {
 	return newOverlayFeatures(o.base.FindFeatures(q), o.overlay.FindFeatures(q), o.overlay)
 }
 

@@ -7,7 +7,6 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
-	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/test/camden"
 
 	"github.com/golang/geo/s2"
@@ -70,18 +69,10 @@ func TestFindAreasContainingPoints(t *testing.T) {
 	}
 
 	points := &api.ArrayPointFeatureCollection{Features: []b6.PointFeature{vermuteria}}
-	query := &pb.QueryProto{
-		Query: &pb.QueryProto_Key{
-			Key: &pb.KeyQueryProto{
-				Key: "#shop",
-			},
-		},
-	}
-
 	context := api.Context{
 		World: m,
 	}
-	found, err := findAreasContainingPoints(points, query, &context)
+	found, err := findAreasContainingPoints(points, b6.Keyed{"#shop"}, &context)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	}
@@ -146,8 +137,7 @@ func TestSamplePointsAlongPaths(t *testing.T) {
 		World: granarySquare,
 	}
 
-	query, _ := ingest.QueryForAllValues("#highway")
-	paths, err := FindPathFeatures(query, context)
+	paths, err := FindPathFeatures(b6.Keyed{"#highway"}, context)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -185,8 +175,7 @@ func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
 		World: granarySquare,
 	}
 
-	query, _ := ingest.QueryForAllValues("#highway")
-	paths, err := FindPathFeatures(query, context)
+	paths, err := FindPathFeatures(b6.Keyed{"#highway"}, context)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

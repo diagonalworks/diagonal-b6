@@ -55,10 +55,6 @@ func (k *keyRange) Value() Value {
 	return k.iterator.Value()
 }
 
-func (k *keyRange) ToQuery() Query {
-	return KeyRange{Begin: k.begin, End: k.end, Query: k.iterator.ToQuery()}
-}
-
 func newKeyRange(iterator Iterator, begin Key, end Key, values Values) *keyRange {
 	return &keyRange{iterator: iterator, begin: begin, end: end, started: false, values: values}
 }

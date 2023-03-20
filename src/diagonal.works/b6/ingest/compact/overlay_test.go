@@ -7,7 +7,6 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/search"
 	"diagonal.works/b6/test"
 	"diagonal.works/b6/test/camden"
 )
@@ -48,7 +47,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 		t.Errorf("Failed to merge overlay index: %s", err)
 	}
 
-	highways := w.FindFeatures(search.TokenPrefix{Prefix: "highway="})
+	highways := w.FindFeatures(b6.Keyed{"#highway"})
 	found := false
 	for highways.Next() {
 		if highways.FeatureID() == path.FeatureID() {

@@ -49,6 +49,7 @@ func MapS2Polygons(f func(p *s2.Polygon) ([]*s2.Polygon, error)) GeometryMapFunc
 type GeoJSON interface {
 	MapGeometries(f GeometryMapFunction) (GeoJSON, error)
 	ToS2Polygons() []*s2.Polygon
+	Centroid() Point
 }
 
 type Coordinate struct {
@@ -129,6 +130,7 @@ func (c *Coordinate) UnmarshalJSON(buffer []byte) error {
 
 type Coordinates interface {
 	EachCoordinate(func(Coordinate))
+	Centroid() Point
 }
 
 type Point Coordinate
@@ -161,12 +163,24 @@ func (p *Point) UnmarshalJSON(buffer []byte) error {
 	return ((*Coordinate)(p)).UnmarshalJSON(buffer)
 }
 
+func (p Point) Centroid() Point {
+	return p
+}
+
 type MultiPoint []Coordinate
 
 func (m MultiPoint) EachCoordinate(f func(Coordinate)) {
 	for _, coordinate := range m {
 		f(coordinate)
 	}
+}
+
+func (m MultiPoint) Centroid() Point {
+	query := s2.NewConvexHullQuery()
+	for _, coordinate := range m {
+		query.AddPoint(coordinate.ToS2Point())
+	}
+	return FromS2Point(s2.Point{Vector: query.ConvexHull().Centroid().Normalize()})
 }
 
 type LineString []Coordinate
@@ -197,6 +211,11 @@ func (l LineString) ToS2Loop() *s2.Loop {
 	return s2.LoopFromPoints(l.ToS2Polyline())
 }
 
+func (l LineString) Centroid() Point {
+	p := l.ToS2Polyline()
+	return FromS2Point(p.Centroid())
+}
+
 type Polygon [][]Coordinate
 
 func (p Polygon) EachCoordinate(f func(Coordinate)) {
@@ -218,6 +237,13 @@ func (p Polygon) ToS2Polygon() *s2.Polygon {
 	return s2.PolygonFromLoops(loops)
 }
 
+func (p Polygon) Centroid() Point {
+	if len(p) > 0 {
+		return FromS2Point(LineString(p[0]).ToS2Loop().Centroid())
+	}
+	return Point{}
+}
+
 type MultiLineString [][]Coordinate
 
 func (m MultiLineString) EachCoordinate(f func(Coordinate)) {
@@ -226,6 +252,16 @@ func (m MultiLineString) EachCoordinate(f func(Coordinate)) {
 			f(coordinate)
 		}
 	}
+}
+
+func (m MultiLineString) Centroid() Point {
+	query := s2.NewConvexHullQuery()
+	for _, line := range m {
+		for _, coordinate := range line {
+			query.AddPoint(coordinate.ToS2Point())
+		}
+	}
+	return FromS2Point(s2.Point{Vector: query.ConvexHull().Centroid().Normalize()})
 }
 
 type MultiPolygon [][][]Coordinate
@@ -246,6 +282,18 @@ func (m MultiPolygon) ToS2Polygons() []*s2.Polygon {
 		r[i] = Polygon(polygon).ToS2Polygon()
 	}
 	return r
+}
+
+func (m MultiPolygon) Centroid() Point {
+	query := s2.NewConvexHullQuery()
+	for _, polygon := range m {
+		for _, loop := range polygon {
+			for _, coordinate := range loop {
+				query.AddPoint(coordinate.ToS2Point())
+			}
+		}
+	}
+	return FromS2Point(s2.Point{Vector: query.ConvexHull().Centroid().Normalize()})
 }
 
 type Geometry struct {
@@ -338,6 +386,10 @@ func (g Geometry) ToS2Polygons() []*s2.Polygon {
 	default:
 		return []*s2.Polygon{}
 	}
+}
+
+func (g Geometry) Centroid() Point {
+	return g.Coordinates.Centroid()
 }
 
 var _ GeoJSON = &Geometry{}
@@ -478,6 +530,10 @@ func (f *Feature) ToS2Polygons() []*s2.Polygon {
 	return f.Geometry.ToS2Polygons()
 }
 
+func (f *Feature) Centroid() Point {
+	return f.Geometry.Centroid()
+}
+
 var _ GeoJSON = &Feature{}
 
 type FeatureCollection struct {
@@ -535,6 +591,16 @@ func (c *FeatureCollection) MapFeatureCollectionGeometries(f GeometryMapFunction
 
 func (c *FeatureCollection) MapGeometries(f GeometryMapFunction) (GeoJSON, error) {
 	return c.MapFeatureCollectionGeometries(f)
+}
+
+func (c *FeatureCollection) Centroid() Point {
+	query := s2.NewConvexHullQuery()
+	for _, feature := range c.Features {
+		feature.Geometry.Coordinates.EachCoordinate(func(c Coordinate) {
+			query.AddPoint(c.ToS2Point())
+		})
+	}
+	return FromS2Point(s2.Point{Vector: query.ConvexHull().Centroid().Normalize()})
 }
 
 func (f *FeatureCollection) ToS2Polygons() []*s2.Polygon {

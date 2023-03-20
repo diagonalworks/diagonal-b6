@@ -7,7 +7,6 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/search"
 	"diagonal.works/b6/test"
 	"github.com/golang/geo/s2"
 )
@@ -137,19 +136,19 @@ func ValidateReplaceFeatureWithAdditionalTag(w MutableWorld, t *testing.T) {
 		return
 	}
 
-	paths := b6.AllPaths(b6.FindPaths(search.All{Token: "highway=footway"}, w))
+	paths := b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#highway", Value: "footway"}, w))
 	if len(paths) != 1 || paths[0].PathID() != path.PathID {
 		t.Errorf("Expected to find one path")
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(search.All{Token: "bridge=yes"}, w))
+	paths = b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#bridge", Value: "yes"}, w))
 	if len(paths) != 0 {
 		t.Errorf("Didn't expect to find any bridges")
 	}
 
 	path.Tags = append(path.Tags, b6.Tag{Key: "#bridge", Value: "yes"})
 	w.AddPath(path)
-	paths = b6.AllPaths(b6.FindPaths(search.Intersection{search.All{Token: "highway=footway"}, search.All{Token: "bridge=yes"}}, w))
+	paths = b6.AllPaths(b6.FindPaths(b6.Intersection{b6.Tagged{Key: "#highway", Value: "footway"}, b6.Tagged{Key: "#bridge", Value: "yes"}}, w))
 	if len(paths) != 1 || paths[0].PathID() != path.PathID {
 		t.Errorf("Expected to find one path, found %d", len(paths))
 	}
@@ -448,7 +447,7 @@ func ValidateUpdatingPathUpdatesS2CellIndex(w MutableWorld, t *testing.T) {
 
 	// A cap covering only part of the Eastern Shed
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719)), b6.MetersToAngle(10))
-	areas := b6.AllAreas(b6.FindAreas(search.NewSpatialFromRegion(cap), w))
+	areas := b6.AllAreas(b6.FindAreas(b6.MightIntersect{cap}, w))
 	if len(areas) != 0 {
 		t.Errorf("Didn't expect to find an area %s", areas[0].FeatureID())
 	}
@@ -461,7 +460,7 @@ func ValidateUpdatingPathUpdatesS2CellIndex(w MutableWorld, t *testing.T) {
 		return
 	}
 
-	areas = b6.AllAreas(b6.FindAreas(search.NewSpatialFromRegion(cap), w))
+	areas = b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), w))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Errorf("Expected to find 1 matching area within the region (found %d)", len(areas))
 	}
@@ -493,7 +492,7 @@ func ValidateUpdatingPointLocationsUpdatesS2CellIndex(w MutableWorld, t *testing
 
 	// A cap covering only part of the Eastern Shed
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719)), b6.MetersToAngle(10))
-	areas := b6.AllAreas(b6.FindAreas(search.NewSpatialFromRegion(cap), w))
+	areas := b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), w))
 	if len(areas) != 0 {
 		t.Errorf("Didn't expect to find an area %s", areas[0].FeatureID())
 	}
@@ -507,7 +506,7 @@ func ValidateUpdatingPointLocationsUpdatesS2CellIndex(w MutableWorld, t *testing
 		return
 	}
 
-	areas = b6.AllAreas(b6.FindAreas(search.NewSpatialFromRegion(cap), w))
+	areas = b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), w))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Errorf("Expected to find an area within the region")
 	}
@@ -616,7 +615,7 @@ func ValidateRepeatedModification(w MutableWorld, t *testing.T) {
 			return b6.FindPathByID(FromOSMWayID(id), w)
 		}},
 		{"BySearch", func(w b6.World) b6.PathFeature {
-			highways := b6.AllPaths(b6.FindPaths(search.TokenPrefix{Prefix: "highway"}, w))
+			highways := b6.AllPaths(b6.FindPaths(b6.Keyed{"#highway"}, w))
 			if len(highways) != 1 {
 				t.Errorf("Expected to find 1 path, found %d", len(highways))
 				return nil
@@ -748,7 +747,7 @@ func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 		return
 	}
 
-	points := b6.AllPoints(b6.FindPoints(search.All{Token: "amenity=restaurant"}, w))
+	points := b6.AllPoints(b6.FindPoints(b6.Tagged{Key: "#amenity", Value: "restaurant"}, w))
 	if len(points) != 1 {
 		t.Errorf("Expected to find 1 point, found %d", len(points))
 		return
@@ -767,7 +766,7 @@ func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 		t.Errorf("Failed to find feature")
 	}
 
-	points = b6.AllPoints(b6.FindPoints(search.All{Token: "amenity=restaurant"}, w))
+	points = b6.AllPoints(b6.FindPoints(b6.Tagged{Key: "#amenity", Value: "restaurant"}, w))
 	if len(points) != 2 {
 		t.Errorf("Expected to find 2 points, found %d", len(points))
 		return
@@ -826,7 +825,7 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 
 	// A cap covering only part of the Eastern Shed
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719)), b6.MetersToAngle(10))
-	areas := b6.AllAreas(b6.FindAreas(search.NewSpatialFromRegion(cap), overlay))
+	areas := b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), overlay))
 	if len(areas) != 0 {
 		t.Errorf("Didn't expect to find an area %s", areas[0].FeatureID())
 	}
@@ -839,7 +838,7 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 		return
 	}
 
-	areas = b6.AllAreas(b6.FindAreas(search.NewSpatialFromRegion(cap), overlay))
+	areas = b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), overlay))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Errorf("Expected to area within the region (found %d areas)", len(areas))
 	}
@@ -866,7 +865,7 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(base)
 	granarySquareCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, a.Point(), b.Point()), b6.MetersToAngle(10))
-	paths := b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(granarySquareCap), overlay))
+	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Granary Square, found %d", len(paths))
 	}
@@ -879,12 +878,12 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 	}
 
 	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, aPrime.Point(), bPrime.Point()), b6.MetersToAngle(10))
-	paths = b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(bankCap), overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(bankCap), overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Bank, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(granarySquareCap), overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
 	if len(paths) != 0 {
 		t.Errorf("Expected to find no paths around Granary Square, found %d", len(paths))
 	}
@@ -912,7 +911,7 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(base)
 	granarySquareCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, a.Point(), b.Point()), b6.MetersToAngle(10))
-	paths := b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(granarySquareCap), overlay))
+	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Granary Square, found %d", len(paths))
 	}
@@ -927,12 +926,12 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 	}
 
 	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, aPrime.Point(), bPrime.Point()), b6.MetersToAngle(10))
-	paths = b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(bankCap), overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(bankCap), overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Bank, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(search.NewSpatialFromRegion(granarySquareCap), overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
 	if len(paths) != 0 {
 		t.Errorf("Expected to find no paths around Granary Square, found %d", len(paths))
 	}
@@ -988,7 +987,7 @@ func TestModifyPathWithIntersectionsInExistingWorld(t *testing.T) {
 	}
 }
 
-func validateTags(tagged b6.Tagged, expected []b6.Tag) error {
+func validateTags(tagged b6.Taggable, expected []b6.Tag) error {
 	for _, tag := range expected {
 		if found := tagged.Get(tag.Key); !found.IsValid() || found.Value != tag.Value {
 			return fmt.Errorf("Expected value %q for tag %q, found %q", tag.Value, tag.Key, found.Value)
@@ -1125,7 +1124,7 @@ func TestAddSearchableTagTagToExistingArea(t *testing.T) {
 	overlay := NewMutableOverlayWorld(base)
 	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#reachable", Value: "yes"})
 
-	areas := b6.AllAreas(b6.FindAreas(search.All{Token: "reachable=yes"}, overlay))
+	areas := b6.AllAreas(b6.FindAreas(b6.Tagged{Key: "#reachable", Value: "yes"}, overlay))
 	if len(areas) != 1 {
 		t.Errorf("Expected to find 1 area, found %d", len(areas))
 		return
@@ -1182,7 +1181,7 @@ func TestReturnModifiedTagsFromSearch(t *testing.T) {
 	overlay := NewMutableOverlayWorld(base)
 	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
 
-	points := b6.AllPoints(b6.FindPoints(search.All{Token: "amenity=restaurant"}, overlay))
+	points := b6.AllPoints(b6.FindPoints(b6.Tagged{Key: "#amenity", Value: "restaurant"}, overlay))
 	if len(points) != 1 {
 		t.Errorf("Expected to find a point")
 		return
@@ -1373,7 +1372,7 @@ func TestModifyingFeaturesWhileQueryingPanics(t *testing.T) {
 		}
 	}()
 
-	i := overlay.FindFeatures(search.All{Token: search.AllToken})
+	i := overlay.FindFeatures(b6.All{})
 	for i.Next() {
 		overlay.AddPoint(caravan)
 	}
@@ -1396,7 +1395,7 @@ func TestMergeWorlds(t *testing.T) {
 
 	lower := NewMutableOverlayWorld(base)
 	upper := NewMutableOverlayWorld(lower)
-	i := lower.FindFeatures(search.All{Token: search.AllToken})
+	i := lower.FindFeatures(b6.All{})
 	for i.Next() {
 		upper.AddPoint(caravan)
 	}

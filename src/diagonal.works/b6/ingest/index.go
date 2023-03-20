@@ -3,9 +3,6 @@ package ingest
 import (
 	"sort"
 
-	"diagonal.works/b6"
-	"diagonal.works/b6/search"
-
 	"github.com/golang/geo/s2"
 )
 
@@ -148,40 +145,3 @@ func (c CellIDs) Len() int             { return len(c) }
 func (c CellIDs) Cell(i int) s2.CellID { return c[i] }
 func (c CellIDs) Swap(i, j int)        { c[i], c[j] = c[j], c[i] }
 func (c CellIDs) Less(i, j int) bool   { return c[i] < c[j] }
-
-func RewriteSpatialQuery(q search.Spatial) search.Query {
-	covering := q.Covering()
-	rewritten := make(search.Union, 0, len(covering)*3)
-	ids := make(map[s2.CellID]struct{})
-	for _, id := range covering {
-		rewritten = append(rewritten, search.All{Token: AncestorCellIDToToken(id)})
-		for {
-			ids[id] = struct{}{}
-			if id.Level() == 0 {
-				break
-			}
-			id = id.Parent(id.Level() - 1)
-		}
-	}
-	for id := range ids {
-		rewritten = append(rewritten, search.All{Token: CellIDToToken(id)})
-	}
-	return rewritten
-}
-
-func RewriteFeatureTypeQuery(q b6.FeatureTypeQuery) search.Query {
-	var beginID, endID b6.FeatureID
-	switch b6.FeatureType(q.Type) {
-	case b6.FeatureTypePoint:
-		beginID, endID = b6.FeatureIDPointBegin, b6.FeatureIDPointEnd
-	case b6.FeatureTypePath:
-		beginID, endID = b6.FeatureIDPathBegin, b6.FeatureIDPathEnd
-	case b6.FeatureTypeArea:
-		beginID, endID = b6.FeatureIDAreaBegin, b6.FeatureIDAreaEnd
-	case b6.FeatureTypeRelation:
-		beginID, endID = b6.FeatureIDRelationBegin, b6.FeatureIDRelationEnd
-	default:
-		panic("Bad FeatureType")
-	}
-	return search.KeyRange{Begin: beginID, End: endID, Query: q.Query}
-}
