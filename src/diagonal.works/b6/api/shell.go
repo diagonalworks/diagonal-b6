@@ -505,10 +505,8 @@ func reduceTagKey(key *pb.NodeProto) *pb.NodeProto {
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_QueryValue{
 					QueryValue: &pb.QueryProto{
-						Query: &pb.QueryProto_Key{
-							Key: &pb.KeyQueryProto{
-								Key: nodeToString(key),
-							},
+						Query: &pb.QueryProto_Keyed{
+							Keyed: nodeToString(key),
 						},
 					},
 				},
@@ -525,8 +523,8 @@ func reduceTagKeyValue(key *pb.NodeProto, value *pb.NodeProto) *pb.NodeProto {
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_QueryValue{
 					QueryValue: &pb.QueryProto{
-						Query: &pb.QueryProto_KeyValue{
-							KeyValue: &pb.KeyValueQueryProto{
+						Query: &pb.QueryProto_Tagged{
+							Tagged: &pb.TagProto{
 								Key:   nodeToString(key),
 								Value: nodeToString(value),
 							},
@@ -549,7 +547,7 @@ func reduceAnd(a *pb.NodeProto, b *pb.NodeProto) *pb.NodeProto {
 				Value: &pb.LiteralNodeProto_QueryValue{
 					QueryValue: &pb.QueryProto{
 						Query: &pb.QueryProto_Intersection{
-							Intersection: &pb.IntersectionQueryProto{
+							Intersection: &pb.QueriesProto{
 								Queries: []*pb.QueryProto{aq, bq},
 							},
 						},
@@ -571,7 +569,7 @@ func reduceOr(a *pb.NodeProto, b *pb.NodeProto) *pb.NodeProto {
 				Value: &pb.LiteralNodeProto_QueryValue{
 					QueryValue: &pb.QueryProto{
 						Query: &pb.QueryProto_Union{
-							Union: &pb.UnionQueryProto{
+							Union: &pb.QueriesProto{
 								Queries: []*pb.QueryProto{aq, bq},
 							},
 						},

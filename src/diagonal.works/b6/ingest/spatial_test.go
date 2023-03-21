@@ -37,7 +37,7 @@ func TestIntersectsWithCap(t *testing.T) {
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53617, -0.12582)), b6.MetersToAngle(100))
 	roughAreas := makeAreaMap(b6.FindAreas(b6.MightIntersect{cap}, w))
-	exactAreas := makeAreaMap(b6.FindAreas(b6.NewIntersectsCap(cap), w))
+	exactAreas := makeAreaMap(b6.FindAreas(b6.IntersectsCap{cap}, w))
 
 	if len(roughAreas) <= len(exactAreas) || len(exactAreas) == 0 {
 		t.Errorf("Expected there to be less areas by exact match than rough match")

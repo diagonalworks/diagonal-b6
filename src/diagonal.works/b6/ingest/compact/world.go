@@ -10,6 +10,7 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/encoding"
 	"diagonal.works/b6/geojson"
+	"diagonal.works/b6/geometry"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/search"
 	"github.com/golang/geo/s2"
@@ -392,6 +393,14 @@ func (m *marshalledArea) Polygon(i int) *s2.Polygon {
 		}
 	}
 	return m.polygons[i]
+}
+
+func (m *marshalledArea) MultiPolygon() geometry.MultiPolygon {
+	mp := make(geometry.MultiPolygon, m.Len())
+	for i := 0; i < m.Len(); i++ {
+		mp[i] = m.Polygon(i)
+	}
+	return mp
 }
 
 func (m *marshalledArea) Feature(i int) []b6.PathFeature {

@@ -97,7 +97,7 @@ func SightlineUsingPolarCoordinates(center s2.Point, radius s1.Angle, w b6.World
 	containsPoint := s2.NewContainsPointQuery(index, s2.VertexModelOpen)
 	tolerance := b6.MetersToAngle(0.01)
 	cap := s2.CapFromCenterAngle(center, radius)
-	features := b6.FindAreas(b6.Intersection{b6.NewIntersectsCap(cap), b6.Keyed{"#building"}}, w)
+	features := b6.FindAreas(b6.Intersection{b6.IntersectsCap{Cap: cap}, b6.Keyed{Key: "#building"}}, w)
 	edges := make([][2]s2.Point, 0, 8)
 	occlusions := make([]*s2.Loop, 0, 2)
 	for features.Next() {

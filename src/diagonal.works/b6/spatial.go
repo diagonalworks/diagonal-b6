@@ -1,0 +1,636 @@
+package b6
+
+import (
+	"fmt"
+	"strings"
+
+	"diagonal.works/b6/geometry"
+	pb "diagonal.works/b6/proto"
+	"diagonal.works/b6/search"
+	"github.com/golang/geo/s2"
+)
+
+// Spatial search functions are covered with tests in ingest/spatial_test.go,
+// for ease of loading test data.
+
+type MightIntersect struct {
+	s2.Region
+}
+
+func (m MightIntersect) Compile(i FeatureIndex, w World) search.Iterator {
+	return search.NewSpatialFromRegion(s2.Region(m)).Compile(i)
+}
+
+func (m MightIntersect) Matches(f Feature, w World) bool {
+	return true
+}
+
+func (m MightIntersect) String() string {
+	return search.NewSpatialFromRegion(s2.Region(m)).String()
+}
+
+func (m MightIntersect) ToProto() (*pb.QueryProto, error) {
+	coverer := search.MakeCoverer()
+	covering := coverer.Covering(m.Region)
+	ids := make([]uint64, len(covering))
+	for ii, id := range covering {
+		ids[ii] = uint64(id)
+	}
+	return &pb.QueryProto{
+		Query: &pb.QueryProto_MightIntersect{
+			MightIntersect: &pb.S2CellIDsProto{
+				S2CellIDs: ids,
+			},
+		},
+	}, nil
+}
+
+type IntersectsCells struct {
+	Cells []s2.Cell
+}
+
+func (i IntersectsCells) String() string {
+	tokens := make([]string, len(i.Cells))
+	for ii, c := range i.Cells {
+		tokens[ii] = c.ID().ToToken()
+	}
+	return fmt.Sprintf("(intersects-cells %s)", strings.Join(tokens, ","))
+}
+
+func (i IntersectsCells) Compile(index FeatureIndex, w World) search.Iterator {
+	union := make(s2.CellUnion, len(i.Cells))
+	for ii, cell := range i.Cells {
+		union[ii] = cell.ID()
+	}
+	union.Normalize()
+	if index, ok := index.(FeatureIndex); ok {
+		return &intersectsCells{cells: i.Cells, index: index, iterator: search.NewSpatialFromRegion(&union).Compile(index)}
+	}
+	return search.NewEmptyIterator()
+}
+
+func (i IntersectsCells) Matches(feature Feature, w World) bool {
+	return cellsIntersectFeature(i.Cells, feature)
+}
+
+func (i IntersectsCells) ToProto() (*pb.QueryProto, error) {
+	ids := make([]uint64, len(i.Cells))
+	for ii, cell := range i.Cells {
+		ids[ii] = uint64(cell.ID())
+	}
+	return &pb.QueryProto{
+		Query: &pb.QueryProto_IntersectsCells{
+			IntersectsCells: &pb.S2CellIDsProto{
+				S2CellIDs: ids,
+			},
+		},
+	}, nil
+}
+
+func cellsIntersectFeature(cells []s2.Cell, feature Feature) bool {
+	switch f := feature.(type) {
+	case PointFeature:
+		for _, c := range cells {
+			if c.ContainsPoint(f.Point()) {
+				return true
+			}
+		}
+	case PathFeature:
+		polyline := f.Polyline()
+		for _, c := range cells {
+			if polyline.IntersectsCell(c) {
+				return true
+			}
+		}
+	case AreaFeature:
+		for j := 0; j < f.Len(); j++ {
+			polygon := f.Polygon(j)
+			for _, c := range cells {
+				if polygon.IntersectsCell(c) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+type intersectsCells struct {
+	cells    []s2.Cell
+	index    FeatureIndex
+	iterator search.Iterator
+}
+
+func (i *intersectsCells) Next() bool {
+	for {
+		ok := i.iterator.Next()
+		if !ok {
+			return false
+		}
+		if cellsIntersectFeature(i.cells, i.index.Feature(i.Value())) {
+			return true
+		}
+	}
+}
+
+func (i *intersectsCells) Advance(key search.Key) bool {
+	ok := i.iterator.Advance(key)
+	for ok && !cellsIntersectFeature(i.cells, i.index.Feature(i.Value())) {
+		ok = i.iterator.Next()
+	}
+	return ok
+}
+
+func (i *intersectsCells) Value() search.Value {
+	return i.iterator.Value()
+}
+
+func (i *intersectsCells) EstimateLength() int {
+	return i.iterator.EstimateLength()
+}
+
+func NewIntersectsCellUnion(union s2.CellUnion) Query {
+	cells := make([]s2.Cell, len(union))
+	for i, cell := range union {
+		cells[i] = s2.CellFromCellID(cell)
+	}
+	return IntersectsCells{Cells: cells}
+}
+
+func NewIntersectsCell(cell s2.Cell) Query {
+	return IntersectsCells{Cells: []s2.Cell{cell}}
+}
+
+func NewIntersectsCellID(cell s2.CellID) Query {
+	return NewIntersectsCell(s2.CellFromCellID(cell))
+}
+
+type IntersectsCap struct {
+	Cap s2.Cap
+}
+
+func (i IntersectsCap) String() string {
+	ll := s2.LatLngFromPoint(i.Cap.Center())
+	return fmt.Sprintf("(intersects-cap %f %f %.2f)", ll.Lat.Degrees(), ll.Lng.Degrees(), AngleToMeters(i.Cap.Radius()))
+}
+
+func (i IntersectsCap) ToProto() (*pb.QueryProto, error) {
+	return &pb.QueryProto{
+		Query: &pb.QueryProto_IntersectsCap{
+			IntersectsCap: &pb.CapProto{
+				Center:       NewPointProtoFromS2Point(i.Cap.Center()),
+				RadiusMeters: AngleToMeters(i.Cap.Radius()),
+			},
+		},
+	}, nil
+}
+
+func (i IntersectsCap) Compile(index FeatureIndex, w World) search.Iterator {
+	if index, ok := index.(FeatureIndex); ok {
+		// TODO: Implement a more exact way of calculating polygon/cap intersection
+		capLoop := s2.RegularLoop(i.Cap.Center(), i.Cap.Radius(), 1024)
+		capPolygon := s2.PolygonFromLoops([]*s2.Loop{capLoop})
+		return &intersectsCap{cap: i.Cap, capPolygon: capPolygon, index: index, iterator: search.NewSpatialFromRegion(i.Cap).Compile(index)}
+	}
+	return search.NewEmptyIterator()
+}
+
+func (i IntersectsCap) Matches(feature Feature, w World) bool {
+	polygon := s2.PolygonFromLoops([]*s2.Loop{s2.RegularLoop(i.Cap.Center(), i.Cap.Radius(), 1024)})
+	return capIntersectsFeature(i.Cap, polygon, feature)
+}
+
+type intersectsCap struct {
+	cap        s2.Cap
+	capPolygon *s2.Polygon
+	index      FeatureIndex
+	iterator   search.Iterator
+}
+
+func (i *intersectsCap) Next() bool {
+	for {
+		ok := i.iterator.Next()
+		if !ok {
+			return false
+		}
+		if capIntersectsFeature(i.cap, i.capPolygon, i.index.Feature(i.Value())) {
+			return true
+		}
+	}
+}
+
+func capIntersectsFeature(cap s2.Cap, capPolygon *s2.Polygon, feature Feature) bool {
+	switch f := feature.(type) {
+	case PointFeature:
+		if cap.ContainsPoint(f.Point()) {
+			return true
+		}
+	case PathFeature:
+		projection, _ := f.Polyline().Project(cap.Center())
+		if cap.ContainsPoint(projection) {
+			return true
+		}
+	case AreaFeature:
+		for j := 0; j < f.Len(); j++ {
+			if f.Polygon(j).Intersects(capPolygon) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (i *intersectsCap) Advance(key search.Key) bool {
+	ok := i.iterator.Advance(key)
+	for ok && !capIntersectsFeature(i.cap, i.capPolygon, i.index.Feature(i.Value())) {
+		ok = i.iterator.Next()
+	}
+	return ok
+}
+
+func (i *intersectsCap) Value() search.Value {
+	return i.iterator.Value()
+}
+
+func (i *intersectsCap) EstimateLength() int {
+	return i.iterator.EstimateLength()
+}
+
+type IntersectsFeature struct {
+	ID FeatureID
+}
+
+func (i IntersectsFeature) Matches(f Feature, w World) bool {
+	return i.ID == f.FeatureID() || i.toGeometryQuery(w).Matches(f, w)
+}
+
+func (i IntersectsFeature) Compile(index FeatureIndex, w World) search.Iterator {
+	return i.toGeometryQuery(w).Compile(index, w)
+}
+
+func (i IntersectsFeature) String() string {
+	return fmt.Sprintf("(intersects-feature %s)", i.ID)
+}
+
+func (i IntersectsFeature) ToProto() (*pb.QueryProto, error) {
+	return &pb.QueryProto{
+		Query: &pb.QueryProto_IntersectsFeature{
+			IntersectsFeature: NewProtoFromFeatureID(i.ID),
+		},
+	}, nil
+}
+
+func (i IntersectsFeature) toGeometryQuery(w World) Query {
+	if f := w.FindFeatureByID(i.ID); f != nil {
+		switch f := f.(type) {
+		case Point:
+			return IntersectsPoint{f.Point()}
+		case Path:
+			return IntersectsPolyline{f.Polyline()}
+		case Area:
+			return IntersectsMultiPolygon{f.MultiPolygon()}
+		}
+	}
+	return Empty{}
+}
+
+type IntersectsPoint struct {
+	Point s2.Point
+}
+
+func (i IntersectsPoint) String() string {
+	ll := s2.LatLngFromPoint(i.Point)
+	return fmt.Sprintf("(intersects-point %f %f)", ll.Lat.Degrees(), ll.Lng.Degrees())
+}
+
+func (i IntersectsPoint) Compile(index FeatureIndex, w World) search.Iterator {
+	if index, ok := index.(FeatureIndex); ok {
+		return &intersectsPoint{point: i.Point, index: index, iterator: search.NewSpatialFromRegion(i.Point).Compile(index)}
+	}
+	return search.NewEmptyIterator()
+}
+
+func (i IntersectsPoint) Matches(f Feature, w World) bool {
+	return pointIntersectsFeature(i.Point, f)
+}
+
+func (i IntersectsPoint) ToProto() (*pb.QueryProto, error) {
+	return &pb.QueryProto{
+		Query: &pb.QueryProto_IntersectsPoint{
+			IntersectsPoint: NewPointProtoFromS2Point(i.Point),
+		},
+	}, nil
+}
+
+type intersectsPoint struct {
+	point    s2.Point
+	index    FeatureIndex
+	iterator search.Iterator
+}
+
+func (i *intersectsPoint) Next() bool {
+	for {
+		ok := i.iterator.Next()
+		if !ok {
+			return false
+		}
+		if pointIntersectsFeature(i.point, i.index.Feature(i.Value())) {
+			return true
+		}
+	}
+}
+
+func pointIntersectsFeature(point s2.Point, feature Feature) bool {
+	switch f := feature.(type) {
+	case PointFeature:
+		return f.Point() == point
+	case PathFeature:
+		projection, _ := f.Polyline().Project(point)
+		// TODO: Define the tolerance with more rigour
+		return projection.Distance(point) < MetersToAngle(0.001)
+	case AreaFeature:
+		for i := 0; i < f.Len(); i++ {
+			if f.Polygon(i).ContainsPoint(point) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (i *intersectsPoint) Advance(key search.Key) bool {
+	ok := i.iterator.Advance(key)
+	for ok && !pointIntersectsFeature(i.point, i.index.Feature(i.Value())) {
+		ok = i.iterator.Next()
+	}
+	return ok
+}
+
+func (i *intersectsPoint) Value() search.Value {
+	return i.iterator.Value()
+}
+
+func (i *intersectsPoint) EstimateLength() int {
+	return i.iterator.EstimateLength()
+}
+
+type IntersectsPolyline struct {
+	Polyline *s2.Polyline
+}
+
+func (i IntersectsPolyline) String() string {
+	return "(intersects-polyline)"
+}
+
+func (i IntersectsPolyline) Compile(index FeatureIndex, w World) search.Iterator {
+	if index, ok := index.(FeatureIndex); ok {
+		return &intersectsPolyline{polyline: i.Polyline, index: index, iterator: search.NewSpatialFromRegion(i.Polyline).Compile(index)}
+	}
+	return search.NewEmptyIterator()
+}
+
+func (i IntersectsPolyline) Matches(f Feature, w World) bool {
+	return polylineIntersectsFeature(i.Polyline, f)
+}
+
+func (i IntersectsPolyline) ToProto() (*pb.QueryProto, error) {
+	return &pb.QueryProto{
+		Query: &pb.QueryProto_IntersectsPolyline{
+			IntersectsPolyline: NewPolylineProto(i.Polyline),
+		},
+	}, nil
+}
+
+type intersectsPolyline struct {
+	polyline *s2.Polyline
+	index    FeatureIndex
+	iterator search.Iterator
+}
+
+func (i *intersectsPolyline) Next() bool {
+	for {
+		ok := i.iterator.Next()
+		if !ok {
+			return false
+		}
+		if polylineIntersectsFeature(i.polyline, i.index.Feature(i.Value())) {
+			return true
+		}
+	}
+}
+
+func polylineIntersectsPolygon(polyline *s2.Polyline, polygon *s2.Polygon) bool {
+	// TODO: This implementation is incorrect, as a path can pass though a polygon
+	// without a vertex being inside it. Implement this properly based on, eg, the
+	// alogorithms in geo/clip.go
+	for i := 0; i < len(*polyline); i++ {
+		if polygon.ContainsPoint((*polyline)[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+func polylineIntersectsFeature(polyline *s2.Polyline, feature Feature) bool {
+	switch f := feature.(type) {
+	case PointFeature:
+		projection, _ := polyline.Project(f.Point())
+		// TODO: Define the tolerance with more rigour
+		return projection.Distance(f.Point()) < MetersToAngle(0.001)
+	case PathFeature:
+		return f.Polyline().Intersects(polyline)
+	case AreaFeature:
+		for i := 0; i < f.Len(); i++ {
+			if polylineIntersectsPolygon(polyline, f.Polygon(i)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (i *intersectsPolyline) Advance(key search.Key) bool {
+	ok := i.iterator.Advance(key)
+	for ok && !polylineIntersectsFeature(i.polyline, i.index.Feature(i.Value())) {
+		ok = i.iterator.Next()
+	}
+	return ok
+}
+
+func (i *intersectsPolyline) Value() search.Value {
+	return i.iterator.Value()
+}
+
+func (i *intersectsPolyline) EstimateLength() int {
+	return i.iterator.EstimateLength()
+}
+
+type IntersectsMultiPolygon struct {
+	MultiPolygon geometry.MultiPolygon
+}
+
+func (i IntersectsMultiPolygon) String() string {
+	return "(intersects-multipolygon)"
+}
+
+func (i IntersectsMultiPolygon) Compile(index FeatureIndex, w World) search.Iterator {
+	if index, ok := index.(FeatureIndex); ok {
+		coverer := search.MakeCoverer()
+		var covering s2.CellUnion
+		for _, polygon := range i.MultiPolygon {
+			covering = s2.CellUnionFromUnion(covering, coverer.Covering(polygon))
+		}
+		return &intersectsMultiPolygon{polygons: i.MultiPolygon, index: index, iterator: search.NewSpatialFromCellUnion(covering).Compile(index)}
+	}
+	return search.NewEmptyIterator()
+}
+
+func (i IntersectsMultiPolygon) Matches(f Feature, w World) bool {
+	return multiPolygonIntersectsFeature(i.MultiPolygon, f)
+}
+
+func (i IntersectsMultiPolygon) ToProto() (*pb.QueryProto, error) {
+	return &pb.QueryProto{
+		Query: &pb.QueryProto_IntersectsMultiPolygon{
+			IntersectsMultiPolygon: NewMultiPolygonProto(i.MultiPolygon),
+		},
+	}, nil
+}
+
+type intersectsMultiPolygon struct {
+	polygons geometry.MultiPolygon
+	index    FeatureIndex
+	iterator search.Iterator
+}
+
+func (i *intersectsMultiPolygon) Next() bool {
+	for {
+		ok := i.iterator.Next()
+		if !ok {
+			return false
+		}
+		if multiPolygonIntersectsFeature(i.polygons, i.index.Feature(i.Value())) {
+			return true
+		}
+	}
+}
+
+func multiPolygonIntersectsFeature(polygons geometry.MultiPolygon, feature Feature) bool {
+	switch f := feature.(type) {
+	case PointFeature:
+		for _, polygon := range polygons {
+			if polygon.ContainsPoint(f.Point()) {
+				return true
+			}
+		}
+	case PathFeature:
+		polyline := f.Polyline()
+		for _, polygon := range polygons {
+			if polylineIntersectsPolygon(polyline, polygon) {
+				return true
+			}
+		}
+	case AreaFeature:
+		ps := make([]*s2.Polygon, f.Len())
+		for i := 0; i < f.Len(); i++ {
+			ps[i] = f.Polygon(i)
+		}
+		for _, a := range ps {
+			for _, b := range polygons {
+				if a.Intersects(b) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (i *intersectsMultiPolygon) Advance(key search.Key) bool {
+	ok := i.iterator.Advance(key)
+	for ok && !multiPolygonIntersectsFeature(i.polygons, i.index.Feature(i.Value())) {
+		ok = i.iterator.Next()
+	}
+	return ok
+}
+
+func (i *intersectsMultiPolygon) Value() search.Value {
+	return i.iterator.Value()
+}
+
+func (i *intersectsMultiPolygon) EstimateLength() int {
+	return i.iterator.EstimateLength()
+}
+
+type FeatureIterator struct {
+	i     search.Iterator
+	index FeatureIndex
+}
+
+func NewFeatureIterator(i search.Iterator, index FeatureIndex) *FeatureIterator {
+	return &FeatureIterator{i: i, index: index}
+}
+
+func (f *FeatureIterator) Next() bool {
+	return f.i.Next()
+}
+
+func (f *FeatureIterator) Feature() Feature {
+	return f.index.Feature(f.i.Value())
+}
+
+func (f *FeatureIterator) FeatureID() FeatureID {
+	return f.index.ID(f.i.Value())
+}
+
+func NewQueryFromProto(p *pb.QueryProto) (Query, error) {
+	switch q := p.Query.(type) {
+	case *pb.QueryProto_All:
+		return All{}, nil
+	case *pb.QueryProto_Keyed:
+		return Keyed{q.Keyed}, nil
+	case *pb.QueryProto_Tagged:
+		return Tagged{Key: q.Tagged.Key, Value: q.Tagged.Value}, nil
+	case *pb.QueryProto_IntersectsCap:
+		ll := PointProtoToS2LatLng(q.IntersectsCap.Center)
+		cap := s2.CapFromCenterAngle(s2.PointFromLatLng(ll), MetersToAngle(q.IntersectsCap.RadiusMeters))
+		return IntersectsCap{cap}, nil
+	case *pb.QueryProto_IntersectsFeature:
+		return IntersectsFeature{ID: NewFeatureIDFromProto(q.IntersectsFeature)}, nil
+	case *pb.QueryProto_IntersectsPoint:
+		return IntersectsPoint{PointProtoToS2Point(q.IntersectsPoint)}, nil
+	case *pb.QueryProto_IntersectsPolyline:
+		return IntersectsPolyline{PolylineProtoToS2Polyline(q.IntersectsPolyline)}, nil
+	case *pb.QueryProto_IntersectsMultiPolygon:
+		return IntersectsMultiPolygon{MultiPolygonProtoToS2MultiPolygon(q.IntersectsMultiPolygon)}, nil
+	case *pb.QueryProto_Typed:
+		if q.Typed.Query != nil {
+			child, err := NewQueryFromProto(q.Typed.Query)
+			if err != nil {
+				return Empty{}, err
+			}
+			return Typed{Type: NewFeatureTypeFromProto(q.Typed.Type), Query: child}, nil
+		}
+	case *pb.QueryProto_Intersection:
+		intersection := make(Intersection, len(q.Intersection.Queries))
+		for i, next := range q.Intersection.Queries {
+			if child, err := NewQueryFromProto(next); err == nil {
+				intersection[i] = child
+			} else {
+				return Empty{}, err
+			}
+		}
+		return intersection, nil
+	case *pb.QueryProto_Union:
+		union := make(Union, len(q.Union.Queries))
+		for i, next := range q.Union.Queries {
+			if child, err := NewQueryFromProto(next); err == nil {
+				union[i] = child
+			} else {
+				return Empty{}, err
+			}
+		}
+		return union, nil
+	}
+	return Empty{}, fmt.Errorf("Can't handle query %v", p)
+}

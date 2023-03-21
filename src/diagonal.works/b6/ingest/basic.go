@@ -8,6 +8,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/geojson"
+	"diagonal.works/b6/geometry"
 	"diagonal.works/b6/search"
 	"github.com/golang/geo/s2"
 )
@@ -183,6 +184,14 @@ func (a areaFeature) Polygon(i int) *s2.Polygon {
 		}
 	}
 	return s2.PolygonFromLoops(loops)
+}
+
+func (a areaFeature) MultiPolygon() geometry.MultiPolygon {
+	m := make(geometry.MultiPolygon, a.Len())
+	for i := 0; i < a.Len(); i++ {
+		m[i] = a.Polygon(i)
+	}
+	return m
 }
 
 func (a areaFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {

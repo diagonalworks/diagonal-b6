@@ -460,7 +460,7 @@ func ValidateUpdatingPathUpdatesS2CellIndex(w MutableWorld, t *testing.T) {
 		return
 	}
 
-	areas = b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), w))
+	areas = b6.AllAreas(b6.FindAreas(b6.IntersectsCap{cap}, w))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Errorf("Expected to find 1 matching area within the region (found %d)", len(areas))
 	}
@@ -492,7 +492,7 @@ func ValidateUpdatingPointLocationsUpdatesS2CellIndex(w MutableWorld, t *testing
 
 	// A cap covering only part of the Eastern Shed
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719)), b6.MetersToAngle(10))
-	areas := b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), w))
+	areas := b6.AllAreas(b6.FindAreas(b6.IntersectsCap{cap}, w))
 	if len(areas) != 0 {
 		t.Errorf("Didn't expect to find an area %s", areas[0].FeatureID())
 	}
@@ -506,7 +506,7 @@ func ValidateUpdatingPointLocationsUpdatesS2CellIndex(w MutableWorld, t *testing
 		return
 	}
 
-	areas = b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), w))
+	areas = b6.AllAreas(b6.FindAreas(b6.IntersectsCap{cap}, w))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Errorf("Expected to find an area within the region")
 	}
@@ -825,7 +825,7 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 
 	// A cap covering only part of the Eastern Shed
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719)), b6.MetersToAngle(10))
-	areas := b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), overlay))
+	areas := b6.AllAreas(b6.FindAreas(b6.IntersectsCap{cap}, overlay))
 	if len(areas) != 0 {
 		t.Errorf("Didn't expect to find an area %s", areas[0].FeatureID())
 	}
@@ -838,7 +838,7 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 		return
 	}
 
-	areas = b6.AllAreas(b6.FindAreas(b6.NewIntersectsCap(cap), overlay))
+	areas = b6.AllAreas(b6.FindAreas(b6.IntersectsCap{cap}, overlay))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Errorf("Expected to area within the region (found %d areas)", len(areas))
 	}
@@ -865,7 +865,7 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(base)
 	granarySquareCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, a.Point(), b.Point()), b6.MetersToAngle(10))
-	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
+	paths := b6.AllPaths(b6.FindPaths(b6.IntersectsCap{granarySquareCap}, overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Granary Square, found %d", len(paths))
 	}
@@ -878,12 +878,12 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 	}
 
 	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, aPrime.Point(), bPrime.Point()), b6.MetersToAngle(10))
-	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(bankCap), overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{bankCap}, overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Bank, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{granarySquareCap}, overlay))
 	if len(paths) != 0 {
 		t.Errorf("Expected to find no paths around Granary Square, found %d", len(paths))
 	}
@@ -911,7 +911,7 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(base)
 	granarySquareCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, a.Point(), b.Point()), b6.MetersToAngle(10))
-	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
+	paths := b6.AllPaths(b6.FindPaths(b6.IntersectsCap{granarySquareCap}, overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Granary Square, found %d", len(paths))
 	}
@@ -926,12 +926,12 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 	}
 
 	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, aPrime.Point(), bPrime.Point()), b6.MetersToAngle(10))
-	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(bankCap), overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{bankCap}, overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Bank, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{granarySquareCap}, overlay))
 	if len(paths) != 0 {
 		t.Errorf("Expected to find no paths around Granary Square, found %d", len(paths))
 	}

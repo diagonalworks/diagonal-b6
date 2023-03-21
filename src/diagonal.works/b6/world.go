@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"diagonal.works/b6/geojson"
+	"diagonal.works/b6/geometry"
 	"diagonal.works/b6/units"
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
@@ -530,6 +531,7 @@ type Area interface {
 	Geometry
 	Len() int
 	Polygon(i int) *s2.Polygon
+	MultiPolygon() geometry.MultiPolygon
 }
 
 type area struct {
@@ -542,6 +544,14 @@ func (a area) Len() int {
 
 func (a area) Polygon(i int) *s2.Polygon {
 	return a.ps[i]
+}
+
+func (a area) MultiPolygon() geometry.MultiPolygon {
+	m := make(geometry.MultiPolygon, a.Len())
+	for i := 0; i < a.Len(); i++ {
+		m[i] = a.Polygon(i)
+	}
+	return m
 }
 
 func (a area) Covering(coverer s2.RegionCoverer) s2.CellUnion {
