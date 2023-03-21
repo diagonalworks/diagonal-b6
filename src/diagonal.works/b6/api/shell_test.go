@@ -569,10 +569,8 @@ func TestParseExpression(t *testing.T) {
 								Literal: &pb.LiteralNodeProto{
 									Value: &pb.LiteralNodeProto_QueryValue{
 										QueryValue: &pb.QueryProto{
-											Query: &pb.QueryProto_Key{
-												Key: &pb.KeyQueryProto{
-													Key: "#building",
-												},
+											Query: &pb.QueryProto_Keyed{
+												Keyed: "#building",
 											},
 										},
 									},
@@ -604,11 +602,11 @@ func TestParseExpression(t *testing.T) {
 									Value: &pb.LiteralNodeProto_QueryValue{
 										QueryValue: &pb.QueryProto{
 											Query: &pb.QueryProto_Intersection{
-												Intersection: &pb.IntersectionQueryProto{
+												Intersection: &pb.QueriesProto{
 													Queries: []*pb.QueryProto{
 														&pb.QueryProto{
-															Query: &pb.QueryProto_KeyValue{
-																KeyValue: &pb.KeyValueQueryProto{
+															Query: &pb.QueryProto_Tagged{
+																Tagged: &pb.TagProto{
 																	Key:   "#building",
 																	Value: "yes",
 																},
@@ -616,19 +614,19 @@ func TestParseExpression(t *testing.T) {
 														},
 														&pb.QueryProto{
 															Query: &pb.QueryProto_Union{
-																Union: &pb.UnionQueryProto{
+																Union: &pb.QueriesProto{
 																	Queries: []*pb.QueryProto{
 																		&pb.QueryProto{
-																			Query: &pb.QueryProto_KeyValue{
-																				KeyValue: &pb.KeyValueQueryProto{
+																			Query: &pb.QueryProto_Tagged{
+																				Tagged: &pb.TagProto{
 																					Key:   "#shop",
 																					Value: "supermarket",
 																				},
 																			},
 																		},
 																		&pb.QueryProto{
-																			Query: &pb.QueryProto_KeyValue{
-																				KeyValue: &pb.KeyValueQueryProto{
+																			Query: &pb.QueryProto_Tagged{
+																				Tagged: &pb.TagProto{
 																					Key:   "#shop",
 																					Value: "convenience",
 																				},
@@ -715,8 +713,8 @@ func TestOrderTokens(t *testing.T) {
 				Literal: &pb.LiteralNodeProto{
 					Value: &pb.LiteralNodeProto_QueryValue{
 						QueryValue: &pb.QueryProto{
-							Query: &pb.QueryProto_KeyValue{
-								KeyValue: &pb.KeyValueQueryProto{
+							Query: &pb.QueryProto_Tagged{
+								Tagged: &pb.TagProto{
 									Key:   "#building",
 									Value: "school",
 								},

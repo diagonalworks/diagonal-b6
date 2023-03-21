@@ -82,19 +82,19 @@ func FindRelationFeatures(query b6.Query, context *api.Context) (api.RelationFea
 func intersecting(g b6.Geometry, context *api.Context) (b6.Query, error) {
 	switch g := g.(type) {
 	case b6.Point:
-		return b6.NewIntersectsPoint(g.Point()), nil
+		return b6.IntersectsPoint{Point: g.Point()}, nil
 	case b6.Path:
-		return b6.NewIntersectsPath(g), nil
+		return b6.IntersectsPolyline{Polyline: g.Polyline()}, nil
 	case b6.Area:
-		return b6.NewIntersectsArea(g), nil
+		return b6.IntersectsMultiPolygon{MultiPolygon: g.MultiPolygon()}, nil
 	}
 	return b6.Empty{}, nil
 }
 
 func typePoint(context *api.Context) (*pb.QueryProto, error) {
 	return &pb.QueryProto{
-		Query: &pb.QueryProto_Type{
-			Type: &pb.TypeQueryProto{
+		Query: &pb.QueryProto_Typed{
+			Typed: &pb.TypedQueryProto{
 				Type: pb.FeatureType_FeatureTypePoint,
 				Query: &pb.QueryProto{
 					Query: &pb.QueryProto_All{
@@ -108,8 +108,8 @@ func typePoint(context *api.Context) (*pb.QueryProto, error) {
 
 func typePath(context *api.Context) (*pb.QueryProto, error) {
 	return &pb.QueryProto{
-		Query: &pb.QueryProto_Type{
-			Type: &pb.TypeQueryProto{
+		Query: &pb.QueryProto_Typed{
+			Typed: &pb.TypedQueryProto{
 				Type: pb.FeatureType_FeatureTypePath,
 				Query: &pb.QueryProto{
 					Query: &pb.QueryProto_All{
@@ -123,8 +123,8 @@ func typePath(context *api.Context) (*pb.QueryProto, error) {
 
 func typeArea(context *api.Context) (*pb.QueryProto, error) {
 	return &pb.QueryProto{
-		Query: &pb.QueryProto_Type{
-			Type: &pb.TypeQueryProto{
+		Query: &pb.QueryProto_Typed{
+			Typed: &pb.TypedQueryProto{
 				Type: pb.FeatureType_FeatureTypeArea,
 				Query: &pb.QueryProto{
 					Query: &pb.QueryProto_All{
@@ -137,11 +137,11 @@ func typeArea(context *api.Context) (*pb.QueryProto, error) {
 }
 
 func within(a b6.Area, context *api.Context) (b6.Query, error) {
-	return b6.NewIntersectsArea(a), nil
+	return b6.IntersectsMultiPolygon{MultiPolygon: a.MultiPolygon()}, nil
 }
 
 func withinCap(p b6.Point, radius float64, context *api.Context) (b6.Query, error) {
-	return b6.NewIntersectsCap(s2.CapFromCenterAngle(p.Point(), b6.MetersToAngle(radius))), nil
+	return b6.IntersectsCap{Cap: s2.CapFromCenterAngle(p.Point(), b6.MetersToAngle(radius))}, nil
 }
 
 func tagged(key string, value string, context *api.Context) (b6.Query, error) {
@@ -166,16 +166,10 @@ func all(context *api.Context) (b6.Query, error) {
 
 func queryFromCap(cap s2.Cap) *pb.QueryProto {
 	return &pb.QueryProto{
-		Query: &pb.QueryProto_Spatial{
-			Spatial: &pb.SpatialQueryProto{
-				Area: &pb.AreaProto{
-					Area: &pb.AreaProto_Cap{
-						Cap: &pb.CapProto{
-							Center:       b6.NewPointProtoFromS2Point(cap.Center()),
-							RadiusMeters: b6.AngleToMeters(cap.Radius()),
-						},
-					},
-				},
+		Query: &pb.QueryProto_IntersectsCap{
+			IntersectsCap: &pb.CapProto{
+				Center:       b6.NewPointProtoFromS2Point(cap.Center()),
+				RadiusMeters: b6.AngleToMeters(cap.Radius()),
 			},
 		},
 	}

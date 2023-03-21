@@ -51,21 +51,6 @@ message PairProto {
     LiteralNodeProto second = 2;
 }
 
-message CapProto {
-    geometry.PointProto center = 1;
-    double radiusMeters = 2;
-}
-
-// TODO: Now we have richer support for representing areas, we can replace these with
-// functions that return a multipolygon
-message AreaProto {
-    oneof area {
-        CapProto cap = 1;
-        features.FeatureIDProto id = 2;
-        geometry.MultiPolygonProto multiPolygon = 3;
-    }
-}
-
 message ModifiedFeaturesProto {
     repeated features.FeatureIDProto ids = 1;
 }
@@ -126,20 +111,12 @@ message KeyValueQueryProto {
     string value = 2;
 }
 
-message TypeQueryProto {
+message TypedQueryProto {
     features.FeatureType type = 1;
     QueryProto query = 2;
 }
 
-message SpatialQueryProto {
-    AreaProto area = 1;
-}
-
-message IntersectionQueryProto {
-    repeated QueryProto queries = 1;
-}
-
-message UnionQueryProto {
+message QueriesProto {
     repeated QueryProto queries = 1;
 }
 
@@ -147,16 +124,31 @@ message AllQueryProto {}
 
 message EmptyQueryProto {}
 
+message CapProto {
+    geometry.PointProto center = 1;
+    double radiusMeters = 2;
+}
+
+message S2CellIDsProto {
+    repeated uint64 s2CellIDs = 1;
+}
+
 message QueryProto {
     oneof query {
-        KeyQueryProto key = 1;
-        KeyValueQueryProto keyValue = 2;
-        SpatialQueryProto spatial = 3;
-        TypeQueryProto type = 4;
-        IntersectionQueryProto intersection = 5;
-        UnionQueryProto union = 6;
-        AllQueryProto all = 7;
-        EmptyQueryProto empty = 8;
+        AllQueryProto all = 1;
+        EmptyQueryProto empty = 2;
+        string keyed = 3;
+        features.TagProto tagged = 4;
+        TypedQueryProto typed = 5;
+        QueriesProto intersection = 6;
+        QueriesProto union = 7;
+        CapProto intersectsCap = 8;
+        features.FeatureIDProto intersectsFeature = 9;
+        geometry.PointProto intersectsPoint = 10;
+        geometry.PolylineProto intersectsPolyline = 11;
+        geometry.MultiPolygonProto intersectsMultiPolygon = 12;
+        S2CellIDsProto intersectsCells = 13;
+        S2CellIDsProto mightIntersect = 14;
     }
 }
 
