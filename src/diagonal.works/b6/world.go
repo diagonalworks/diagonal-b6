@@ -612,72 +612,78 @@ type Features interface {
 	Next() bool
 }
 
-type PathSegmentKey struct {
+type SegmentKey struct {
 	ID    PathID
 	First int
 	Last  int
 }
 
-func (p *PathSegmentKey) ToPathSegment(path PathFeature) PathSegment {
-	return PathSegment{path, p.First, p.Last}
+func (s SegmentKey) ToPathSegment(path PathFeature) Segment {
+	return Segment{path, s.First, s.Last}
 }
 
-type PathSegment struct {
-	PathFeature // TODO: Rename to Feature, to match other structs?
-	First       int
-	Last        int
-}
-
-func (p PathSegment) Len() int {
-	if p.First < p.Last {
-		return p.Last - p.First + 1
-	} else {
-		return p.First - p.Last + 1
-	}
-}
-
-func (p PathSegment) ToKey() PathSegmentKey {
-	return PathSegmentKey{ID: p.PathFeature.PathID(), First: p.First, Last: p.Last}
-}
-
-func (p PathSegment) pathIndex(i int) int {
-	if p.First < p.Last {
-		if p.First+i <= p.Last {
-			return p.First + i
+func (s SegmentKey) Less(other SegmentKey) bool {
+	if s.ID == other.ID {
+		if s.First == other.First {
+			return s.Last < other.Last
 		}
-	} else if p.First-i >= p.Last {
-		return p.First - i
+		return s.First < other.First
 	}
-	panic(fmt.Sprintf("Segment point %d out of range (first: %d, last: %d)", i, p.First, p.Last))
+	return s.ID.Less(other.ID)
 }
 
-func (p PathSegment) SegmentPoint(i int) s2.Point {
-	return p.PathFeature.Point(p.pathIndex(i))
+type Segment struct {
+	Feature PathFeature
+	First   int
+	Last    int
 }
 
-func (p PathSegment) SegmentFeature(i int) PointFeature {
-	return p.PathFeature.Feature(p.pathIndex(i))
+func (s Segment) Len() int {
+	if s.First < s.Last {
+		return s.Last - s.First + 1
+	} else {
+		return s.First - s.Last + 1
+	}
 }
 
-// TODO: Elsewhere this is called Feature, not Point - need to sort out the naming
-// conventions
-// TODO: Also consider adapting Segment to the Path interface, ie Point returns
-// points relative to the segment (like SegmentPoint does now).
-func (p PathSegment) FirstPoint() PointFeature {
-	return p.PathFeature.Feature(p.First)
+func (s Segment) ToKey() SegmentKey {
+	return SegmentKey{ID: s.Feature.PathID(), First: s.First, Last: s.Last}
 }
 
-func (p PathSegment) LastPoint() PointFeature {
-	return p.PathFeature.Feature(p.Last)
+func (s Segment) pathIndex(i int) int {
+	if s.First < s.Last {
+		if s.First+i <= s.Last {
+			return s.First + i
+		}
+	} else if s.First-i >= s.Last {
+		return s.First - i
+	}
+	panic(fmt.Sprintf("Segment point %d out of range (first: %d, last: %d)", i, s.First, s.Last))
 }
 
-func ToPathSegment(path PathFeature) PathSegment {
-	return PathSegment{path, 0, path.Len() - 1}
+func (s Segment) SegmentPoint(i int) s2.Point {
+	return s.Feature.Point(s.pathIndex(i))
 }
 
-func (p PathSegment) Polyline() *s2.Polyline {
-	polyline := *(p.PathFeature.Polyline())
-	first, last := p.First, p.Last
+func (s Segment) SegmentFeature(i int) PointFeature {
+	return s.Feature.Feature(s.pathIndex(i))
+}
+
+func (s Segment) FirstFeature() PointFeature {
+	return s.Feature.Feature(s.First)
+}
+
+func (s Segment) LastFeature() PointFeature {
+	return s.Feature.Feature(s.Last)
+}
+
+func ToSegment(path PathFeature) Segment {
+	return Segment{path, 0, path.Len() - 1}
+}
+
+func (s Segment) Polyline() *s2.Polyline {
+	polyline := *(s.Feature.Polyline())
+	first, last := s.First, s.Last
 	if first > last {
 		first, last = last, first
 	}
@@ -685,38 +691,38 @@ func (p PathSegment) Polyline() *s2.Polyline {
 	return &segment
 }
 
-var PathSegmentInvalid = PathSegment{PathFeature: nil}
+var SegmentInvalid = Segment{Feature: nil}
 
-type PathSegments interface {
-	PathSegment() PathSegment
+type Segments interface {
+	Segment() Segment
 	Next() bool
 }
 
-type EmptyPathSegments struct{}
+type EmptySegments struct{}
 
-func (EmptyPathSegments) PathSegment() PathSegment {
-	panic("No PathSegment")
+func (EmptySegments) PathSegment() Segment {
+	panic("No Segment")
 }
 
-func (EmptyPathSegments) Next() bool {
+func (EmptySegments) Next() bool {
 	return false
 }
 
-func AllPathSegments(p PathSegments) []PathSegment {
-	segments := make([]PathSegment, 0, 8)
+func AllSegments(p Segments) []Segment {
+	segments := make([]Segment, 0, 8)
 	if p != nil {
 		for p.Next() {
-			segments = append(segments, p.PathSegment())
+			segments = append(segments, p.Segment())
 		}
 	}
 	return segments
 }
 
-func FindPathSegmentByKey(key PathSegmentKey, w World) PathSegment {
-	return PathSegment{
-		PathFeature: FindPathByID(key.ID, w),
-		First:       key.First,
-		Last:        key.Last,
+func FindPathSegmentByKey(key SegmentKey, w World) Segment {
+	return Segment{
+		Feature: FindPathByID(key.ID, w),
+		First:   key.First,
+		Last:    key.Last,
 	}
 }
 
@@ -746,8 +752,9 @@ type World interface {
 	// TODO: make the query type more specific to Features, similar to the level in api.proto
 	FindFeatures(query Query) Features
 	FindRelationsByFeature(id FeatureID) RelationFeatures
-	FindPathsByPoint(id PointID) PathSegments
+	FindPathsByPoint(id PointID) PathFeatures
 	FindAreasByPoint(id PointID) AreaFeatures
+	Traverse(id PointID) Segments
 	EachFeature(each func(f Feature, goroutine int) error, options *EachFeatureOptions) error
 
 	// Returns a copy of all tokens known to this world's search index. The
@@ -853,6 +860,20 @@ func AllPaths(p PathFeatures) []PathFeature {
 
 func NewPathFeatures(features Features) PathFeatures {
 	return pathFeatures{features: features}
+}
+
+type EmptyPathFeatures struct{}
+
+func (EmptyPathFeatures) Feature() PathFeature {
+	panic("No PathFeatures")
+}
+
+func (EmptyPathFeatures) FeatureID() FeatureID {
+	panic("No PathFeatures")
+}
+
+func (EmptyPathFeatures) Next() bool {
+	return false
 }
 
 func FindAreaByID(id AreaID, features FeaturesByID) AreaFeature {

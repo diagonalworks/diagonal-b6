@@ -62,7 +62,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 	ps := w.FindPathsByPoint(ingest.FromOSMNodeID(camden.LightermanEntranceNode))
 	found = false
 	for ps.Next() {
-		if ps.PathSegment().FeatureID() == path.FeatureID() {
+		if ps.FeatureID() == path.FeatureID() {
 			found = true
 			break
 		}

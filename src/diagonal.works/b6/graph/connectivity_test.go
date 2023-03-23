@@ -224,13 +224,13 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 
 	// The access path from ids[2] should start from point[1] of ways[1], as
 	// ids[1] and ids[2] have been clustered onto it
-	segments := b6.AllPathSegments(connected.FindPathsByPoint(ingest.FromOSMNodeID(nodes[len(nodes)-1].ID)))
-	if len(segments) != 1 {
-		t.Errorf("Expected 1 segment, found %d", len(segments))
+	paths := b6.AllPaths(connected.FindPathsByPoint(ingest.FromOSMNodeID(nodes[len(nodes)-1].ID)))
+	if len(paths) != 1 {
+		t.Errorf("Expected 1 path, found %d", len(paths))
 		return
 	}
 
-	access := segments[0].PathFeature
+	access := paths[0]
 	if access.Len() != 2 {
 		t.Errorf("Expected 2 points, found %d", access.Len())
 		return

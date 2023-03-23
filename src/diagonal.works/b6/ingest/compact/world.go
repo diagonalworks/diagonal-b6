@@ -586,8 +586,16 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 	return nil
 }
 
-func (f *FeaturesByID) FindPathsByPoint(id b6.PointID) b6.PathSegments {
-	segments := make([]b6.PathSegment, 0, 2)
+func (f *FeaturesByID) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
+	pids := f.findPathsByPoint(id, make([]b6.PathID, 0, 2))
+	paths := make([]b6.PathFeature, len(pids))
+	for i, pid := range pids {
+		paths[i] = f.FindFeatureByID(pid.FeatureID()).(b6.PathFeature)
+	}
+	return ingest.NewPathFeatureIterator(paths)
+}
+
+func (f *FeaturesByID) findPathsByPoint(id b6.PointID, paths []b6.PathID) []b6.PathID {
 	for _, fb := range f.features[b6.FeatureTypePoint] {
 		if ns, ok := fb.NamespaceTable.MaybeEncode(id.Namespace); ok && ns == fb.Namespaces[b6.FeatureTypePoint] {
 			t, ok := fb.Map.FindFirst(id.Value)
@@ -596,107 +604,24 @@ func (f *FeaturesByID) FindPathsByPoint(id b6.PointID) b6.PathSegments {
 				case PointTagCommon:
 					var p CommonPoint
 					p.Unmarshal(&fb.Namespaces, t.Data)
-					pid := b6.MakePathID(fb.NamespaceTable.Decode(p.Path.Namespace), p.Path.Value)
-					segments = f.fillPathSegments(id, pid, segments)
+					paths = append(paths, b6.MakePathID(fb.NamespaceTable.Decode(p.Path.Namespace), p.Path.Value))
 				case PointTagFull:
 					var p FullPoint
 					p.Unmarshal(&fb.Namespaces, t.Data)
 					for _, path := range p.Paths {
-						pid := b6.MakePathID(fb.NamespaceTable.Decode(path.Namespace), path.Value)
-						segments = f.fillPathSegments(id, pid, segments)
+						paths = append(paths, b6.MakePathID(fb.NamespaceTable.Decode(path.Namespace), path.Value))
 					}
 				case PointTagReferencesOnly:
 					var r PointReferences
 					r.Unmarshal(&fb.Namespaces, t.Data)
 					for _, path := range r.Paths {
-						pid := b6.MakePathID(fb.NamespaceTable.Decode(path.Namespace), path.Value)
-						segments = f.fillPathSegments(id, pid, segments)
+						paths = append(paths, b6.MakePathID(fb.NamespaceTable.Decode(path.Namespace), path.Value))
 					}
 				}
 			}
 		}
 	}
-	return ingest.NewPathSegmentIterator(segments)
-}
-
-func (f *FeaturesByID) fillPathSegments(point b6.PointID, path b6.PathID, segments []b6.PathSegment) []b6.PathSegment {
-	for _, fb := range f.features[b6.FeatureTypePath] {
-		if ns, ok := fb.NamespaceTable.MaybeEncode(path.Namespace); ok && ns == fb.Namespaces[b6.FeatureTypePath] {
-			b := fb.Map.FindFirstWithTag(path.Value, encoding.NoTag)
-			if b == nil {
-				continue
-			}
-			var p Path
-			p.Unmarshal(&fb.Namespaces, b)
-			previous := 0
-			var position int
-			next := p.Points.Len() - 1
-			var pf b6.PathFeature
-			for i := 0; i < p.Points.Len(); i++ {
-				if id, ok := p.Points.PointID(i); ok {
-					if pf == nil {
-						if id.Value == point.Value && fb.NamespaceTable.Decode(id.Namespace) == point.Namespace {
-							pf = ingest.WrapPathFeature(f.newPathFromEncodedPath(fb, path.Value, &p), f)
-							position = i
-						} else if f.isGraphNode(id) {
-							previous = i
-						}
-					} else if f.isGraphNode(id) {
-						next = i
-						break
-					}
-				}
-			}
-			if pf != nil {
-				if previous != position {
-					segments = append(segments, b6.PathSegment{PathFeature: pf, First: position, Last: previous})
-				}
-				if next != position {
-					segments = append(segments, b6.PathSegment{PathFeature: pf, First: position, Last: next})
-				}
-			}
-			break
-		}
-	}
-	return segments
-}
-
-// isGraphNode returns true if this point should be a node in the
-// network graph. We currently consider intersections and points with tags
-// as nodes.
-func (f *FeaturesByID) isGraphNode(point Reference) bool {
-	paths := 0
-	for _, fb := range f.features[b6.FeatureTypePoint] {
-		if fb.Namespaces[b6.FeatureTypePoint] == point.Namespace {
-			t, ok := fb.Map.FindFirst(point.Value)
-			if ok {
-				switch t.Tag {
-				case PointTagCommon:
-					var p CommonPoint
-					p.Unmarshal(&fb.Namespaces, t.Data)
-					if len(p.Tags) > 0 {
-						return true
-					}
-					paths++
-				case PointTagFull:
-					var p FullPoint
-					p.Unmarshal(&fb.Namespaces, t.Data)
-					if len(p.Tags) > 0 {
-						return true
-					}
-					paths += len(p.Paths)
-				case PointTagReferencesOnly:
-					var r PointReferences
-					r.Unmarshal(&fb.Namespaces, t.Data)
-					paths += len(r.Paths)
-				}
-				if paths > 1 {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return paths
 }
 
 func (f *FeaturesByID) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
@@ -743,6 +668,95 @@ func (f *FeaturesByID) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 		}
 	}
 	return ingest.NewAreaFeatureIterator(features)
+}
+
+func (f *FeaturesByID) Traverse(id b6.PointID) b6.Segments {
+	pids := f.findPathsByPoint(id, make([]b6.PathID, 0, 2))
+	segments := make([]b6.Segment, 0, len(pids)*2)
+	for _, pid := range pids {
+		segments = f.fillPathSegments(id, pid, segments)
+	}
+	return ingest.NewSegmentIterator(segments)
+}
+
+func (f *FeaturesByID) fillPathSegments(point b6.PointID, path b6.PathID, segments []b6.Segment) []b6.Segment {
+	for _, fb := range f.features[b6.FeatureTypePath] {
+		if ns, ok := fb.NamespaceTable.MaybeEncode(path.Namespace); ok && ns == fb.Namespaces[b6.FeatureTypePath] {
+			b := fb.Map.FindFirstWithTag(path.Value, encoding.NoTag)
+			if b == nil {
+				continue
+			}
+			var p Path
+			p.Unmarshal(&fb.Namespaces, b)
+			previous := 0
+			var position int
+			next := p.Points.Len() - 1
+			var pf b6.PathFeature
+			for i := 0; i < p.Points.Len(); i++ {
+				if id, ok := p.Points.PointID(i); ok {
+					if pf == nil {
+						if id.Value == point.Value && fb.NamespaceTable.Decode(id.Namespace) == point.Namespace {
+							pf = ingest.WrapPathFeature(f.newPathFromEncodedPath(fb, path.Value, &p), f)
+							position = i
+						} else if f.isGraphNode(id) {
+							previous = i
+						}
+					} else if f.isGraphNode(id) {
+						next = i
+						break
+					}
+				}
+			}
+			if pf != nil {
+				if previous != position {
+					segments = append(segments, b6.Segment{Feature: pf, First: position, Last: previous})
+				}
+				if next != position {
+					segments = append(segments, b6.Segment{Feature: pf, First: position, Last: next})
+				}
+			}
+			break
+		}
+	}
+	return segments
+}
+
+// isGraphNode returns true if this point should be a node in the
+// network graph. We currently consider intersections and points with tags
+// as nodes.
+func (f *FeaturesByID) isGraphNode(point Reference) bool {
+	paths := 0
+	for _, fb := range f.features[b6.FeatureTypePoint] {
+		if fb.Namespaces[b6.FeatureTypePoint] == point.Namespace {
+			t, ok := fb.Map.FindFirst(point.Value)
+			if ok {
+				switch t.Tag {
+				case PointTagCommon:
+					var p CommonPoint
+					p.Unmarshal(&fb.Namespaces, t.Data)
+					if len(p.Tags) > 0 {
+						return true
+					}
+					paths++
+				case PointTagFull:
+					var p FullPoint
+					p.Unmarshal(&fb.Namespaces, t.Data)
+					if len(p.Tags) > 0 {
+						return true
+					}
+					paths += len(p.Paths)
+				case PointTagReferencesOnly:
+					var r PointReferences
+					r.Unmarshal(&fb.Namespaces, t.Data)
+					paths += len(r.Paths)
+				}
+				if paths > 1 {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (f *FeaturesByID) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
@@ -894,7 +908,7 @@ func (w *World) FindFeatures(q b6.Query) b6.Features {
 	return b6.MergeFeatures(features...)
 }
 
-func (w *World) FindPathsByPoint(id b6.PointID) b6.PathSegments {
+func (w *World) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
 	return w.byID.FindPathsByPoint(id)
 }
 
@@ -904,6 +918,10 @@ func (w *World) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 
 func (w *World) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
 	return w.byID.FindRelationsByFeature(id)
+}
+
+func (w *World) Traverse(id b6.PointID) b6.Segments {
+	return w.byID.Traverse(id)
 }
 
 func (w *World) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {

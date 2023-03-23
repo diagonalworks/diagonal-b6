@@ -41,19 +41,19 @@ func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weigh
 	stack := make([]b6.PointFeature, 0, 2)
 	for paths.Next() {
 		path := paths.Feature()
-		if network.Contains(path.PathID()) || !weights.IsUseable(b6.ToPathSegment(path)) {
+		if network.Contains(path.PathID()) || !weights.IsUseable(b6.ToSegment(path)) {
 			continue
 		}
 		stack = stack[0:0]
-		seen := make(map[b6.PathSegmentKey]struct{})
-		segments := w.FindPathsByPoint(path.Feature(0).PointID())
+		seen := make(map[b6.SegmentKey]struct{})
+		segments := w.Traverse(path.Feature(0).PointID())
 		var origin s2.Point
 		for segments.Next() {
-			segment := segments.PathSegment()
-			if segment.FeatureID() == path.FeatureID() {
+			segment := segments.Segment()
+			if segment.Feature.FeatureID() == path.FeatureID() {
 				seen[segment.ToKey()] = struct{}{}
-				origin = segment.FirstPoint().Point()
-				stack = append(stack, segment.LastPoint())
+				origin = segment.FirstFeature().Point()
+				stack = append(stack, segment.LastFeature())
 				break
 			}
 		}
@@ -65,18 +65,18 @@ func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weigh
 			if origin.Distance(point.Point()) > threshold {
 				connected = true
 			} else {
-				segments := w.FindPathsByPoint(point.PointID())
+				segments := w.Traverse(point.PointID())
 				for segments.Next() {
-					segment := segments.PathSegment()
+					segment := segments.Segment()
 					if !weights.IsUseable(segment) {
 						continue
 					}
 					if _, ok := seen[segment.ToKey()]; !ok {
-						if network.Contains(segment.PathID()) {
+						if network.Contains(segment.Feature.PathID()) {
 							connected = true
 							break
 						} else {
-							stack = append(stack, segment.LastPoint())
+							stack = append(stack, segment.LastFeature())
 							seen[segment.ToKey()] = struct{}{}
 						}
 					}
@@ -104,9 +104,9 @@ func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weigh
 }
 
 func IsPointConnected(id b6.PointID, network PathIDSet, w b6.World) bool {
-	segments := w.FindPathsByPoint(id)
-	for segments.Next() {
-		if _, ok := network[segments.PathSegment().PathID()]; ok {
+	paths := w.FindPathsByPoint(id)
+	for paths.Next() {
+		if _, ok := network[paths.FeatureID().ToPathID()]; ok {
 			return true
 		}
 	}

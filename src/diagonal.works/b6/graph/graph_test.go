@@ -41,7 +41,7 @@ func TestShortestPath(t *testing.T) {
 	path := ComputeShortestPath(from.PointID(), to.PointID(), 1000.0, BusWeights{}, camden)
 	wayIDs := make(map[osm.WayID]bool)
 	for _, segment := range path {
-		wayIDs[osm.WayID(segment.FeatureID().Value)] = true
+		wayIDs[osm.WayID(segment.Feature.FeatureID().Value)] = true
 	}
 
 	expected := []osm.WayID{673733343, 207107599}
@@ -88,7 +88,7 @@ func TestShortestPathWithOverriddenWeight(t *testing.T) {
 	from := ingest.FromOSMNodeID(7799663850)
 	to := ingest.FromOSMNodeID(5336117979)
 	path := ComputeShortestPath(from, to, 500.0, SimpleWeights{}, w)
-	if len(path) != 1 || path[0].PathID().Value != uint64(ways[0].ID) {
+	if len(path) != 1 || path[0].Feature.PathID().Value != uint64(ways[0].ID) {
 		t.Errorf("Expected shortest path to use road")
 	}
 
@@ -100,7 +100,7 @@ func TestShortestPathWithOverriddenWeight(t *testing.T) {
 		return
 	}
 	path = ComputeShortestPath(from, to, 500.0, SimpleWeights{}, w)
-	if len(path) != 1 || path[0].PathID().Value != uint64(ways[1].ID) {
+	if len(path) != 1 || path[0].Feature.PathID().Value != uint64(ways[1].ID) {
 		t.Errorf("Expected shortest path to use cycleway")
 	}
 }
@@ -129,8 +129,8 @@ func TestShortestPathWithTwoJoinedPaths(t *testing.T) {
 
 	expected := 1
 	if len(path) == expected {
-		if path[0].PathID().Value != uint64(ways[0].ID) {
-			t.Errorf("Expected way %d, found %d", ways[0].ID, path[0].PathID().Value)
+		if path[0].Feature.PathID().Value != uint64(ways[0].ID) {
+			t.Errorf("Expected way %d, found %d", ways[0].ID, path[0].Feature.PathID().Value)
 		}
 	} else {
 		t.Errorf("Expected path with %d segments, found %d", expected, len(path))
@@ -160,7 +160,7 @@ func TestAccessibilityWithTwoJoinedPaths(t *testing.T) {
 	_, counts := ComputeAccessibility(from, 500.0, SimpleWeights{}, w)
 	for _, way := range ways {
 		id := ingest.FromOSMWayID(way.ID)
-		key := b6.PathSegmentKey{ID: id, First: 0, Last: 1}
+		key := b6.SegmentKey{ID: id, First: 0, Last: 1}
 		expected := 1
 		if count, ok := counts[key]; !ok || count != expected {
 			t.Errorf("Expected count of %d on %s, found %d", expected, id, count)
@@ -192,7 +192,7 @@ func TestShortestPathTakesIntoAccountOneWayStreets(t *testing.T) {
 	path := ComputeShortestPath(from.PointID(), to.PointID(), 500.0, BusWeights{}, camden)
 	wayIDs := make(map[osm.WayID]bool)
 	for _, segment := range path {
-		wayIDs[osm.WayID(segment.FeatureID().Value)] = true
+		wayIDs[osm.WayID(segment.Feature.FeatureID().Value)] = true
 	}
 
 	expected := []osm.WayID{
@@ -248,7 +248,7 @@ func TestInterpolateShortestPathDistances(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		segment := b6.PathSegment{PathFeature: path, First: c.first, Last: c.last}
+		segment := b6.Segment{Feature: path, First: c.first, Last: c.last}
 		distances := interpolateShortestPathDistances(segment, b6.MetersToAngle(c.firstDistance), b6.MetersToAngle(c.lastDistance))
 
 		if len(distances) == len(c.expected) {
@@ -284,14 +284,14 @@ func TestAccessibility(t *testing.T) {
 	}
 
 	bridge := ingest.FromOSMWayID(140633010)
-	key := b6.PathSegmentKey{ID: bridge, First: 0, Last: 1}
+	key := b6.SegmentKey{ID: bridge, First: 0, Last: 1}
 	expectedCount := 130
 	if math.Abs(float64(counts[key]-expectedCount)) > 20.0 {
 		t.Errorf("Expected count of around %d, found %d", expectedCount, counts[key])
 	}
 
 	footpath := ingest.FromOSMWayID(278159862)
-	key = b6.PathSegmentKey{ID: footpath, First: 5, Last: 6}
+	key = b6.SegmentKey{ID: footpath, First: 5, Last: 6}
 	expectedCount = 5
 	if math.Abs(float64(counts[key]-expectedCount)) > 20.0 {
 		t.Errorf("Expected count of around %d, found %d", expectedCount, counts[key])
@@ -299,7 +299,7 @@ func TestAccessibility(t *testing.T) {
 
 	foundNonIntersectionWithDistance := false
 	for id := range distances {
-		if n := len(b6.AllPathSegments(camden.FindPathsByPoint(id))); n == 2 {
+		if n := len(b6.AllSegments(camden.Traverse(id))); n == 2 {
 			foundNonIntersectionWithDistance = true
 			break
 		}
@@ -330,7 +330,7 @@ func TestBusWeights(t *testing.T) {
 			t.Errorf("Failed to find way %d", test.id)
 			continue
 		}
-		useable := weights.IsUseable(b6.ToPathSegment(path))
+		useable := weights.IsUseable(b6.ToSegment(path))
 		if useable != test.useable {
 			t.Errorf("Expected useable=%v for way %d, found %v", test.useable, test.id, useable)
 		}
