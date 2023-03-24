@@ -164,9 +164,9 @@ func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, quer
 					points++
 					last := b6.PathIDInvalid
 					for _, segment := range s.BuildPath(id) {
-						if segment.PathID() != last {
-							counts[segment.PathID()]++
-							last = segment.PathID()
+						if segment.Feature.PathID() != last {
+							counts[segment.Feature.PathID()]++
+							last = segment.Feature.PathID()
 						}
 					}
 				}
@@ -181,9 +181,9 @@ func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, quer
 					if point := b6.FindPointByID(pointID, context.World); point != nil {
 						last := b6.PathIDInvalid
 						for _, segment := range s.BuildPath(pointID) {
-							if segment.PathID() != last {
-								counts[segment.PathID()]++
-								last = segment.PathID()
+							if segment.Feature.PathID() != last {
+								counts[segment.Feature.PathID()]++
+								last = segment.Feature.PathID()
 							}
 						}
 					}
@@ -219,11 +219,11 @@ func connect(a b6.PointFeature, b b6.PointFeature, c *api.Context) (ingest.Chang
 	add := &ingest.AddFeatures{
 		IDsToReplace: map[b6.Namespace]b6.Namespace{b6.NamespacePrivate: b6.NamespaceDiagonalAccessPoints},
 	}
-	paths := c.World.FindPathsByPoint(a.PointID())
+	segments := c.World.Traverse(a.PointID())
 	connected := false
-	for paths.Next() {
-		segment := paths.PathSegment()
-		if segment.LastPoint().PointID() == b.PointID() {
+	for segments.Next() {
+		segment := segments.Segment()
+		if segment.LastFeature().PointID() == b.PointID() {
 			connected = true
 			break
 		}
@@ -239,7 +239,7 @@ func connect(a b6.PointFeature, b b6.PointFeature, c *api.Context) (ingest.Chang
 }
 
 func connectToNetwork(feature b6.Feature, c *api.Context) (ingest.Change, error) {
-	highways := b6.FindPaths(b6.Keyed{"#highway"}, c.World)
+	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
 	connections := graph.NewConnections()
 	strategy := graph.InsertNewPointsIntoPaths{

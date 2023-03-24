@@ -188,7 +188,7 @@ func (s *elevationSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx
 			point := ingest.NewPointFeatureFromWorld(f)
 			paths := s.World.FindPathsByPoint(f.PointID())
 			for paths.Next() {
-				path := paths.PathSegment().PathFeature
+				path := paths.Feature()
 				if path.Get("#highway").IsValid() {
 					if e, ok := s.Elevations.Elevation(f.Point()); ok {
 						atomic.AddUint64(&elevations, 1)

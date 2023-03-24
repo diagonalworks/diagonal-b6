@@ -214,9 +214,9 @@ func allTags(id b6.Identifiable, c *api.Context) (api.IntTagCollection, error) {
 }
 
 func pointDegree(point b6.PointFeature, context *api.Context) (int, error) {
-	paths := context.World.FindPathsByPoint(point.PointID())
+	segments := context.World.Traverse(point.PointID())
 	n := 0
-	for paths.Next() {
+	for segments.Next() {
 		n++
 	}
 	return n, nil
@@ -368,17 +368,12 @@ func pointPaths(id b6.IdentifiablePoint, context *api.Context) (api.PathFeatureC
 	if p == nil {
 		return nil, fmt.Errorf("No point with id %s", id)
 	}
-	paths := &api.ArrayPathFeatureCollection{Features: make([]b6.PathFeature, 0)}
-	segments := context.World.FindPathsByPoint(p.PointID())
-	seen := make(map[b6.FeatureID]struct{})
-	for segments.Next() {
-		id := segments.PathSegment().PathFeature.FeatureID()
-		if _, ok := seen[id]; !ok {
-			paths.Features = append(paths.Features, segments.PathSegment().PathFeature)
-			seen[id] = struct{}{}
-		}
+	collection := &api.ArrayPathFeatureCollection{Features: make([]b6.PathFeature, 0)}
+	paths := context.World.FindPathsByPoint(p.PointID())
+	for paths.Next() {
+		collection.Features = append(collection.Features, paths.Feature())
 	}
-	return paths, nil
+	return collection, nil
 }
 
 func samplePointsAlongPaths(paths api.PathCollection, distanceMeters float64, context *api.Context) (api.PointCollection, error) {

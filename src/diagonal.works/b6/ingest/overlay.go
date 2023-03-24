@@ -148,20 +148,19 @@ func (o *OverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatur
 	return &relationFeatures{relations: relations, i: -1}
 }
 
-func (o *OverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathSegments {
-	byKey := make(map[b6.PathSegmentKey]b6.PathSegment)
+func (o *OverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
+	byID := make(map[b6.PathID]b6.PathFeature)
 	for _, w := range []b6.World{o.base, o.overlay} {
-		segments := w.FindPathsByPoint(id)
-		for segments.Next() {
-			segment := segments.PathSegment()
-			byKey[segment.ToKey()] = segment
+		paths := w.FindPathsByPoint(id)
+		for paths.Next() {
+			byID[paths.FeatureID().ToPathID()] = paths.Feature()
 		}
 	}
-	segments := make([]b6.PathSegment, 0, len(byKey))
-	for _, segment := range byKey {
-		segments = append(segments, segment)
+	paths := make([]b6.PathFeature, 0, len(byID))
+	for _, path := range byID {
+		paths = append(paths, path)
 	}
-	return &pathSegments{pathSegments: segments, i: -1}
+	return NewPathFeatureIterator(paths)
 }
 
 func (o *OverlayWorld) FindAreasByPoint(p b6.PointID) b6.AreaFeatures {
@@ -178,6 +177,22 @@ func (o *OverlayWorld) FindAreasByPoint(p b6.PointID) b6.AreaFeatures {
 		features = append(features, area)
 	}
 	return &areaFeatures{features: features, i: -1}
+}
+
+func (o *OverlayWorld) Traverse(id b6.PointID) b6.Segments {
+	byKey := make(map[b6.SegmentKey]b6.Segment)
+	for _, w := range []b6.World{o.base, o.overlay} {
+		segments := w.Traverse(id)
+		for segments.Next() {
+			s := segments.Segment()
+			byKey[s.ToKey()] = s
+		}
+	}
+	segments := make([]b6.Segment, 0, len(byKey))
+	for _, s := range byKey {
+		segments = append(segments, s)
+	}
+	return NewSegmentIterator(segments)
 }
 
 func (o *OverlayWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {

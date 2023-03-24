@@ -269,31 +269,69 @@ func (r relationFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
 	return s2.CellUnion([]s2.CellID{})
 }
 
-type pathSegments struct {
-	pathSegments []b6.PathSegment
-	i            int
+type segmentIterator struct {
+	segments []b6.Segment
+	i        int
 }
 
-func NewPathSegmentIterator(s []b6.PathSegment) b6.PathSegments {
-	return &pathSegments{pathSegments: s, i: -1}
+func NewSegmentIterator(segments []b6.Segment) b6.Segments {
+	return &segmentIterator{segments: segments}
 }
 
-func (p *pathSegments) Next() bool {
+func (s *segmentIterator) Next() bool {
+	s.i++
+	return s.i <= len(s.segments)
+}
+
+func (s *segmentIterator) Segment() b6.Segment {
+	return s.segments[s.i-1]
+}
+
+type pathFeatureIterator struct {
+	paths []b6.PathFeature
+	i     int
+}
+
+func (p *pathFeatureIterator) Next() bool {
 	p.i++
-	return p.i < len(p.pathSegments)
+	return p.i <= len(p.paths)
 }
 
-func (p *pathSegments) PathSegment() b6.PathSegment {
-	return p.pathSegments[p.i]
+func (p *pathFeatureIterator) FeatureID() b6.FeatureID {
+	return p.paths[p.i-1].FeatureID()
 }
 
-func findPathsByPoint(byID b6.FeaturesByID, r *FeatureReferences, origin b6.PointID, w b6.World) b6.PathSegments {
-	pathPoints, ok := r.PathsByPoint[origin]
+func (p *pathFeatureIterator) Feature() b6.PathFeature {
+	return p.paths[p.i-1]
+}
+
+func NewPathFeatureIterator(paths []b6.PathFeature) b6.PathFeatures {
+	return &pathFeatureIterator{paths: paths}
+}
+
+func findPathsByPoint(p b6.PointID, byID b6.FeaturesByID, r *FeatureReferences, w b6.World) b6.PathFeatures {
+	byPoint, ok := r.PathsByPoint[p]
 	if !ok {
-		return b6.EmptyPathSegments{}
+		return b6.EmptyPathFeatures{}
 	}
-	segments := make([]b6.PathSegment, 0)
-	for _, p := range pathPoints {
+	paths := make([]b6.PathFeature, len(byPoint))
+	for i, p := range byPoint {
+		paths[i] = WrapPathFeature(p.Path, byID)
+	}
+	return NewPathFeatureIterator(paths)
+}
+
+func traverse(originID b6.PointID, byID b6.FeaturesByID, r *FeatureReferences, w b6.World) []b6.Segment {
+	segments := make([]b6.Segment, 0, 2)
+	origin := b6.FindPointByID(originID, byID)
+	if origin == nil {
+		return segments
+	}
+	byPoint, ok := r.PathsByPoint[originID]
+	if !ok {
+		return segments
+	}
+	for _, p := range byPoint {
 		traversals := []struct {
 			start int
 			delta int
@@ -311,18 +349,14 @@ func findPathsByPoint(byID b6.FeaturesByID, r *FeatureReferences, origin b6.Poin
 						}
 					}
 					if isNode {
-						segments = append(segments, b6.PathSegment{
-							PathFeature: pathFeature{p.Path, w},
-							First:       p.Position,
-							Last:        i,
-						})
+						segments = append(segments, b6.Segment{Feature: WrapPathFeature(p.Path, w), First: p.Position, Last: i})
 						break
 					}
 				}
 			}
 		}
 	}
-	return NewPathSegmentIterator(segments)
+	return segments
 }
 
 type areaFeatures struct {
@@ -425,12 +459,16 @@ func (b *basicWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures
 	return findRelationsByFeature(b.references, id, b)
 }
 
-func (b *basicWorld) FindPathsByPoint(origin b6.PointID) b6.PathSegments {
-	return findPathsByPoint(b.byID, b.references, origin, b)
+func (b *basicWorld) FindPathsByPoint(p b6.PointID) b6.PathFeatures {
+	return findPathsByPoint(p, b.byID, b.references, b)
 }
 
 func (b *basicWorld) FindAreasByPoint(p b6.PointID) b6.AreaFeatures {
 	return findAreasByPoint(b.references, p, b)
+}
+
+func (b *basicWorld) Traverse(origin b6.PointID) b6.Segments {
+	return NewSegmentIterator(traverse(origin, b.byID, b.references, b))
 }
 
 func (b *basicWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {

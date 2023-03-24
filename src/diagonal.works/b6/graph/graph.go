@@ -10,9 +10,9 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func weightFromPathSegment(segment b6.PathSegment) float64 {
+func weightFromSegment(segment b6.Segment) float64 {
 	weight := b6.AngleToMeters(segment.Polyline().Length())
-	if factor := segment.Get("diagonal:weight"); factor.IsValid() {
+	if factor := segment.Feature.Get("diagonal:weight"); factor.IsValid() {
 		if f, ok := factor.FloatValue(); ok {
 			return weight * f
 		}
@@ -21,31 +21,31 @@ func weightFromPathSegment(segment b6.PathSegment) float64 {
 }
 
 type Weights interface {
-	IsUseable(segment b6.PathSegment) bool
-	Weight(segment b6.PathSegment) float64
+	IsUseable(segment b6.Segment) bool
+	Weight(segment b6.Segment) float64
 }
 
 type SimpleWeights struct{}
 
-func (SimpleWeights) IsUseable(segment b6.PathSegment) bool {
+func (SimpleWeights) IsUseable(segment b6.Segment) bool {
 	return true
 }
 
-func (SimpleWeights) Weight(segment b6.PathSegment) float64 {
-	return weightFromPathSegment(segment)
+func (SimpleWeights) Weight(segment b6.Segment) float64 {
+	return weightFromSegment(segment)
 }
 
 type SimpleHighwayWeights struct{}
 
-func (SimpleHighwayWeights) IsUseable(segment b6.PathSegment) bool {
-	if highway := segment.PathFeature.Get("#highway"); highway.IsValid() {
+func (SimpleHighwayWeights) IsUseable(segment b6.Segment) bool {
+	if highway := segment.Feature.Get("#highway"); highway.IsValid() {
 		return true
 	}
-	return segment.PathFeature.Get("diagonal").Value == "connection"
+	return segment.Feature.Get("diagonal").Value == "connection"
 }
 
-func (SimpleHighwayWeights) Weight(segment b6.PathSegment) float64 {
-	return weightFromPathSegment(segment)
+func (SimpleHighwayWeights) Weight(segment b6.Segment) float64 {
+	return weightFromSegment(segment)
 }
 
 func IsPathUsableByBus(path b6.PathFeature) bool {
@@ -77,11 +77,11 @@ func IsPathPreferredByBus(path b6.PathFeature) bool {
 	return highway == "primary" || highway == "secondary" || highway == "trunk"
 }
 
-func IsSegmentUseableInThisDirectionByBus(segment b6.PathSegment) bool {
-	if oneway := segment.Get("oneway"); oneway.Value != "yes" {
+func IsSegmentUseableInThisDirectionByBus(segment b6.Segment) bool {
+	if oneway := segment.Feature.Get("oneway"); oneway.Value != "yes" {
 		return true
 	}
-	if oneway := segment.Get("oneway:bus"); oneway.Value == "no" {
+	if oneway := segment.Feature.Get("oneway:bus"); oneway.Value == "no" {
 		return true
 	}
 	return segment.Last > segment.First
@@ -89,12 +89,12 @@ func IsSegmentUseableInThisDirectionByBus(segment b6.PathSegment) bool {
 
 type BusWeights struct{}
 
-func (BusWeights) IsUseable(segment b6.PathSegment) bool {
-	return IsSegmentUseableInThisDirectionByBus(segment) && IsPathUsableByBus(segment.PathFeature)
+func (BusWeights) IsUseable(segment b6.Segment) bool {
+	return IsSegmentUseableInThisDirectionByBus(segment) && IsPathUsableByBus(segment.Feature)
 }
 
-func (BusWeights) Weight(segment b6.PathSegment) float64 {
-	return weightFromPathSegment(segment)
+func (BusWeights) Weight(segment b6.Segment) float64 {
+	return weightFromSegment(segment)
 }
 
 func IsPathUsableByCar(path b6.PathFeature) bool {
@@ -118,8 +118,8 @@ func IsPathUsableByCar(path b6.PathFeature) bool {
 	return false
 }
 
-func IsSegmentUseableInThisDirectionByCar(segment b6.PathSegment) bool {
-	if oneway := segment.Get("oneway"); oneway.Value != "yes" {
+func IsSegmentUseableInThisDirectionByCar(segment b6.Segment) bool {
+	if oneway := segment.Feature.Get("oneway"); oneway.Value != "yes" {
 		return true
 	}
 	return segment.Last > segment.First
@@ -127,12 +127,12 @@ func IsSegmentUseableInThisDirectionByCar(segment b6.PathSegment) bool {
 
 type CarWeights struct{}
 
-func (CarWeights) IsUseable(segment b6.PathSegment) bool {
-	return IsSegmentUseableInThisDirectionByCar(segment) && IsPathUsableByCar(segment.PathFeature)
+func (CarWeights) IsUseable(segment b6.Segment) bool {
+	return IsSegmentUseableInThisDirectionByCar(segment) && IsPathUsableByCar(segment.Feature)
 }
 
-func (CarWeights) Weight(segment b6.PathSegment) float64 {
-	return weightFromPathSegment(segment)
+func (CarWeights) Weight(segment b6.Segment) float64 {
+	return weightFromSegment(segment)
 }
 
 func IsPathUsableByPedestrian(path b6.PathFeature) bool {
@@ -149,7 +149,7 @@ func IsPathUsableByPedestrian(path b6.PathFeature) bool {
 	return false
 }
 
-func interpolateShortestPathDistances(segment b6.PathSegment, firstDistance s1.Angle, lastDistance s1.Angle) []s1.Angle {
+func interpolateShortestPathDistances(segment b6.Segment, firstDistance s1.Angle, lastDistance s1.Angle) []s1.Angle {
 	distances := make([]s1.Angle, segment.Len())
 	distances[0] = firstDistance
 	distances[len(distances)-1] = lastDistance
@@ -187,7 +187,7 @@ type reachable struct {
 	point    b6.PointID
 	visited  bool
 	distance float64
-	segment  b6.PathSegment
+	segment  b6.Segment
 	index    int // Index of this entry within the heap entries, negative if removed
 }
 
@@ -203,7 +203,7 @@ type ShortestPathSearch struct {
 	queue      []*reachable
 	byPoint    map[b6.PointID]*reachable
 	byArea     map[b6.AreaID]*reachable // The reachable instance for the entrance used to enter the area
-	pathStates map[b6.PathSegmentKey]PathState
+	pathStates map[b6.SegmentKey]PathState
 }
 
 func NewShortestPathSearchFromFeature(f b6.Feature, weights Weights, w b6.World) *ShortestPathSearch {
@@ -218,7 +218,7 @@ func NewShortestPathSearchFromFeature(f b6.Feature, weights Weights, w b6.World)
 
 func NewShortestPathSearchFromPoint(from b6.PointID) *ShortestPathSearch {
 	s := newShortestPathSearch()
-	s.queue = append(s.queue, &reachable{point: from, visited: false, distance: 0.0, segment: b6.PathSegmentInvalid, index: 0})
+	s.queue = append(s.queue, &reachable{point: from, visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: 0})
 	s.byPoint[from] = s.queue[0]
 	return s
 }
@@ -226,7 +226,7 @@ func NewShortestPathSearchFromPoint(from b6.PointID) *ShortestPathSearch {
 func isConnected(p b6.PointID, weights Weights, w b6.World) bool {
 	ps := w.FindPathsByPoint(p)
 	for ps.Next() {
-		if weights.IsUseable(ps.PathSegment()) {
+		if weights.IsUseable(b6.ToSegment(ps.Feature())) {
 			return true
 		}
 	}
@@ -240,7 +240,7 @@ func NewShortestPathSearchFromBuilding(area b6.AreaFeature, weights Weights, w b
 			for j := 0; j < path.Len(); j++ {
 				if point := path.Feature(j); point != nil {
 					if isConnected(point.PointID(), weights, w) {
-						r := &reachable{point: point.PointID(), visited: false, distance: 0.0, segment: b6.PathSegmentInvalid, index: len(s.queue)}
+						r := &reachable{point: point.PointID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
 						s.queue = append(s.queue, r)
 					}
 				}
@@ -258,7 +258,7 @@ func newShortestPathSearch() *ShortestPathSearch {
 		queue:      make([]*reachable, 0, 64),
 		byPoint:    make(map[b6.PointID]*reachable),
 		byArea:     make(map[b6.AreaID]*reachable),
-		pathStates: make(map[b6.PathSegmentKey]PathState),
+		pathStates: make(map[b6.SegmentKey]PathState),
 	}
 }
 
@@ -290,8 +290,8 @@ func (s *ShortestPathSearch) Pop() interface{} {
 	return r
 }
 
-func (s *ShortestPathSearch) AddOrUpdate(segment b6.PathSegment, distance float64, features ShortestPathFeatures, w b6.World) {
-	point := segment.LastPoint().PointID()
+func (s *ShortestPathSearch) AddOrUpdate(segment b6.Segment, distance float64, features ShortestPathFeatures, w b6.World) {
+	point := segment.LastFeature().PointID()
 	updated := false
 	var r *reachable
 	var ok bool
@@ -343,10 +343,10 @@ func (s *ShortestPathSearch) ExpandSearchTo(to b6.PointID, maxDistance float64, 
 		if r.point == to || destination.distance < r.distance {
 			break
 		}
-		segments := w.FindPathsByPoint(r.point)
-		for segments.Next() {
-			segment := segments.PathSegment()
-			point := segment.LastPoint()
+		ss := w.Traverse(r.point)
+		for ss.Next() {
+			segment := ss.Segment()
+			point := segment.LastFeature()
 			if next, ok := s.byPoint[point.PointID()]; !ok || !next.visited {
 				if weights.IsUseable(segment) {
 					weight := weights.Weight(segment)
@@ -368,10 +368,10 @@ func (s *ShortestPathSearch) ExpandSearch(maxDistance float64, weights Weights, 
 	for s.Len() > 0 {
 		r := heap.Pop(s).(*reachable)
 		s.byPoint[r.point].visited = true
-		segments := w.FindPathsByPoint(r.point)
-		for segments.Next() {
-			segment := segments.PathSegment()
-			point := segment.LastPoint()
+		ss := w.Traverse(r.point)
+		for ss.Next() {
+			segment := ss.Segment()
+			point := segment.LastFeature()
 			if next, ok := s.byPoint[point.PointID()]; !ok || !next.visited {
 				if weights.IsUseable(segment) {
 					weight := weights.Weight(segment)
@@ -389,13 +389,13 @@ func (s *ShortestPathSearch) ExpandSearch(maxDistance float64, weights Weights, 
 	}
 }
 
-func (s *ShortestPathSearch) BuildPath(destination b6.PointID) []b6.PathSegment {
-	segments := make([]b6.PathSegment, 0, 16)
+func (s *ShortestPathSearch) BuildPath(destination b6.PointID) []b6.Segment {
+	segments := make([]b6.Segment, 0, 16)
 	point := destination
 	for {
-		if r, ok := s.byPoint[point]; ok && r.segment != b6.PathSegmentInvalid {
+		if r, ok := s.byPoint[point]; ok && r.segment != b6.SegmentInvalid {
 			segments = append(segments, r.segment)
-			point = r.segment.FirstPoint().PointID()
+			point = r.segment.FirstFeature().PointID()
 		} else {
 			break
 		}
@@ -432,7 +432,7 @@ func (s *ShortestPathSearch) AreaEntrances() map[b6.AreaID]b6.PointID {
 	return entrances
 }
 
-func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.PathSegmentKey]int, distances map[b6.PointID]float64) {
+func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.SegmentKey]int, distances map[b6.PointID]float64) {
 	for id, _ := range s.byPoint {
 		for _, segment := range s.BuildPath(id) {
 			first, last := segment.First, segment.Last
@@ -440,7 +440,7 @@ func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.PathS
 			if last < first {
 				first, last = last, first
 			}
-			key := b6.PathSegmentKey{ID: segment.PathID(), First: first, Last: last}
+			key := b6.SegmentKey{ID: segment.Feature.PathID(), First: first, Last: last}
 			if count, ok := counts[key]; ok {
 				counts[key] = count + 1
 			} else {
@@ -450,10 +450,10 @@ func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.PathS
 			// maybe by introducting Weights to calculate the distance along the segment when
 			// interpolating
 			firstDistance, lastDistance := s1.InfAngle(), s1.InfAngle()
-			if d, ok := distances[segment.FirstPoint().PointID()]; ok {
+			if d, ok := distances[segment.FirstFeature().PointID()]; ok {
 				firstDistance = b6.MetersToAngle(d)
 			}
-			if d, ok := distances[segment.LastPoint().PointID()]; ok {
+			if d, ok := distances[segment.LastFeature().PointID()]; ok {
 				lastDistance = b6.MetersToAngle(d)
 			}
 			ds := interpolateShortestPathDistances(segment, firstDistance, lastDistance)
@@ -464,22 +464,22 @@ func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.PathS
 	}
 }
 
-func (s *ShortestPathSearch) PathStates() map[b6.PathSegmentKey]PathState {
+func (s *ShortestPathSearch) PathStates() map[b6.SegmentKey]PathState {
 	return s.pathStates
 }
 
-func ComputeShortestPath(from b6.PointID, to b6.PointID, maxDistance float64, weights Weights, w b6.World) []b6.PathSegment {
+func ComputeShortestPath(from b6.PointID, to b6.PointID, maxDistance float64, weights Weights, w b6.World) []b6.Segment {
 	s := NewShortestPathSearchFromPoint(from)
 	s.ExpandSearchTo(to, maxDistance, weights, w)
 	return s.BuildPath(to)
 }
 
-func ComputeAccessibility(from b6.PointID, maxDistance float64, weights Weights, w b6.World) (map[b6.PointID]float64, map[b6.PathSegmentKey]int) {
+func ComputeAccessibility(from b6.PointID, maxDistance float64, weights Weights, w b6.World) (map[b6.PointID]float64, map[b6.SegmentKey]int) {
 	s := NewShortestPathSearchFromPoint(from)
 	s.ExpandSearch(maxDistance, weights, Points, w)
 	// TODO: Rework this API: We shouldn't have to do PointDistances() and the Fill()
 	distances := s.PointDistances()
-	counts := make(map[b6.PathSegmentKey]int, len(distances))
+	counts := make(map[b6.SegmentKey]int, len(distances))
 	s.FillCountsAndDistancesFromPaths(counts, distances)
 	return distances, counts
 }

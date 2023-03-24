@@ -130,12 +130,16 @@ func (m *BasicMutableWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationF
 	return findRelationsByFeature(m.references, id, m)
 }
 
-func (m *BasicMutableWorld) FindPathsByPoint(id b6.PointID) b6.PathSegments {
-	return findPathsByPoint(m, m.references, id, m)
+func (m *BasicMutableWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
+	return findPathsByPoint(id, m, m.references, m)
 }
 
 func (m *BasicMutableWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 	return findAreasByPoint(m.references, id, m)
+}
+
+func (m *BasicMutableWorld) Traverse(origin b6.PointID) b6.Segments {
+	return NewSegmentIterator(traverse(origin, m, m.references, m))
 }
 
 func (m *BasicMutableWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
@@ -398,19 +402,73 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 	if feature == nil {
 		return nil
 	}
-	if tags, ok := m[feature.FeatureID()]; ok {
-		switch f := feature.(type) {
-		case b6.PointFeature:
-			feature = &modifiedTagsPoint{PointFeature: f, tags: tags}
-		case b6.PathFeature:
-			feature = &modifiedTagsPath{PathFeature: f, tags: tags}
-		case b6.AreaFeature:
-			feature = &modifiedTagsArea{AreaFeature: f, tags: tags}
-		case b6.RelationFeature:
-			feature = &modifiedTagsRelation{RelationFeature: f, tags: tags}
-		}
+	switch f := feature.(type) {
+	case b6.PointFeature:
+		return m.WrapPointFeature(f)
+	case b6.PathFeature:
+		return m.WrapPathFeature(f)
+	case b6.AreaFeature:
+		return m.WrapAreaFeature(f)
+	case b6.RelationFeature:
+		return m.WrapRelationFeature(f)
 	}
 	return feature
+}
+
+func (m ModifiedTags) WrapPointFeature(f b6.PointFeature) b6.PointFeature {
+	if tags, ok := m[f.FeatureID()]; ok {
+		return &modifiedTagsPoint{PointFeature: f, tags: tags}
+	}
+	return f
+}
+
+func (m ModifiedTags) WrapPathFeature(f b6.PathFeature) b6.PathFeature {
+	if tags, ok := m[f.FeatureID()]; ok {
+		return &modifiedTagsPath{PathFeature: f, tags: tags}
+	}
+	return f
+}
+
+func (m ModifiedTags) WrapAreaFeature(f b6.AreaFeature) b6.AreaFeature {
+	if tags, ok := m[f.FeatureID()]; ok {
+		return &modifiedTagsArea{AreaFeature: f, tags: tags}
+	}
+	return f
+}
+
+func (m ModifiedTags) WrapRelationFeature(f b6.RelationFeature) b6.RelationFeature {
+	if tags, ok := m[f.FeatureID()]; ok {
+		return &modifiedTagsRelation{RelationFeature: f, tags: tags}
+	}
+	return f
+}
+
+func (m ModifiedTags) WrapSegment(segment b6.Segment) b6.Segment {
+	return b6.Segment{
+		Feature: m.WrapPathFeature(segment.Feature),
+		First:   segment.First,
+		Last:    segment.Last,
+	}
+}
+
+func (m ModifiedTags) WrapFeatures(features b6.Features) b6.Features {
+	return &modifiedTagsFeatures{features: features, m: m}
+}
+
+func (m ModifiedTags) WrapPaths(paths b6.PathFeatures) b6.PathFeatures {
+	return &modifiedTagsPaths{paths: paths, m: m}
+}
+
+func (m ModifiedTags) WrapAreas(areas b6.AreaFeatures) b6.AreaFeatures {
+	return &modifiedTagsAreas{areas: areas, m: m}
+}
+
+func (m ModifiedTags) WrapRelations(relations b6.RelationFeatures) b6.RelationFeatures {
+	return &modifiedTagsRelations{relations: relations, m: m}
+}
+
+func (m ModifiedTags) WrapSegments(segments b6.Segments) b6.Segments {
+	return &modifiedTagsSegments{segments: segments, m: m}
 }
 
 type modifiedTagsFeatures struct {
@@ -430,55 +488,21 @@ func (m *modifiedTagsFeatures) FeatureID() b6.FeatureID {
 	return m.features.FeatureID()
 }
 
-func (m ModifiedTags) WrapFeatures(features b6.Features) b6.Features {
-	return &modifiedTagsFeatures{features: features, m: m}
+type modifiedTagsPaths struct {
+	paths b6.PathFeatures
+	m     ModifiedTags
 }
 
-type modifiedTagsRelations struct {
-	relations b6.RelationFeatures
-	m         ModifiedTags
+func (m *modifiedTagsPaths) Next() bool {
+	return m.paths.Next()
 }
 
-func (m *modifiedTagsRelations) Next() bool {
-	return m.relations.Next()
+func (m *modifiedTagsPaths) Feature() b6.PathFeature {
+	return m.m.WrapPathFeature(m.paths.Feature())
 }
 
-func (m *modifiedTagsRelations) Feature() b6.RelationFeature {
-	return m.m.WrapFeature(m.relations.Feature()).(b6.RelationFeature)
-}
-
-func (m *modifiedTagsRelations) FeatureID() b6.FeatureID {
-	return m.relations.FeatureID()
-}
-
-func (m *modifiedTagsRelations) RelationID() b6.RelationID {
-	return m.relations.RelationID()
-}
-
-func (m ModifiedTags) WrapRelations(relations b6.RelationFeatures) b6.RelationFeatures {
-	return &modifiedTagsRelations{relations: relations, m: m}
-}
-
-type modifiedTagsPathSegments struct {
-	segments b6.PathSegments
-	m        ModifiedTags
-}
-
-func (m *modifiedTagsPathSegments) Next() bool {
-	return m.segments.Next()
-}
-
-func (m *modifiedTagsPathSegments) PathSegment() b6.PathSegment {
-	pathSegment := m.segments.PathSegment()
-	return b6.PathSegment{
-		PathFeature: m.m.WrapFeature(pathSegment.PathFeature).(b6.PathFeature),
-		First:       pathSegment.First,
-		Last:        pathSegment.Last,
-	}
-}
-
-func (m ModifiedTags) WrapPathSegments(segments b6.PathSegments) b6.PathSegments {
-	return &modifiedTagsPathSegments{segments: segments, m: m}
+func (m *modifiedTagsPaths) FeatureID() b6.FeatureID {
+	return m.paths.FeatureID()
 }
 
 type modifiedTagsAreas struct {
@@ -491,15 +515,45 @@ func (m *modifiedTagsAreas) Next() bool {
 }
 
 func (m *modifiedTagsAreas) Feature() b6.AreaFeature {
-	return m.m.WrapFeature(m.areas.Feature()).(b6.AreaFeature)
+	return m.m.WrapAreaFeature(m.areas.Feature())
 }
 
 func (m *modifiedTagsAreas) FeatureID() b6.FeatureID {
 	return m.areas.FeatureID()
 }
 
-func (m ModifiedTags) WrapAreas(areas b6.AreaFeatures) b6.AreaFeatures {
-	return &modifiedTagsAreas{areas: areas, m: m}
+type modifiedTagsRelations struct {
+	relations b6.RelationFeatures
+	m         ModifiedTags
+}
+
+func (m *modifiedTagsRelations) Next() bool {
+	return m.relations.Next()
+}
+
+func (m *modifiedTagsRelations) Feature() b6.RelationFeature {
+	return m.m.WrapRelationFeature(m.relations.Feature())
+}
+
+func (m *modifiedTagsRelations) FeatureID() b6.FeatureID {
+	return m.relations.FeatureID()
+}
+
+func (m *modifiedTagsRelations) RelationID() b6.RelationID {
+	return m.relations.RelationID()
+}
+
+type modifiedTagsSegments struct {
+	segments b6.Segments
+	m        ModifiedTags
+}
+
+func (m *modifiedTagsSegments) Segment() b6.Segment {
+	return m.m.WrapSegment(m.segments.Segment())
+}
+
+func (m *modifiedTagsSegments) Next() bool {
+	return m.segments.Next()
 }
 
 type MutableOverlayWorld struct {
@@ -615,19 +669,19 @@ func (m *MutableOverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.Relatio
 	return &relationFeatures{relations: result, i: -1}
 }
 
-func (m *MutableOverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathSegments {
-	result := make([]b6.PathSegment, 0)
+func (m *MutableOverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
+	paths := make([]b6.PathFeature, 0)
 	ps := m.base.FindPathsByPoint(id)
 	for ps.Next() {
-		if _, ok := m.byID.Paths[ps.PathSegment().PathID()]; !ok {
-			result = append(result, ps.PathSegment())
+		if _, ok := m.byID.Paths[ps.FeatureID().ToPathID()]; !ok {
+			paths = append(paths, ps.Feature())
 		}
 	}
-	ps = findPathsByPoint(m, m.references, id, m)
+	ps = findPathsByPoint(id, m, m.references, m)
 	for ps.Next() {
-		result = append(result, ps.PathSegment())
+		paths = append(paths, ps.Feature())
 	}
-	return &pathSegments{pathSegments: result, i: -1}
+	return NewPathFeatureIterator(paths)
 }
 
 func (m *MutableOverlayWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
@@ -642,6 +696,19 @@ func (m *MutableOverlayWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 		result = append(result, areaFeature{a, m})
 	}
 	return &areaFeatures{features: result, i: -1}
+}
+
+func (m *MutableOverlayWorld) Traverse(id b6.PointID) b6.Segments {
+	segments := make([]b6.Segment, 0)
+	ss := m.base.Traverse(id)
+	for ss.Next() {
+		s := ss.Segment()
+		if _, ok := m.byID.Paths[s.Feature.PathID()]; !ok {
+			segments = append(segments, s)
+		}
+	}
+	segments = append(segments, traverse(id, m, m.references, m)...)
+	return NewSegmentIterator(segments)
 }
 
 func (m *MutableOverlayWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
@@ -916,16 +983,8 @@ func (m *MutableOverlayWorld) Snapshot() b6.World {
 func listFeaturesReferencedByPoint(p *PointFeature, w b6.World) []b6.PhysicalFeature {
 	features := make([]b6.PhysicalFeature, 0)
 	ps := w.FindPathsByPoint(p.PointID)
-	// Closed paths, and points in the middle of paths, will generate two segments
-	// for a single point, corresponding to the two different traversal directions,
-	// therefore we need to deduplicate the PathFeatures in those segments.
-	seen := make(map[b6.PathID]struct{})
 	for ps.Next() {
-		segment := ps.PathSegment()
-		if _, ok := seen[segment.PathID()]; !ok {
-			features = append(features, segment.PathFeature)
-			seen[segment.PathID()] = struct{}{}
-		}
+		features = append(features, ps.Feature())
 	}
 	as := w.FindAreasByPoint(p.PointID)
 	for as.Next() {
@@ -1162,12 +1221,16 @@ func (m *MutableTagsOverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.Rel
 	return m.tags.WrapRelations(m.base.FindRelationsByFeature(id))
 }
 
-func (m *MutableTagsOverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathSegments {
-	return m.tags.WrapPathSegments(m.base.FindPathsByPoint(id))
+func (m *MutableTagsOverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
+	return m.tags.WrapPaths(m.base.FindPathsByPoint(id))
 }
 
 func (m *MutableTagsOverlayWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 	return m.tags.WrapAreas(m.base.FindAreasByPoint(id))
+}
+
+func (m *MutableTagsOverlayWorld) Traverse(id b6.PointID) b6.Segments {
+	return m.tags.WrapSegments(m.base.Traverse(id))
 }
 
 func (m *MutableTagsOverlayWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {

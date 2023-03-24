@@ -868,14 +868,10 @@ func (f *FeatureReferences) RemoveFeature(feature Feature, byID b6.FeaturesByID)
 // is used to find the paths that reference the point, before finding the
 // areas that reference those paths.
 func (f *FeatureReferences) AreasForPoint(id b6.PointID, w b6.World) []*AreaFeature {
-	paths := w.FindPathsByPoint(id)
-	pathsSeen := make(map[b6.PathID]struct{})
-	for paths.Next() {
-		pathsSeen[paths.PathSegment().PathID()] = struct{}{}
-	}
 	areasSeen := make(map[b6.AreaID]*AreaFeature)
-	for path := range pathsSeen {
-		for _, a := range f.AreasForPath(path) {
+	paths := w.FindPathsByPoint(id)
+	for paths.Next() {
+		for _, a := range f.AreasForPath(paths.FeatureID().ToPathID()) {
 			areasSeen[a.AreaID] = a
 		}
 	}
@@ -923,7 +919,17 @@ func (f *FeatureReferences) AddPointsForPath(p *PathFeature) {
 			if !ok {
 				paths = make([]PathPosition, 0, 1)
 			}
-			f.PathsByPoint[id] = append(paths, PathPosition{Path: p, Position: i})
+			seen := false
+			for j := 0; j < len(paths); j++ {
+				if paths[j].Path == p {
+					paths[j].Position = i
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				f.PathsByPoint[id] = append(paths, PathPosition{Path: p, Position: i})
+			}
 		}
 	}
 }

@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"testing"
 
@@ -167,8 +168,8 @@ func ValidateUpdatePathConnectivity(w MutableWorld, t *testing.T) {
 		return
 	}
 
-	segments := b6.AllPathSegments(w.FindPathsByPoint(c.PointID))
-	if len(segments) != 1 || segments[0].LastPoint().PointID() != a.PointID {
+	segments := b6.AllSegments(w.Traverse(c.PointID))
+	if len(segments) != 1 || segments[0].LastFeature().PointID() != a.PointID {
 		t.Errorf("Expected to find a connection to point a")
 	}
 
@@ -179,8 +180,8 @@ func ValidateUpdatePathConnectivity(w MutableWorld, t *testing.T) {
 		t.Errorf("Failed to swap path c -> b")
 	}
 
-	segments = b6.AllPathSegments(w.FindPathsByPoint(c.PointID))
-	if len(segments) != 1 || segments[0].LastPoint().PointID() != b.PointID {
+	segments = b6.AllSegments(w.Traverse(c.PointID))
+	if len(segments) != 1 || segments[0].LastFeature().PointID() != b.PointID {
 		t.Errorf("Expected to find a connection to point b, found none (%d segments)", len(segments))
 	}
 }
@@ -825,7 +826,7 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 
 	// A cap covering only part of the Eastern Shed
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719)), b6.MetersToAngle(10))
-	areas := b6.AllAreas(b6.FindAreas(b6.IntersectsCap{cap}, overlay))
+	areas := b6.AllAreas(b6.FindAreas(b6.IntersectsCap{Cap: cap}, overlay))
 	if len(areas) != 0 {
 		t.Errorf("Didn't expect to find an area %s", areas[0].FeatureID())
 	}
@@ -838,14 +839,14 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 		return
 	}
 
-	areas = b6.AllAreas(b6.FindAreas(b6.IntersectsCap{cap}, overlay))
+	areas = b6.AllAreas(b6.FindAreas(b6.IntersectsCap{Cap: cap}, overlay))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Errorf("Expected to area within the region (found %d areas)", len(areas))
 	}
 
-	paths := b6.AllPathSegments(overlay.FindPathsByPoint(a.PointID))
-	if len(paths) != 2 {
-		t.Errorf("Expected to find 2 segments by point a, found %d", len(paths))
+	paths := b6.AllPaths(overlay.FindPathsByPoint(a.PointID))
+	if len(paths) != 1 || paths[0].PathID().Value != path.PathID.Value {
+		t.Errorf("Expected to find 1 path by point a, found %d", len(paths))
 	}
 }
 
@@ -878,19 +879,19 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 	}
 
 	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, aPrime.Point(), bPrime.Point()), b6.MetersToAngle(10))
-	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{bankCap}, overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{Cap: bankCap}, overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Bank, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{granarySquareCap}, overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{Cap: granarySquareCap}, overlay))
 	if len(paths) != 0 {
 		t.Errorf("Expected to find no paths around Granary Square, found %d", len(paths))
 	}
 
-	segments := b6.AllPathSegments(overlay.FindPathsByPoint(a.PointID))
-	if len(segments) != 1 {
-		t.Errorf("Expected 1 PathSegment, found: %d", len(segments))
+	paths = b6.AllPaths(overlay.FindPathsByPoint(a.PointID))
+	if len(paths) != 1 {
+		t.Errorf("Expected 1 path, found: %d", len(paths))
 	}
 }
 
@@ -926,19 +927,22 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 	}
 
 	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, aPrime.Point(), bPrime.Point()), b6.MetersToAngle(10))
-	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{bankCap}, overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{Cap: bankCap}, overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Bank, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{granarySquareCap}, overlay))
+	paths = b6.AllPaths(b6.FindPaths(b6.IntersectsCap{Cap: granarySquareCap}, overlay))
 	if len(paths) != 0 {
 		t.Errorf("Expected to find no paths around Granary Square, found %d", len(paths))
 	}
 
-	segments := b6.AllPathSegments(overlay.FindPathsByPoint(a.PointID))
-	if len(segments) != 2 {
-		t.Errorf("Expected 2 PathSegments, found: %d", len(segments))
+	paths = b6.AllPaths(overlay.FindPathsByPoint(a.PointID))
+	if len(paths) != 1 || paths[0].PathID().Value != path.PathID.Value {
+		t.Errorf("Expected 1 path, found: %d", len(paths))
+		for _, p := range paths {
+			log.Printf("  * %s", p.PathID())
+		}
 	}
 }
 
@@ -960,13 +964,13 @@ func TestModifyPathWithIntersectionsInExistingWorld(t *testing.T) {
 	}
 	overlay := NewMutableOverlayWorld(base)
 
-	ids := make(map[b6.PathID]bool)
-	paths := overlay.FindPathsByPoint(c.PointID)
-	for paths.Next() {
-		ids[paths.PathSegment().PathID()] = true
+	reachable := make(map[b6.PathID]bool)
+	segments := overlay.Traverse(c.PointID)
+	for segments.Next() {
+		reachable[segments.Segment().Feature.PathID()] = true
 	}
 
-	if len(ids) != 2 || !ids[ad.PathID] || !ids[ec.PathID] {
+	if len(reachable) != 2 || !reachable[ad.PathID] || !reachable[ec.PathID] {
 		t.Errorf("Didn't find expected initial connections")
 	}
 
@@ -976,13 +980,13 @@ func TestModifyPathWithIntersectionsInExistingWorld(t *testing.T) {
 		return
 	}
 
-	ids = make(map[b6.PathID]bool)
-	paths = overlay.FindPathsByPoint(c.PointID)
-	for paths.Next() {
-		ids[paths.PathSegment().PathID()] = true
+	reachable = make(map[b6.PathID]bool)
+	segments = overlay.Traverse(c.PointID)
+	for segments.Next() {
+		reachable[segments.Segment().Feature.PathID()] = true
 	}
 
-	if len(ids) != 2 || !ids[ad.PathID] || !ids[ec.PathID] {
+	if len(reachable) != 2 || !reachable[ad.PathID] || !reachable[ec.PathID] {
 		t.Errorf("Expected modification to retain existing connections")
 	}
 }
