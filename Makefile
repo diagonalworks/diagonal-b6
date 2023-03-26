@@ -207,6 +207,9 @@ experimental_s2-sharding:
 experimental_collada:
 	cd src/diagonal.works/diagonal/experimental/collada; go build -o ../../../../../bin/${TARGETPLATFORM}/collada
 
+experimental_coding_exercise:
+	cd src/diagonal.works/diagonal/experimental/coding-exercise; go build -o ../../../../../bin/${TARGETPLATFORM}/coding-exercise
+
 python: python/diagonal_b6/api_generated.py
 
 python/diagonal_b6/api_generated.py: b6-api

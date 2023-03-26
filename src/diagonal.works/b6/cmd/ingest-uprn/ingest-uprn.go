@@ -13,6 +13,9 @@ import (
 	"strings"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/api"
+	"diagonal.works/b6/api/functions"
+	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
 
@@ -21,8 +24,24 @@ import (
 
 type UPRNSource struct {
 	Filename string
-	Crop     s2.Rect
+	Filter   func(p b6.PointFeature, c *api.Context) (bool, error)
 	Join     map[uint64][]b6.Tag
+}
+
+type PointWrapper struct {
+	*ingest.PointFeature
+}
+
+func (p PointWrapper) PointID() b6.PointID {
+	return p.PointFeature.PointID
+}
+
+func (p PointWrapper) Covering(coverer s2.RegionCoverer) s2.CellUnion {
+	return s2.CellUnion([]s2.CellID{p.CellID().Parent(coverer.MaxLevel)})
+}
+
+func (p PointWrapper) ToGeoJSON() geojson.GeoJSON {
+	return b6.PointFeatureToGeoJSON(p)
 }
 
 func (s *UPRNSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.Context) error {
@@ -60,12 +79,17 @@ func (s *UPRNSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx cont
 		}
 	}
 
-	var point ingest.PointFeature
-	point.PointID.Namespace = b6.NamespaceGBUPRN
-	point.Tags = []b6.Tag{{Key: "#place", Value: "uprn"}}
+	point := ingest.PointFeature{
+		PointID: b6.PointID{
+			Namespace: b6.NamespaceGBUPRN,
+		},
+		Tags: []b6.Tag{{Key: "#place", Value: "uprn"}},
+	}
+	context := api.Context{World: b6.EmptyWorld{}}
 	uprns := 0
 	emits := 0
 	joins := 0
+
 	for {
 		row, err := r.Read()
 		if err == io.EOF {
@@ -87,18 +111,20 @@ func (s *UPRNSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx cont
 			return fmt.Errorf("Parsing longitude for %q: %s", row, err)
 		}
 		point.Location = s2.LatLngFromDegrees(lat, lng)
-		if s.Crop.ContainsLatLng(point.Location) {
-			point.Tags = point.Tags[0:1] // Keep #place=uprn
-			for _, t := range s.Join[point.PointID.Value] {
-				point.Tags = append(point.Tags, t)
-			}
-			if len(point.Tags) > 1 {
-				joins++
-			}
+		point.Tags = point.Tags[0:1] // Keep #place=uprn
+		for _, t := range s.Join[point.PointID.Value] {
+			point.Tags = append(point.Tags, t)
+		}
+		if len(point.Tags) > 1 {
+			joins++
+		}
+		if ok, err := s.Filter(PointWrapper{PointFeature: &point}, &context); ok {
 			emits++
 			if err := emit(&point, 0); err != nil {
 				return err
 			}
+		} else if err != nil {
+			return err
 		}
 	}
 	log.Printf("uprns: %d emits: %d joined: %d", uprns, emits, joins)
@@ -151,12 +177,29 @@ func main() {
 	inputFlag := flag.String("input", "", "Input open UPRN CSV, gzipped")
 	outputFlag := flag.String("output", "", "Output index")
 	boundingBoxFlag := flag.String("bounding-box", "", "lat,lng,lat,lng bounding box to crop points outside")
+	filterFlag := flag.String("filter", "", "A b6 shell expression for a function taking a point feature and returning a boolean")
 	joinFlag := flag.String("join", "", "Join tag values from a CSV")
 	flag.Parse()
 
 	crop, err := ingest.ParseBoundingBox(*boundingBoxFlag)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	var filter func(b6.PointFeature, *api.Context) (bool, error)
+	if *filterFlag != "" {
+		expression, err := api.ParseExpression(*filterFlag)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = api.EvaluateAndFill(expression, b6.EmptyWorld{}, functions.Functions(), functions.FunctionConvertors(), &filter)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		filter = func(p b6.PointFeature, c *api.Context) (bool, error) {
+			return crop.ContainsPoint(p.Point()), nil
+		}
 	}
 
 	join, err := parseJoinedCSV(*joinFlag)
@@ -166,7 +209,7 @@ func main() {
 
 	source := &UPRNSource{
 		Filename: *inputFlag,
-		Crop:     crop,
+		Filter:   filter,
 		Join:     join,
 	}
 

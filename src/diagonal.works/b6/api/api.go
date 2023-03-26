@@ -129,7 +129,9 @@ var pointIDType = reflect.TypeOf(b6.PointID{})
 var pathIDType = reflect.TypeOf(b6.PointID{})
 var areaIDType = reflect.TypeOf(b6.AreaID{})
 var relationIDType = reflect.TypeOf(b6.RelationID{})
+var callableInterface = reflect.TypeOf((*Callable)(nil)).Elem()
 
+// Convert v to type t, if possible. Doesn't convert functions.
 func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error) {
 	if v.Type().AssignableTo(t) {
 		return v, nil
@@ -207,4 +209,40 @@ func convertInterface(v reflect.Value, t reflect.Type) (reflect.Value, bool) {
 		}
 	}
 	return v, false
+}
+
+// Convert v to type t, if possible, including functions.
+func ConvertWithVM(v reflect.Value, t reflect.Type, w b6.World, vm *VM) (reflect.Value, error) {
+	if t.Kind() == reflect.Func {
+		var c Callable
+		if v.Type().Implements(callableInterface) {
+			c = v.Interface().(Callable)
+		} else if matches, ok := convertQueryToCallable(v, t); ok {
+			c = matches
+		}
+		if c != nil {
+			if c.NumArgs()+1 == t.NumIn() {
+				return c.ToFunctionValue(t, vm), nil
+			} else {
+				return reflect.Value{}, fmt.Errorf("expected a function with %d args, found %d", t.NumIn()-1, c.NumArgs())
+			}
+		}
+	}
+	return Convert(v, t, w)
+}
+
+func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {
+	ok := t.Kind() == reflect.Func
+	ok = ok || v.Type().Implements(queryInterface)
+	ok = ok || t.NumIn() == 2
+	ok = ok || t.Out(0).Kind() == reflect.Bool
+	ok = ok || t.In(0).Implements(featureInterface)
+	if ok {
+		q := v.Interface().(b6.Query)
+		f := func(feature b6.Feature, c *Context) (bool, error) {
+			return q.Matches(feature, c.World), nil
+		}
+		return goCall{f: reflect.ValueOf(f), name: fmt.Sprintf("matches %s", q)}, true
+	}
+	return nil, false
 }

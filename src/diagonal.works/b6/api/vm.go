@@ -61,8 +61,6 @@ type Callable interface {
 	String() string
 }
 
-var callableInterface = reflect.TypeOf((*Callable)(nil)).Elem()
-
 type FunctionConvertors map[reflect.Type]func(Callable) reflect.Value
 
 func Call0(c Callable, context *Context) (interface{}, error) {
@@ -142,7 +140,32 @@ func (c *compilation) Append(i Instruction) {
 }
 
 func Evaluate(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors) (interface{}, error) {
-	return evaluate(node, w, fs, cs, nil)
+	vm, err := newVM(node, w, fs, cs, nil)
+	if err != nil {
+		return nil, err
+	}
+	return vm.Execute()
+}
+
+func EvaluateAndFill(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors, toFill interface{}) error {
+	vm, err := newVM(node, w, fs, cs, nil)
+	if err != nil {
+		return err
+	}
+	v := reflect.ValueOf(toFill)
+	if v.Kind() != reflect.Ptr {
+		return fmt.Errorf("Expected a pointer, found %T", toFill)
+	}
+	r, err := vm.Execute()
+	if err != nil {
+		return err
+	}
+	c, err := ConvertWithVM(reflect.ValueOf(r), v.Type().Elem(), w, vm)
+	if err != nil {
+		return err
+	}
+	v.Elem().Set(c)
+	return nil
 }
 
 func EvaluateString(e string, w b6.World, fs FunctionSymbols, cs FunctionConvertors) (interface{}, error) {
@@ -155,10 +178,14 @@ func EvaluateStringWithValues(e string, w b6.World, fs FunctionSymbols, cs Funct
 		return nil, err
 	}
 	node = Simplify(node, fs)
-	return evaluate(node, w, fs, cs, values)
+	vm, err := newVM(node, w, fs, cs, values)
+	if err != nil {
+		return nil, err
+	}
+	return vm.Execute()
 }
 
-func evaluate(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors, values map[interface{}]interface{}) (interface{}, error) {
+func newVM(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors, values map[interface{}]interface{}) (*VM, error) {
 	c := compilation{
 		Globals: fs,
 		Targets: []target{{Node: node, Done: func(int) {}}},
@@ -182,8 +209,7 @@ func evaluate(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionCon
 		World:  w,
 		Values: values,
 	}
-	vm := VM{Instructions: c.Instructions, Convertors: cs, Context: rc}
-	return vm.Execute()
+	return &VM{Instructions: c.Instructions, Convertors: cs, Context: rc}, nil
 }
 
 func compile(p *pb.NodeProto, c *compilation) error {
@@ -394,7 +420,7 @@ func (g goCall) CallFromStack(n int, scratch []reflect.Value, context *Context) 
 	if n == expected {
 		for i := 0; i < n; i++ {
 			arg := len(vm.Stack) - n + i
-			if v, err := convertArg(vm.Stack[arg], t.In(i), vm); err == nil {
+			if v, err := ConvertWithVM(vm.Stack[arg], t.In(i), vm.Context.World, vm); err == nil {
 				scratch = append(scratch, v)
 			} else {
 				return scratch, fmt.Errorf("%s: %s", g.name, err.Error())
@@ -436,7 +462,7 @@ func (g goCall) CallWithArgs(args []interface{}, scratch []reflect.Value, contex
 	if len(args) == t.NumIn()-1 { // Don't count context
 		scratch = scratch[0:0]
 		for i, arg := range args {
-			if v, err := convertArg(reflect.ValueOf(arg), t.In(i), context.VM); err == nil {
+			if v, err := ConvertWithVM(reflect.ValueOf(arg), t.In(i), context.World, context.VM); err == nil {
 				scratch = append(scratch, v)
 			} else {
 				return nil, scratch, fmt.Errorf("%s: %s", g.name, err.Error())
@@ -613,39 +639,4 @@ func (p *partialCall) ToFunction() interface{} {
 
 func (p *partialCall) String() string {
 	return fmt.Sprintf("partial/%d: %s", p.n, p.c.String())
-}
-
-func convertArg(v reflect.Value, t reflect.Type, vm *VM) (reflect.Value, error) {
-	if t.Kind() == reflect.Func {
-		var c Callable
-		if v.Type().Implements(callableInterface) {
-			c = v.Interface().(Callable)
-		} else if matches, ok := convertQueryToCallable(v, t); ok {
-			c = matches
-		}
-		if c != nil {
-			if c.NumArgs()+1 == t.NumIn() {
-				return c.ToFunctionValue(t, vm), nil
-			} else {
-				return reflect.Value{}, fmt.Errorf("expected a function with %d args, found %d", t.NumIn()-1, c.NumArgs())
-			}
-		}
-	}
-	return Convert(v, t, vm.Context.World)
-}
-
-func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {
-	ok := t.Kind() == reflect.Func
-	ok = ok || v.Type().Implements(queryInterface)
-	ok = ok || t.NumIn() == 2
-	ok = ok || t.Out(0).Kind() == reflect.Bool
-	ok = ok || t.In(0).Implements(featureInterface)
-	if ok {
-		q := v.Interface().(b6.Query)
-		f := func(feature b6.Feature, c *Context) (bool, error) {
-			return q.Matches(feature, c.World), nil
-		}
-		return goCall{f: reflect.ValueOf(f), name: fmt.Sprintf("matches %s", q)}, true
-	}
-	return nil, false
 }
