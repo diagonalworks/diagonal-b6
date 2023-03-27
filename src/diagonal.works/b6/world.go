@@ -700,7 +700,7 @@ type Segments interface {
 
 type EmptySegments struct{}
 
-func (EmptySegments) PathSegment() Segment {
+func (EmptySegments) Segment() Segment {
 	panic("No Segment")
 }
 
@@ -760,6 +760,62 @@ type World interface {
 	// Returns a copy of all tokens known to this world's search index. The
 	// order isn't defined.
 	Tokens() []string
+}
+
+type EmptyWorld struct{}
+
+func (EmptyWorld) FindFeatureByID(id FeatureID) Feature {
+	return nil
+}
+
+func (EmptyWorld) HasFeatureWithID(id FeatureID) bool {
+	return false
+}
+
+func (EmptyWorld) FindLocationByID(id PointID) (s2.LatLng, bool) {
+	return s2.LatLng{}, false
+}
+
+func (EmptyWorld) FindFeatures(query Query) Features {
+	return EmptyFeatures{}
+}
+
+func (EmptyWorld) FindRelationsByFeature(id FeatureID) RelationFeatures {
+	return EmptyRelationFeatures{}
+}
+
+func (EmptyWorld) FindPathsByPoint(id PointID) PathFeatures {
+	return EmptyPathFeatures{}
+}
+
+func (EmptyWorld) FindAreasByPoint(id PointID) AreaFeatures {
+	return EmptyAreaFeatures{}
+}
+
+func (EmptyWorld) Traverse(id PointID) Segments {
+	return EmptySegments{}
+}
+
+func (EmptyWorld) EachFeature(each func(f Feature, goroutine int) error, options *EachFeatureOptions) error {
+	return nil
+}
+
+func (EmptyWorld) Tokens() []string {
+	return []string{}
+}
+
+type EmptyFeatures struct{}
+
+func (EmptyFeatures) Feature() Feature {
+	panic("No Features")
+}
+
+func (EmptyFeatures) FeatureID() FeatureID {
+	panic("No Features")
+}
+
+func (EmptyFeatures) Next() bool {
+	return false
 }
 
 func AllFeatures(f Features) []Feature {
@@ -908,6 +964,24 @@ type AreaFeatures interface {
 	Next() bool
 }
 
+type EmptyAreaFeatures struct{}
+
+func (EmptyAreaFeatures) Feature() AreaFeature {
+	panic("No AreaFeatures")
+}
+
+func (EmptyAreaFeatures) FeatureID() FeatureID {
+	panic("No AreaFeatures")
+}
+
+func (EmptyAreaFeatures) AreaID() AreaID {
+	panic("No AreaFeatures")
+}
+
+func (EmptyAreaFeatures) Next() bool {
+	return false
+}
+
 func AllAreas(a AreaFeatures) []AreaFeature {
 	features := make([]AreaFeature, 0, 8)
 	if a != nil {
@@ -957,6 +1031,24 @@ func (r relationFeatures) FeatureID() FeatureID {
 
 func (r relationFeatures) RelationID() RelationID {
 	return r.FeatureID().ToRelationID()
+}
+
+type EmptyRelationFeatures struct{}
+
+func (EmptyRelationFeatures) Feature() RelationFeature {
+	panic("No RelationFeatures")
+}
+
+func (EmptyRelationFeatures) FeatureID() FeatureID {
+	panic("No RelationFeatures")
+}
+
+func (EmptyRelationFeatures) RelationID() RelationID {
+	panic("No RelationFeatures")
+}
+
+func (EmptyRelationFeatures) Next() bool {
+	return false
 }
 
 func AllRelations(r RelationFeatures) []RelationFeature {

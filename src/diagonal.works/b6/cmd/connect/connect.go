@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/api"
+	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
@@ -44,6 +46,7 @@ func main() {
 	base := flag.String("base", "", "World to make connections to")
 	input := flag.String("input", "", "World to make connections from")
 	output := flag.String("output", "", "Output connected world")
+	connect := flag.String("connect", "[#building | #amenity | #landuse=vacant]", "Feature types to connect")
 	modifyPaths := flag.Bool("modify-paths", true, "Add new connection points to existing paths")
 	networkThreshold := flag.Float64("network-threshold", 500.0, "Distance to travel before a street is considered connected")
 	connectionThreshold := flag.Float64("connection-threshold", 100.0, "Distance away from entrances within which highways are considered")
@@ -66,6 +69,16 @@ func main() {
 		log.Fatal("Must specific --base or --input")
 	}
 
+	var query b6.Query
+	expression, err := api.ParseExpression(*connect)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = api.EvaluateAndFill(expression, b6.EmptyWorld{}, functions.Functions(), functions.FunctionConvertors(), &query)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	b, err := compact.ReadWorld(*base, *cores)
 	if err != nil {
 		log.Fatal(err)
@@ -86,7 +99,7 @@ func main() {
 	log.Printf("Build street network")
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(*networkThreshold), weights, nil, b)
 	log.Printf("  %d paths", len(network))
-	features := i.FindFeatures(b6.Union{b6.Keyed{"#building"}, b6.Keyed{"#amenity"}, b6.Tagged{Key: "#landuse", Value: "vacant"}})
+	features := i.FindFeatures(query)
 
 	var strategy graph.ConnectionStrategy
 	connections := graph.NewConnections()
