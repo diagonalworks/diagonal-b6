@@ -5,7 +5,7 @@ TARGETOS ?= $(shell uname -s | tr A-Z a-z)
 # Sets TARGETPLATFORM to something like linux/amd64 or darwin/aarch64
 export TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
 
-all: protos experimental fe ingest ingestons transit fe-js dfe
+all: protos experimental fe ingest transit fe-js dfe
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
 	cd src/diagonal.works/diagonal/cmd/inspect; go build
@@ -25,11 +25,8 @@ ingest: protos
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/cmd/ingest; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest
 
-ingestons: protos
-	cd src/diagonal.works/diagonal/cmd/ingestons; go build
-
-ingest-shp:
-	cd src/diagonal.works/b6/cmd/ingest-shp; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-shp
+ingest-gdal:
+	cd src/diagonal.works/b6/cmd/ingest-gdal; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-gdal
 
 ingest-terrain:
 	cd src/diagonal.works/b6/cmd/ingest-terrain; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-terrain
@@ -39,6 +36,9 @@ ingest-gb-uprn:
 
 ingest-gb-codepoint:
 	cd src/diagonal.works/b6/cmd/ingest-gb-codepoint; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-gb-codepoint
+
+ingest-gb-ons:
+	cd src/diagonal.works/b6/cmd/ingest-gb-ons; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-gb-ons
 
 connect:
 	cd src/diagonal.works/b6/cmd/connect; go build -o ../../../../../bin/${TARGETPLATFORM}/connect

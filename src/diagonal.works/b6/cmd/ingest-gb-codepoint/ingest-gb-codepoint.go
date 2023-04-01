@@ -79,9 +79,9 @@ func (p *Postcodes) Read(options ingest.ReadOptions, emit ingest.Emit, ctx conte
 
 func readPostcodeCoordinates(z *zip.Reader, columns map[string]int, postcodes *Postcodes) error {
 	skipped := 0
-	for _, ff := range z.File {
-		if strings.HasPrefix(ff.Name, "Data/CSV/") && strings.HasSuffix(ff.Name, ".csv") {
-			fr, err := ff.Open()
+	for _, f := range z.File {
+		if strings.HasPrefix(f.Name, "Data/CSV/") && strings.HasSuffix(f.Name, ".csv") {
+			fr, err := f.Open()
 			if err != nil {
 				return err
 			}

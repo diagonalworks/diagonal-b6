@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/geometry"
 	"diagonal.works/b6/osm"
 	"github.com/golang/geo/s2"
 )
@@ -30,6 +31,10 @@ func (t Tags) TagOrFallback(key string, fallback string) b6.Tag {
 
 func (t *Tags) AddTag(tag b6.Tag) {
 	*t = append(*t, tag)
+}
+
+func (t *Tags) SetTags(tags []b6.Tag) {
+	*t = tags
 }
 
 // Modifies an existing tag value, or add it if it doesn't exist.
@@ -108,9 +113,12 @@ func NewTagsFromWorld(t b6.Taggable) Tags {
 }
 
 type Feature interface {
-	FeatureID() b6.FeatureID
 	b6.Taggable
+
+	FeatureID() b6.FeatureID
+	SetFeatureID(id b6.FeatureID)
 	AddTag(tag b6.Tag)
+	SetTags(tags []b6.Tag)
 	ModifyOrAddTag(tag b6.Tag) (bool, string)
 	RemoveTag(key string)
 	Clone() Feature
@@ -171,6 +179,10 @@ func NewPointFeatureFromWorld(p b6.PointFeature) *PointFeature {
 		Tags:     NewTagsFromWorld(p),
 		Location: s2.LatLngFromPoint(p.Point()),
 	}
+}
+
+func (p *PointFeature) SetFeatureID(id b6.FeatureID) {
+	p.PointID = id.ToPointID()
 }
 
 func (p *PointFeature) FillFromOSM(node *osm.Node) {
@@ -319,6 +331,10 @@ func NewPathFeatureFromWorld(p b6.PathFeature) *PathFeature {
 		}
 	}
 	return path
+}
+
+func (p *PathFeature) SetFeatureID(id b6.FeatureID) {
+	p.PathID = id.ToPathID()
 }
 
 func (p *PathFeature) FillFromOSM(way *osm.Way) {
@@ -505,11 +521,32 @@ func NewAreaFeatureFromWorld(a b6.AreaFeature) *AreaFeature {
 	return area
 }
 
+func NewAreaFeatureFromRegion(g s2.Region) (*AreaFeature, error) {
+	switch g := g.(type) {
+	case *s2.Polygon:
+		area := NewAreaFeature(1)
+		area.SetPolygon(0, g)
+		return area, nil
+	case geometry.MultiPolygon:
+		area := NewAreaFeature(len(g))
+		for i, polygon := range g {
+			area.SetPolygon(i, polygon)
+		}
+		return area, nil
+	default:
+		return nil, fmt.Errorf("Can't convert geometry type %T", g)
+	}
+}
+
 func NewAreaFeatureFromS2Cell(id b6.AreaID, cell s2.CellID) *AreaFeature {
 	area := NewAreaFeature(1)
 	area.AreaID = id
 	area.SetPolygon(0, s2.PolygonFromLoops([]*s2.Loop{s2.LoopFromCell(s2.CellFromCellID(cell))}))
 	return area
+}
+
+func (a *AreaFeature) SetFeatureID(id b6.FeatureID) {
+	a.AreaID = id.ToAreaID()
 }
 
 func (a *AreaFeature) FillFromOSMWay(way *osm.Way) {
@@ -562,6 +599,10 @@ func NewRelationFeatureFromWorld(r b6.RelationFeature) *RelationFeature {
 		relation.Members[i] = r.Member(i)
 	}
 	return relation
+}
+
+func (r *RelationFeature) SetFeatureID(id b6.FeatureID) {
+	r.RelationID = id.ToRelationID()
 }
 
 func (r *RelationFeature) Len() int {

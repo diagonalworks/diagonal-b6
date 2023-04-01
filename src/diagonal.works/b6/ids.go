@@ -1,6 +1,8 @@
 package b6
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -56,4 +58,35 @@ func PostcodeFromPointID(id PointID) (string, bool) {
 		id.Value >>= gbPostcodeElementBits
 	}
 	return postcode, true
+}
+
+const (
+	gbONSCodeShift  = 40
+	gbONSYearShift  = 32
+	gbONSYearMask   = 0xff
+	gbONSLetterMask = 0xff
+	gbONSNumberMask = 0xffffffff
+)
+
+func FeatureIDFromGBONSCode(code string, year int, t FeatureType) FeatureID {
+	// ONS codes are a letter followed by 8 digits
+	if len(code) != 9 {
+		return FeatureIDInvalid
+	}
+	n, err := strconv.Atoi(code[1:])
+	if err != nil {
+		return FeatureIDInvalid
+	}
+	codeBits := uint64(uint8(byte(code[0]))) << gbONSCodeShift
+	yearBits := uint64(uint8(year-1900)) << gbONSYearShift
+	return FeatureID{Type: t, Namespace: NamespaceGBONSBoundaries, Value: codeBits | yearBits | uint64(n)}
+}
+
+func GBONSCodeFromFeatureID(id FeatureID) (string, int, bool) {
+	if id.Namespace != NamespaceGBONSBoundaries {
+		return "", 0, false
+	}
+	year := int((id.Value>>gbONSYearShift)&gbONSYearMask) + 1900
+	letter := string(byte((id.Value >> gbONSCodeShift) & gbONSLetterMask))
+	return fmt.Sprintf("%s%08d", letter, id.Value&gbONSNumberMask), year, true
 }

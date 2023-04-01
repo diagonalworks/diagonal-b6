@@ -52,3 +52,18 @@ func TestPointIDFromInvalidGBPostcode(t *testing.T) {
 		}
 	}
 }
+
+func TestFeatureIDFromGBONSCode(t *testing.T) {
+	codes := []string{
+		"E01000001", // City of London 001A
+		"E01000869", // Camden 015E
+	}
+
+	year := 2011
+	for _, code := range codes {
+		id := FeatureIDFromGBONSCode(code, year, FeatureTypeArea)
+		if c, y, ok := GBONSCodeFromFeatureID(id); !ok || c != code || y != year {
+			t.Errorf("Expected %s, year %d, found %s, year %d", code, year, c, y)
+		}
+	}
+}
