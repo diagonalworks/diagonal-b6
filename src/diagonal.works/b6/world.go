@@ -115,8 +115,9 @@ const (
 	NamespaceDiagonalAccessPoints Namespace = "diagonal.works/ns/access-point"
 
 	NamespaceUKONSBoundaries       Namespace = "statistics.gov.uk/datasets/regions"
-	NamespaceGBUPRN                Namespace = "ordnancesurvey.co.uk/open-uprn"
+	NamespaceGBUPRN                Namespace = "ordnancesurvey.co.uk/uprn"
 	NamespaceGBOSTerrain50Contours Namespace = "ordnancesurvey.co.uk/terrain-50/contours"
+	NamespaceGBCodePoint           Namespace = "ordnancesurvey.co.uk/code-point"
 
 	NamespaceInvalid Namespace = ""
 )
