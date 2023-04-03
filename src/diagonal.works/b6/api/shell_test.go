@@ -793,7 +793,7 @@ func TestToFeatureIDToken(t *testing.T) {
 	}{
 		{camden.StableStreetBridgeID.FeatureID(), "/w/140633010"},
 		{camden.LightermanID.FeatureID(), "/a/427900370"},
-		{b6.MakePointID(b6.NamespaceGBUPRN, 116000008).FeatureID(), "/point/ordnancesurvey.co.uk/open-uprn/116000008"},
+		{b6.MakePointID(b6.NamespaceGBUPRN, 116000008).FeatureID(), "/point/ordnancesurvey.co.uk/uprn/116000008"},
 	}
 	for _, test := range tests {
 		if token := FeatureIDToToken(test.ID); token != test.Token {
