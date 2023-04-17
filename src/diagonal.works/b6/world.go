@@ -763,6 +763,17 @@ type World interface {
 	Tokens() []string
 }
 
+type MutableWorld interface {
+	World
+	AddSimplePoint(id PointID, ll s2.LatLng) error
+	AddPoint(p *PointFeature) error
+	AddPath(p *PathFeature) error
+	AddArea(a *AreaFeature) error
+	AddRelation(a *RelationFeature) error
+	AddTag(id FeatureID, tag Tag) error
+	RemoveTag(id FeatureID, key string) error
+}
+
 type EmptyWorld struct{}
 
 func (EmptyWorld) FindFeatureByID(id FeatureID) Feature {

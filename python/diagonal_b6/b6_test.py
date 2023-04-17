@@ -464,9 +464,9 @@ def main():
     grpc_address = "localhost:%d" % int(args.grpc_port)
     platform = args.platform or os.environ.get("TARGETPLATFORM", None) or ("%s/%s" % (os.uname().sysname.lower(), os.uname().machine))
     p = subprocess.Popen([
-        "bin/%s/baseline" % platform,
-        "--addr=%s" % http_address,
-        "--grpc-addr=%s" % grpc_address,
+        "bin/%s/b6" % platform,
+        "--http=%s" % http_address,
+        "--grpc=%s" % grpc_address,
         "--world=osm:data/tests/granary-square.osm.pbf"
     ])
 

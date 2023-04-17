@@ -7,42 +7,8 @@ import "features.proto";
 
 option go_package = "diagonal.works/b6/proto";
 
-message TypeProto {
-    enum Kind {
-        KindInvalid = 0;
-
-        KindPattern = 1;
-        KindAny = 2;
-        KindTraits = 3;
-        KindPair = 4;
-        KindCollection = 5;
-        KindFunction = 6;
-
-        KindBool = 7;
-        KindInt = 8;
-        KindFloat = 9;
-        KindString = 10;
-        KindQuery = 11;
-        KindPoint = 12;
-        KindPath = 13;
-        KindArea = 14;
-        KindFeatureID = 15;
-        KindPointFeature = 16;
-        KindPathFeature = 17;
-        KindAreaFeature = 18;
-        KindRelationFeature = 19;
-        KindTraversal = 20;
-        KindGeoJSON = 21;
-    }
-    Kind kind = 1;
-    repeated TypeProto args = 2;
-}
-
 message CollectionProto {
-    TypeProto keyType = 1;
     repeated LiteralNodeProto keys = 2;
-
-    TypeProto valueType = 3;
     repeated LiteralNodeProto values = 4;
 }
 
@@ -188,11 +154,6 @@ message EvaluateResponseProto {
     NodeProto result = 1;
 }
 
-service WorldService {
-    rpc FindFeatureByID(FindFeatureByIDRequestProto) returns (FindFeatureByIDResponseProto);
-    rpc FindFeatures(FindFeaturesRequestProto) returns (FindFeaturesResponseProto);
-
-    rpc ModifyTags(ModifyTagsBatchRequestProto) returns (ModifyTagsBatchResponseProto);
-
+service B6 {
     rpc Evaluate(EvaluateRequestProto) returns (EvaluateResponseProto);
 }

@@ -20,7 +20,7 @@ class Connection:
 
 def connect_insecure(address):
     channel = grpc.insecure_channel(address)
-    return Connection(api_pb2_grpc.WorldServiceStub(channel), _url(address, secure=False), "local")
+    return Connection(api_pb2_grpc.B6Stub(channel), _url(address, secure=False), "local")
 
 def _url(address, secure=False):
     if address.find(":") > 0:

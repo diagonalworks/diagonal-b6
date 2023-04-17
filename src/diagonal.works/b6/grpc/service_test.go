@@ -1,0 +1,130 @@
+package grpc
+
+import (
+	"context"
+	"sync"
+	"testing"
+	"time"
+
+	"diagonal.works/b6"
+	"diagonal.works/b6/api"
+	"diagonal.works/b6/ingest"
+	pb "diagonal.works/b6/proto"
+	"diagonal.works/b6/test/camden"
+)
+
+func findInTagsProto(tags []*pb.TagProto, key string) (string, bool) {
+	for _, tag := range tags {
+		if tag.Key == key {
+			return tag.Value, true
+		}
+	}
+	return "", false
+}
+
+func TestGRPC(t *testing.T) {
+	tests := []struct {
+		name string
+		f    func(pb.B6Server, b6.World, *testing.T)
+	}{
+		{"Evaluate", ValidateEvaluate},
+		{"ConcurrentReadAndWrite", ValidateConcurrentReadAndWrite},
+	}
+
+	base := camden.BuildGranarySquareForTests(t)
+	if base == nil {
+		return
+	}
+	w := ingest.NewMutableOverlayWorld(base)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.f(NewB6Service(w, 1, &sync.RWMutex{}), w, t)
+		})
+	}
+}
+
+func ValidateEvaluate(service pb.B6Server, w b6.World, t *testing.T) {
+	e := `find [#building] | map {b -> get b "building:levels"}`
+	root, err := api.ParseExpression(e)
+	if err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+	request := &pb.EvaluateRequestProto{
+		Request: root,
+	}
+	if response, err := service.Evaluate(context.Background(), request); err == nil {
+		if node := response.GetResult(); node != nil {
+			if literal := node.GetLiteral(); literal != nil {
+				if collection := literal.GetCollectionValue(); collection != nil {
+					expected := camden.BuildingsInGranarySquare
+					if len(collection.Values) != expected {
+						t.Errorf("Expected %d values, found %d", expected, len(collection.Values))
+					}
+				} else {
+					t.Error("Expected a CollectionValue")
+				}
+			} else {
+				t.Error("Expected a Literal")
+			}
+		} else {
+			t.Error("Expected a node")
+		}
+	} else {
+		t.Error(err)
+	}
+}
+
+func ValidateConcurrentReadAndWrite(service pb.B6Server, w b6.World, t *testing.T) {
+	// Read from, and write to, the world in two different goroutines. Although in theory
+	// the test in non-deterministic, as the reads and writes may be accidentally entirely
+	// out of sync, in practice the loops are tight enough and the time delay long enough
+	// that this isn't an issue, and artificially slowing an operation would be invasive.
+	end := time.Now().Add(1 * time.Second)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	e := `find [#building] | map {b -> tag "diagonal-fill-colour" (get b "building:levels")}`
+	write, err := api.ParseExpression(e)
+	if err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+
+	e = `find [#building] | map {b -> get b "building:levels"}`
+	read, err := api.ParseExpression(e)
+	if err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+
+	// Writer
+	go func() {
+		defer wg.Done()
+		for time.Now().Before(end) {
+			request := &pb.EvaluateRequestProto{
+				Request: write,
+			}
+			if _, err := service.Evaluate(context.Background(), request); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	}()
+
+	// Reader
+	go func() {
+		defer wg.Done()
+		for time.Now().Before(end) {
+			request := &pb.EvaluateRequestProto{
+				Request: read,
+			}
+			if _, err := service.Evaluate(context.Background(), request); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	}()
+	wg.Wait()
+}

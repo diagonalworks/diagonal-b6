@@ -61,6 +61,9 @@ baseline: protos src/diagonal.works/b6/api/y.go
 baseline-backend: protos src/diagonal.works/b6/api/y.go
 	make -C src/diagonal.works/diagonal/cmd/baseline baseline
 
+b6: protos src/diagonal.works/b6/api/y.go
+	cd src/diagonal.works/b6/cmd/b6; go build -o ../../../../../bin/${TARGETPLATFORM}/b6
+
 dfe:
 	mkdir -p bin/${TARGETPLATFORM}
 	cd src/diagonal.works/diagonal/cmd/dfe; go build -o ../../../../../bin/${TARGETPLATFORM}/dfe
@@ -226,7 +229,7 @@ python/diagonal_b6/api_generated.py: b6-api
 ipython: python
 	cd python; pip3 install . --upgrade --target ${HOME}/.ipython/
 
-python-test: python baseline-backend
+python-test: python b6
 	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/diagonal_b6/b6_test.py
 
 test:
