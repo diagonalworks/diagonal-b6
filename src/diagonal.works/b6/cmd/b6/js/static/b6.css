@@ -1,0 +1,56 @@
+#html {
+    background: white;
+}
+
+#map {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    bottom: 0px;
+    right: 0px;    
+    border: 1px solid #7779b0;
+    border-radius: 2px;    
+}
+
+.ol-zoom {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    padding: 0;
+    width: min-content;
+    background-color: white;
+}
+
+.ol-zoom:hover, .ol-zoom:focus {
+    background-color: white;
+}
+
+.ol-zoom-in {
+    background-color: white;
+    background-image: url("/images/zoom-in.svg");
+    background-size: contain;
+    background-repeat: no-repeat;
+    border: 0px;
+}
+
+.ol-zoom-in:hover, .ol-zoom-in:focus {
+    background-color: white;
+}
+
+.ol-zoom-out {
+    background-color: white;
+    background-image: url("/images/zoom-out.svg");
+    background-size: contain;
+    background-repeat: no-repeat;
+    border: 0px;
+}
+
+.ol-zoom-out:hover, .ol-zoom-in:focus {
+    background-color: white;
+}
+
+.ol-control button {
+    height: 24px;
+    width: 24px; 
+    cursor: pointer;
+}
