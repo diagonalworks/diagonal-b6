@@ -27,7 +27,12 @@ const RoadWidths = {
     "secondary": 26.0,
     "tertiary": 26.0,
     "street": 18.0,
-    "service": 12.0,
+    "unclassified": 18.0,
+    "service": 18.0,
+    "residential": 18.0,
+    "cycleway": 8.0,
+    "footway": 8.0,
+    "path": 8.0,
 }
 
 function scaleWidth(width, resolution) {
@@ -35,8 +40,8 @@ function scaleWidth(width, resolution) {
 }
 
 function roadWidth(feature, resolution) {
-    if (RoadWidths[feature.get("class")]) {
-        return scaleWidth(RoadWidths[feature.get("class")], resolution);
+    if (RoadWidths[feature.get("highway")]) {
+        return scaleWidth(RoadWidths[feature.get("highway")], resolution);
     }
     return 0;
 }
@@ -170,11 +175,41 @@ function setupMap(state) {
         },
     });
 
+    const buildingFill = new Style({
+        fill: new Fill({color: "#ffffff"}),
+        stroke: new Stroke({color: "#4f5a7d", width: 0.3})
+    });
+
     const buildings = new VectorTileLayer({
         source: baseSource,
         style: function(feature, resolution) {
             if (feature.get("layer") == "building") {
                 return buildingFill;
+            }
+        },
+    });
+
+    const labels = new VectorTileLayer({
+        source: baseSource,
+        style: function(feature, resolution) {
+            if (feature.get("layer") == "label") {
+                return new Style({
+                    text: new Text({
+                        text: feature.get("name"),
+                        textAlign: "left",
+                        offsetX: 6,
+                        offsetY: 1,    
+                        fill: new Fill({
+                            color: "#000000",
+                        }),
+                    }),
+                    image: new Circle({
+                        radius: 2,
+                        fill: new Fill({
+                            color: "#000000",
+                        }),
+                    }),
+                });
             }
         },
     });
@@ -186,7 +221,7 @@ function setupMap(state) {
 
     const map = new Map({
         target: "map",
-        layers: [background, water, landuse, roadOutlines, roadFills, buildings],
+        layers: [background, water, landuse, roadOutlines, roadFills, buildings, labels],
         interactions : InteractionDefaults(),
         controls: [zoom],
         view: view,

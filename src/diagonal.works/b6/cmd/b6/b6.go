@@ -8,12 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
 	b6grpc "diagonal.works/b6/grpc"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
 	pb "diagonal.works/b6/proto"
+	"diagonal.works/b6/renderer"
 
 	"google.golang.org/grpc"
 )
@@ -42,7 +44,6 @@ func main() {
 
 	handler := http.NewServeMux()
 	handler.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s", r.URL)
 		if r.URL.Path == "/" {
 			http.ServeFile(w, r, filepath.Join(*staticFlag, "index.html"))
 		} else {
@@ -55,6 +56,13 @@ func main() {
 	handler.Handle("/bundle.js", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(*jsFlag, "bundle.js"))
 	}))
+	handler.Handle("/images/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		i := strings.LastIndex(r.URL.Path, "/")
+		http.ServeFile(w, r, filepath.Join(*staticFlag, "images", r.URL.Path[i+1:]))
+	}))
+
+	tiles := &renderer.TileHandler{Renderer: &renderer.BasemapRenderer{World: w}}
+	handler.Handle("/tiles/base/", tiles)
 
 	handler.HandleFunc("/healthy", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
