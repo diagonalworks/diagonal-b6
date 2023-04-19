@@ -66,6 +66,7 @@ type StringStringCollection Collection
 type FeatureIDIntCollection Collection
 type FeatureIDStringCollection Collection
 type FeatureIDTagCollection Collection
+type FeatureIDFeatureIDCollection Collection
 type FeatureIDStringStringPairCollection Collection
 type AnyFloatCollection Collection
 type AnyRenderableCollection Collection
@@ -443,6 +444,46 @@ func (a *ArrayFeatureIDStringCollection) Next() (bool, error) {
 }
 
 var _ Collection = &ArrayFeatureIDStringCollection{}
+var _ Countable = &ArrayFeatureIDStringCollection{}
+
+type ArrayFeatureIDFeatureIDCollection struct {
+	Keys   []b6.FeatureID
+	Values []b6.FeatureID
+	i      int
+}
+
+func (a *ArrayFeatureIDFeatureIDCollection) Count() int { return len(a.Keys) }
+
+func (a *ArrayFeatureIDFeatureIDCollection) Begin() CollectionIterator {
+	return &ArrayFeatureIDFeatureIDCollection{
+		Keys:   a.Keys,
+		Values: a.Values,
+	}
+}
+
+func (a *ArrayFeatureIDFeatureIDCollection) Key() interface{} {
+	return a.FeatureIDKey()
+}
+
+func (a *ArrayFeatureIDFeatureIDCollection) Value() interface{} {
+	return a.FeatureIDValue()
+}
+
+func (a *ArrayFeatureIDFeatureIDCollection) FeatureIDKey() b6.FeatureID {
+	return a.Keys[a.i-1]
+}
+
+func (a *ArrayFeatureIDFeatureIDCollection) FeatureIDValue() b6.FeatureID {
+	return a.Values[a.i-1]
+}
+
+func (a *ArrayFeatureIDFeatureIDCollection) Next() (bool, error) {
+	a.i++
+	return a.i <= len(a.Keys), nil
+}
+
+var _ Collection = &ArrayFeatureIDFeatureIDCollection{}
+var _ Countable = &ArrayFeatureIDFeatureIDCollection{}
 
 type ArrayAnyFloatCollection struct {
 	Keys   []interface{}

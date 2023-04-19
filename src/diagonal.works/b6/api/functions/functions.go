@@ -89,6 +89,8 @@ var functions = api.FunctionSymbols{
 	"paths-to-reach":     PathsToReachFeatures,
 	"connect":            connect,
 	"connect-to-network": connectToNetwork,
+	// access
+	"building-access": buildingAccess,
 	// geometry
 	"ll":                       ll,
 	"distance-meters":          distanceMeters,
