@@ -1,11 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"sync"
@@ -14,16 +11,15 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/geojson"
-	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
+	"github.com/golang/geo/s2"
 )
 
 var titleTags = []b6.Tag{
 	{Key: "#amenity"},
 	{Key: "#shop"},
 	{Key: "#building"},
-	{Key: "public_transport", Value: "stop_position"},
 	{Key: "entrance"},
 	{Key: "#bridge"},
 	{Key: "#highway"},
@@ -36,6 +32,7 @@ var titleTags = []b6.Tag{
 	{Key: "waterway"},
 	{Key: "#water"},
 	{Key: "#boundary"},
+	{Key: "public_transport"},
 }
 
 type SpanJSON struct {
@@ -58,7 +55,15 @@ func fillLines(v interface{}, lines []LineJSON) []LineJSON {
 }
 
 func fillLinesFromFeature(f b6.Feature, lines []LineJSON) []LineJSON {
-	lines = append(lines, fillSpansFromFeatureID(f.FeatureID(), false, LineJSON{}))
+	line := LineJSON{}
+	for _, key := range []string{"addr:housename", "name"} {
+		if t := f.Get(key); t.IsValid() {
+			line = append(line, SpanJSON{Text: t.Value + " ", Class: "name"})
+			break
+		}
+	}
+	line = fillSpansFromFeatureID(f.FeatureID(), false, line)
+	lines = append(lines, line)
 	for _, tag := range f.AllTags() {
 		lines = append(lines, fillSpansFromTag(tag, LineJSON{}))
 	}
@@ -103,6 +108,11 @@ func fillSpans(v interface{}, spans []SpanJSON) []SpanJSON {
 		spans = fillSpansFromFeatureID(v, true, spans)
 	case b6.Tag:
 		spans = fillSpansFromTag(v, spans)
+	case b6.Point:
+		ll := s2.LatLngFromPoint(v.Point())
+		spans = append(spans, SpanJSON{Text: fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees())})
+	case geojson.GeoJSON:
+		spans = fillSpansFromGeoJSON(v, spans)
 	default:
 		spans = append(spans, SpanJSON{Text: fmt.Sprintf("%v", v)})
 	}
@@ -110,12 +120,19 @@ func fillSpans(v interface{}, spans []SpanJSON) []SpanJSON {
 }
 
 func fillSpansFromFeature(f b6.Feature, spans []SpanJSON) []SpanJSON {
+	for _, key := range []string{"addr:housename", "name"} {
+		if t := f.Get(key); t.IsValid() {
+			spans = append(spans, SpanJSON{Text: t.Value + " ", Class: "name"})
+			break
+		}
+	}
 	spans = fillSpansFromFeatureID(f.FeatureID(), true, spans)
 	spans = append(spans, SpanJSON{Text: " "})
 	for _, t := range titleTags {
 		if tt := f.Get(t.Key); tt.IsValid() && (t.Value == "" || t.Value == tt.Value) {
 			spans = fillSpansFromTag(tt, spans)
 			spans = append(spans, SpanJSON{Text: " "})
+			break
 		}
 	}
 	return spans
@@ -129,58 +146,20 @@ func fillSpansFromTag(t b6.Tag, spans []SpanJSON) []SpanJSON {
 	return append(spans, SpanJSON{Text: api.TagToExpression(t), Class: "literal"})
 }
 
-func unmarshalGeoJSON(p *pb.LiteralNodeProto_GeoJSONValue) (geojson.GeoJSON, error) {
-	r, err := gzip.NewReader(bytes.NewBuffer(p.GeoJSONValue))
-	if err != nil {
-		return nil, err
-	}
-	var j []byte
-	j, err = ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	return geojson.Unmarshal(j)
-}
-
-func showConnectivity(id b6.Identifiable, c *api.Context) (geojson.GeoJSON, error) {
-	f := api.Resolve(id, c.World)
-	if f == nil {
-		return nil, fmt.Errorf("No feature with ID %s", id)
-	}
-	features := geojson.NewFeatureCollection()
-	var s *graph.ShortestPathSearch
-	weights := graph.SimpleHighwayWeights{}
-	switch f := f.(type) {
-	case b6.PointFeature:
-		s = graph.NewShortestPathSearchFromPoint(f.PointID())
-		features.AddFeature(b6.PointFeatureToGeoJSON(f))
-	case b6.AreaFeature:
-		s = graph.NewShortestPathSearchFromBuilding(f, weights, c.World)
-		features.AddFeature(b6.AreaFeatureToGeoJSON(f))
-	default:
-		return features, nil
-	}
-	s.ExpandSearch(1000.0, weights, graph.PointsAndAreas, c.World)
-	for key, state := range s.PathStates() {
-		segment := b6.FindPathSegmentByKey(key, c.World)
-		polyline := segment.Polyline()
-		geometry := geojson.GeometryFromLineString(geojson.FromPolyline(polyline))
-		shape := geojson.NewFeatureWithGeometry(geometry)
-		features.AddFeature(shape)
-		label := geojson.NewFeatureFromS2Point(polyline.Centroid())
-		switch state {
-		case graph.PathStateTraversed:
-			shape.Properties["-diagonal-stroke"] = "#00ff00"
-		case graph.PathStateTooFar:
-			shape.Properties["-diagonal-stroke"] = "#ff0000"
-			features.AddFeature(label)
-		case graph.PathStateNotUseable:
-			shape.Properties["-diagonal-stroke"] = "#ff0000"
-			features.AddFeature(label)
+func fillSpansFromGeoJSON(g geojson.GeoJSON, spans []SpanJSON) []SpanJSON {
+	switch g := g.(type) {
+	case *geojson.Feature:
+		spans = append(spans, SpanJSON{Text: "GeoJSON Feature"})
+	case *geojson.FeatureCollection:
+		label := "Features"
+		if len(g.Features) == 1 {
+			label = "Feature"
 		}
-		features.AddFeature(shape)
+		spans = append(spans, SpanJSON{Text: fmt.Sprintf("GeoJSON FeatureCollection, %d %s", len(g.Features), label)})
+	default:
+		spans = append(spans, SpanJSON{Text: "GeoJSON"})
 	}
-	return features, nil
+	return spans
 }
 
 type UIChange interface {
@@ -291,6 +270,8 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 		change.GeoJSON = v.ToGeoJSON()
 	case b6.Renderable:
 		change.GeoJSON = v.ToGeoJSON()
+	case geojson.GeoJSON:
+		change.GeoJSON = v
 	case b6.FeatureID:
 		f := c.World.FindFeatureByID(v)
 		if f != nil {
@@ -384,8 +365,12 @@ func (s *ShellHandler) evaluate(request *ShellRequestJSON, response *ShellRespon
 	} else if c, ok := result.(UIChange); ok {
 		return c.Apply(response)
 	} else if p, ok := result.(b6.Point); ok {
-		gp := geojson.FromS2Point(p.Point())
-		response.Center = &gp
+		center := geojson.FromS2Point(p.Point())
+		response.Center = &center
+	} else if g, ok := result.(geojson.GeoJSON); ok {
+		response.GeoJSON = g
+		center := g.Centroid()
+		response.Center = &center
 	}
 	response.Lines = fillLines(result, response.Lines)
 	if renderable, ok := result.(b6.Renderable); ok {

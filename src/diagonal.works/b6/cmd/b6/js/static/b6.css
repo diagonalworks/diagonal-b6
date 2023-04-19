@@ -108,15 +108,9 @@
     padding-right: 4px;
 }
 
-#shell span.marker {
-    color: #6f84f0;
-    position: relative;
-    top: -0.4em;
-    font-size: smaller;
-}
-
-#shell span.reference {
-    color: #6f84f0;
+#shell span.name {
+    font-family: "Roboto", sans-serif;
+    font-style: italic;
 }
 
 #shell > .items > form {

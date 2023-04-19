@@ -36,6 +36,7 @@ const RoadWidths = {
     "footway": 8.0,
     "path": 8.0,
 }
+const GeoJSONFillColour = "#5e5fe7";
 
 function scaleWidth(width, resolution) {
     return width * (0.30 / resolution);
@@ -216,6 +217,83 @@ function setupMap(state) {
         },
     });
 
+    const geojsonCircle = new Style({
+        image: new Circle({
+            radius: 4,
+            fill: new Fill({
+                color: GeoJSONFillColour,
+            }),
+        }),
+    });
+
+    const geojsonStroke = new Style({
+        stroke: new Stroke({
+            color: GeoJSONFillColour,
+            width: 2,
+        })
+    });
+
+    const geojsonFill = new Style({
+        stroke: new Stroke({
+            color: "#a5a6f1",
+            width: 2,
+        }),
+        fill: new Fill({
+            color: GeoJSONFillColour,
+        })
+    })
+
+    const geoJSONSource = new VectorSource({
+       features: [],
+    })
+
+    const geojson = new VectorLayer({
+        source: geoJSONSource,
+        style: function(feature, resolution) {
+            var s = geojsonCircle;
+            switch (feature.getGeometry().getType()) {
+                case "LineString":
+                case "MultiLineString":
+                    s = geojsonStroke;
+                case "Polygon":
+                case "MultiPolygon":
+                    s = geojsonFill;
+            }
+            var cloned = false;
+            const label = feature.get("name") || feature.get("label");
+            if (label) {
+                s = s.clone();
+                cloned = true;
+                s.setText(new Text({
+                    text: label,
+                    textAlign: "left",
+                    offsetX: 6,
+                    offsetY: 1,
+                    font: '"Roboto" 12px',
+                }));
+            }
+            if (feature.get("-diagonal-stroke")) {
+                if (!cloned) {
+                    s = s.clone();
+                    cloned = true;
+                }
+                if (s.getStroke()) {
+                    s.getStroke().setColor(feature.get("-diagonal-stroke"));
+                }
+            }
+            if (feature.get("-diagonal-fill")) {
+                if (!cloned) {
+                    s = s.clone();
+                    cloned = true;
+                }
+                if (s.getFill()) {
+                    s.getFill().setColor(feature.get("-diagonal-fill"));
+                }
+            }
+            return s;
+        }
+    })
+
     const view = new View({
         center: fromLonLat(InitialCenter),
         zoom: InitalZoom,
@@ -223,13 +301,23 @@ function setupMap(state) {
 
     const map = new Map({
         target: "map",
-        layers: [background, water, landuse, roadOutlines, roadFills, buildings, labels],
+        layers: [background, water, landuse, roadOutlines, roadFills, buildings, labels, geojson],
         interactions : InteractionDefaults(),
         controls: [zoom],
         view: view,
     });
 
-    return [map, [buildings, roadOutlines, landuse, water]];
+    const renderGeoJSON = (g) => {
+        geoJSONSource.clear();
+        const features = new GeoJSONFormat().readFeatures(g, {
+            dataProjection: "EPSG:4326",
+            featureProjection: view.getProjection(),
+        });
+        geoJSONSource.addFeatures(features);
+        geoJSONSource.changed();
+    }
+
+    return [map, renderGeoJSON, [buildings, roadOutlines, landuse, water]];
 }
 
 function setupShell(handleResponse) {
@@ -264,10 +352,13 @@ function showFeatureAtPixel(pixel, layers, shell) {
                     if (features.length > 0) {
                         found(features[0]);
                         return
+                    } else {
+                        search(i + 1, found);
                     }
                 });
+            } else {
+                search(i + 1, found);
             }
-            search(i + 1, found);
         }
     };
     search(0, f => showFeature(f, shell));
@@ -275,7 +366,7 @@ function showFeatureAtPixel(pixel, layers, shell) {
 
 function main() {
     const state = {};
-    const [map, searchableLayers] = setupMap(state);
+    const [map, renderGeoJSON, searchableLayers] = setupMap(state);
 
     const handleResponse = (response) => {
         if (response.Center) {
@@ -283,6 +374,9 @@ function main() {
                 center: fromLonLat([parseFloat(response.Center[0]), parseFloat(response.Center[1])]),
                 duration: 500,
             });
+        }
+        if (response.GeoJSON) {
+            renderGeoJSON(response.GeoJSON)
         }
     }
     const shell = setupShell(handleResponse);
