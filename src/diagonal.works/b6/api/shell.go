@@ -91,16 +91,18 @@ func ParseFeatureIDToken(id string) b6.FeatureID {
 	return b6.FeatureIDInvalid
 }
 
-func StringToToken(s string) string {
+func StringToExpression(s string) string {
 	// TODO: Formalise our own string token semantics, rather than kind-of
 	// relying on go.
 	return fmt.Sprintf("%q", s)
 }
 
-func FeatureIDToToken(id b6.FeatureID) string {
-	for prefix, alias := range aliases.Next {
-		if id.Type == alias.Type && id.Namespace == alias.Namespace {
-			return fmt.Sprintf("/%s/%d", prefix, id.Value)
+func FeatureIDToExpression(id b6.FeatureID, abbreviate bool) string {
+	if abbreviate {
+		for prefix, alias := range aliases.Next {
+			if id.Type == alias.Type && id.Namespace == alias.Namespace {
+				return fmt.Sprintf("/%s/%d", prefix, id.Value)
+			}
 		}
 	}
 	return "/" + id.String()
@@ -704,6 +706,25 @@ func simplifyLambda(n *pb.NodeProto, functions SymbolArgCounts) *pb.NodeProto {
 	return n
 }
 
+func EscapeTagKey(v string) string {
+	if v == "" {
+		return ""
+	}
+	escape := (v[0] < 'a' && v[0] > 'z') && (v[0] < 'A' && v[0] > 'Z') && v[0] != '#' && v[0] != '@'
+	if !escape {
+		for _, r := range v[1:] {
+			if escape = !isValidSymbolRune(r); escape {
+				break
+			}
+		}
+	}
+	if escape {
+		// TODO: Actually esape string literals properly
+		v = fmt.Sprintf("%q", v)
+	}
+	return v
+}
+
 func EscapeTagValue(v string) string {
 	if v == "" {
 		return ""
@@ -723,11 +744,15 @@ func EscapeTagValue(v string) string {
 	return v
 }
 
+func TagToExpression(t b6.Tag) string {
+	return EscapeTagKey(t.Key) + "=" + EscapeTagValue(t.Value)
+}
+
 func QueryToExpression(q b6.Query) (string, bool) {
 	// TODO: Escape query literals properly
 	switch q := q.(type) {
 	case b6.Tagged:
-		return fmt.Sprintf("%s=%s", q.Key, q.Value), true
+		return TagToExpression(b6.Tag(q)), true
 	case b6.Keyed:
 		return q.Key, true
 	case b6.Intersection:

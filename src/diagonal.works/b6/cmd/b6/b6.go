@@ -32,7 +32,7 @@ func main() {
 	flag.Parse()
 
 	if *worldFlag == "" {
-		fmt.Fprintln(os.Stderr, "Must specify --world\n")
+		fmt.Fprintln(os.Stderr, "Must specify --world")
 		os.Exit(1)
 	}
 

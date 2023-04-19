@@ -17,8 +17,6 @@ import (
 	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
-
-	"github.com/golang/geo/s2"
 )
 
 var titleTags = []b6.Tag{
@@ -40,22 +38,6 @@ var titleTags = []b6.Tag{
 	{Key: "#boundary"},
 }
 
-func fillSpansFromTagProto(t *pb.TagProto, line LineJSON) LineJSON {
-	return append(line, SpanJSON{Text: t.Key}, SpanJSON{Text: " = "}, SpanJSON{Text: t.Value})
-}
-
-func fillTitleFromTagProtos(ts []*pb.TagProto, line LineJSON) LineJSON {
-	for _, t := range titleTags {
-		for _, tt := range ts {
-			if t.Key == tt.Key && (t.Value == "" || t.Value == tt.Value) {
-				// TODO: Find a more principled way of add spaces
-				return fillSpansFromTagProto(tt, append(line, SpanJSON{Text: " "}))
-			}
-		}
-	}
-	return line
-}
-
 type SpanJSON struct {
 	Class string
 	Text  string
@@ -63,140 +45,22 @@ type SpanJSON struct {
 
 type LineJSON []SpanJSON
 
-func fillSpansFromFeatureIDProto(p *pb.FeatureIDProto, line LineJSON) LineJSON {
-	id := b6.NewFeatureIDFromProto(p)
-	return append(line, SpanJSON{Text: "/" + id.String()})
-}
-
-func fillSpansFromFeatureProto(p *pb.FeatureProto, line LineJSON) LineJSON {
-	switch f := p.Feature.(type) {
-	case *pb.FeatureProto_Point:
-		line = fillSpansFromFeatureIDProto(f.Point.Id, line)
-		return fillTitleFromTagProtos(f.Point.Tags, line)
-	case *pb.FeatureProto_Path:
-		line = fillSpansFromFeatureIDProto(f.Path.Id, line)
-		return fillTitleFromTagProtos(f.Path.Tags, line)
-	case *pb.FeatureProto_Area:
-		line = fillSpansFromFeatureIDProto(f.Area.Id, line)
-		return fillTitleFromTagProtos(f.Area.Tags, line)
-	case *pb.FeatureProto_Relation:
-		line = fillSpansFromFeatureIDProto(f.Relation.Id, LineJSON{})
-		return fillTitleFromTagProtos(f.Relation.Tags, line)
-	}
-	return line
-}
-
-func fillSpansFromLiteralProto(l *pb.LiteralNodeProto, line LineJSON) LineJSON {
-	switch v := l.Value.(type) {
-	case *pb.LiteralNodeProto_NilValue:
-		return append(line, SpanJSON{Text: "nil"})
-	case *pb.LiteralNodeProto_StringValue:
-		return append(line, SpanJSON{Text: v.StringValue})
-	case *pb.LiteralNodeProto_IntValue:
-		return append(line, SpanJSON{Text: fmt.Sprintf("%d", v.IntValue)})
-	case *pb.LiteralNodeProto_FloatValue:
-		return append(line, SpanJSON{Text: fmt.Sprintf("%f", v.FloatValue)})
-	case *pb.LiteralNodeProto_PointValue:
-		ll := s2.LatLngFromDegrees(float64(v.PointValue.LatE7)/1e7, float64(v.PointValue.LngE7)/1e7)
-		return append(line, SpanJSON{Text: fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees())})
-	case *pb.LiteralNodeProto_FeatureIDValue:
-		return fillSpansFromFeatureIDProto(v.FeatureIDValue, line)
-	case *pb.LiteralNodeProto_FeatureValue:
-		return fillSpansFromFeatureProto(v.FeatureValue, line)
-	case *pb.LiteralNodeProto_CollectionValue:
-		n := len(v.CollectionValue.Keys)
-		entries := "entries"
-		if n == 1 {
-			entries = "entry"
-		}
-		return append(line, SpanJSON{Text: fmt.Sprintf("Collection, %d %s", n, entries)})
-	case *pb.LiteralNodeProto_PairValue:
-		line = append(line, SpanJSON{Text: "pair "})
-		line = fillSpansFromLiteralProto(v.PairValue.First, line)
-		line = append(line, SpanJSON{Text: " "})
-		return fillSpansFromLiteralProto(v.PairValue.Second, line)
-	case *pb.LiteralNodeProto_GeoJSONValue:
-		line = append(line, SpanJSON{Text: "GeoJSON "})
-		if g, err := unmarshalGeoJSON(v); err == nil {
-			switch g := g.(type) {
-			case *geojson.FeatureCollection:
-				if len(g.Features) == 1 {
-					line = append(line, SpanJSON{Text: "FeatureCollection, 1 feature"})
-				} else {
-					line = append(line, SpanJSON{Text: fmt.Sprintf("FeatureCollection, %d features", len(g.Features))})
-				}
-			case *geojson.Feature:
-				line = append(line, SpanJSON{Text: fmt.Sprintf("Feature %s", g.Geometry.Type)})
-			case *geojson.Geometry:
-				line = append(line, SpanJSON{Text: fmt.Sprintf("Geometry %s", g.Type)})
-			}
-		} else {
-			line = append(line, SpanJSON{Class: "error", Text: err.Error()})
-		}
-		return line
-	}
-	return append(line, SpanJSON{Text: fmt.Sprintf("%+v", l)})
-}
-
-func fillLinesFromTagProtos(ts []*pb.TagProto, lines []LineJSON) []LineJSON {
-	for _, t := range ts {
-		lines = append(lines, fillSpansFromTagProto(t, LineJSON{}))
+func fillLines(v interface{}, lines []LineJSON) []LineJSON {
+	switch v := v.(type) {
+	case b6.Feature:
+		return fillLinesFromFeature(v, lines)
+	case api.Collection:
+		return fillLinesFromCollection(v, lines)
+	default:
+		return append(lines, fillSpans(v, LineJSON{}))
 	}
 	return lines
-}
-
-func fillLinesFromLiteralProto(l *pb.LiteralNodeProto, lines []LineJSON) []LineJSON {
-	switch v := l.Value.(type) {
-	case *pb.LiteralNodeProto_CollectionValue:
-		lines = append(lines, fillSpansFromLiteralProto(l, LineJSON{})) // Header
-		for i, k := range v.CollectionValue.Keys {
-			line := LineJSON{}
-			line = fillSpansFromLiteralProto(k, line)
-			line = append(line, SpanJSON{Text: ": "})
-			line = fillSpansFromLiteralProto(v.CollectionValue.Values[i], line)
-			lines = append(lines, line)
-		}
-		return lines
-	case *pb.LiteralNodeProto_FeatureValue:
-		return fillLinesFromFeatureProto(v.FeatureValue, lines)
-	}
-	return append(lines, fillSpansFromLiteralProto(l, LineJSON{}))
-}
-
-func fillLinesFromFeatureProto(f *pb.FeatureProto, lines []LineJSON) []LineJSON {
-	switch f := f.Feature.(type) {
-	case *pb.FeatureProto_Point:
-		lines = append(lines, fillSpansFromFeatureIDProto(f.Point.Id, LineJSON{}))
-		lines = fillLinesFromTagProtos(f.Point.Tags, lines)
-	case *pb.FeatureProto_Path:
-		lines = append(lines, fillSpansFromFeatureIDProto(f.Path.Id, LineJSON{}))
-		lines = fillLinesFromTagProtos(f.Path.Tags, lines)
-	case *pb.FeatureProto_Area:
-		lines = append(lines, fillSpansFromFeatureIDProto(f.Area.Id, LineJSON{}))
-		lines = fillLinesFromTagProtos(f.Area.Tags, lines)
-	case *pb.FeatureProto_Relation:
-		lines = append(lines, fillSpansFromFeatureIDProto(f.Relation.Id, LineJSON{}))
-		lines = fillLinesFromTagProtos(f.Relation.Tags, lines)
-	}
-	return lines
-}
-
-func fillLinesFromProto(p *pb.NodeProto, lines []LineJSON) []LineJSON {
-	switch n := p.Node.(type) {
-	case *pb.NodeProto_Symbol:
-		return append(lines, LineJSON{SpanJSON{Text: n.Symbol}})
-	case *pb.NodeProto_Call:
-		return append(lines, LineJSON{SpanJSON{Text: fmt.Sprintf("%+v", p)}})
-	case *pb.NodeProto_Literal:
-		return fillLinesFromLiteralProto(n.Literal, lines)
-	}
-	return append(lines, LineJSON{SpanJSON{Text: fmt.Sprintf("%+v", p)}})
 }
 
 func fillLinesFromFeature(f b6.Feature, lines []LineJSON) []LineJSON {
-	lines = append(lines, LineJSON{SpanJSON{Text: "/" + f.FeatureID().String()}})
+	lines = append(lines, fillSpansFromFeatureID(f.FeatureID(), false, LineJSON{}))
 	for _, tag := range f.AllTags() {
-		lines = append(lines, LineJSON{SpanJSON{Text: tag.Key}, SpanJSON{Text: " = "}, SpanJSON{Text: tag.Value}})
+		lines = append(lines, fillSpansFromTag(tag, LineJSON{}))
 	}
 	switch f := f.(type) {
 	case b6.PathFeature:
@@ -206,6 +70,63 @@ func fillLinesFromFeature(f b6.Feature, lines []LineJSON) []LineJSON {
 		}
 	}
 	return lines
+}
+
+func fillLinesFromCollection(c api.Collection, lines []LineJSON) []LineJSON {
+	i := c.Begin()
+	for {
+		if ok, err := i.Next(); err != nil {
+			lines = fillLinesFromError(err, lines)
+			break
+		} else if !ok {
+			break
+		}
+		line := LineJSON{}
+		line = fillSpans(i.Key(), line)
+		line = append(line, SpanJSON{Text: ": "})
+		line = fillSpans(i.Value(), line)
+		lines = append(lines, line)
+
+	}
+	return lines
+}
+
+func fillLinesFromError(err error, lines []LineJSON) []LineJSON {
+	return append(lines, LineJSON{SpanJSON{Text: err.Error()}})
+}
+
+func fillSpans(v interface{}, spans []SpanJSON) []SpanJSON {
+	switch v := v.(type) {
+	case b6.Feature:
+		spans = fillSpansFromFeature(v, spans)
+	case b6.FeatureID:
+		spans = fillSpansFromFeatureID(v, true, spans)
+	case b6.Tag:
+		spans = fillSpansFromTag(v, spans)
+	default:
+		spans = append(spans, SpanJSON{Text: fmt.Sprintf("%v", v)})
+	}
+	return spans
+}
+
+func fillSpansFromFeature(f b6.Feature, spans []SpanJSON) []SpanJSON {
+	spans = fillSpansFromFeatureID(f.FeatureID(), true, spans)
+	spans = append(spans, SpanJSON{Text: " "})
+	for _, t := range titleTags {
+		if tt := f.Get(t.Key); tt.IsValid() && (t.Value == "" || t.Value == tt.Value) {
+			spans = fillSpansFromTag(tt, spans)
+			spans = append(spans, SpanJSON{Text: " "})
+		}
+	}
+	return spans
+}
+
+func fillSpansFromFeatureID(id b6.FeatureID, abbreviate bool, spans []SpanJSON) []SpanJSON {
+	return append(spans, SpanJSON{Text: api.FeatureIDToExpression(id, abbreviate), Class: "literal"})
+}
+
+func fillSpansFromTag(t b6.Tag, spans []SpanJSON) []SpanJSON {
+	return append(spans, SpanJSON{Text: api.TagToExpression(t), Class: "literal"})
 }
 
 func unmarshalGeoJSON(p *pb.LiteralNodeProto_GeoJSONValue) (geojson.GeoJSON, error) {
@@ -219,50 +140,6 @@ func unmarshalGeoJSON(p *pb.LiteralNodeProto_GeoJSONValue) (geojson.GeoJSON, err
 		return nil, err
 	}
 	return geojson.Unmarshal(j)
-}
-
-var Replacements = []string{"†", "‡", "§"}
-
-func compressLine(line LineJSON) LineJSON {
-	seen := make(map[SpanJSON]struct{})
-	replacements := make(map[SpanJSON]int)
-	for _, span := range line {
-		if _, ok := seen[span]; ok {
-			if len(replacements)+1 >= len(Replacements) {
-				break
-			}
-			replacements[span] = len(replacements)
-		} else {
-			seen[span] = struct{}{}
-		}
-	}
-	if len(replacements) == 0 {
-		return line
-	}
-
-	seen = make(map[SpanJSON]struct{})
-	replaced := make(LineJSON, 0, len(line)+len(replacements))
-	for _, span := range line {
-		if r, ok := replacements[span]; ok {
-			if _, ok = seen[span]; ok {
-				replaced = append(replaced, SpanJSON{Class: "reference", Text: Replacements[r]})
-			} else {
-				replaced = append(replaced, span, SpanJSON{Class: "marker", Text: Replacements[r]})
-			}
-			seen[span] = struct{}{}
-		} else {
-			replaced = append(replaced, span)
-		}
-	}
-	return replaced
-}
-
-func compressLines(lines []LineJSON) []LineJSON {
-	compressed := make([]LineJSON, len(lines))
-	for i, line := range lines {
-		compressed[i] = compressLine(line)
-	}
-	return compressed
 }
 
 func showConnectivity(id b6.Identifiable, c *api.Context) (geojson.GeoJSON, error) {
@@ -394,6 +271,7 @@ func (c *showChange) Apply(r *ShellResponseJSON) error {
 }
 
 func show(v interface{}, c *api.Context) (UIChange, error) {
+	change := &showChange{Lines: fillLines(v, []LineJSON{})}
 	switch v := v.(type) {
 	case b6.Query:
 		var boundaries string
@@ -407,19 +285,12 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 				points = e
 			}
 		}
-		return &showChange{
-			BoundariesLayer: boundaries,
-			PointsLayer:     points,
-		}, nil
+		change.BoundariesLayer = boundaries
+		change.PointsLayer = points
 	case b6.Feature:
-		return &showChange{
-			GeoJSON: v.ToGeoJSON(),
-			Lines:   compressLines(fillLinesFromFeature(v, []LineJSON{})),
-		}, nil
+		change.GeoJSON = v.ToGeoJSON()
 	case b6.Renderable:
-		return &showChange{
-			GeoJSON: v.ToGeoJSON(),
-		}, nil
+		change.GeoJSON = v.ToGeoJSON()
 	case b6.FeatureID:
 		f := c.World.FindFeatureByID(v)
 		if f != nil {
@@ -446,11 +317,9 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 				}
 			}
 		}
-		return &showChange{
-			GeoJSON: g,
-		}, nil
+		change.GeoJSON = g
 	}
-	return &showChange{}, nil
+	return change, nil
 }
 
 type ShellHandler struct {
@@ -518,17 +387,7 @@ func (s *ShellHandler) evaluate(request *ShellRequestJSON, response *ShellRespon
 		gp := geojson.FromS2Point(p.Point())
 		response.Center = &gp
 	}
-
-	if node, err := api.ToProto(result); err == nil {
-		if l := node.GetLiteral(); l != nil {
-			if g, ok := l.Value.(*pb.LiteralNodeProto_GeoJSONValue); ok {
-				response.GeoJSON, _ = unmarshalGeoJSON(g)
-			}
-		}
-		response.Lines = compressLines(fillLinesFromProto(node, response.Lines))
-	} else {
-		response.Lines = append(response.Lines, LineJSON{SpanJSON{Class: "error", Text: err.Error()}})
-	}
+	response.Lines = fillLines(result, response.Lines)
 	if renderable, ok := result.(b6.Renderable); ok {
 		response.GeoJSON = renderable.ToGeoJSON()
 	}

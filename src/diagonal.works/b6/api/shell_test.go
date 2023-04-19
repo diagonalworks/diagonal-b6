@@ -796,7 +796,7 @@ func TestToFeatureIDToken(t *testing.T) {
 		{b6.MakePointID(b6.NamespaceGBUPRN, 116000008).FeatureID(), "/point/ordnancesurvey.co.uk/uprn/116000008"},
 	}
 	for _, test := range tests {
-		if token := FeatureIDToToken(test.ID); token != test.Token {
+		if token := FeatureIDToExpression(test.ID, true); token != test.Token {
 			t.Errorf("Expected token %q for %s, found %q", test.Token, test.ID, token)
 		}
 	}
