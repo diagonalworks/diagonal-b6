@@ -25,6 +25,9 @@ ingest: protos
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/cmd/ingest; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest
 
+ingest-osm:
+	cd src/diagonal.works/b6/cmd/ingest-osm; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-osm
+
 ingest-gdal:
 	cd src/diagonal.works/b6/cmd/ingest-gdal; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-gdal
 
