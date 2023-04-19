@@ -60,6 +60,7 @@ func TestFindReachableFeatures(t *testing.T) {
 	origin := b6.FindPointByID(camden.StableStreetBridgeSouthEndID, m)
 	if origin == nil {
 		t.Errorf("Failed to find origin")
+		return
 	}
 
 	context := api.Context{
