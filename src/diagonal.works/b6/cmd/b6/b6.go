@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -31,13 +32,13 @@ func main() {
 	flag.Parse()
 
 	if *worldFlag == "" {
-		os.Stdout.Write([]byte("Must specify --world\n"))
+		fmt.Fprintln(os.Stderr, "Must specify --world\n")
 		os.Exit(1)
 	}
 
 	base, err := compact.ReadWorld(*worldFlag, *coresFlag)
 	if err != nil {
-		os.Stdout.Write([]byte(err.Error()))
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 	w := ingest.NewMutableOverlayWorld(base)
@@ -63,6 +64,13 @@ func main() {
 
 	tiles := &renderer.TileHandler{Renderer: &renderer.BasemapRenderer{World: w}}
 	handler.Handle("/tiles/base/", tiles)
+
+	shell, err := NewShellHandler(w, *coresFlag)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+	handler.Handle("/shell", shell)
 
 	handler.HandleFunc("/healthy", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -90,7 +98,7 @@ func main() {
 	server := http.Server{Addr: *httpFlag, Handler: handler}
 	log.Printf("Listening for HTTP on %s", *httpFlag)
 	if err := server.ListenAndServe(); err != nil {
-		os.Stdout.Write([]byte(err.Error()))
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }

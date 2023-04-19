@@ -1,5 +1,6 @@
 #html {
     background: white;
+    font-family: "Roboto", sans-serif;
 }
 
 #map {
@@ -53,4 +54,86 @@
     height: 24px;
     width: 24px; 
     cursor: pointer;
+}
+
+#shell {
+    position: absolute;
+    height: 360px;
+    max-height: 360px;
+    overflow: scroll;
+    left: 0px;
+    right: 0px;
+    border-bottom: 1px solid #7779b0;
+    border-left: 1px solid #7779b0;
+    border-right: 1px solid #7779b0;
+    border-radius: 2px;
+    background: white;
+    z-index: 1;
+    transition: all 0.5s;
+    padding-left: 4px;
+    padding-right: 4px;
+    font-family: "Roboto Mono", monospace;
+    font-weight: 300;
+    font-size: 12px;
+}
+
+#shell > .items {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+
+#shell.closed {
+    top: -362px;
+}
+
+#shell.open {
+    top: 0px;
+}
+
+#shell > .items > .line {
+    line-height: 18px;
+    min-height: 18px;
+    height: 18px;
+    overflow: hidden;
+}
+
+#shell > .items > .line > .literal:hover {
+    text-decoration: underline;
+}
+
+#shell span.prompt {
+    color: #6f84f0;
+    padding-right: 4px;
+}
+
+#shell span.marker {
+    color: #6f84f0;
+    position: relative;
+    top: -0.4em;
+    font-size: smaller;
+}
+
+#shell span.reference {
+    color: #6f84f0;
+}
+
+#shell > .items > form {
+    height: 18px;
+    margin: 0px;
+}
+
+#shell > .items > form > input {
+    display: inline-block;
+    border: 0px;
+    outline: 0px;
+    width: 80%;
+    padding: 0px;
+    height: 18px;
+    font-family: inherit;
+    font-weight: inherit;
+    font-size: inherit;
+    font-variant-ligatures: none;
+    line-height: inherit;
 }

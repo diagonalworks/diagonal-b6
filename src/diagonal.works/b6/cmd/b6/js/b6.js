@@ -1,7 +1,9 @@
 import * as d3 from "d3";
 
+import Shell from "./shell.js";
+
 import {defaults as InteractionDefaults} from "ol/interaction";
-import {fromLonLat} from "ol/proj";
+import {fromLonLat, toLonLat} from "ol/proj";
 import Circle from "ol/style/Circle";
 import Fill from "ol/style/Fill";
 import GeoJSONFormat from "ol/format/GeoJSON";
@@ -227,12 +229,70 @@ function setupMap(state) {
         view: view,
     });
 
-    return map;
+    return [map, [buildings, roadOutlines, landuse, water]];
+}
+
+function setupShell(handleResponse) {
+    const shell = new Shell("shell", handleResponse);
+    d3.select("body").on("keydown", (e) => {
+        if (e.key == "`" || e.key == "~") {
+            e.preventDefault();
+            shell.toggle();
+        }
+    });
+    return shell;
+}
+
+function lonLatToLiteral(ll) {
+    return `${ll[1].toPrecision(8)}, ${ll[0].toPrecision(8)}`
+}
+
+function showFeature(feature, shell) {
+    const ns = feature.get("ns");
+    const id = feature.get("id");
+    const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
+    if (ns && id && types[feature.getType()]) {
+        shell.evaluateExpression(`show /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`);
+    }
+}
+
+function showFeatureAtPixel(pixel, layers, shell) {
+    const search = (i, found) => {
+        if (i < layers.length) {
+            if (layers[i].getVisible()) {
+                layers[i].getFeatures(pixel).then(features => {
+                    if (features.length > 0) {
+                        found(features[0]);
+                        return
+                    }
+                });
+            }
+            search(i + 1, found);
+        }
+    };
+    search(0, f => showFeature(f, shell));
 }
 
 function main() {
     const state = {};
-    setupMap(state);
-}
+    const [map, searchableLayers] = setupMap(state);
 
+    const handleResponse = (response) => {
+        if (response.Center) {
+            map.getView().animate({
+                center: fromLonLat([parseFloat(response.Center[0]), parseFloat(response.Center[1])]),
+                duration: 500,
+            });
+        }
+    }
+    const shell = setupShell(handleResponse);
+
+    map.on("singleclick", e => {
+        if (e.originalEvent.shiftKey) {
+            showFeatureAtPixel(e.pixel, searchableLayers, shell);
+        } else {
+            shell.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))));
+        }
+    });
+}
 main();
