@@ -25,43 +25,6 @@ class Shell {
             e.preventDefault();
             this.evaluate();
         });
-
-        /*
-        this.map = map;
-        map.on("singleclick", e => {
-            const search = (i, layers, next) => {
-                if (i < layers.length) {
-                    if (layers[i].getVisible()) {
-                        layers[i].getFeatures(e.pixel).then(fs => {
-                            if (fs.length > 0) {
-                                next(toLonLat(map.getCoordinateFromPixel(e.pixel)), fs[0]);
-                            } else {
-                                search(i + 1, layers, next);
-                            }
-                        });
-                    } else {
-                        search(i + 1, layers, next);
-                    }
-                } else {
-                    next(toLonLat(map.getCoordinateFromPixel(e.pixel)), null);
-                }
-            };
-            const evaluate = (ll, f) => {
-                if (f) {
-                    const ns = f.get("ns");
-                    const id = f.get("id");
-                    const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
-                    if (ns && id && types[f.getType()]) {
-                        this.evaluateExpression(`show-in-panel /${types[f.getType()]}/${ns}/${BigInt("0x" + id)} ${formatLonLat(ll)}`);
-                    }
-                } else {
-                    this.evaluateExpression(formatLonLat(ll));
-                }
-            }
-            search(0, layers, evaluate);
-        });
-        */
-
         this.render();
     }
 
