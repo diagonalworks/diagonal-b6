@@ -21,8 +21,8 @@ import (
 )
 
 func main() {
-	httpFlag := flag.String("http", "localhost:8100", "Host and port on which to serve HTTP")
-	grpcFlag := flag.String("grpc", "localhost:8001", "Host and port on which to serve GRPC")
+	httpFlag := flag.String("http", ":8001", "Host and port on which to serve HTTP")
+	grpcFlag := flag.String("grpc", ":8002", "Host and port on which to serve GRPC")
 	grpcSizeFlag := flag.Int("grpc-size", 16*1024*1024, "Maximum size for GRPC messages")
 	worldFlag := flag.String("world", "", "World to load")
 	staticFlag := flag.String("static", "src/diagonal.works/b6/cmd/b6/js/static", "Path to static content")

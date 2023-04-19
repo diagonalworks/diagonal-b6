@@ -63,6 +63,7 @@ baseline-backend: protos src/diagonal.works/b6/api/y.go
 
 b6: protos src/diagonal.works/b6/api/y.go
 	cd src/diagonal.works/b6/cmd/b6; go build -o ../../../../../bin/${TARGETPLATFORM}/b6
+	make -C src/diagonal.works/b6/cmd/b6/js
 
 dfe:
 	mkdir -p bin/${TARGETPLATFORM}
@@ -175,6 +176,18 @@ docker-baseline:
 	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.baseline -t baseline-${TARGETARCH} docker
 	docker tag baseline-${TARGETARCH} eu.gcr.io/diagonal-platform/baseline-${TARGETARCH}
 	docker push eu.gcr.io/diagonal-platform/baseline-${TARGETARCH}
+
+# Use TARGETARCH=x86_64 TARGETOS=linux for GCP
+docker-b6:
+	rm -rf docker/b6
+	mkdir -p docker/bin/${TARGETPLATFORM}
+	cp bin/${TARGETPLATFORM}/b6 docker/bin/${TARGETPLATFORM}
+	mkdir -p docker/b6/js
+	cp src/diagonal.works/b6/cmd/b6/js/bundle.js docker/b6/js
+	cp -r src/diagonal.works/b6/cmd/b6/js/static docker/b6/
+	docker build --build-arg platform=${TARGETPLATFORM} -f docker/Dockerfile.b6 -t b6-${TARGETARCH} docker
+	docker tag b6-${TARGETARCH} eu.gcr.io/diagonal-platform/b6-${TARGETARCH}
+	docker push eu.gcr.io/diagonal-platform/b6-${TARGETARCH}
 
 protos:
 	protoc --plugin=${HOME}/go/bin/protoc-gen-go -I=proto --go_out=src proto/cookie.proto
