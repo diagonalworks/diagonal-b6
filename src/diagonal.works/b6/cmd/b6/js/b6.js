@@ -36,7 +36,7 @@ const RoadWidths = {
     "footway": 8.0,
     "path": 8.0,
 }
-const GeoJSONFillColour = "#5e5fe7";
+const GeoJSONFillColour = "#364153";
 
 function scaleWidth(width, resolution) {
     return width * (0.30 / resolution);
@@ -187,6 +187,15 @@ function setupMap(state) {
         source: baseSource,
         style: function(feature, resolution) {
             if (feature.get("layer") == "building") {
+                if (state.featureColours) {
+                    const colour = state.featureColours[idKeyFromFeature(feature)];
+                    if (colour) {
+                        return new Style({
+                            fill: new Fill({color: colour}),
+                            stroke: new Stroke({color: "#4f5a7d", width: 0.3})
+                        });
+                    }
+                }
                 return buildingFill;
             }
         },
@@ -302,7 +311,7 @@ function setupMap(state) {
     const map = new Map({
         target: "map",
         layers: [background, water, landuse, roadOutlines, roadFills, buildings, labels, geojson],
-        interactions : InteractionDefaults(),
+        interactions: InteractionDefaults(),
         controls: [zoom],
         view: view,
     });
@@ -317,7 +326,13 @@ function setupMap(state) {
         geoJSONSource.changed();
     }
 
-    return [map, renderGeoJSON, [buildings, roadOutlines, landuse, water]];
+    const searchableLayers = [buildings, roadOutlines, landuse, water];
+
+    const buildingsChanged = () => {
+        buildings.changed();
+    };
+
+    return [map, renderGeoJSON, searchableLayers, buildingsChanged];
 }
 
 function setupShell(handleResponse) {
@@ -364,9 +379,25 @@ function showFeatureAtPixel(pixel, layers, shell) {
     search(0, f => showFeature(f, shell));
 }
 
+function idKey(id) {
+    return `/${id[0]}/${id[1]}/${id[2]}`;
+}
+
+const idGeometryTypes = {
+    "Point": "point",
+    "LineString": "path",
+    "Polygon": "area",
+    "MultiPolygon": "area",
+}
+
+function idKeyFromFeature(feature) {
+    const type = idGeometryTypes[feature.getGeometry().getType()] || "invalid";
+    return `/${type}/${feature.get("ns")}/${feature.get("id")}`
+}
+
 function main() {
     const state = {};
-    const [map, renderGeoJSON, searchableLayers] = setupMap(state);
+    const [map, renderGeoJSON, searchableLayers, buildingsChanged] = setupMap(state);
 
     const handleResponse = (response) => {
         if (response.Center) {
@@ -377,6 +408,13 @@ function main() {
         }
         if (response.GeoJSON) {
             renderGeoJSON(response.GeoJSON)
+        }
+        if (response.FeatureColours) {
+            state.featureColours = {};
+            for (const i in response.FeatureColours) {
+                state.featureColours[idKey(response.FeatureColours[i][0])] = response.FeatureColours[i][1];
+            }
+            buildingsChanged();
         }
     }
     const shell = setupShell(handleResponse);

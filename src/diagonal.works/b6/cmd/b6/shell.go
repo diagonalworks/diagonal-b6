@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
+	"diagonal.works/b6/renderer"
 	"github.com/golang/geo/s2"
 )
 
@@ -56,7 +58,7 @@ func fillLines(v interface{}, lines []LineJSON) []LineJSON {
 
 func fillLinesFromFeature(f b6.Feature, lines []LineJSON) []LineJSON {
 	line := LineJSON{}
-	for _, key := range []string{"addr:housename", "name"} {
+	for _, key := range []string{"name", "addr:housename"} {
 		if t := f.Get(key); t.IsValid() {
 			line = append(line, SpanJSON{Text: t.Value + " ", Class: "name"})
 			break
@@ -120,7 +122,7 @@ func fillSpans(v interface{}, spans []SpanJSON) []SpanJSON {
 }
 
 func fillSpansFromFeature(f b6.Feature, spans []SpanJSON) []SpanJSON {
-	for _, key := range []string{"addr:housename", "name"} {
+	for _, key := range []string{"name", "addr:housename"} {
 		if t := f.Get(key); t.IsValid() {
 			spans = append(spans, SpanJSON{Text: t.Value + " ", Class: "name"})
 			break
@@ -143,7 +145,10 @@ func fillSpansFromFeatureID(id b6.FeatureID, abbreviate bool, spans []SpanJSON) 
 }
 
 func fillSpansFromTag(t b6.Tag, spans []SpanJSON) []SpanJSON {
-	return append(spans, SpanJSON{Text: api.TagToExpression(t), Class: "literal"})
+	if t.IsValid() {
+		return append(spans, SpanJSON{Text: api.TagToExpression(t), Class: "literal"})
+	}
+	return append(spans, SpanJSON{Text: "tag", Class: "invalid"})
 }
 
 func fillSpansFromGeoJSON(g geojson.GeoJSON, spans []SpanJSON) []SpanJSON {
@@ -182,6 +187,15 @@ func (f FeatureIDJSON) FeatureID() b6.FeatureID {
 		Namespace: b6.Namespace(f[1]),
 		Value:     v,
 	}
+}
+
+type FeatureColourJSON struct {
+	ID     FeatureIDJSON
+	Colour string
+}
+
+func (f *FeatureColourJSON) MarshalJSON() ([]byte, error) {
+	return json.Marshal([2]interface{}{f.ID, f.Colour})
 }
 
 type MapLayer uint8
@@ -229,6 +243,7 @@ type showChange struct {
 	GeoJSON         geojson.GeoJSON
 	BoundariesLayer string
 	PointsLayer     string
+	FeatureColours  []FeatureColourJSON
 	Lines           []LineJSON
 }
 
@@ -241,6 +256,7 @@ func (c *showChange) Apply(r *ShellResponseJSON) error {
 	r.UpdateLayers = true
 	r.BoundariesLayer = c.BoundariesLayer
 	r.PointsLayer = c.PointsLayer
+	r.FeatureColours = c.FeatureColours
 	if c.Lines != nil {
 		r.Lines = append(r.Lines, c.Lines...)
 	} else {
@@ -303,6 +319,62 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 	return change, nil
 }
 
+func showColours(collection api.FeatureIDAnyCollection, c *api.Context) (UIChange, error) {
+
+	min := math.Inf(1)
+	max := math.Inf(-1)
+	ids := make([]b6.FeatureID, 0)
+	values := make([]float64, 0)
+
+	i := collection.Begin()
+	n := 0
+	for {
+		if ok, err := i.Next(); err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		if id, ok := i.Key().(b6.FeatureID); ok {
+			if v, ok := api.ToFloat(i.Value()); ok {
+				if v < min {
+					min = v
+				}
+				if v > max {
+					max = v
+				}
+				ids = append(ids, id)
+				values = append(values, v)
+			}
+		}
+		n++
+	}
+
+	line := LineJSON{SpanJSON{Text: fmt.Sprintf("n: %d values: %d min: %f max: %f", n, len(ids), min, max)}}
+
+	gradient := renderer.Gradient{
+		{Value: 0.0, Colour: renderer.ColourFromHexString("#796bbe")},
+		{Value: 0.143, Colour: renderer.ColourFromHexString("#a673a0")},
+		{Value: 0.286, Colour: renderer.ColourFromHexString("#cc7a87")},
+		{Value: 0.429, Colour: renderer.ColourFromHexString("#ee8171")},
+		{Value: 0.571, Colour: renderer.ColourFromHexString("#ff9068")},
+		{Value: 0.714, Colour: renderer.ColourFromHexString("#ffa86d")},
+		{Value: 0.857, Colour: renderer.ColourFromHexString("#ffbe71")},
+		{Value: 1.00, Colour: renderer.ColourFromHexString("#ffd476")},
+	}
+
+	var colours []FeatureColourJSON
+	if min < max {
+		for i := range values {
+			colour := gradient.Interpolate((values[i] - min) / (max - min))
+			colours = append(colours, FeatureColourJSON{ID: MakeFeatureIDJSON(ids[i]), Colour: colour.ToHexString()})
+		}
+	}
+	return &showChange{
+		Lines:          []LineJSON{line},
+		FeatureColours: colours,
+	}, nil
+}
+
 type ShellHandler struct {
 	World      *ingest.MutableOverlayWorld
 	Cores      int
@@ -318,6 +390,7 @@ func NewShellHandler(w *ingest.MutableOverlayWorld, cores int) (*ShellHandler, e
 		local[name] = f
 	}
 	local["show"] = show
+	local["show-colours"] = showColours
 	for name, f := range local {
 		if err := functions.Validate(f, name); err != nil {
 			return nil, err
@@ -342,6 +415,7 @@ type ShellResponseJSON struct {
 	Center           *geojson.Point
 	BoundariesLayer  string
 	PointsLayer      string
+	FeatureColours   []FeatureColourJSON
 	UpdateLayers     bool
 	UpdateBuildings  bool
 }

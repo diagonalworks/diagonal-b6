@@ -113,6 +113,12 @@
     font-style: italic;
 }
 
+#shell span.invalid {
+    font-family: "Roboto", sans-serif;
+    font-style: italic;
+    text-decoration: line-through;
+}
+
 #shell > .items > form {
     height: 18px;
     margin: 0px;
