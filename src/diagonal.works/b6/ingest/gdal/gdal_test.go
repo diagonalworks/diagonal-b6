@@ -12,7 +12,7 @@ import (
 
 func TestReadFeaturesFromLSOABoundaries(t *testing.T) {
 	source := Source{
-		Filename:   test.Data("census/lsoa-camden.shp"),
+		Filename:   test.Data("lsoa-camden.shp"),
 		CopyTags:   []CopyTag{{Field: "code", Key: "code"}, {Field: "name", Key: "name"}},
 		AddTags:    []b6.Tag{{Key: "#boundary", Value: "lsoa"}},
 		IDField:    "code",

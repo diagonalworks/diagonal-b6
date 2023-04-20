@@ -100,6 +100,8 @@ func collectionForType(t reflect.Type) Collection {
 		return Collection{Name: n, Key: "FeatureID", Value: "Tag"}
 	case "FeatureIDStringStringPairCollection":
 		return Collection{Name: n, Key: "FeatureID", Value: "StringStringPair"}
+	case "FeatureIDFeatureIDCollection":
+		return Collection{Name: n, Key: "FeatureID", Value: "FeatureID"}
 	}
 	panic(fmt.Sprintf("Can't handle collection %s", t))
 }

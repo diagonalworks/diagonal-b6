@@ -448,10 +448,10 @@ class B6Test(unittest.TestCase):
         self.assertEqual(self.connection(b6.find_area(id)).get_string("building"), "yes")
 
     def test_import_geojson_file(self):
-        ids = self.connection(b6.import_geojson_file("data/tests/sightline.geojson", "diagonal.works/test"))
+        ids = self.connection(b6.import_geojson_file("data/tests/granary-square.geojson", "diagonal.works/test"))
         self.assertGreater(len(ids), 0)
         id = list(ids.values())[0]
-        self.assertGreater(self.connection(b6.find_area(id).area()), 20000.0)
+        self.assertGreater(self.connection(b6.find_area(id).area()), 100.0)
 
 def main():
     parser = argparse.ArgumentParser()
