@@ -1,6 +1,7 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
 [project]
 name = "diagonal_b6"
 description = "A Python client library for b6, Diagonal's geospatial analysis engine."
@@ -13,7 +14,6 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
     "grpcio>=1.43.0",
-    "grpcio-tools>=1.43.0",
     "protobuf>=3.14.0",
     "s2sphere>=0.2.5",
 ]
@@ -24,8 +24,10 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Topic :: Scientific/Engineering :: GIS",
 ]
+
 [project.urls]
 "Homepage" = "https://diagonal.works/"
+
 [tool.setuptools.packages]
 find = {}
 
