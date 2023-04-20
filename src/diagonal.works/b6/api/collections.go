@@ -63,6 +63,7 @@ type RelationFeatureCollection Collection
 type IntStringCollection Collection
 type IntTagCollection Collection
 type StringStringCollection Collection
+type FeatureIDAnyCollection Collection
 type FeatureIDIntCollection Collection
 type FeatureIDStringCollection Collection
 type FeatureIDTagCollection Collection
