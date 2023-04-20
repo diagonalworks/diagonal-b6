@@ -5,14 +5,7 @@ TARGETOS ?= $(shell uname -s | tr A-Z a-z)
 # Sets TARGETPLATFORM to something like linux/amd64 or darwin/aarch64
 export TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
 
-all: protos experimental fe ingest transit fe-js dfe
-	cd src/diagonal.works/diagonal/monitoring; go generate
-	cd src/diagonal.works/diagonal; go build diagonal.works/diagonal/...
-	cd src/diagonal.works/diagonal/cmd/inspect; go build
-	cd src/diagonal.works/diagonal/cmd/splitosm; go build
-	cd src/diagonal.works/diagonal/cmd/tile; go build
-	cd src/diagonal.works/diagonal/experimental/sightline-tiles; go build
-	make -C data
+all: b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-ingest-gb-uprn b6-ingest-gb-codepoint b6-connect b6-api baseline
 
 fe: protos
 	cd src/diagonal.works/diagonal/monitoring; go generate
@@ -25,29 +18,26 @@ ingest: protos
 	cd src/diagonal.works/diagonal/monitoring; go generate
 	cd src/diagonal.works/diagonal/cmd/ingest; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest
 
-ingest-osm:
-	cd src/diagonal.works/b6/cmd/ingest-osm; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-osm
+b6-ingest-osm:
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
-ingest-gdal:
-	cd src/diagonal.works/b6/cmd/ingest-gdal; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-gdal
+b6-ingest-gdal:
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
-ingest-terrain:
-	cd src/diagonal.works/b6/cmd/ingest-terrain; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-terrain
+b6-ingest-terrain:
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
-ingest-gb-uprn:
-	cd src/diagonal.works/b6/cmd/ingest-gb-uprn; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-gb-uprn
+b6-ingest-gb-uprn:
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
-ingest-gb-codepoint:
-	cd src/diagonal.works/b6/cmd/ingest-gb-codepoint; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-gb-codepoint
+b6-ingest-gb-codepoint:
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
-ingest-gb-ons:
-	cd src/diagonal.works/b6/cmd/ingest-gb-ons; go build -o ../../../../../bin/${TARGETPLATFORM}/ingest-gb-ons
-
-connect:
-	cd src/diagonal.works/b6/cmd/connect; go build -o ../../../../../bin/${TARGETPLATFORM}/connect
+b6-connect:
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
 b6-api:
-	cd src/diagonal.works/b6/cmd/b6-api; go build -o ../../../../../bin/${TARGETPLATFORM}/b6-api
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
 transit: protos
 	cd src/diagonal.works/diagonal/cmd/transit; go build
