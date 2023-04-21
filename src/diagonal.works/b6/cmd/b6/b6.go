@@ -19,6 +19,9 @@ import (
 	"diagonal.works/b6/renderer"
 
 	"google.golang.org/grpc"
+
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/gcs"
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/local"
 )
 
 func main() {
