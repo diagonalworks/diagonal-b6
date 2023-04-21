@@ -36,16 +36,17 @@ func layerNumber(f b6.Feature) int {
 type BasemapLayer int
 
 const (
-	BasemapLayerWater BasemapLayer = iota
+	BasemapLayerBoundary BasemapLayer = iota
+	BasemapLayerContour
+	BasemapLayerWater
 	BasemapLayerRoad
 	BasemapLayerLandUse
-	BasemapLayerContour
 	BasemapLayerBuilding
-	BasemapLayerRoute
+	BasemapLayerPoint
 	BasemapLayerLabel
 	BasemapLayerInvalid
 
-	BasemapLayerBegin = BasemapLayerWater
+	BasemapLayerBegin = BasemapLayerBoundary
 	BasemapLayerEnd   = BasemapLayerInvalid
 )
 
@@ -53,12 +54,13 @@ type BasemapLayers [BasemapLayerEnd]*Layer
 
 func NewLayers() *BasemapLayers {
 	var l BasemapLayers
+	l[BasemapLayerBoundary] = NewLayer("boundary")
+	l[BasemapLayerContour] = NewLayer("contour")
 	l[BasemapLayerWater] = NewLayer("water")
 	l[BasemapLayerRoad] = NewLayer("road")
 	l[BasemapLayerLandUse] = NewLayer("landuse")
-	l[BasemapLayerContour] = NewLayer("contour")
 	l[BasemapLayerBuilding] = NewLayer("building")
-	l[BasemapLayerRoute] = NewLayer("route")
+	l[BasemapLayerPoint] = NewLayer("point")
 	l[BasemapLayerLabel] = NewLayer("label")
 	return &l
 }
@@ -105,6 +107,8 @@ func (b *BasemapRenderer) findFeatures(tile b6.Tile) []b6.Feature {
 			b6.Tagged{Key: "#leisure", Value: "pitch"},
 			b6.Tagged{Key: "#natural", Value: "heath"},
 			b6.Tagged{Key: "#outline", Value: "contour"},
+			b6.Tagged{Key: "#boundary", Value: "lsoa"},
+			b6.Tagged{Key: "#place", Value: "uprn"},
 			b6.Keyed{Key: "#building"},
 			b6.Keyed{Key: "#water"},
 			b6.Keyed{Key: "#waterway"},
@@ -129,6 +133,8 @@ func (b *BasemapRenderer) findFeatures(tile b6.Tile) []b6.Feature {
 			b6.Tagged{Key: "#leisure", Value: "pitch"},
 			b6.Tagged{Key: "#natural", Value: "heath"},
 			b6.Tagged{Key: "#outline", Value: "contour"},
+			b6.Tagged{Key: "#boundary", Value: "lsoa"},
+			b6.Tagged{Key: "#place", Value: "uprn"},
 			b6.Keyed{Key: "#building"},
 			b6.Keyed{Key: "#water"},
 			b6.Keyed{Key: "#waterway"},
@@ -138,6 +144,7 @@ func (b *BasemapRenderer) findFeatures(tile b6.Tile) []b6.Feature {
 			b6.Tagged{Key: "#highway", Value: "trunk"},
 			b6.Tagged{Key: "#highway", Value: "primary"},
 			b6.Tagged{Key: "#highway", Value: "motorway"},
+			b6.Tagged{Key: "#boundary", Value: "lsoa"},
 			b6.Keyed{Key: "#water"},
 		}
 	} else {
@@ -172,6 +179,8 @@ var renderRules = []struct {
 	{Tag: b6.Tag{Key: "#natural"}, Attribute: "natural", Layer: BasemapLayerLandUse},
 	{Tag: b6.Tag{Key: "#leisure"}, Attribute: "leisure", Layer: BasemapLayerLandUse},
 	{Tag: b6.Tag{Key: "#place", Value: "city"}, Attribute: "leisure", Layer: BasemapLayerLabel},
+	{Tag: b6.Tag{Key: "#place", Value: "uprn"}, Attribute: "place", Layer: BasemapLayerPoint},
+	{Tag: b6.Tag{Key: "#boundary"}, Attribute: "place", Layer: BasemapLayerBoundary},
 	{Tag: b6.Tag{Key: "#outline", Value: "contour"}, Attribute: "outline", Layer: BasemapLayerContour},
 }
 

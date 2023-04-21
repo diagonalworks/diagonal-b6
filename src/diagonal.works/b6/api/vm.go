@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 
 	"diagonal.works/b6"
@@ -199,7 +198,6 @@ func newVM(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConver
 			}
 		}
 		if err := compile(c.Targets[i].Node, &c); err != nil {
-			log.Printf("Failed: %+v, err: %s", node, err)
 			return nil, err
 		}
 		c.Append(Instruction{Op: OpReturn})

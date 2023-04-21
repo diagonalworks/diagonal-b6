@@ -80,6 +80,23 @@ function setupMap(state) {
         }
     });
 
+    const boundaries = new VectorTileLayer({
+        source: baseSource,
+        style: function(feature, resolution) {
+            if (feature.get("layer") == "boundary") {
+                if (state.featureColours) {
+                    const colour = state.featureColours[idKeyFromFeature(feature)];
+                    if (colour) {
+                        return new Style({
+                            fill: new Fill({color: colour}),
+                            stroke: new Stroke({color: "#4f5a7d", width: 0.3})
+                        });
+                    }
+                }
+            }
+        },
+    });
+
     const waterFill = new Style({
         fill: new Fill({color: "#b2bfe5"}),
     })
@@ -167,6 +184,17 @@ function setupMap(state) {
             if (feature.get("layer") == "road") {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
+                    if (state.featureColours) {
+                        const colour = state.featureColours[idKeyFromFeature(feature)];
+                        if (colour) {
+                            return new Style({
+                                stroke: new Stroke({
+                                    color: colour,
+                                    width: width
+                                })
+                            });
+                        }
+                    }
                     return new Style({
                         stroke: new Stroke({
                             color: "#e1e1ee",
@@ -197,6 +225,27 @@ function setupMap(state) {
                     }
                 }
                 return buildingFill;
+            }
+        },
+    });
+
+    const points = new VectorTileLayer({
+        source: baseSource,
+        style: function(feature, resolution) {
+            if (feature.get("layer") == "point") {
+                if (state.featureColours) {
+                    const colour = state.featureColours[idKeyFromFeature(feature)];
+                    if (colour) {
+                        return new Style({
+                            image: new Circle({
+                                radius: 2,
+                                fill: new Fill({
+                                    color: colour,
+                                }),
+                            }),
+                        });
+                    }
+                }
             }
         },
     });
@@ -310,7 +359,7 @@ function setupMap(state) {
 
     const map = new Map({
         target: "map",
-        layers: [background, water, landuse, roadOutlines, roadFills, buildings, labels, geojson],
+        layers: [background, boundaries, water, landuse, roadOutlines, roadFills, buildings, points, labels, geojson],
         interactions: InteractionDefaults(),
         controls: [zoom],
         view: view,
@@ -328,11 +377,14 @@ function setupMap(state) {
 
     const searchableLayers = [buildings, roadOutlines, landuse, water];
 
-    const buildingsChanged = () => {
+    const updateMap = () => {
+        boundaries.changed();
         buildings.changed();
+        roadFills.changed();
+        points.changed();
     };
 
-    return [map, renderGeoJSON, searchableLayers, buildingsChanged];
+    return [map, renderGeoJSON, searchableLayers, updateMap];
 }
 
 function setupShell(handleResponse) {

@@ -112,7 +112,7 @@ func fillSpans(v interface{}, spans []SpanJSON) []SpanJSON {
 		spans = fillSpansFromTag(v, spans)
 	case b6.Point:
 		ll := s2.LatLngFromPoint(v.Point())
-		spans = append(spans, SpanJSON{Text: fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees())})
+		spans = append(spans, SpanJSON{Text: fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees()), Class: "literal"})
 	case geojson.GeoJSON:
 		spans = fillSpansFromGeoJSON(v, spans)
 	default:
