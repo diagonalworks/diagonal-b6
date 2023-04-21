@@ -488,6 +488,10 @@ func reduceLambda(symbols []*pb.NodeProto, e *pb.NodeProto) *pb.NodeProto {
 	}
 }
 
+func reduceLambdaWithoutArgs(e *pb.NodeProto) *pb.NodeProto {
+	return reduceLambda([]*pb.NodeProto{}, e)
+}
+
 func reduceSymbolsSymbol(s *pb.NodeProto) []*pb.NodeProto {
 	return []*pb.NodeProto{s}
 }
@@ -674,12 +678,12 @@ func simplifyCallWithNoArguments(n *pb.NodeProto, functions SymbolArgCounts) (*p
 func simplifyLambda(n *pb.NodeProto, functions SymbolArgCounts) *pb.NodeProto {
 	// '{a -> area a}' is semantically equivalent to 'area'
 	lambda := n.Node.(*pb.NodeProto_Lambda_).Lambda_
-	if c, ok := lambda.Node.Node.(*pb.NodeProto_Call); ok {
+	if c, ok := lambda.Node.Node.(*pb.NodeProto_Call); ok && len(lambda.Args) > 0 {
 		call := c.Call
 		i := 0
 		for i < len(lambda.Args) && i < len(call.Args) {
-			if s, ok := call.Args[len(call.Args)-1-i].Node.(*pb.NodeProto_Symbol); ok {
-				if s.Symbol != lambda.Args[len(lambda.Args)-1-i] {
+			if s, ok := call.Args[i].Node.(*pb.NodeProto_Symbol); ok {
+				if s.Symbol != lambda.Args[i] {
 					break
 				}
 			} else {
@@ -687,7 +691,7 @@ func simplifyLambda(n *pb.NodeProto, functions SymbolArgCounts) *pb.NodeProto {
 			}
 			i++
 		}
-		if i == len(lambda.Args) {
+		if i > 0 {
 			if i == len(call.Args) {
 				return call.Function
 			}
@@ -695,7 +699,7 @@ func simplifyLambda(n *pb.NodeProto, functions SymbolArgCounts) *pb.NodeProto {
 				Node: &pb.NodeProto_Call{
 					Call: &pb.CallNodeProto{
 						Function: call.Function,
-						Args:     call.Args[0 : len(call.Args)-i],
+						Args:     call.Args[i:len(call.Args)],
 					},
 				},
 				Begin: n.Begin,

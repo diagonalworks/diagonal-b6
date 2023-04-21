@@ -93,9 +93,13 @@ arg:
 |   expression
 
 lambda:
-   '{' symbols ARROW pipeline '}'
+    '{' symbols ARROW pipeline '}'
     {
         $$ = reduceLambda($2, $4)
+    }
+|   '{' ARROW pipeline '}'
+    {
+        $$ = reduceLambdaWithoutArgs($3)
     }
 
 symbols:

@@ -321,7 +321,7 @@ func TestParseExpression(t *testing.T) {
 			Begin: 0,
 			End:   67,
 		}},
-		{"ExplicitLambda", `map {f -> tag f "name"} (all-areas)`, &pb.NodeProto{
+		{"ExplicitLambdaWithArg", `map {f -> tag f "name"} (all-areas)`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
 				Call: &pb.CallNodeProto{
 					Function: &pb.NodeProto{
@@ -333,43 +333,27 @@ func TestParseExpression(t *testing.T) {
 					},
 					Args: []*pb.NodeProto{
 						{
-							Node: &pb.NodeProto_Lambda_{
-								Lambda_: &pb.LambdaNodeProto{
-									Args: []string{"f"},
-									Node: &pb.NodeProto{
-										Node: &pb.NodeProto_Call{
-											Call: &pb.CallNodeProto{
-												Function: &pb.NodeProto{
-													Node: &pb.NodeProto_Symbol{
-														Symbol: "tag",
-													},
-													Begin: 10,
-													End:   13,
-												},
-												Args: []*pb.NodeProto{
-													{
-														Node: &pb.NodeProto_Symbol{
-															Symbol: "f",
-														},
-														Begin: 14,
-														End:   15,
-													},
-													{
-														Node: &pb.NodeProto_Literal{
-															Literal: &pb.LiteralNodeProto{
-																Value: &pb.LiteralNodeProto_StringValue{
-																	StringValue: "name",
-																},
-															},
-														},
-														Begin: 16,
-														End:   22,
+							Node: &pb.NodeProto_Call{
+								Call: &pb.CallNodeProto{
+									Function: &pb.NodeProto{
+										Node: &pb.NodeProto_Symbol{
+											Symbol: "tag",
+										},
+										Begin: 10,
+										End:   13,
+									},
+									Args: []*pb.NodeProto{
+										{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_StringValue{
+														StringValue: "name",
 													},
 												},
 											},
+											Begin: 16,
+											End:   22,
 										},
-										Begin: 10,
-										End:   22,
 									},
 								},
 							},
@@ -457,7 +441,48 @@ func TestParseExpression(t *testing.T) {
 			Begin: 0,
 			End:   27,
 		}},
-		{"RootCallWithNoArgs", `all-areas`, &pb.NodeProto{
+		{"ExplicitLambdaWithoutArgs", `with-change {-> building-access}`, &pb.NodeProto{
+			Node: &pb.NodeProto_Call{
+				Call: &pb.CallNodeProto{
+					Function: &pb.NodeProto{
+						Node: &pb.NodeProto_Symbol{
+							Symbol: "with-change",
+						},
+						Begin: 0,
+						End:   11,
+					},
+					Args: []*pb.NodeProto{
+						{
+							Node: &pb.NodeProto_Lambda_{
+								Lambda_: &pb.LambdaNodeProto{
+									Args: []string{},
+									Node: &pb.NodeProto{
+										Node: &pb.NodeProto_Call{
+											Call: &pb.CallNodeProto{
+												Function: &pb.NodeProto{
+													Node: &pb.NodeProto_Symbol{
+														Symbol: "building-access",
+													},
+													Begin: 16,
+													End:   31,
+												},
+											},
+										},
+										Begin: 16,
+										End:   31,
+									},
+								},
+							},
+							Begin: 16,
+							End:   31,
+						},
+					},
+				},
+			},
+			Begin: 0,
+			End:   31,
+		}},
+		{"RootCallWithoutArgs", `all-areas`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
 				Call: &pb.CallNodeProto{
 					Function: &pb.NodeProto{

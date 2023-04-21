@@ -261,14 +261,16 @@ func ConvertWithVM(v reflect.Value, t reflect.Type, w b6.World, vm *VM) (reflect
 
 func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {
 	ok := t.Kind() == reflect.Func
-	ok = ok || v.Type().Implements(queryInterface)
-	ok = ok || t.NumIn() == 2
-	ok = ok || t.Out(0).Kind() == reflect.Bool
-	ok = ok || t.In(0).Implements(featureInterface)
+	ok = ok && v.Type().Implements(queryInterface)
+	ok = ok && t.NumIn() == 2
+	ok = ok && t.Out(0).Kind() == reflect.Bool
 	if ok {
 		q := v.Interface().(b6.Query)
-		f := func(feature b6.Feature, c *Context) (bool, error) {
-			return q.Matches(feature, c.World), nil
+		f := func(feature interface{}, c *Context) (bool, error) {
+			if feature, ok := feature.(b6.Feature); ok {
+				return q.Matches(feature, c.World), nil
+			}
+			return false, fmt.Errorf("Expected b6.Feature, found %T", feature)
 		}
 		return goCall{f: reflect.ValueOf(f), name: fmt.Sprintf("matches %s", q)}, true
 	}
