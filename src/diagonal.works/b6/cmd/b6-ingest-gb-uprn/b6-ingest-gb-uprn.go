@@ -20,12 +20,15 @@ import (
 	"diagonal.works/b6/ingest/compact"
 
 	"github.com/golang/geo/s2"
+
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/gcs"
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/local"
 )
 
 type UPRNSource struct {
 	Filename string
 	Filter   func(p b6.PointFeature, c *api.Context) (bool, error)
-	Join     map[uint64][]b6.Tag
+	JoinTags ingest.JoinTags
 }
 
 type PointWrapper struct {
@@ -112,9 +115,7 @@ func (s *UPRNSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx cont
 		}
 		point.Location = s2.LatLngFromDegrees(lat, lng)
 		point.Tags = point.Tags[0:1] // Keep #place=uprn
-		for _, t := range s.Join[point.PointID.Value] {
-			point.Tags = append(point.Tags, t)
-		}
+		s.JoinTags.AddTags(row[indicies[0]], &point)
 		if len(point.Tags) > 1 {
 			joins++
 		}
@@ -129,48 +130,6 @@ func (s *UPRNSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx cont
 	}
 	log.Printf("uprns: %d emits: %d joined: %d", uprns, emits, joins)
 	return nil
-}
-
-func parseJoinedCSV(filename string) (map[uint64][]b6.Tag, error) {
-	if filename == "" {
-		return map[uint64][]b6.Tag{}, nil
-	}
-
-	f, err := os.OpenFile(filename, os.O_RDONLY, 0)
-	defer f.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	r := csv.NewReader(f)
-	header, err := r.Read()
-	if err != nil {
-		return nil, err
-	}
-	if len(header) < 2 {
-		return nil, fmt.Errorf("Expected at least 2 columns in %s, found %s", filename, header)
-	}
-
-	join := make(map[uint64][]b6.Tag)
-	for {
-		row, err := r.Read()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, err
-		}
-		if len(row) == len(header) {
-			id, err := strconv.ParseUint(row[0], 10, 64)
-			if err == nil {
-				tags := join[id]
-				for i := 1; i < len(row); i++ {
-					tags = append(tags, b6.Tag{Key: header[i], Value: row[i]})
-				}
-				join[id] = tags
-			}
-		}
-	}
-	return join, nil
 }
 
 func main() {
@@ -202,15 +161,18 @@ func main() {
 		}
 	}
 
-	join, err := parseJoinedCSV(*joinFlag)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	source := &UPRNSource{
 		Filename: *inputFlag,
 		Filter:   filter,
-		Join:     join,
+	}
+
+	if *joinFlag != "" {
+		var err error
+		source.JoinTags, err = ingest.NewJoinTagsFromCSV(*joinFlag)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
 	}
 
 	config := compact.Options{
@@ -220,6 +182,7 @@ func main() {
 		PointsWorkOutputType: compact.OutputTypeMemory,
 	}
 	if err := compact.Build(source, &config); err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 }

@@ -112,6 +112,7 @@ func main() {
 	recurseFlag := flag.Bool("recurse", false, "Recurse into directories")
 	zippedFlag := flag.Bool("zipped", false, "Read shapefiles within zipfiles")
 	boundingBoxFlag := flag.String("bounding-box", "", "lat,lng,lat,lng bounding box to crop points outside")
+	joinFlag := flag.String("join", "", "Join tag values from a CSV")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	flag.Parse()
 
@@ -144,6 +145,33 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var joinTags ingest.JoinTags
+	if *joinFlag != "" {
+		var err error
+		joinTags, err = ingest.NewJoinTagsFromCSV(*joinFlag)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+	}
+
+	var copyTags []gdal.CopyTag
+	for _, field := range strings.Split(*copyTagsFlag, ",") {
+		if index := strings.Index(field, "="); index > 0 {
+			copyTags = append(copyTags, gdal.CopyTag{Field: field[0:index], Key: field[index+1:]})
+		} else {
+			copyTags = append(copyTags, gdal.CopyTag{Field: field, Key: field})
+		}
+	}
+
+	var addTags []b6.Tag
+	for _, tag := range strings.Split(*addTagsFlag, ",") {
+		parts := strings.Split(tag, "=")
+		if len(parts) == 2 {
+			addTags = append(addTags, b6.Tag{Key: parts[0], Value: parts[1]})
+		}
+	}
+
 	source := make(mergedSource, len(inputs))
 	for i, ii := range inputs {
 		source[i] = &gdal.Source{
@@ -151,22 +179,10 @@ func main() {
 			Namespace:  b6.Namespace(*namespaceFlag),
 			IDField:    *idFlag,
 			IDStrategy: strategy,
+			CopyTags:   copyTags,
+			AddTags:    addTags,
+			JoinTags:   joinTags,
 			Bounds:     bounds,
-		}
-
-		for _, field := range strings.Split(*copyTagsFlag, ",") {
-			if index := strings.Index(field, "="); index > 0 {
-				source[i].CopyTags = append(source[i].CopyTags, gdal.CopyTag{Field: field[0:index], Key: field[index+1:]})
-			} else {
-				source[i].CopyTags = append(source[i].CopyTags, gdal.CopyTag{Field: field, Key: field})
-			}
-		}
-
-		for _, tag := range strings.Split(*addTagsFlag, ",") {
-			parts := strings.Split(tag, "=")
-			if len(parts) == 2 {
-				source[i].AddTags = append(source[i].AddTags, b6.Tag{Key: parts[0], Value: parts[1]})
-			}
 		}
 	}
 

@@ -77,4 +77,4 @@ clean:
 	rm -f python/diagonal_b6/*_pb2.py
 	rm -f python/diagonal_b6/*_pb2_grpc.py
 
-.PHONY: python proto
+.PHONY: python proto docker
