@@ -169,6 +169,7 @@ type Source struct {
 	IDStrategy IDStrategy
 	CopyTags   []CopyTag
 	AddTags    []b6.Tag
+	JoinTags   ingest.JoinTags
 }
 
 func newFeatureFromS2Region(r s2.Region) ingest.Feature {
@@ -276,6 +277,7 @@ func (s *Source) makeCopyFields(d gdal.FeatureDefinition) (copyFields, copyField
 type featureParts struct {
 	Geometries gdal.Geometry
 	IDs        []b6.FeatureID
+	RawIDs     []string
 	Tags       [][]b6.Tag
 }
 
@@ -321,6 +323,7 @@ func (s *Source) readFeaturePartsFromLayer(layer gdal.Layer, firstIndex int, opt
 			if err == nil {
 				id, err := s.IDStrategy(v, i, t, s.Namespace)
 				if err == nil {
+					parts.RawIDs = append(parts.RawIDs, v)
 					parts.IDs = append(parts.IDs, id)
 				}
 			}
@@ -372,6 +375,7 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 				for _, tag := range s.AddTags {
 					f.AddTag(tag)
 				}
+				s.JoinTags.AddTags(p.RawIDs[i], f)
 				err = emit(f, 0)
 			}
 			if err != nil {
