@@ -11,7 +11,6 @@ import (
 
 type AppliedChange map[b6.FeatureID]b6.FeatureID
 
-// TODO: Move Change into world/a5
 type Change interface {
 	Apply(w MutableWorld) (AppliedChange, error)
 }
@@ -208,15 +207,36 @@ type AddTag struct {
 
 type AddTags []AddTag
 
-func (s AddTags) String() string {
-	return fmt.Sprintf("set tags: %d", len(s))
+func (a AddTags) String() string {
+	return fmt.Sprintf("set tags: %d", len(a))
 }
 
-func (s AddTags) Apply(w MutableWorld) (AppliedChange, error) {
-	// TODO: Keep this interface, or only use it for AddFeatures?
+func (a AddTags) Apply(w MutableWorld) (AppliedChange, error) {
 	modified := make(AppliedChange)
-	for _, t := range s {
+	for _, t := range a {
 		if err := w.AddTag(t.ID, t.Tag); err != nil {
+			return nil, err
+		}
+		modified[t.ID] = t.ID
+	}
+	return modified, nil
+}
+
+type RemoveTag struct {
+	ID  b6.FeatureID
+	Key string
+}
+
+type RemoveTags []RemoveTag
+
+func (r RemoveTags) String() string {
+	return fmt.Sprintf("remove tags: %d", len(r))
+}
+
+func (r RemoveTags) Apply(w MutableWorld) (AppliedChange, error) {
+	modified := make(AppliedChange)
+	for _, t := range r {
+		if err := w.RemoveTag(t.ID, t.Key); err != nil {
 			return nil, err
 		}
 		modified[t.ID] = t.ID

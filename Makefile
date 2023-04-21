@@ -67,7 +67,7 @@ python/diagonal_b6/api_generated.py: b6-api
 python-test: python b6-backend
 	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/diagonal_b6/b6_test.py
 
-test: proto
+test: proto src/diagonal.works/b6/api/y.go
 	cd src/diagonal.works/b6; go test diagonal.works/b6/...
 
 clean:

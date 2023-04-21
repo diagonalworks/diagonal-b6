@@ -120,9 +120,12 @@ var functions = api.FunctionSymbols{
 	"apply-to-path":         applyToPath,
 	"apply-to-area":         applyToArea,
 	"map-geometries":        MapGeometries,
-	// modify
-	"add-tag":  addTag,
-	"add-tags": addTags,
+	// change
+	"add-tag":     addTag,
+	"add-tags":    addTags,
+	"remove-tag":  removeTag,
+	"remove-tags": removeTags,
+	"with-change": withChange,
 	// debug
 	"debug-tokens":    debugTokens,
 	"debug-all-query": debugAllQuery,
@@ -269,6 +272,11 @@ var convertors = []interface{}{
 				err = fmt.Errorf("%s: expected a tag, found %T", c, result)
 			}
 			return b6.Tag{}, err
+		}
+	},
+	func(c api.Callable) func(*api.Context) (interface{}, error) {
+		return func(context *api.Context) (interface{}, error) {
+			return api.Call0(c, context)
 		}
 	},
 }

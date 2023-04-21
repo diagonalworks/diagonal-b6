@@ -270,3 +270,30 @@ func TestConvertIntAndFloat64ToNumber(t *testing.T) {
 		}
 	}
 }
+
+func TestCallLambdaWithNoArguments(t *testing.T) {
+	w := ingest.NewBasicMutableWorld()
+	functions := make(api.FunctionSymbols)
+	functions["call"] = func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+		return f(c)
+	}
+	e := "call {-> 42}"
+	if v, err := api.EvaluateString(e, w, functions, FunctionConvertors()); err != nil {
+		t.Error(err)
+	} else if i, ok := v.(int64); !ok || i != 42 {
+		t.Errorf("Expected 42, found %T %v", v, v)
+	}
+}
+
+func TestIncorrectlyPassNumberAsFunction(t *testing.T) {
+	w := ingest.NewBasicMutableWorld()
+	functions := make(api.FunctionSymbols)
+	functions["call"] = func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+		return f(c)
+	}
+	e := "call 42"
+	_, err := api.EvaluateString(e, w, functions, FunctionConvertors())
+	if err == nil {
+		t.Errorf("Expected an error")
+	}
+}

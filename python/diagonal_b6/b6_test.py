@@ -453,6 +453,13 @@ class B6Test(unittest.TestCase):
         id = list(ids.values())[0]
         self.assertGreater(self.connection(b6.find_area(id).area()), 100.0)
 
+    def test_evaluate_with_changed_world(self):
+        close_road = b6.remove_tag(b6.osm_way_id(STABLE_STREET_BRIDGE_ID), "#highway")
+        reachable = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).get_string("name")
+        before = len(self.connection(reachable))
+        after = len(self.connection(b6.with_change(close_road, lambda: reachable)))
+        self.assertGreater(before, after)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")

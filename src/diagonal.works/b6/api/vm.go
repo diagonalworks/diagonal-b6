@@ -139,15 +139,16 @@ func (c *compilation) Append(i Instruction) {
 }
 
 func Evaluate(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors) (interface{}, error) {
-	vm, err := newVM(node, w, fs, cs, nil)
+	vm, err := newVM(node, w, fs, cs)
 	if err != nil {
 		return nil, err
 	}
-	return vm.Execute()
+	context := &Context{World: w}
+	return vm.Execute(context)
 }
 
 func EvaluateAndFill(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors, toFill interface{}) error {
-	vm, err := newVM(node, w, fs, cs, nil)
+	vm, err := newVM(node, w, fs, cs)
 	if err != nil {
 		return err
 	}
@@ -155,7 +156,8 @@ func EvaluateAndFill(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs Func
 	if v.Kind() != reflect.Ptr {
 		return fmt.Errorf("Expected a pointer, found %T", toFill)
 	}
-	r, err := vm.Execute()
+	context := &Context{World: w}
+	r, err := vm.Execute(context)
 	if err != nil {
 		return err
 	}
@@ -177,14 +179,15 @@ func EvaluateStringWithValues(e string, w b6.World, fs FunctionSymbols, cs Funct
 		return nil, err
 	}
 	node = Simplify(node, fs)
-	vm, err := newVM(node, w, fs, cs, values)
+	vm, err := newVM(node, w, fs, cs)
 	if err != nil {
 		return nil, err
 	}
-	return vm.Execute()
+	context := &Context{World: w, Values: values}
+	return vm.Execute(context)
 }
 
-func newVM(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors, values map[interface{}]interface{}) (*VM, error) {
+func newVM(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors) (*VM, error) {
 	c := compilation{
 		Globals: fs,
 		Targets: []target{{Node: node, Done: func(int) {}}},
@@ -203,11 +206,7 @@ func newVM(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConver
 		c.Append(Instruction{Op: OpReturn})
 		c.Targets[i].Done(entrypoint)
 	}
-	rc := &Context{
-		World:  w,
-		Values: values,
-	}
-	return &VM{Instructions: c.Instructions, Convertors: cs, Context: rc}, nil
+	return &VM{Instructions: c.Instructions, Convertors: cs}, nil
 }
 
 func compile(p *pb.NodeProto, c *compilation) error {
@@ -336,9 +335,9 @@ type VM struct {
 	Instructions []Instruction
 	Convertors   FunctionConvertors
 	PC           int
-	Context      *Context
-	Args         [MaxArgs]reflect.Value
-	Stack        []reflect.Value
+	//Context      *Context
+	Args  [MaxArgs]reflect.Value
+	Stack []reflect.Value
 }
 
 const (
@@ -350,8 +349,8 @@ const (
 	ArgsArgToPush = 0
 )
 
-func (v *VM) Execute() (interface{}, error) {
-	if err := v.execute(); err != nil {
+func (v *VM) Execute(context *Context) (interface{}, error) {
+	if err := v.execute(context); err != nil {
 		return nil, err
 	}
 	result := v.Stack[len(v.Stack)-1].Interface()
@@ -359,8 +358,8 @@ func (v *VM) Execute() (interface{}, error) {
 	return result, nil
 }
 
-func (v *VM) execute() error {
-	v.Context.VM = v
+func (v *VM) execute(context *Context) error {
+	context.VM = v
 	var err error
 	args := make([]reflect.Value, 0)
 	done := false
@@ -377,14 +376,14 @@ func (v *VM) execute() error {
 			v.Stack = append(v.Stack, v.Args[v.Instructions[v.PC].Args[0]])
 		case OpCallValue:
 			n := int(v.Instructions[v.PC].Args[ArgsNumArgs])
-			if args, err = v.Instructions[v.PC].Callable.CallFromStack(n, args, v.Context); err != nil {
+			if args, err = v.Instructions[v.PC].Callable.CallFromStack(n, args, context); err != nil {
 				return err
 			}
 		case OpCallStack:
 			n := int(v.Instructions[v.PC].Args[ArgsNumArgs])
 			f := v.Stack[len(v.Stack)-1].Interface().(Callable)
 			v.Stack = v.Stack[0 : len(v.Stack)-1]
-			if args, err = f.CallFromStack(n, args, v.Context); err != nil {
+			if args, err = f.CallFromStack(n, args, context); err != nil {
 				return err
 			}
 		case OpReturn:
@@ -418,7 +417,7 @@ func (g goCall) CallFromStack(n int, scratch []reflect.Value, context *Context) 
 	if n == expected {
 		for i := 0; i < n; i++ {
 			arg := len(vm.Stack) - n + i
-			if v, err := ConvertWithVM(vm.Stack[arg], t.In(i), vm.Context.World, vm); err == nil {
+			if v, err := ConvertWithVM(vm.Stack[arg], t.In(i), context.World, vm); err == nil {
 				scratch = append(scratch, v)
 			} else {
 				return scratch, fmt.Errorf("%s: %s", g.name, err.Error())
@@ -519,7 +518,7 @@ func (l *lambdaCall) CallFromStack(n int, scratch []reflect.Value, context *Cont
 	if n == l.args {
 		opc := vm.PC
 		vm.PC = l.pc
-		err = vm.execute()
+		err = vm.execute(context)
 		vm.PC = opc
 	} else if n < l.args {
 		p := &partialCall{c: l, vmArgs: vm.Args}
