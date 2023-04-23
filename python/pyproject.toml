@@ -26,7 +26,7 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://diagonal.works/"
+"Homepage" = "https://diagonal.works/b6"
 
 [tool.setuptools.packages]
 find = {}
