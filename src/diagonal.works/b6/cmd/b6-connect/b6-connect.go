@@ -52,6 +52,8 @@ func main() {
 	connectionThreshold := flag.Float64("connection-threshold", 100.0, "Distance away from entrances within which highways are considered")
 	clusterThreshold := flag.Float64("cluster-threshold", 4.0, "Distance below which close connection points are merged")
 	cores := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
+	memory := flag.Bool("memory", true, "Use memory for intermediate data")
+	scratch := flag.String("scratch", ".", "Directory for temporary files, for --memory=false")
 	flag.Parse()
 
 	if *addr != "" {
@@ -121,11 +123,15 @@ func main() {
 	strategy.Finish()
 	log.Printf(connections.String())
 	log.Printf("Output")
+	t := compact.OutputTypeMemory
+	if !*memory {
+		t = compact.OutputTypeDisk
+	}
 	options := compact.Options{
 		OutputFilename:       *output,
 		Cores:                *cores,
-		WorkDirectory:        "",
-		PointsWorkOutputType: compact.OutputTypeMemory,
+		WorkDirectory:        *scratch,
+		PointsWorkOutputType: t,
 	}
 	if i == b {
 		if compact.Build(strategy.Output(), &options); err != nil {

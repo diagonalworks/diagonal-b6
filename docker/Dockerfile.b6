@@ -1,7 +1,0 @@
-FROM ubuntu:jammy
-ARG platform=linux/x86_64
-RUN apt-get update && apt-get -y install ca-certificates && mkdir /world
-COPY bin/$platform/b6 /diagonal/bin/b6
-COPY b6 /diagonal/b6
-EXPOSE 8001 8002
-CMD ["/diagonal/bin/b6", "--world=/world", "--js=/diagonal/b6/js", "--static=/diagonal/b6/static", "--http=0.0.0.0:8001", "--grpc=0.0.0.0:8002"]
