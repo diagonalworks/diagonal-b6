@@ -376,7 +376,7 @@ func showColours(collection api.FeatureIDAnyCollection, c *api.Context) (UIChang
 }
 
 type ShellHandler struct {
-	World      *ingest.MutableOverlayWorld
+	World      ingest.MutableWorld
 	Cores      int
 	Symbols    api.FunctionSymbols
 	Convertors api.FunctionConvertors
@@ -384,7 +384,7 @@ type ShellHandler struct {
 	worldLock sync.RWMutex
 }
 
-func NewShellHandler(w *ingest.MutableOverlayWorld, cores int) (*ShellHandler, error) {
+func NewShellHandler(w ingest.MutableWorld, cores int) (*ShellHandler, error) {
 	local := make(api.FunctionSymbols)
 	for name, f := range functions.Functions() {
 		local[name] = f

@@ -29,6 +29,7 @@ func main() {
 	grpcFlag := flag.String("grpc", ":8002", "Host and port on which to serve GRPC")
 	grpcSizeFlag := flag.Int("grpc-size", 16*1024*1024, "Maximum size for GRPC messages")
 	worldFlag := flag.String("world", "", "World to load")
+	readOnlyFlag := flag.Bool("read-only", false, "Prevent changes to the world")
 	staticFlag := flag.String("static", "src/diagonal.works/b6/cmd/b6/js/static", "Path to static content")
 	jsFlag := flag.String("js", "src/diagonal.works/b6/cmd/b6/js", "Path to JS bundle")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
@@ -44,7 +45,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	w := ingest.NewMutableOverlayWorld(base)
+	var w ingest.MutableWorld
+	if *readOnlyFlag {
+		w = ingest.ReadOnlyWorld{World: base}
+	} else {
+		w = ingest.NewMutableOverlayWorld(base)
+	}
 
 	handler := http.NewServeMux()
 	handler.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -52,6 +53,78 @@ type MutableWorld interface {
 	AddRelation(a *RelationFeature) error
 	AddTag(id b6.FeatureID, tag b6.Tag) error
 	RemoveTag(id b6.FeatureID, key string) error
+}
+
+type ReadOnlyWorld struct {
+	World b6.World
+}
+
+func (r ReadOnlyWorld) FindFeatureByID(id b6.FeatureID) b6.Feature {
+	return r.World.FindFeatureByID(id)
+}
+
+func (r ReadOnlyWorld) HasFeatureWithID(id b6.FeatureID) bool {
+	return r.World.HasFeatureWithID(id)
+}
+
+func (r ReadOnlyWorld) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
+	return r.World.FindLocationByID(id)
+}
+
+func (r ReadOnlyWorld) FindFeatures(query b6.Query) b6.Features {
+	return r.World.FindFeatures(query)
+}
+
+func (r ReadOnlyWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
+	return r.World.FindRelationsByFeature(id)
+}
+
+func (r ReadOnlyWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
+	return r.World.FindPathsByPoint(id)
+}
+
+func (r ReadOnlyWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
+	return r.World.FindAreasByPoint(id)
+}
+
+func (r ReadOnlyWorld) Traverse(id b6.PointID) b6.Segments {
+	return r.World.Traverse(id)
+}
+
+func (r ReadOnlyWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
+	return r.World.EachFeature(each, options)
+}
+
+func (r ReadOnlyWorld) Tokens() []string {
+	return r.World.Tokens()
+}
+
+func (r ReadOnlyWorld) AddSimplePoint(id b6.PointID, ll s2.LatLng) error {
+	return errors.New("World is read-only")
+}
+
+func (r ReadOnlyWorld) AddPoint(p *PointFeature) error {
+	return errors.New("World is read-only")
+}
+
+func (r ReadOnlyWorld) AddPath(p *PathFeature) error {
+	return errors.New("World is read-only")
+}
+
+func (r ReadOnlyWorld) AddArea(a *AreaFeature) error {
+	return errors.New("World is read-only")
+}
+
+func (r ReadOnlyWorld) AddRelation(a *RelationFeature) error {
+	return errors.New("World is read-only")
+}
+
+func (r ReadOnlyWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
+	return errors.New("World is read-only")
+}
+
+func (r ReadOnlyWorld) RemoveTag(id b6.FeatureID, key string) error {
+	return errors.New("World is read-only")
 }
 
 type mutableFeatureIndex struct {
