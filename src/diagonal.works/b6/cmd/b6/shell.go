@@ -81,6 +81,7 @@ func fillLinesFromFeature(f b6.Feature, lines []LineJSON) []LineJSON {
 
 func fillLinesFromCollection(c api.Collection, lines []LineJSON) []LineJSON {
 	i := c.Begin()
+	n := 0
 	for {
 		if ok, err := i.Next(); err != nil {
 			lines = fillLinesFromError(err, lines)
@@ -93,7 +94,11 @@ func fillLinesFromCollection(c api.Collection, lines []LineJSON) []LineJSON {
 		line = append(line, SpanJSON{Text: ": "})
 		line = fillSpans(i.Value(), line)
 		lines = append(lines, line)
-
+		n++
+		if n > ShowCollectionLimit {
+			lines = append(lines, LineJSON{SpanJSON{Text: fmt.Sprintf("limited to %d items", ShowCollectionLimit)}})
+			break
+		}
 	}
 	return lines
 }
@@ -265,6 +270,8 @@ func (c *showChange) Apply(r *ShellResponseJSON) error {
 	return nil
 }
 
+const ShowCollectionLimit = 200
+
 func show(v interface{}, c *api.Context) (UIChange, error) {
 	change := &showChange{Lines: fillLines(v, []LineJSON{})}
 	switch v := v.(type) {
@@ -296,6 +303,7 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 	case api.Collection:
 		i := v.Begin()
 		g := geojson.NewFeatureCollection()
+		n := 0
 		for {
 			ok, err := i.Next()
 			if err != nil {
@@ -313,6 +321,10 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 					g.Add(f.ToGeoJSON())
 				}
 			}
+			n++
+			if n > ShowCollectionLimit {
+				break
+			}
 		}
 		change.GeoJSON = g
 	}
@@ -320,7 +332,6 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 }
 
 func showColours(collection api.FeatureIDAnyCollection, c *api.Context) (UIChange, error) {
-
 	min := math.Inf(1)
 	max := math.Inf(-1)
 	ids := make([]b6.FeatureID, 0)
