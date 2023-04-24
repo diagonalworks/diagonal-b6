@@ -56,7 +56,7 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 	}
 }
 
-func NewB6Service(w *ingest.MutableOverlayWorld, cores int, lock *sync.RWMutex) pb.B6Server {
+func NewB6Service(w ingest.MutableWorld, cores int, lock *sync.RWMutex) pb.B6Server {
 	return &service{
 		world: w,
 		fs:    functions.Functions(),
