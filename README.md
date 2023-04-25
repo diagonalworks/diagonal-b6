@@ -55,6 +55,42 @@ in the terminal will jump you to that location. Entering
 supports all the functionality available through Python. We've yet to properly
 document it publicly, however.
 
+## Building and running from source
+
+We depend on the [protocol buffer](https://protobuf.dev/) compiler, and
+[npm](https://www.npmjs.com/) at build time. To ingest and reproject data from
+shapefiles, we depend on [gdal](https://gdal.org/), though it's not required
+when working with OpenStreetMap, and we don't use it at run time. To install these on an Ubuntu based system, for example:
+```
+apt-get install npm protobuf-compiler gdal-bin libgdal-dev
+```
+or on OSX, using [brew](http://brew.sh):
+```
+brew install protobuf gdal
+```
+We also require Python >= 3.10 and Go >= 1.20.
+
+To build all binaries, including data ingestion with gdal:
+```
+make
+```
+
+To build just the b6 backend, and OpenStreetMap ingestion, without gdal:
+```
+make b6 b6-ingest-osm
+```
+To generate the sample world data included in the docker image (replace the platform as appropriate):
+```
+bin/linux/x86_64/b6-ingest-osm --input=data/tests/camden.osm.pbf --output=data/camden.index
+```
+To start the backend:
+```
+bin/linux/x86_64/b6 --world=data/camden.index
+```
+You can run the entire build inside a docker container with:
+```
+docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile
+```
 ## Ingesting data
 
 If you have a small amount of data you'd like to work with, in OSM PBF format,
