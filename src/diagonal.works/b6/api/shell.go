@@ -85,11 +85,11 @@ var aliases = []NamespaceAlias{
 		ToString:   idToUint64,
 	},
 	{
-		Prefix:     "/gb/lsoa/",
+		Prefix:     "/gb/ons/",
 		Namespace:  b6.NamespaceGBONSBoundaries,
 		Type:       b6.FeatureTypeArea,
-		FromString: idFromGBLSOA,
-		ToString:   idToGBLSOA,
+		FromString: idFromGBONS,
+		ToString:   idToGBONS,
 	},
 }
 
@@ -106,7 +106,7 @@ func idToUint64(a *NamespaceAlias, id b6.FeatureID) string {
 	return a.Prefix + strconv.FormatUint(id.Value, 10)
 }
 
-func idFromGBLSOA(a *NamespaceAlias, token string) (b6.FeatureID, error) {
+func idFromGBONS(a *NamespaceAlias, token string) (b6.FeatureID, error) {
 	id := b6.FeatureIDInvalid
 	parts := strings.Split(token[len(a.Prefix):], "/")
 	if len(parts) == 2 {
@@ -122,7 +122,7 @@ func idFromGBLSOA(a *NamespaceAlias, token string) (b6.FeatureID, error) {
 	return id, err
 }
 
-func idToGBLSOA(a *NamespaceAlias, id b6.FeatureID) string {
+func idToGBONS(a *NamespaceAlias, id b6.FeatureID) string {
 	code, year, ok := b6.GBONSCodeFromFeatureID(id)
 	if ok {
 		return fmt.Sprintf("%s%d/%s", a.Prefix, year, code)
