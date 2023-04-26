@@ -231,7 +231,7 @@ def osm_relation_id(id):
     return FeatureID(FEATURE_TYPE_RELATION, NAMESPACE_OSM_RELATION, id)
 
 def uk_ons_boundary_id(id, year=2011):
-    # See newIDForONSArea in src/diagonal.works/diagonal/cmd/ingestons/ingestons.go
+    # See GBONS2011IDStrategy in src/diagonal.works/b6/ingest/gdal/source.go
     if len(id) != 9:
         raise "Expected a string of 9 characters"
     codeBits = ord(id[0]) << 40

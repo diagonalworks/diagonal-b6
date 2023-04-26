@@ -16,7 +16,11 @@ import (
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
 	"diagonal.works/b6/ingest/gdal"
+
 	"github.com/golang/geo/s2"
+
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/gcs"
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/local"
 )
 
 var idStrategies = map[string]gdal.IDStrategy{
@@ -148,7 +152,8 @@ func main() {
 	var joinTags ingest.JoinTags
 	if *joinFlag != "" {
 		var err error
-		joinTags, err = ingest.NewJoinTagsFromCSV(*joinFlag)
+		patterns := strings.Split(*joinFlag, ",")
+		joinTags, err = ingest.NewJoinTagsFromPatterns(patterns, context.Background())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
@@ -158,9 +163,9 @@ func main() {
 	var copyTags []gdal.CopyTag
 	for _, field := range strings.Split(*copyTagsFlag, ",") {
 		if index := strings.Index(field, "="); index > 0 {
-			copyTags = append(copyTags, gdal.CopyTag{Field: field[0:index], Key: field[index+1:]})
+			copyTags = append(copyTags, gdal.CopyTag{Key: field[0:index], Field: field[index+1:]})
 		} else {
-			copyTags = append(copyTags, gdal.CopyTag{Field: field, Key: field})
+			copyTags = append(copyTags, gdal.CopyTag{Key: field, Field: field})
 		}
 	}
 

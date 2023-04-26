@@ -226,10 +226,18 @@ func (c copyField) Value(f *gdal.Feature) (string, error) {
 		return "", nil
 	}
 	switch c.Type {
-	case gdal.FT_Integer:
-		return strconv.Itoa(f.FieldAsInteger(c.FieldIndex)), nil
 	case gdal.FT_String:
 		return f.FieldAsString(c.FieldIndex), nil
+	case gdal.FT_Integer:
+		return strconv.Itoa(f.FieldAsInteger(c.FieldIndex)), nil
+	case gdal.FT_Integer64:
+		return fmt.Sprintf("%d", f.FieldAsInteger64(c.FieldIndex)), nil
+	case gdal.FT_Real:
+		return fmt.Sprintf("%f", f.FieldAsFloat64(c.FieldIndex)), nil
+	case gdal.FT_Date, gdal.FT_Time, gdal.FT_DateTime:
+		if t, ok := f.FieldAsDateTime(c.FieldIndex); ok {
+			return t.String(), nil
+		}
 	}
 	return "", fmt.Errorf("Can't convert field %s, type %v, to string", c.FieldName, c.Type)
 }
@@ -248,27 +256,29 @@ func (c copyFields) Fill(f *gdal.Feature, tags []b6.Tag) ([]b6.Tag, error) {
 }
 
 // Returns fields to be copied to features, and the field to be used as the ID
-func (s *Source) makeCopyFields(d gdal.FeatureDefinition) (copyFields, copyField) {
-	c := make(copyFields, 0, len(s.CopyTags))
+// Returns fields to be copied to features, and the field to be used as the ID
+func (s *Source) makeCopyFields(d gdal.FeatureDefinition) (copyFields, copyField, error) {
+	cfs := make(copyFields, 0, len(s.CopyTags))
 	id := copyField{FieldIndex: -1}
-	for i := 0; i < d.FieldCount(); i++ {
+	for _, c := range s.CopyTags {
+		i := d.FieldIndex(c.Field)
+		if i < 0 {
+			return cfs, id, fmt.Errorf("No field named %q", c.Field)
+		}
 		d := d.FieldDefinition(i)
-		cc := copyField{FieldName: d.Name(), FieldIndex: i, Key: d.Name(), Type: d.Type()}
-		if len(s.CopyTags) == 0 {
-			c = append(c, cc)
-		} else {
-			for _, copy := range s.CopyTags {
-				if copy.Field == d.Name() {
-					cc.Key = copy.Key
-					c = append(c, cc)
-				}
-			}
-		}
-		if d.Name() == s.IDField {
-			id = cc
-		}
+		cf := copyField{FieldName: d.Name(), FieldIndex: i, Key: c.Key, Type: d.Type()}
+		cfs = append(cfs, cf)
 	}
-	return c, id
+
+	if s.IDField != "" {
+		i := d.FieldIndex(s.IDField)
+		if i < 0 {
+			return cfs, id, fmt.Errorf("No field named %q for ID", s.IDField)
+		}
+		d := d.FieldDefinition(i)
+		id = copyField{FieldName: d.Name(), FieldIndex: i, Key: d.Name(), Type: d.Type()}
+	}
+	return cfs, id, nil
 }
 
 // featureParts collects the geometries of all read features in a gdal
@@ -302,9 +312,9 @@ func (s *Source) readFeaturePartsFromLayer(layer gdal.Layer, firstIndex int, opt
 	parts.Geometries.SetSpatialReference(layer.SpatialReference())
 
 	definition := layer.Definition()
-	copyTags, copyID := s.makeCopyFields(definition)
-	if s.IDField != "" && copyID.FieldIndex < 0 {
-		return featureParts{}, fmt.Errorf("no field named %s", s.IDField)
+	copyTags, copyID, err := s.makeCopyFields(definition)
+	if err != nil {
+		return featureParts{}, err
 	}
 
 	i := firstIndex
