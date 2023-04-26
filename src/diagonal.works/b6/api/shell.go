@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -47,48 +48,100 @@ func (fs FunctionArgCounts) ArgCount(symbol string) (int, bool) {
 }
 
 type NamespaceAlias struct {
-	Namespace b6.Namespace
-	Type      b6.FeatureType
-	Next      map[string]*NamespaceAlias
+	Prefix     string
+	Namespace  b6.Namespace
+	Type       b6.FeatureType
+	FromString func(a *NamespaceAlias, token string) (b6.FeatureID, error)
+	ToString   func(a *NamespaceAlias, id b6.FeatureID) string
 }
 
-var aliases = &NamespaceAlias{
-	Next: map[string]*NamespaceAlias{
-		"n": &NamespaceAlias{
-			Namespace: b6.NamespaceOSMNode,
-			Type:      b6.FeatureTypePoint,
-		},
-		"w": &NamespaceAlias{
-			Namespace: b6.NamespaceOSMWay,
-			Type:      b6.FeatureTypePath,
-		},
-		"a": &NamespaceAlias{
-			Namespace: b6.NamespaceOSMWay,
-			Type:      b6.FeatureTypeArea,
-		},
-		"r": &NamespaceAlias{
-			Namespace: b6.NamespaceOSMRelation,
-			Type:      b6.FeatureTypeRelation,
-		},
+var aliases = []NamespaceAlias{
+	{
+		Prefix:     "/n/",
+		Namespace:  b6.NamespaceOSMNode,
+		Type:       b6.FeatureTypePoint,
+		FromString: idFromUint64,
+		ToString:   idToUint64,
+	},
+	{
+		Prefix:     "/w/",
+		Namespace:  b6.NamespaceOSMWay,
+		Type:       b6.FeatureTypePath,
+		FromString: idFromUint64,
+		ToString:   idToUint64,
+	},
+	{
+		Prefix:     "/a/",
+		Namespace:  b6.NamespaceOSMWay,
+		Type:       b6.FeatureTypeArea,
+		FromString: idFromUint64,
+		ToString:   idToUint64,
+	},
+	{
+		Prefix:     "/r/",
+		Namespace:  b6.NamespaceOSMRelation,
+		Type:       b6.FeatureTypeRelation,
+		FromString: idFromUint64,
+		ToString:   idToUint64,
+	},
+	{
+		Prefix:     "/gb/lsoa/",
+		Namespace:  b6.NamespaceGBONSBoundaries,
+		Type:       b6.FeatureTypeArea,
+		FromString: idFromGBLSOA,
+		ToString:   idToGBLSOA,
 	},
 }
 
-func ParseFeatureIDToken(id string) b6.FeatureID {
-	components := strings.Split(id[1:], "/")
-	alias := aliases
-	if len(components) >= 2 {
-		for i := 0; i < len(components)-1; i++ {
-			var ok bool
-			alias, ok = alias.Next[components[i]]
-			if !ok {
-				break
-			} else if i == len(components)-2 {
-				id = fmt.Sprintf("/%s/%s/%s", alias.Type, alias.Namespace, components[len(components)-1])
-			}
-		}
-		return b6.FeatureIDFromString(id[1:])
+func idFromUint64(a *NamespaceAlias, token string) (b6.FeatureID, error) {
+	id := b6.FeatureIDInvalid
+	v, err := strconv.ParseUint(token[len(a.Prefix):], 10, 64)
+	if err == nil {
+		id = b6.FeatureID{Type: a.Type, Namespace: a.Namespace, Value: v}
 	}
-	return b6.FeatureIDInvalid
+	return id, err
+}
+
+func idToUint64(a *NamespaceAlias, id b6.FeatureID) string {
+	return a.Prefix + strconv.FormatUint(id.Value, 10)
+}
+
+func idFromGBLSOA(a *NamespaceAlias, token string) (b6.FeatureID, error) {
+	id := b6.FeatureIDInvalid
+	parts := strings.Split(token[len(a.Prefix):], "/")
+	if len(parts) == 2 {
+		year, err := strconv.Atoi(parts[0])
+		if err == nil {
+			id = b6.FeatureIDFromGBONSCode(parts[1], year, a.Type)
+		}
+	}
+	var err error
+	if !id.IsValid() {
+		err = fmt.Errorf("expected, for example, %s2011/E01000953", a.Prefix)
+	}
+	return id, err
+}
+
+func idToGBLSOA(a *NamespaceAlias, id b6.FeatureID) string {
+	code, year, ok := b6.GBONSCodeFromFeatureID(id)
+	if ok {
+		return fmt.Sprintf("%s%d/%s", a.Prefix, year, code)
+	}
+	return b6.FeatureIDInvalid.String()
+}
+
+func ParseFeatureIDToken(token string) (b6.FeatureID, error) {
+	for _, alias := range aliases {
+		if strings.HasPrefix(token, alias.Prefix) {
+			return alias.FromString(&alias, token)
+		}
+	}
+	id := b6.FeatureIDFromString(token[1:])
+	var err error
+	if !id.IsValid() {
+		err = errors.New("expected, for example,  /point/openstreetmap.org/node/3501612811")
+	}
+	return id, err
 }
 
 func StringToExpression(s string) string {
@@ -99,9 +152,9 @@ func StringToExpression(s string) string {
 
 func FeatureIDToExpression(id b6.FeatureID, abbreviate bool) string {
 	if abbreviate {
-		for prefix, alias := range aliases.Next {
-			if id.Type == alias.Type && id.Namespace == alias.Namespace {
-				return fmt.Sprintf("/%s/%d", prefix, id.Value)
+		for _, alias := range aliases {
+			if alias.Namespace == id.Namespace && (alias.Type == b6.FeatureTypeInvalid || alias.Type == id.Type) {
+				return alias.ToString(&alias, id)
 			}
 		}
 	}
@@ -213,14 +266,19 @@ func (l *lexer) lexFeatureIDLiteral(yylval *yySymType) int {
 		i += w
 	}
 	node, token := l.consume(i)
-	node.Node = &pb.NodeProto_Literal{
-		Literal: &pb.LiteralNodeProto{
-			Value: &pb.LiteralNodeProto_FeatureIDValue{
-				FeatureIDValue: b6.NewProtoFromFeatureID(ParseFeatureIDToken(token)),
+	id, err := ParseFeatureIDToken(token)
+	if err == nil {
+		node.Node = &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_FeatureIDValue{
+					FeatureIDValue: b6.NewProtoFromFeatureID(id),
+				},
 			},
-		},
+		}
+		yylval.node = node
+	} else {
+		l.Err = err
 	}
-	yylval.node = node
 	return FEATURE_ID
 }
 
