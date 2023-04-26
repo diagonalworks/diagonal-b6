@@ -297,3 +297,19 @@ func TestIncorrectlyPassNumberAsFunction(t *testing.T) {
 		t.Errorf("Expected an error")
 	}
 }
+
+func TestReturnAnErrorFromALambda(t *testing.T) {
+	w := ingest.NewBasicMutableWorld()
+	functions := make(api.FunctionSymbols)
+	functions["call"] = func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+		return f(c)
+	}
+	functions["broken"] = func(_ int, c *api.Context) (interface{}, error) {
+		return nil, fmt.Errorf("broken")
+	}
+	e := "call {-> broken 42}"
+	r, err := api.EvaluateString(e, w, functions, FunctionConvertors())
+	if r != nil || err == nil || err.Error() != "broken" {
+		t.Errorf("Expected an error")
+	}
+}

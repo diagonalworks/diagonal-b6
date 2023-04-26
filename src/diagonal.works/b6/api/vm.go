@@ -432,6 +432,7 @@ func (g goCall) CallFromStack(n int, scratch []reflect.Value, context *Context) 
 		}
 		if len(result) > 1 {
 			if err, ok := result[1].Interface().(error); ok && err != nil {
+				vm.Stack = append(vm.Stack, reflect.Value{})
 				return nil, err
 			}
 		}
@@ -540,7 +541,10 @@ func (l *lambdaCall) CallWithArgs(args []interface{}, scratch []reflect.Value, c
 		vm.Stack = append(vm.Stack, reflect.ValueOf(arg))
 	}
 	scratch, err := l.CallFromStack(len(args), scratch, context)
-	result := vm.Stack[len(vm.Stack)-1].Interface()
+	var result interface{}
+	if err == nil {
+		result = vm.Stack[len(vm.Stack)-1].Interface()
+	}
 	vm.Stack = vm.Stack[0 : len(vm.Stack)-1]
 	return result, scratch, err
 }
