@@ -811,7 +811,7 @@ func TestOrderTokens(t *testing.T) {
 	}
 }
 
-func TestToFeatureIDToken(t *testing.T) {
+func TestToFeatureIDExpression(t *testing.T) {
 	tests := []struct {
 		ID    b6.FeatureID
 		Token string
@@ -819,10 +819,14 @@ func TestToFeatureIDToken(t *testing.T) {
 		{camden.StableStreetBridgeID.FeatureID(), "/w/140633010"},
 		{camden.LightermanID.FeatureID(), "/a/427900370"},
 		{b6.MakePointID(b6.NamespaceGBUPRN, 116000008).FeatureID(), "/point/ordnancesurvey.co.uk/uprn/116000008"},
+		{b6.FeatureIDFromGBONSCode("E01000953", 2011, b6.FeatureTypeArea).FeatureID(), "/gb/lsoa/2011/E01000953"},
 	}
 	for _, test := range tests {
 		if token := FeatureIDToExpression(test.ID, true); token != test.Token {
 			t.Errorf("Expected token %q for %s, found %q", test.Token, test.ID, token)
+		}
+		if id, err := ParseFeatureIDToken(test.Token); err != nil || id != test.ID {
+			t.Errorf("Expected id %s for %q, found %s", test.ID, test.Token, id)
 		}
 	}
 }
