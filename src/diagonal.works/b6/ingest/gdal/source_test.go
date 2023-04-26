@@ -13,9 +13,9 @@ import (
 func TestReadFeaturesFromLSOABoundaries(t *testing.T) {
 	source := Source{
 		Filename:   test.Data("lsoa-camden.shp"),
-		CopyTags:   []CopyTag{{Field: "code", Key: "code"}, {Field: "name", Key: "name"}},
+		CopyTags:   []CopyTag{{Field: "LSOA11CD", Key: "code"}, {Field: "LSOA11NM", Key: "name"}, {Field: "POPULATION", Key: "population"}},
 		AddTags:    []b6.Tag{{Key: "#boundary", Value: "lsoa"}},
-		IDField:    "code",
+		IDField:    "LSOA11CD",
 		IDStrategy: GBONS2011IDStrategy,
 		Bounds:     s2.FullRect(),
 	}

@@ -168,7 +168,8 @@ func main() {
 
 	if *joinFlag != "" {
 		var err error
-		source.JoinTags, err = ingest.NewJoinTagsFromCSV(*joinFlag)
+		patterns := strings.Split(*joinFlag, ",")
+		source.JoinTags, err = ingest.NewJoinTagsFromPatterns(patterns, context.Background())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
