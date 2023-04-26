@@ -111,6 +111,7 @@ func main() {
 	namespaceFlag := flag.String("namespace", "", "Namespace for features")
 	idFlag := flag.String("id", "", "Field to use for ID generation")
 	idStategyFlag := flag.String("id-strategy", "", "Strategy to use for ID generation")
+	copyAllFieldsFlag := flag.Bool("copy-all-fields", false, "Copy all fields as tags with the same name, unless mentioned in --copy-tags")
 	copyTagsFlag := flag.String("copy-tags", "", "Attributes to copy from underlying data, eg name=LSOA11NM")
 	addTagsFlag := flag.String("add-tags", "", "Tags to add to imported data, eg #boundary=datazone,year=2011")
 	recurseFlag := flag.Bool("recurse", false, "Recurse into directories")
@@ -161,11 +162,13 @@ func main() {
 	}
 
 	var copyTags []gdal.CopyTag
-	for _, field := range strings.Split(*copyTagsFlag, ",") {
-		if index := strings.Index(field, "="); index > 0 {
-			copyTags = append(copyTags, gdal.CopyTag{Key: field[0:index], Field: field[index+1:]})
-		} else {
-			copyTags = append(copyTags, gdal.CopyTag{Key: field, Field: field})
+	if *copyTagsFlag != "" {
+		for _, field := range strings.Split(*copyTagsFlag, ",") {
+			if index := strings.Index(field, "="); index > 0 {
+				copyTags = append(copyTags, gdal.CopyTag{Key: field[0:index], Field: field[index+1:]})
+			} else {
+				copyTags = append(copyTags, gdal.CopyTag{Key: field, Field: field})
+			}
 		}
 	}
 
@@ -180,14 +183,15 @@ func main() {
 	source := make(mergedSource, len(inputs))
 	for i, ii := range inputs {
 		source[i] = &gdal.Source{
-			Filename:   ii.FilenameForGDAL(),
-			Namespace:  b6.Namespace(*namespaceFlag),
-			IDField:    *idFlag,
-			IDStrategy: strategy,
-			CopyTags:   copyTags,
-			AddTags:    addTags,
-			JoinTags:   joinTags,
-			Bounds:     bounds,
+			Filename:      ii.FilenameForGDAL(),
+			Namespace:     b6.Namespace(*namespaceFlag),
+			IDField:       *idFlag,
+			IDStrategy:    strategy,
+			CopyAllFields: *copyAllFieldsFlag,
+			CopyTags:      copyTags,
+			AddTags:       addTags,
+			JoinTags:      joinTags,
+			Bounds:        bounds,
 		}
 	}
 

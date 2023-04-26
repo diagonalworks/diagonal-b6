@@ -162,14 +162,15 @@ type CopyTag struct {
 }
 
 type Source struct {
-	Filename   string
-	Bounds     s2.Rect
-	Namespace  b6.Namespace
-	IDField    string
-	IDStrategy IDStrategy
-	CopyTags   []CopyTag
-	AddTags    []b6.Tag
-	JoinTags   ingest.JoinTags
+	Filename      string
+	Bounds        s2.Rect
+	Namespace     b6.Namespace
+	IDField       string
+	IDStrategy    IDStrategy
+	CopyAllFields bool
+	CopyTags      []CopyTag
+	AddTags       []b6.Tag
+	JoinTags      ingest.JoinTags
 }
 
 func newFeatureFromS2Region(r s2.Region) ingest.Feature {
@@ -222,7 +223,7 @@ type copyField struct {
 }
 
 func (c copyField) Value(f *gdal.Feature) (string, error) {
-	if c.FieldIndex < 0 {
+	if c.FieldIndex < 0 || !f.IsFieldSet(c.FieldIndex) {
 		return "", nil
 	}
 	switch c.Type {
@@ -277,6 +278,25 @@ func (s *Source) makeCopyFields(d gdal.FeatureDefinition) (copyFields, copyField
 		}
 		d := d.FieldDefinition(i)
 		id = copyField{FieldName: d.Name(), FieldIndex: i, Key: d.Name(), Type: d.Type()}
+	}
+
+	if s.CopyAllFields {
+		for i := 0; i < d.FieldCount(); i++ {
+			copied := i == id.FieldIndex
+			if !copied {
+				for _, cf := range cfs {
+					if cf.FieldIndex == i {
+						copied = true
+						break
+					}
+				}
+			}
+			if !copied {
+				d := d.FieldDefinition(i)
+				cf := copyField{FieldName: d.Name(), FieldIndex: i, Key: d.Name(), Type: d.Type()}
+				cfs = append(cfs, cf)
+			}
+		}
 	}
 	return cfs, id, nil
 }
