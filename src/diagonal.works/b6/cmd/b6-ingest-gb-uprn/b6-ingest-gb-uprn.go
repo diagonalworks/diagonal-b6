@@ -88,11 +88,11 @@ func (s *UPRNSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx cont
 		},
 		Tags: []b6.Tag{{Key: "#place", Value: "uprn"}},
 	}
-	context := api.Context{World: b6.EmptyWorld{}}
 	uprns := 0
 	emits := 0
 	joins := 0
 
+	context := functions.NewContext(b6.EmptyWorld{})
 	for {
 		row, err := r.Read()
 		if err == io.EOF {
@@ -119,7 +119,7 @@ func (s *UPRNSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx cont
 		if len(point.Tags) > 1 {
 			joins++
 		}
-		if ok, err := s.Filter(PointWrapper{PointFeature: &point}, &context); ok {
+		if ok, err := s.Filter(PointWrapper{PointFeature: &point}, context); ok {
 			emits++
 			if err := emit(&point, 0); err != nil {
 				return err
@@ -151,7 +151,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = api.EvaluateAndFill(expression, b6.EmptyWorld{}, functions.Functions(), functions.FunctionConvertors(), &filter)
+		err = api.EvaluateAndFill(expression, functions.NewContext(b6.EmptyWorld{}), &filter)
 		if err != nil {
 			log.Fatal(err)
 		}

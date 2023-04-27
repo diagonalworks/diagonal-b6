@@ -21,7 +21,7 @@ func TestEvaluate(t *testing.T) {
 	}
 
 	e := `find (intersecting (find-area /area/openstreetmap.org/way/115912092))`
-	if _, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if _, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Error(err)
 	}
 }
@@ -33,7 +33,7 @@ func TestMap(t *testing.T) {
 	}
 
 	e := `find (intersecting (find-area /area/openstreetmap.org/way/222021576)) | map {f -> get f "name"}`
-	if result, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if result, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Error(err)
 		return
 	} else {
@@ -58,7 +58,7 @@ func TestMapWithPartialFunction(t *testing.T) {
 	}
 
 	e := `find (intersecting (find-area /area/openstreetmap.org/way/222021576)) | map (get "name")`
-	if result, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if result, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Errorf("Expected no error, found %q", err)
 		return
 	} else {
@@ -83,7 +83,7 @@ func TestMapItems(t *testing.T) {
 	}
 
 	e := `all-tags /n/6082053666 | map-items {p -> pair (second p) 1}`
-	if result, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if result, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Error(err)
 	} else {
 		filled := make(map[b6.Tag]int)
@@ -112,7 +112,7 @@ func TestPipelineInLamba(t *testing.T) {
 	}
 
 	e := `find [#building] | map {b -> area b | gt 1000.0} | count-values`
-	if result, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if result, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Error(err)
 	} else {
 		collection, ok := result.(api.Collection)
@@ -145,7 +145,7 @@ func TestReturnFunctions(t *testing.T) {
 	}
 
 	e := `find (keyed "#building") | to-geojson-collection | map-geometries (apply-to-area {a -> centroid a})`
-	if v, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if v, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Error(err)
 		return
 	} else {
@@ -172,7 +172,7 @@ func TestPassSpecificFunctionWhereGenericNeeded(t *testing.T) {
 		return
 	}
 	e := `find (keyed "#building") | map centroid`
-	if _, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if _, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Error(err)
 		return
 	}
@@ -186,7 +186,7 @@ func TestInterfaceConversionForArguments(t *testing.T) {
 	// find-feature returns a b6.Feature (that happens to implement
 	// b6.Area), are area expects a b6.Area
 	e := `find-feature /area/openstreetmap.org/way/427900370 | area`
-	if v, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if v, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Error(err)
 		return
 	} else {
@@ -206,7 +206,7 @@ func TestConvertQueryToFunctionReturningBool(t *testing.T) {
 		return
 	}
 	e := `find [#amenity] | filter [addr:postcode]`
-	if v, err := api.EvaluateString(e, granarySquare, Functions(), FunctionConvertors()); err != nil {
+	if v, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
 		t.Error(err)
 		return
 	} else {
@@ -239,10 +239,15 @@ func TestConvertQueryToFunctionReturningBoolWithSpecificFeature(t *testing.T) {
 	apply := func(f func(b6.PointFeature, *api.Context) (bool, error), c *api.Context) (bool, error) {
 		return f(b6.FindPointByID(ingest.FromOSMNodeID(camden.VermuteriaNode), c.World), c)
 	}
-	functions := make(api.FunctionSymbols)
-	functions["apply-to-example-point"] = apply
+	c := &api.Context{
+		World: granarySquare,
+		FunctionSymbols: api.FunctionSymbols{
+			"apply-to-example-point": apply,
+		},
+		FunctionWrappers: Wrappers(),
+	}
 	e := "apply-to-example-point [#amenity]"
-	if v, err := api.EvaluateString(e, granarySquare, functions, FunctionConvertors()); err != nil {
+	if v, err := api.EvaluateString(e, c); err != nil {
 		t.Error(err)
 	} else if !v.(bool) {
 		t.Error("Expected true, found false")
@@ -260,10 +265,14 @@ func TestConvertIntAndFloat64ToNumber(t *testing.T) {
 		}
 		return 0, fmt.Errorf("Bad number")
 	}
-	functions := make(api.FunctionSymbols)
-	functions["increment"] = increment
+	c := &api.Context{
+		World: w,
+		FunctionSymbols: api.FunctionSymbols{
+			"increment": increment,
+		},
+	}
 	for _, e := range []string{"increment 1", "increment 1.0"} {
-		if v, err := api.EvaluateString(e, w, functions, FunctionConvertors()); err != nil {
+		if v, err := api.EvaluateString(e, c); err != nil {
 			t.Error(err)
 		} else if v, ok := v.(int); !ok || v != 2 {
 			t.Errorf("Expected 2, found %v", v)
@@ -273,12 +282,17 @@ func TestConvertIntAndFloat64ToNumber(t *testing.T) {
 
 func TestCallLambdaWithNoArguments(t *testing.T) {
 	w := ingest.NewBasicMutableWorld()
-	functions := make(api.FunctionSymbols)
-	functions["call"] = func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
-		return f(c)
+	c := &api.Context{
+		World: w,
+		FunctionSymbols: api.FunctionSymbols{
+			"call": func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+				return f(c)
+			},
+		},
+		FunctionWrappers: Wrappers(),
 	}
 	e := "call {-> 42}"
-	if v, err := api.EvaluateString(e, w, functions, FunctionConvertors()); err != nil {
+	if v, err := api.EvaluateString(e, c); err != nil {
 		t.Error(err)
 	} else if i, ok := v.(int64); !ok || i != 42 {
 		t.Errorf("Expected 42, found %T %v", v, v)
@@ -287,12 +301,16 @@ func TestCallLambdaWithNoArguments(t *testing.T) {
 
 func TestIncorrectlyPassNumberAsFunction(t *testing.T) {
 	w := ingest.NewBasicMutableWorld()
-	functions := make(api.FunctionSymbols)
-	functions["call"] = func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
-		return f(c)
+	c := &api.Context{
+		World: w,
+		FunctionSymbols: api.FunctionSymbols{
+			"call": func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+				return f(c)
+			},
+		},
 	}
 	e := "call 42"
-	_, err := api.EvaluateString(e, w, functions, FunctionConvertors())
+	_, err := api.EvaluateString(e, c)
 	if err == nil {
 		t.Errorf("Expected an error")
 	}
@@ -300,15 +318,20 @@ func TestIncorrectlyPassNumberAsFunction(t *testing.T) {
 
 func TestReturnAnErrorFromALambda(t *testing.T) {
 	w := ingest.NewBasicMutableWorld()
-	functions := make(api.FunctionSymbols)
-	functions["call"] = func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
-		return f(c)
-	}
-	functions["broken"] = func(_ int, c *api.Context) (interface{}, error) {
-		return nil, fmt.Errorf("broken")
+	c := &api.Context{
+		World: w,
+		FunctionSymbols: api.FunctionSymbols{
+			"call": func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+				return f(c)
+			},
+			"broken": func(_ int, c *api.Context) (interface{}, error) {
+				return nil, fmt.Errorf("broken")
+			},
+		},
+		FunctionWrappers: Wrappers(),
 	}
 	e := "call {-> broken 42}"
-	r, err := api.EvaluateString(e, w, functions, FunctionConvertors())
+	r, err := api.EvaluateString(e, c)
 	if r != nil || err == nil || err.Error() != "broken" {
 		t.Errorf("Expected an error")
 	}
