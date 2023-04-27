@@ -137,7 +137,7 @@ func Functions() api.FunctionSymbols {
 	return functions // Validated in init()
 }
 
-var convertors = []interface{}{
+var wrappers = []interface{}{
 	func(c api.Callable) func(interface{}, *api.Context) (interface{}, error) {
 		return func(v interface{}, context *api.Context) (interface{}, error) {
 			return api.Call1(v, c, context)
@@ -281,13 +281,13 @@ var convertors = []interface{}{
 	},
 }
 
-var convetorsByType api.FunctionConvertors
+var wrappersByType api.FunctionWrappers
 
-func FunctionConvertors() api.FunctionConvertors {
-	return convetorsByType
+func Wrappers() api.FunctionWrappers {
+	return wrappersByType
 }
 
-func makeConvertor(wrapper interface{}) func(c api.Callable) reflect.Value {
+func makeWrapper(wrapper interface{}) func(c api.Callable) reflect.Value {
 	return func(c api.Callable) reflect.Value {
 		w := reflect.ValueOf(wrapper)
 		return w.Call([]reflect.Value{reflect.ValueOf(c)})[0]
@@ -304,14 +304,14 @@ func Validate(f interface{}, name string) error {
 	}
 	for i := 0; i < t.NumIn(); i++ {
 		if t.In(i).Kind() == reflect.Func {
-			if _, ok := convetorsByType[t.In(i)]; !ok {
+			if _, ok := wrappersByType[t.In(i)]; !ok {
 				return fmt.Errorf("%s: no convertor for arg %d, %s", name, i, t.In(i))
 			}
 		}
 	}
 	for i := 0; i < t.NumOut(); i++ {
 		if t.Out(i).Kind() == reflect.Func {
-			if _, ok := convetorsByType[t.Out(i)]; !ok {
+			if _, ok := wrappersByType[t.Out(i)]; !ok {
 				return fmt.Errorf("%s: no convertor for result %d, %s", name, i, t.Out(i))
 			}
 		}
@@ -319,11 +319,15 @@ func Validate(f interface{}, name string) error {
 	return nil
 }
 
+func NewContext(w b6.World) *api.Context {
+	return &api.Context{World: w, FunctionSymbols: Functions(), FunctionWrappers: Wrappers()}
+}
+
 func init() {
-	convetorsByType = make(map[reflect.Type]func(api.Callable) reflect.Value)
-	for _, c := range convertors {
+	wrappersByType = make(map[reflect.Type]func(api.Callable) reflect.Value)
+	for _, c := range wrappers {
 		t := reflect.TypeOf(c)
-		convetorsByType[t.Out(0)] = makeConvertor(c)
+		wrappersByType[t.Out(0)] = makeWrapper(c)
 	}
 
 	for name, f := range Functions() {

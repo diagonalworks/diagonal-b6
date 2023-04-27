@@ -76,7 +76,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = api.EvaluateAndFill(expression, b6.EmptyWorld{}, functions.Functions(), functions.FunctionConvertors(), &query)
+	err = api.EvaluateAndFill(expression, functions.NewContext(b6.EmptyWorld{}), &query)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -15,7 +15,7 @@ type service struct {
 	pb.UnimplementedB6Server
 	world ingest.MutableWorld
 	fs    api.FunctionSymbols
-	cs    api.FunctionConvertors
+	fw    api.FunctionWrappers
 	cores int
 	lock  *sync.RWMutex
 }
@@ -31,7 +31,12 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 		s.lock.RLock()
 		return ids, err
 	}
-	if v, err := api.Evaluate(request.Request, s.world, s.fs, s.cs); err == nil {
+	context := api.Context{
+		World:            s.world,
+		FunctionSymbols:  s.fs,
+		FunctionWrappers: s.fw,
+	}
+	if v, err := api.Evaluate(request.Request, &context); err == nil {
 		if change, ok := v.(ingest.Change); ok {
 			v, err = apply(change)
 			if err != nil {
@@ -60,7 +65,7 @@ func NewB6Service(w ingest.MutableWorld, cores int, lock *sync.RWMutex) pb.B6Ser
 	return &service{
 		world: w,
 		fs:    functions.Functions(),
-		cs:    functions.FunctionConvertors(),
+		fw:    functions.Wrappers(),
 		cores: cores,
 		lock:  lock,
 	}

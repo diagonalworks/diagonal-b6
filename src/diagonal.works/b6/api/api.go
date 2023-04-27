@@ -3,20 +3,10 @@ package api
 import (
 	"fmt"
 	"reflect"
-	"time"
 
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
 )
-
-type Context struct {
-	World  b6.World
-	Cores  int
-	Clock  func() time.Time
-	Values map[interface{}]interface{}
-
-	VM *VM
-}
 
 type Pair interface {
 	First() interface{}
@@ -239,8 +229,9 @@ func convertInterface(v reflect.Value, t reflect.Type) (reflect.Value, bool) {
 	return v, false
 }
 
-// Convert v to type t, if possible, including functions.
-func ConvertWithVM(v reflect.Value, t reflect.Type, w b6.World, vm *VM) (reflect.Value, error) {
+// Convert v to type t, if possible. If v represents a b6 function, it'll be
+// turned into a go function that executes it in a vm.
+func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (reflect.Value, error) {
 	if t.Kind() == reflect.Func {
 		var c Callable
 		if v.Type().Implements(callableInterface) {
@@ -250,13 +241,13 @@ func ConvertWithVM(v reflect.Value, t reflect.Type, w b6.World, vm *VM) (reflect
 		}
 		if c != nil {
 			if c.NumArgs()+1 == t.NumIn() {
-				return c.ToFunctionValue(t, vm), nil
+				return c.ToFunctionValue(t, context), nil
 			} else {
 				return reflect.Value{}, fmt.Errorf("expected a function with %d args, found %d", t.NumIn()-1, c.NumArgs())
 			}
 		}
 	}
-	return Convert(v, t, w)
+	return Convert(v, t, context.World)
 }
 
 func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {

@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
@@ -10,6 +11,17 @@ import (
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
 )
+
+type Context struct {
+	World            b6.World
+	Cores            int
+	Clock            func() time.Time
+	Values           map[interface{}]interface{}
+	FunctionSymbols  FunctionSymbols
+	FunctionWrappers FunctionWrappers
+
+	VM *VM
+}
 
 type Op uint8
 
@@ -56,11 +68,11 @@ type Callable interface {
 	// buffer used to avoid allocations. Execution happens in the VM specified by
 	// the context, and the stack is left unmodified.
 	CallWithArgs(args []interface{}, scratch []reflect.Value, context *Context) (interface{}, []reflect.Value, error)
-	ToFunctionValue(t reflect.Type, vm *VM) reflect.Value
+	ToFunctionValue(t reflect.Type, context *Context) reflect.Value
 	String() string
 }
 
-type FunctionConvertors map[reflect.Type]func(Callable) reflect.Value
+type FunctionWrappers map[reflect.Type]func(Callable) reflect.Value
 
 func Call0(c Callable, context *Context) (interface{}, error) {
 	var scratch [MaxArgs]reflect.Value
@@ -138,17 +150,16 @@ func (c *compilation) Append(i Instruction) {
 	c.Instructions = append(c.Instructions, i)
 }
 
-func Evaluate(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors) (interface{}, error) {
-	vm, err := newVM(node, w, fs, cs)
+func Evaluate(node *pb.NodeProto, context *Context) (interface{}, error) {
+	vm, err := newVM(node, context.FunctionSymbols)
 	if err != nil {
 		return nil, err
 	}
-	context := &Context{World: w}
 	return vm.Execute(context)
 }
 
-func EvaluateAndFill(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors, toFill interface{}) error {
-	vm, err := newVM(node, w, fs, cs)
+func EvaluateAndFill(node *pb.NodeProto, context *Context, toFill interface{}) error {
+	vm, err := newVM(node, context.FunctionSymbols)
 	if err != nil {
 		return err
 	}
@@ -156,12 +167,11 @@ func EvaluateAndFill(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs Func
 	if v.Kind() != reflect.Ptr {
 		return fmt.Errorf("Expected a pointer, found %T", toFill)
 	}
-	context := &Context{World: w}
 	r, err := vm.Execute(context)
 	if err != nil {
 		return err
 	}
-	c, err := ConvertWithVM(reflect.ValueOf(r), v.Type().Elem(), w, vm)
+	c, err := ConvertWithContext(reflect.ValueOf(r), v.Type().Elem(), context)
 	if err != nil {
 		return err
 	}
@@ -169,25 +179,20 @@ func EvaluateAndFill(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs Func
 	return nil
 }
 
-func EvaluateString(e string, w b6.World, fs FunctionSymbols, cs FunctionConvertors) (interface{}, error) {
-	return EvaluateStringWithValues(e, w, fs, cs, nil)
-}
-
-func EvaluateStringWithValues(e string, w b6.World, fs FunctionSymbols, cs FunctionConvertors, values map[interface{}]interface{}) (interface{}, error) {
+func EvaluateString(e string, context *Context) (interface{}, error) {
 	node, err := ParseExpression(e)
 	if err != nil {
 		return nil, err
 	}
-	node = Simplify(node, fs)
-	vm, err := newVM(node, w, fs, cs)
+	node = Simplify(node, context.FunctionSymbols)
+	vm, err := newVM(node, context.FunctionSymbols)
 	if err != nil {
 		return nil, err
 	}
-	context := &Context{World: w, Values: values}
 	return vm.Execute(context)
 }
 
-func newVM(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConvertors) (*VM, error) {
+func newVM(node *pb.NodeProto, fs FunctionSymbols) (*VM, error) {
 	c := compilation{
 		Globals: fs,
 		Targets: []target{{Node: node, Done: func(int) {}}},
@@ -206,7 +211,7 @@ func newVM(node *pb.NodeProto, w b6.World, fs FunctionSymbols, cs FunctionConver
 		c.Append(Instruction{Op: OpReturn})
 		c.Targets[i].Done(entrypoint)
 	}
-	return &VM{Instructions: c.Instructions, Convertors: cs}, nil
+	return &VM{Instructions: c.Instructions}, nil
 }
 
 func compile(p *pb.NodeProto, c *compilation) error {
@@ -333,11 +338,9 @@ const MaxArgs = 32
 
 type VM struct {
 	Instructions []Instruction
-	Convertors   FunctionConvertors
 	PC           int
-	//Context      *Context
-	Args  [MaxArgs]reflect.Value
-	Stack []reflect.Value
+	Args         [MaxArgs]reflect.Value
+	Stack        []reflect.Value
 }
 
 const (
@@ -417,7 +420,7 @@ func (g goCall) CallFromStack(n int, scratch []reflect.Value, context *Context) 
 	if n == expected {
 		for i := 0; i < n; i++ {
 			arg := len(vm.Stack) - n + i
-			if v, err := ConvertWithVM(vm.Stack[arg], t.In(i), context.World, vm); err == nil {
+			if v, err := ConvertWithContext(vm.Stack[arg], t.In(i), context); err == nil {
 				scratch = append(scratch, v)
 			} else {
 				return scratch, fmt.Errorf("%s: %s", g.name, err.Error())
@@ -460,7 +463,7 @@ func (g goCall) CallWithArgs(args []interface{}, scratch []reflect.Value, contex
 	if len(args) == t.NumIn()-1 { // Don't count context
 		scratch = scratch[0:0]
 		for i, arg := range args {
-			if v, err := ConvertWithVM(reflect.ValueOf(arg), t.In(i), context.World, context.VM); err == nil {
+			if v, err := ConvertWithContext(reflect.ValueOf(arg), t.In(i), context); err == nil {
 				scratch = append(scratch, v)
 			} else {
 				return nil, scratch, fmt.Errorf("%s: %s", g.name, err.Error())
@@ -484,7 +487,7 @@ func (g goCall) CallWithArgs(args []interface{}, scratch []reflect.Value, contex
 	}
 }
 
-func (g goCall) ToFunctionValue(t reflect.Type, vm *VM) reflect.Value {
+func (g goCall) ToFunctionValue(t reflect.Type, context *Context) reflect.Value {
 	// If the underlying function matches the Go type we need, we can
 	// return the function itself, otherwise, we need to call it via
 	// CallWithArgs, which handles the necessary conversions.
@@ -494,8 +497,8 @@ func (g goCall) ToFunctionValue(t reflect.Type, vm *VM) reflect.Value {
 	if g.f.Type().AssignableTo(t) {
 		return g.f
 	}
-	if c, ok := vm.Convertors[t]; ok {
-		return c(g)
+	if w, ok := context.FunctionWrappers[t]; ok {
+		return w(g)
 	}
 	panic(fmt.Sprintf("Can't convert values of type %s", t)) // Checked in init()
 }
@@ -549,9 +552,9 @@ func (l *lambdaCall) CallWithArgs(args []interface{}, scratch []reflect.Value, c
 	return result, scratch, err
 }
 
-func (l *lambdaCall) ToFunctionValue(t reflect.Type, vm *VM) reflect.Value {
-	if c, ok := vm.Convertors[t]; ok {
-		return c(l)
+func (l *lambdaCall) ToFunctionValue(t reflect.Type, context *Context) reflect.Value {
+	if w, ok := context.FunctionWrappers[t]; ok {
+		return w(l)
 	}
 	panic(fmt.Sprintf("Can't convert values of type %s", t)) // Checked in init()
 }
@@ -612,9 +615,9 @@ func (p *partialCall) CallWithArgs(args []interface{}, scratch []reflect.Value, 
 	}
 }
 
-func (p *partialCall) ToFunctionValue(t reflect.Type, vm *VM) reflect.Value {
-	if c, ok := vm.Convertors[t]; ok {
-		return c(p)
+func (p *partialCall) ToFunctionValue(t reflect.Type, context *Context) reflect.Value {
+	if w, ok := context.FunctionWrappers[t]; ok {
+		return w(p)
 	}
 	panic(fmt.Sprintf("Can't convert values of type %s", t)) // Checked in init()
 }

@@ -387,10 +387,10 @@ func showColours(collection api.FeatureIDAnyCollection, c *api.Context) (UIChang
 }
 
 type ShellHandler struct {
-	World      ingest.MutableWorld
-	Cores      int
-	Symbols    api.FunctionSymbols
-	Convertors api.FunctionConvertors
+	World            ingest.MutableWorld
+	Cores            int
+	FunctionSymbols  api.FunctionSymbols
+	FunctionWrappers api.FunctionWrappers
 
 	worldLock sync.RWMutex
 }
@@ -408,10 +408,10 @@ func NewShellHandler(w ingest.MutableWorld, cores int) (*ShellHandler, error) {
 		}
 	}
 	return &ShellHandler{
-		World:      w,
-		Cores:      cores,
-		Symbols:    local,
-		Convertors: functions.FunctionConvertors(),
+		World:            w,
+		Cores:            cores,
+		FunctionSymbols:  local,
+		FunctionWrappers: functions.Wrappers(),
 	}, nil
 }
 
@@ -441,8 +441,12 @@ func (s *ShellHandler) evaluate(request *ShellRequestJSON, response *ShellRespon
 	} else {
 		response.Lines = append(response.Lines, LineJSON{SpanJSON{Class: "prompt", Text: "b6"}, SpanJSON{Text: request.Expression}})
 	}
-
-	result, err := api.EvaluateString(request.Expression, w, s.Symbols, s.Convertors)
+	context := api.Context{
+		World:            w,
+		FunctionSymbols:  s.FunctionSymbols,
+		FunctionWrappers: s.FunctionWrappers,
+	}
+	result, err := api.EvaluateString(request.Expression, &context)
 	if err != nil {
 		return err
 	} else if change, ok := result.(ingest.Change); ok {
