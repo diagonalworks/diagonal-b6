@@ -103,6 +103,43 @@ func (a *ArrayAnyCollection) Next() (bool, error) {
 var _ Collection = &ArrayAnyCollection{}
 var _ Countable = &ArrayAnyCollection{}
 
+type ArrayIntIntCollection struct {
+	Values []int
+	i      int
+}
+
+func (a *ArrayIntIntCollection) Count() int { return len(a.Values) }
+
+func (a *ArrayIntIntCollection) Begin() CollectionIterator {
+	return &ArrayIntIntCollection{
+		Values: a.Values,
+	}
+}
+
+func (a *ArrayIntIntCollection) Key() interface{} {
+	return a.IntKey()
+}
+
+func (a *ArrayIntIntCollection) Value() interface{} {
+	return a.IntValue()
+}
+
+func (a *ArrayIntIntCollection) IntKey() int {
+	return a.i - 1
+}
+
+func (a *ArrayIntIntCollection) IntValue() int {
+	return a.Values[a.i-1]
+}
+
+func (a *ArrayIntIntCollection) Next() (bool, error) {
+	a.i++
+	return a.i <= len(a.Values), nil
+}
+
+var _ Collection = &ArrayIntIntCollection{}
+var _ Countable = &ArrayIntIntCollection{}
+
 type ArrayIntStringCollection struct {
 	Values []string
 	i      int

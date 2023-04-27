@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -19,6 +20,7 @@ type Context struct {
 	Values           map[interface{}]interface{}
 	FunctionSymbols  FunctionSymbols
 	FunctionWrappers FunctionWrappers
+	Context          context.Context
 
 	VM *VM
 }
@@ -351,6 +353,16 @@ const (
 
 	ArgsArgToPush = 0
 )
+
+func (v *VM) Fork(n int) []VM {
+	vms := make([]VM, n)
+	for i := range vms {
+		vms[i] = *v
+		vms[i].Stack = make([]reflect.Value, len(v.Stack))
+		copy(vms[i].Stack, v.Stack)
+	}
+	return vms
+}
 
 func (v *VM) Execute(context *Context) (interface{}, error) {
 	if err := v.execute(context); err != nil {

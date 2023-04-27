@@ -35,6 +35,8 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 		World:            s.world,
 		FunctionSymbols:  s.fs,
 		FunctionWrappers: s.fw,
+		Cores:            s.cores,
+		Context:          ctx,
 	}
 	if v, err := api.Evaluate(request.Request, &context); err == nil {
 		if change, ok := v.(ingest.Change); ok {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -445,6 +446,8 @@ func (s *ShellHandler) evaluate(request *ShellRequestJSON, response *ShellRespon
 		World:            w,
 		FunctionSymbols:  s.FunctionSymbols,
 		FunctionWrappers: s.FunctionWrappers,
+		Cores:            s.Cores,
+		Context:          context.Background(),
 	}
 	result, err := api.EvaluateString(request.Expression, &context)
 	if err != nil {
