@@ -26,7 +26,7 @@ func TestEvaluate(t *testing.T) {
 	}
 }
 
-func TestMap(t *testing.T) {
+func TestMapWithVM(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
 	if granarySquare == nil {
 		return
@@ -51,7 +51,32 @@ func TestMap(t *testing.T) {
 	}
 }
 
-func TestMapWithPartialFunction(t *testing.T) {
+func TestMapParallelWithVM(t *testing.T) {
+	granarySquare := camden.BuildGranarySquareForTests(t)
+	if granarySquare == nil {
+		return
+	}
+
+	e := `find (intersecting (find-area /area/openstreetmap.org/way/222021576)) | map-parallel {f -> get f "name"}`
+	if result, err := api.EvaluateString(e, NewContext(granarySquare)); err != nil {
+		t.Error(err)
+		return
+	} else {
+		values := []string{}
+		if err := api.FillSliceFromValues(result.(api.Collection), &values); err != nil {
+			t.Errorf("Expected no error, found %q", err)
+		} else {
+			expected := []string{
+				"Caravan", "", "Yumchaa", "", "", "", "", "",
+			}
+			if !reflect.DeepEqual(expected, values) {
+				t.Errorf("Expected %q, found %q", expected, values)
+			}
+		}
+	}
+}
+
+func TestMapWithVMAndPartialFunction(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
 	if granarySquare == nil {
 		return
@@ -105,7 +130,7 @@ func TestMapItems(t *testing.T) {
 	}
 }
 
-func TestPipelineInLamba(t *testing.T) {
+func TestWithVMAndPipelineInLamba(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
 	if granarySquare == nil {
 		return

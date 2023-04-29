@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -10,11 +11,12 @@ import (
 
 var functions = api.FunctionSymbols{
 	// map
-	"map":       map_,
-	"map-items": mapItems,
-	"pair":      pair,
-	"first":     first,
-	"second":    second,
+	"map":          map_,
+	"map-items":    mapItems,
+	"map-parallel": mapParallel,
+	"pair":         pair,
+	"first":        first,
+	"second":       second,
 	// collections
 	"collection":   collection,
 	"filter":       filter,
@@ -320,7 +322,12 @@ func Validate(f interface{}, name string) error {
 }
 
 func NewContext(w b6.World) *api.Context {
-	return &api.Context{World: w, FunctionSymbols: Functions(), FunctionWrappers: Wrappers()}
+	return &api.Context{
+		World:            w,
+		FunctionSymbols:  Functions(),
+		FunctionWrappers: Wrappers(),
+		Context:          context.Background(),
+	}
 }
 
 func init() {
