@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"reflect"
 	"strings"
 
+	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
 )
@@ -109,7 +111,7 @@ func collectionForType(t reflect.Type) Collection {
 var AnyType = reflect.TypeOf((*interface{})(nil)).Elem()
 var CollectionType = reflect.TypeOf((*api.Collection)(nil)).Elem()
 
-func main() {
+func generateAPI() {
 	var output API
 	types := make(map[reflect.Type]struct{})
 	for name, f := range functions.Functions() {
@@ -175,4 +177,31 @@ func main() {
 		os.Exit(1)
 	}
 	os.Stderr.Write([]byte{'\n'})
+}
+
+func main() {
+	version := flag.Bool("version", false, "Output a package version based on the API version and git.")
+	buildVersion := flag.Bool("build-version", false, "Like --version, but with build metadata.")
+	flag.Parse()
+
+	var err error
+	if *version {
+		var v string
+		v, err = b6.MakeVersionFromGit(false)
+		if err == nil {
+			fmt.Fprintf(os.Stdout, "%s\n", v)
+		}
+	} else if *buildVersion {
+		var v string
+		v, err = b6.MakeVersionFromGit(true)
+		if err == nil {
+			fmt.Fprintf(os.Stdout, "%s\n", v)
+		}
+	} else {
+		generateAPI()
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		os.Exit(1)
+	}
 }

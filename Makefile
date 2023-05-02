@@ -47,6 +47,7 @@ src/diagonal.works/b6/api/y.go: src/diagonal.works/b6/api/shell.y
 python: python/diagonal_b6/api_generated.py
 
 python/diagonal_b6/api_generated.py: b6-api
+	bin/${TARGETPLATFORM}/b6-api --verify-git-tag=`git describe --tags --match=v*`
 	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal_b6 --grpc_python_out=python/diagonal_b6  proto/geometry.proto proto/features.proto proto/api.proto
 	sed -e 's/import geometry_pb2/import diagonal_b6.geometry_pb2/' python/diagonal_b6/features_pb2.py > python/diagonal_b6/features_pb2.py.modified
 	mv python/diagonal_b6/features_pb2.py.modified python/diagonal_b6/features_pb2.py
