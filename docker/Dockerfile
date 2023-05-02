@@ -1,7 +1,7 @@
 # Build a docker image for b6, and a Python package, assuming the
-# source tree is passed as the docker context. For example, at the root
-# of the source tree:
-# docker build --build-arg=TARGETOS=linux,TARGETARCH=amd64 -f docker/Dockerfile -t b6-amd64 .
+# source repo is passed as the docker context. For example, at the root
+# of a clone of the git repo:
+# docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile -t b6-amd64 .
 FROM ubuntu:jammy AS build
 ARG TARGETOS
 ARG TARGETARCH
@@ -17,6 +17,7 @@ COPY src /build/src
 COPY python /build/python
 COPY proto /build/proto
 COPY data /build/data
+COPY .git /build/.git
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build test
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build python-test
@@ -31,6 +32,7 @@ COPY --from=build /build/data/camden.connected.index /world/camden.connected.ind
 COPY --from=build /build/python/dist/* /diagonal/python/dist
 COPY --from=build /build/src/diagonal.works/b6/cmd/b6/js/bundle.js /diagonal/js/bundle.js
 COPY --from=build /build/src/diagonal.works/b6/cmd/b6/js/static /diagonal/static
-RUN tar -czf /diagonal-$TARGETOS-$TARGETARCH.tar.gz /diagonal
+COPY --from=build /build/VERSION /diagonal/VERSION
+RUN tar -czf /diagonal-$TARGETOS-$TARGETARCH-`cat /diagonal/VERSION`.tar.gz /diagonal
 EXPOSE 8001 8002
 CMD ["/diagonal/bin/b6", "--world=/world", "--js=/diagonal/js", "--static=/diagonal/static", "--http=0.0.0.0:8001", "--grpc=0.0.0.0:8002"]

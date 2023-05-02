@@ -29,6 +29,7 @@ func TestGRPC(t *testing.T) {
 	}{
 		{"Evaluate", ValidateEvaluate},
 		{"ConcurrentReadAndWrite", ValidateConcurrentReadAndWrite},
+		{"RejectRequestsWithDifferentMajorVersion", ValidateRejectRequestsWithDifferentMajorVersion},
 	}
 
 	base := camden.BuildGranarySquareForTests(t)
@@ -53,6 +54,7 @@ func ValidateEvaluate(service pb.B6Server, w b6.World, t *testing.T) {
 	}
 	request := &pb.EvaluateRequestProto{
 		Request: root,
+		Version: b6.ApiVersion,
 	}
 	if response, err := service.Evaluate(context.Background(), request); err == nil {
 		if node := response.GetResult(); node != nil {
@@ -105,6 +107,7 @@ func ValidateConcurrentReadAndWrite(service pb.B6Server, w b6.World, t *testing.
 		for time.Now().Before(end) {
 			request := &pb.EvaluateRequestProto{
 				Request: write,
+				Version: b6.ApiVersion,
 			}
 			if _, err := service.Evaluate(context.Background(), request); err != nil {
 				t.Error(err)
@@ -119,6 +122,7 @@ func ValidateConcurrentReadAndWrite(service pb.B6Server, w b6.World, t *testing.
 		for time.Now().Before(end) {
 			request := &pb.EvaluateRequestProto{
 				Request: read,
+				Version: b6.ApiVersion,
 			}
 			if _, err := service.Evaluate(context.Background(), request); err != nil {
 				t.Error(err)
@@ -127,4 +131,26 @@ func ValidateConcurrentReadAndWrite(service pb.B6Server, w b6.World, t *testing.
 		}
 	}()
 	wg.Wait()
+}
+
+func ValidateRejectRequestsWithDifferentMajorVersion(service pb.B6Server, w b6.World, t *testing.T) {
+	request := &pb.EvaluateRequestProto{
+		Request: &pb.NodeProto{
+			Node: &pb.NodeProto_Literal{
+				Literal: &pb.LiteralNodeProto{
+					Value: &pb.LiteralNodeProto_IntValue{
+						IntValue: 42,
+					},
+				},
+			},
+		},
+	}
+	if _, err := service.Evaluate(context.Background(), request); err == nil {
+		t.Error("Expected error when missing version, found none")
+	}
+
+	request.Version = "36.0.0" // Will need to change when ApiVersion passes 36
+	if _, err := service.Evaluate(context.Background(), request); err == nil {
+		t.Error("Expected error with different major version, found none")
+	}
 }

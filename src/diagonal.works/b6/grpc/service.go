@@ -2,12 +2,15 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
+	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
+	"golang.org/x/mod/semver"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -31,6 +34,13 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 		s.lock.RLock()
 		return ids, err
 	}
+
+	if !semver.IsValid("v" + request.Version) {
+		return nil, fmt.Errorf("client isn't compatiable with b6 version %s", b6.ApiVersion)
+	} else if semver.Major("v"+request.Version) != semver.Major("v"+b6.ApiVersion) {
+		return nil, fmt.Errorf("client version %s isn't compatiable with b6 version %s", request.Version, b6.ApiVersion)
+	}
+
 	context := api.Context{
 		World:            s.world,
 		FunctionSymbols:  s.fs,

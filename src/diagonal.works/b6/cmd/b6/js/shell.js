@@ -1,14 +1,19 @@
 import * as d3 from "d3";
 
 class Shell {
-    constructor(target, handleResponse) {
+    constructor(target, version, handleResponse) {
         this.target = d3.select(`#${target}`);
         this.handleResponse = handleResponse;
         this.items = this.target.append("div").attr("class", "items");
         this.closed = true;
         this.history = -1;
         this.changes = [];
-        this.lines = [[{Text: "b6 from "}, {Text: "Diagonal"}]];
+        this.lines = [];
+        if (version) {
+            this.lines.unshift([{Text: `b6 ${version} from `}, {Text: "Diagonal"}]);
+        } else {
+            this.lines.unshift([{Text: `b6 from `}, {Text: "Diagonal"}]);
+        }
         const form = this.items.append("form");
         form.append("span").attr("class", "prompt").text("b6");
         this.input = form.append("input").attr("type", "text").attr("autocomplete", "off");

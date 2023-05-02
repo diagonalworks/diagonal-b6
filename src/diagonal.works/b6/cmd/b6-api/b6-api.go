@@ -31,6 +31,7 @@ type Collection struct {
 }
 
 type API struct {
+	Version      string
 	Interfaces   []Interface
 	Functions    []Function
 	FunctionArgs []Function
@@ -111,8 +112,14 @@ func collectionForType(t reflect.Type) Collection {
 var AnyType = reflect.TypeOf((*interface{})(nil)).Elem()
 var CollectionType = reflect.TypeOf((*api.Collection)(nil)).Elem()
 
-func generateAPI() {
+func generateAPI() error {
 	var output API
+	var err error
+	output.Version, err = b6.AdvanceVersionFromGit()
+	if err != nil {
+		return err
+	}
+
 	types := make(map[reflect.Type]struct{})
 	for name, f := range functions.Functions() {
 		t := reflect.TypeOf(f)
@@ -169,36 +176,34 @@ func generateAPI() {
 			output.Interfaces = append(output.Interfaces, i)
 		}
 	}
-	if b, err := json.MarshalIndent(&output, "", "  "); err == nil {
+	b, err := json.MarshalIndent(&output, "", "  ")
+	if err == nil {
 		os.Stdout.Write(b)
-	} else {
-		os.Stderr.Write([]byte(err.Error()))
-		os.Stdout.Write([]byte("{}\n"))
-		os.Exit(1)
+		os.Stderr.Write([]byte{'\n'})
 	}
-	os.Stderr.Write([]byte{'\n'})
+	return err
 }
 
 func main() {
 	version := flag.Bool("version", false, "Output a package version based on the API version and git.")
-	buildVersion := flag.Bool("build-version", false, "Like --version, but with build metadata.")
+	pipVersion := flag.Bool("pip-version", false, "Like --version, but formatted for PIP.")
 	flag.Parse()
 
 	var err error
 	if *version {
 		var v string
-		v, err = b6.MakeVersionFromGit(false)
+		v, err = b6.AdvanceVersionFromGit()
 		if err == nil {
 			fmt.Fprintf(os.Stdout, "%s\n", v)
 		}
-	} else if *buildVersion {
+	} else if *pipVersion {
 		var v string
-		v, err = b6.MakeVersionFromGit(true)
+		v, err = b6.AdvancePythonVersionFromGit()
 		if err == nil {
 			fmt.Fprintf(os.Stdout, "%s\n", v)
 		}
 	} else {
-		generateAPI()
+		err = generateAPI()
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
