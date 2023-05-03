@@ -5,4 +5,4 @@ bin
 **/*_pb2.py
 **/*_grpc.py
 **/__pycache__
-
+VERSION

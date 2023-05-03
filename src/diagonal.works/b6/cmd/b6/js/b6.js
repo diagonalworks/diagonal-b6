@@ -387,8 +387,8 @@ function setupMap(state) {
     return [map, renderGeoJSON, searchableLayers, updateMap];
 }
 
-function setupShell(handleResponse) {
-    const shell = new Shell("shell", handleResponse);
+function setupShell(version, handleResponse) {
+    const shell = new Shell("shell", version, handleResponse);
     d3.select("body").on("keydown", (e) => {
         if (e.key == "`" || e.key == "~") {
             e.preventDefault();
@@ -447,7 +447,7 @@ function idKeyFromFeature(feature) {
     return `/${type}/${feature.get("ns")}/${feature.get("id")}`
 }
 
-function main() {
+function setup(bootstrapResponse) {
     const state = {};
     const [map, renderGeoJSON, searchableLayers, buildingsChanged] = setupMap(state);
 
@@ -469,7 +469,7 @@ function main() {
             buildingsChanged();
         }
     }
-    const shell = setupShell(handleResponse);
+    const shell = setupShell(bootstrapResponse.Version, handleResponse);
 
     map.on("singleclick", e => {
         if (e.originalEvent.shiftKey) {
@@ -479,4 +479,9 @@ function main() {
         }
     });
 }
+
+function main() {
+    d3.json("/bootstrap").then(response => setup(response));
+}
+
 main();

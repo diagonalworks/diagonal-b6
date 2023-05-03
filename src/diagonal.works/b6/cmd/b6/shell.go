@@ -19,6 +19,21 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+type BootstrapResponseJSON struct {
+	Version string
+}
+
+func ServeBootstrapHTTP(w http.ResponseWriter, r *http.Request) {
+	response := BootstrapResponseJSON{Version: b6.BackendVersion}
+	output, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(output))
+}
+
 var titleTags = []b6.Tag{
 	{Key: "#amenity"},
 	{Key: "#shop"},

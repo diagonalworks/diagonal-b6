@@ -74,6 +74,8 @@ func main() {
 	tiles := &renderer.TileHandler{Renderer: &renderer.BasemapRenderer{World: w}}
 	handler.Handle("/tiles/base/", tiles)
 
+	handler.Handle("/bootstrap", http.HandlerFunc(ServeBootstrapHTTP))
+
 	shell, err := NewShellHandler(w, *coresFlag)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())

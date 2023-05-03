@@ -1,8 +1,8 @@
 import grpc
 
 from diagonal_b6 import expression
+from diagonal_b6 import VERSION
 
-from diagonal_b6 import features_pb2
 from diagonal_b6 import api_pb2
 from diagonal_b6 import api_pb2_grpc
 
@@ -15,6 +15,7 @@ class Connection:
 
     def __call__(self, e):
         request = api_pb2.EvaluateRequestProto()
+        request.version = VERSION
         request.request.CopyFrom(expression.to_node_proto(e))
         return expression.from_node_proto(self.stub.Evaluate(request).result)
 
