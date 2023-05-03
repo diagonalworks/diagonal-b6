@@ -12,9 +12,11 @@ import (
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/geometry"
 	"diagonal.works/b6/ingest"
+	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/search"
 	"github.com/golang/geo/s2"
 	"github.com/golang/groupcache/lru"
+	"golang.org/x/mod/semver"
 )
 
 type featureBlock struct {
@@ -45,23 +47,41 @@ func NewFeaturesByIDFromData(data []byte, base b6.FeaturesByID) (*FeaturesByID, 
 	return f, f.Merge(data)
 }
 
+func verifyVersion(header *Header, buffer []byte) error {
+	v := header.UnmarshalVersion(buffer)
+	if !semver.IsValid("v" + v) {
+		return fmt.Errorf("invalid index version %s", v)
+	}
+	if semver.Major("v"+v) != semver.Major("v"+Version) {
+		return fmt.Errorf("need index version %s, found %s", Version, v)
+	}
+	return nil
+}
+
 func (f *FeaturesByID) Merge(data []byte) error {
 	var header Header
 	header.Unmarshal(data)
 	if header.Magic != HeaderMagic {
 		return fmt.Errorf("Bad header magic")
 	}
-	if header.Version != HeaderVersion {
-		return fmt.Errorf("Expected version %d, found %d", HeaderVersion, header.Version)
+	if err := verifyVersion(&header, data); err != nil {
+		return err
 	}
 	strings := encoding.NewStringTable(data[header.StringsOffset:])
-	nt := NewNamespaceTableFromData(data[header.NamespaceTableOffset:])
+
+	var hp pb.CompactHeaderProto
+	if err := UnmarshalProto(data[header.HeaderProtoOffset:], &hp); err != nil {
+		return err
+	}
+	var nt NamespaceTable
+	nt.FillFromProto(&hp)
+
 	offset := header.BlockOffset
 	var block BlockHeader
 	for offset < encoding.Offset(len(data)) {
 		offset += encoding.Offset(block.Unmarshal(data[offset:]))
 		if block.Type == BlockTypeFeatures {
-			fb := &featureBlock{Strings: strings, NamespaceTable: nt}
+			fb := &featureBlock{Strings: strings, NamespaceTable: &nt}
 			fb.Unmarshal(data[offset:])
 			f.features[fb.FeatureType] = append(f.features[fb.FeatureType], fb)
 		}
@@ -1002,22 +1022,28 @@ func (w *World) Merge(data []byte) error {
 	if header.Magic != HeaderMagic {
 		return fmt.Errorf("Bad header magic")
 	}
-	if header.Version != HeaderVersion {
-		return fmt.Errorf("Expected version %d, found %d", HeaderVersion, header.Version)
+	if err := verifyVersion(&header, data); err != nil {
+		return err
 	}
 	if err := w.byID.Merge(data); err != nil {
 		return err
 	}
 
-	w.status += fmt.Sprintf("%+v\n", header)
+	w.status += fmt.Sprintf("version %s\n", header.UnmarshalVersion(data))
 
-	nt := NewNamespaceTableFromData(data[header.NamespaceTableOffset:])
+	var hp pb.CompactHeaderProto
+	if err := UnmarshalProto(data[header.HeaderProtoOffset:], &hp); err != nil {
+		return err
+	}
+	var nt NamespaceTable
+	nt.FillFromProto(&hp)
+
 	offset := header.BlockOffset
 	for offset < encoding.Offset(len(data)) {
 		var header BlockHeader
 		offset += encoding.Offset(header.Unmarshal(data[offset:]))
 		if header.Type == BlockTypeSearchIndex {
-			index, err := NewIndex(data[offset:], nt, w)
+			index, err := NewIndex(data[offset:], &nt, w)
 			if err != nil {
 				return fmt.Errorf("Failed to create search index: %s", err)
 			}
