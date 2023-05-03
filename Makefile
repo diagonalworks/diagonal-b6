@@ -42,6 +42,7 @@ proto:
 	protoc -I=proto --go_out=src proto/tiles.proto
 	protoc -I=proto --go_out=src proto/geometry.proto
 	protoc -I=proto --go_out=src proto/features.proto
+	protoc -I=proto --go_out=src proto/compact.proto
 	protoc -I=proto --go_out=src --go-grpc_out=src proto/api.proto
 	protoc -I=src/diagonal.works/b6/osm/proto --go_out=src src/diagonal.works/b6/osm/proto/pbf.proto
 

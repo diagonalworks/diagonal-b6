@@ -12,9 +12,16 @@ import (
 	"diagonal.works/b6/encoding"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
+	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/search"
 	"github.com/golang/geo/s2"
+
+	"google.golang.org/protobuf/proto"
 )
+
+// A semver 2.0.0 compliant version for the index format. Indicies generated
+// with a different major version will fail to load.
+const Version = "0.0.0"
 
 func init() {
 	if l := encoding.MarshalledSize(Header{}); l != HeaderLength {
@@ -29,11 +36,11 @@ func init() {
 }
 
 type Header struct {
-	Magic                uint64
-	Version              uint64
-	StringsOffset        encoding.Offset
-	NamespaceTableOffset encoding.Offset
-	BlockOffset          encoding.Offset
+	Magic             uint64
+	VersionOffset     encoding.Offset
+	HeaderProtoOffset encoding.Offset
+	StringsOffset     encoding.Offset
+	BlockOffset       encoding.Offset
 }
 
 func (h *Header) Marshal(buffer []byte) int {
@@ -44,10 +51,14 @@ func (h *Header) Unmarshal(buffer []byte) int {
 	return encoding.UnmarshalStruct(h, buffer[0:])
 }
 
+func (h *Header) UnmarshalVersion(buffer []byte) string {
+	v, _ := UnmarshalString(buffer[h.VersionOffset:])
+	return v
+}
+
 const (
-	HeaderMagic   = 0x50e908d52c7aba14
-	HeaderVersion = 4
-	HeaderLength  = 40 // Verified in init()
+	HeaderMagic  = 0xd05fffce9126772e
+	HeaderLength = 40 // Verified in init()
 )
 
 type BlockType uint64
@@ -74,6 +85,38 @@ const (
 	BlockHeaderLength = 16 // Verified in init()
 )
 
+func MarshalString(s string, buffer []byte) int {
+	i := binary.PutUvarint(buffer, uint64(len(s)))
+	return i + copy(buffer[i:], []byte(s))
+}
+
+func UnmarshalString(buffer []byte) (string, int) {
+	l, i := binary.Uvarint(buffer)
+	return string(buffer[i : i+int(l)]), i + int(l)
+}
+
+func WriteProto(w io.WriterAt, m proto.Message, offset encoding.Offset) (encoding.Offset, error) {
+	marshalled, err := proto.Marshal(m)
+	if err != nil {
+		return 0, err
+	}
+	var buffer [binary.MaxVarintLen64]byte
+	l := binary.PutUvarint(buffer[0:], uint64(len(marshalled)))
+	if _, err = w.WriteAt(buffer[0:l], int64(offset)); err != nil {
+		return 0, err
+	}
+	offset = offset.Add(l)
+	if _, err = w.WriteAt(marshalled, int64(offset)); err != nil {
+		return 0, err
+	}
+	return offset.Add(len(marshalled)), nil
+}
+
+func UnmarshalProto(buffer []byte, m proto.Message) error {
+	l, i := binary.Uvarint(buffer)
+	return proto.Unmarshal(buffer[i:i+int(l)], m)
+}
+
 type Namespace uint16
 
 const NamespaceInvalid Namespace = 0
@@ -83,11 +126,13 @@ type NamespaceTable struct {
 	FromEncoded b6.Namespaces
 }
 
+/*
 func NewNamespaceTableFromData(buffer []byte) *NamespaceTable {
 	var nt NamespaceTable
 	nt.Unmarshal(buffer)
 	return &nt
 }
+*/
 
 func (n *NamespaceTable) FillFromNamespaces(nss []b6.Namespace) {
 	n.ToEncoded = make(map[b6.Namespace]Namespace)
@@ -131,6 +176,25 @@ func (n *NamespaceTable) EncodeID(id b6.FeatureID) FeatureID {
 	return FeatureID{Type: id.Type, Namespace: n.Encode(id.Namespace), Value: id.Value}
 }
 
+func (n *NamespaceTable) FillProto(header *pb.CompactHeaderProto) {
+	header.Namespaces = make([]string, len(n.FromEncoded))
+	for i, ns := range n.FromEncoded {
+		header.Namespaces[i] = string(ns)
+	}
+}
+
+func (n *NamespaceTable) FillFromProto(header *pb.CompactHeaderProto) {
+	n.FromEncoded = make(b6.Namespaces, len(header.Namespaces))
+	for i, ns := range header.Namespaces {
+		n.FromEncoded[i] = b6.Namespace(ns)
+	}
+	n.ToEncoded = map[b6.Namespace]Namespace{}
+	for i, ns := range n.FromEncoded {
+		n.ToEncoded[ns] = Namespace(i)
+	}
+}
+
+/*
 func (n *NamespaceTable) Length() int {
 	var buffer [binary.MaxVarintLen64]byte
 	l := binary.PutUvarint(buffer[0:], uint64(len(n.FromEncoded)))
@@ -177,6 +241,7 @@ func (n *NamespaceTable) Unmarshal(buffer []byte) int {
 	}
 	return offset
 }
+*/
 
 type Namespaces [b6.FeatureTypeEnd]Namespace
 

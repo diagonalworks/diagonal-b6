@@ -9,7 +9,10 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/encoding"
 	"diagonal.works/b6/ingest"
+	pb "diagonal.works/b6/proto"
+
 	"github.com/golang/geo/s2"
+	"google.golang.org/protobuf/proto"
 )
 
 func newOSMNamespaces() (*Namespaces, *NamespaceTable) {
@@ -22,6 +25,38 @@ func newOSMNamespaces() (*Namespaces, *NamespaceTable) {
 	nss[b6.FeatureTypeArea] = nt.Encode(b6.NamespaceOSMWay)
 	nss[b6.FeatureTypeRelation] = nt.Encode(b6.NamespaceOSMRelation)
 	return &nss, &nt
+}
+
+func TestStringEncoding(t *testing.T) {
+	var buffer [20]byte
+	v := "0.32.3"
+	l := MarshalString(v, buffer[0:])
+	for i := l; i < len(buffer); i++ {
+		buffer[i] = 'X'
+	}
+	vv, l := UnmarshalString(buffer[0:])
+	if v != vv {
+		t.Errorf("Expected %q, found %q", v, vv)
+	}
+}
+
+func TestProtoEncoding(t *testing.T) {
+	m := pb.CompactHeaderProto{Builder: "andrew"}
+	var output encoding.Buffer
+	start := encoding.Offset(42)
+	_, err := WriteProto(&output, &m, start)
+	if err != nil {
+		t.Errorf("Expected no error, found %s", err)
+	}
+
+	var mm pb.CompactHeaderProto
+	buffer := output.Bytes()
+	if err = UnmarshalProto(buffer[start:], &mm); err != nil {
+		t.Errorf("Expected no error, found %s", err)
+	}
+	if !proto.Equal(&m, &mm) {
+		t.Errorf("Expected %+v, found %+v", &m, &mm)
+	}
 }
 
 func TestLatLngsEncoding(t *testing.T) {
@@ -641,14 +676,18 @@ func TestNamespaceTableEncoding(t *testing.T) {
 
 	var output encoding.Buffer
 	start := encoding.Offset(42)
-	offset, err := nt.Write(&output, start)
+	var m pb.CompactHeaderProto
+	nt.FillProto(&m)
+	_, err := WriteProto(&output, &m, start)
 	if err != nil {
 		t.Errorf("Expected no error, found %s", err)
 	}
 
-	var ntt NamespaceTable
+	var mm pb.CompactHeaderProto
 	buffer := output.Bytes()
-	l := ntt.Unmarshal(buffer[start:])
+	UnmarshalProto(buffer[start:], &mm)
+	var ntt NamespaceTable
+	ntt.FillFromProto(&mm)
 	for _, ns := range b6.StandardNamespaces {
 		if nt.Encode(ns) != ntt.Encode(ns) {
 			t.Errorf("Expected to encode %s to %d, found %d", ns, nt.Encode(ns), ntt.Encode(ns))
@@ -659,13 +698,6 @@ func TestNamespaceTableEncoding(t *testing.T) {
 			t.Errorf("Expected to decode %d to %s, found %s", i, nt.Decode(Namespace(i)), ntt.Decode(Namespace(i)))
 		}
 	}
-	if start+encoding.Offset(l) != offset {
-		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", start+encoding.Offset(l), offset)
-	}
-	if int(offset-start) != nt.Length() {
-		t.Errorf("Expected marshalled and unmarshaled Length() to be equal (%d vs %d)", int(start-offset), nt.Length())
-	}
-
 }
 
 func TestNamespaceIndiciesEncoding(t *testing.T) {

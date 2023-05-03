@@ -17,6 +17,7 @@ import (
 	"diagonal.works/b6/encoding"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
+	pb "diagonal.works/b6/proto"
 
 	"github.com/golang/geo/s2"
 	"golang.org/x/exp/mmap"
@@ -844,29 +845,7 @@ func fillNamespaceTableFromSummary(summary *Summary, nt *NamespaceTable) {
 	nt.FillFromNamespaces(nss)
 }
 
-func buildFeatures(source ingest.FeatureSource, o *Options, header *Header, nt *NamespaceTable, base b6.LocationsByID, w io.WriterAt) (encoding.Offset, error) {
-	log.Printf("buildFeatures: build strings and summary")
-	var buffer [HeaderLength]byte
-	header.StringsOffset = encoding.Offset(header.Marshal(buffer[0:]))
-
-	summary := NewSummary()
-	s := encoding.NewStringTableBuilder()
-	if err := fillStringTableAndSummary(source, o, s, summary); err != nil {
-		return 0, fmt.Errorf("Failed to build string table: %w", err)
-	}
-	log.Printf("buildFeatures: write strings")
-	var err error
-	header.NamespaceTableOffset, err = s.Write(w, header.StringsOffset)
-	if err != nil {
-		return 0, err
-	}
-	fillNamespaceTableFromSummary(summary, nt)
-	offset, err := nt.Write(w, header.NamespaceTableOffset)
-	if err != nil {
-		return 0, err
-	}
-	header.BlockOffset = offset
-
+func buildFeatures(source ingest.FeatureSource, o *Options, sb *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, header *Header, base b6.LocationsByID, w io.WriterAt) (encoding.Offset, error) {
 	work := o.PointsWorkOutput()
 	workW, err := work.Write()
 	if err != nil {
@@ -874,7 +853,7 @@ func buildFeatures(source ingest.FeatureSource, o *Options, header *Header, nt *
 	}
 
 	log.Printf("buildFeatures: points")
-	err = writePointsWork(source, o, s, nt, summary, workW)
+	err = writePointsWork(source, o, sb, nt, summary, workW)
 	if err != nil {
 		return 0, err
 	}
@@ -889,14 +868,14 @@ func buildFeatures(source ingest.FeatureSource, o *Options, header *Header, nt *
 	points := make(FeatureBlocks, 0)
 	points.Unmarshal(data)
 
-	offset, err = writePoints(o, points, s, nt, summary, header.BlockOffset, w)
+	offset, err := writePoints(o, points, sb, nt, summary, header.BlockOffset, w)
 	log.Printf("writePoints: %d", offset)
 	if err != nil {
 		return 0, err
 	}
 
 	locations := overlayLocationsByID{overlay: NewLocationsByID(points, nt), base: base}
-	offset, err = writePathsAreasAndRelations(source, o, s, nt, &locations, summary, offset, w)
+	offset, err = writePathsAreasAndRelations(source, o, sb, nt, &locations, summary, offset, w)
 	log.Printf("writePathsAreasAndRelations: %d", offset)
 	if err != nil {
 		return 0, err
@@ -1009,24 +988,55 @@ func buildIndex(byID *FeaturesByID, nt *NamespaceTable, offset encoding.Offset, 
 	return o.Close()
 }
 
+func summarise(source ingest.FeatureSource, o *Options) (*Summary, *encoding.StringTableBuilder, error) {
+	log.Printf("summarise: build strings and summary")
+	summary := NewSummary()
+	sb := encoding.NewStringTableBuilder()
+	if err := fillStringTableAndSummary(source, o, sb, summary); err != nil {
+		return nil, nil, fmt.Errorf("Failed to build string table: %w", err)
+	}
+	return summary, sb, nil
+}
+
 func build(source ingest.FeatureSource, base b6.FeaturesByID, o *Options, output Output) error {
 	var header Header
 	header.Magic = HeaderMagic
-	header.Version = HeaderVersion
 
 	w, err := output.Write()
 	if err != nil {
 		return err
 	}
 
-	var nt NamespaceTable
-	offset, err := buildFeatures(source, o, &header, &nt, base, w)
+	var buffer [HeaderLength]byte
+	header.VersionOffset = encoding.Offset(header.Marshal(buffer[0:]))
+	n := MarshalString(Version, buffer[0:])
+	if n, err := w.WriteAt(buffer[0:n], int64(header.VersionOffset)); err == nil {
+		header.HeaderProtoOffset = header.VersionOffset.Add(n)
+	} else {
+		return err
+	}
+
+	summary, sb, err := summarise(source, o)
 	if err != nil {
 		return err
 	}
 
-	var buffer [HeaderLength]byte
-	n := header.Marshal(buffer[0:])
+	var nt NamespaceTable
+	fillNamespaceTableFromSummary(summary, &nt)
+
+	var hp pb.CompactHeaderProto
+	nt.FillProto(&hp)
+	header.StringsOffset, err = WriteProto(w, &hp, header.HeaderProtoOffset)
+
+	log.Printf("build: write strings")
+	header.BlockOffset, err = sb.Write(w, header.StringsOffset)
+
+	indexOffset, err := buildFeatures(source, o, sb, &nt, summary, &header, base, w)
+	if err != nil {
+		return err
+	}
+
+	n = header.Marshal(buffer[0:])
 	if _, err := w.WriteAt(buffer[0:n], 0); err != nil {
 		return err
 	}
@@ -1044,7 +1054,7 @@ func build(source ingest.FeatureSource, base b6.FeaturesByID, o *Options, output
 
 	byID.LogSummary()
 
-	return buildIndex(byID, &nt, offset, output)
+	return buildIndex(byID, &nt, indexOffset, output)
 }
 
 func Build(source ingest.FeatureSource, o *Options) error {

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package compact;
+
+option go_package = "diagonal.works/b6/proto";
+
+message CompactHeaderProto {
+    repeated string namespaces = 1;
+    string Builder = 2;
+}
