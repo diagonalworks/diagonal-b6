@@ -7,6 +7,7 @@ import (
 	"math"
 	"sort"
 	"sync"
+	"unsafe"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/encoding"
@@ -87,12 +88,26 @@ const (
 
 func MarshalString(s string, buffer []byte) int {
 	i := binary.PutUvarint(buffer, uint64(len(s)))
-	return i + copy(buffer[i:], []byte(s))
+	return i + copy(buffer[i:], s)
 }
 
 func UnmarshalString(buffer []byte) (string, int) {
 	l, i := binary.Uvarint(buffer)
 	return string(buffer[i : i+int(l)]), i + int(l)
+}
+
+func MarshalledStringEquals(buffer []byte, s string) bool {
+	l, n := binary.Uvarint(buffer)
+	if int(l) != len(s) {
+		return false
+	}
+	p := unsafe.Pointer(unsafe.StringData(s))
+	for i := 0; i < len(s); i++ {
+		if *(*byte)(unsafe.Add(p, i)) != buffer[n+i] {
+			return false
+		}
+	}
+	return true
 }
 
 func WriteProto(w io.WriterAt, m proto.Message, offset encoding.Offset) (encoding.Offset, error) {
@@ -125,14 +140,6 @@ type NamespaceTable struct {
 	ToEncoded   map[b6.Namespace]Namespace
 	FromEncoded b6.Namespaces
 }
-
-/*
-func NewNamespaceTableFromData(buffer []byte) *NamespaceTable {
-	var nt NamespaceTable
-	nt.Unmarshal(buffer)
-	return &nt
-}
-*/
 
 func (n *NamespaceTable) FillFromNamespaces(nss []b6.Namespace) {
 	n.ToEncoded = make(map[b6.Namespace]Namespace)
@@ -193,55 +200,6 @@ func (n *NamespaceTable) FillFromProto(header *pb.CompactHeaderProto) {
 		n.ToEncoded[ns] = Namespace(i)
 	}
 }
-
-/*
-func (n *NamespaceTable) Length() int {
-	var buffer [binary.MaxVarintLen64]byte
-	l := binary.PutUvarint(buffer[0:], uint64(len(n.FromEncoded)))
-	for _, ns := range n.FromEncoded {
-		l += binary.PutUvarint(buffer[0:], uint64(len(ns)))
-		l += len(ns)
-	}
-	return l
-}
-
-func (n *NamespaceTable) Write(w io.WriterAt, offset encoding.Offset) (encoding.Offset, error) {
-	var buffer [binary.MaxVarintLen64]byte
-	l := binary.PutUvarint(buffer[0:], uint64(len(n.FromEncoded)))
-	var err error
-	if _, err = w.WriteAt(buffer[0:l], int64(offset)); err == nil {
-		offset = offset.Add(l)
-		for _, ns := range n.FromEncoded {
-			l := binary.PutUvarint(buffer[0:], uint64(len(ns)))
-			if _, err = w.WriteAt(buffer[0:l], int64(offset)); err != nil {
-				break
-			}
-			offset = offset.Add(l)
-			if _, err := w.WriteAt([]byte(ns), int64(offset)); err != nil {
-				break
-			}
-			offset = offset.Add(len(ns))
-		}
-	}
-	return offset, err
-}
-
-func (n *NamespaceTable) Unmarshal(buffer []byte) int {
-	count, offset := binary.Uvarint(buffer)
-	n.FromEncoded = make(b6.Namespaces, count)
-	for i := range n.FromEncoded {
-		sl, l := binary.Uvarint(buffer[offset:])
-		offset += l
-		n.FromEncoded[i] = b6.Namespace(buffer[offset : offset+int(sl)])
-		offset += int(sl)
-	}
-	n.ToEncoded = map[b6.Namespace]Namespace{}
-	for i, ns := range n.FromEncoded {
-		n.ToEncoded[ns] = Namespace(i)
-	}
-	return offset
-}
-*/
 
 type Namespaces [b6.FeatureTypeEnd]Namespace
 
@@ -1665,6 +1623,129 @@ func (n *NamespaceIndex) Unmarshal(buffer []byte) int {
 	return i + l
 }
 
+const TokenMapMaxBucketSize = 3
+
+type TokenMapEncoder struct {
+	tokens  [][]string
+	indices [][]int
+	b       *encoding.ByteArraysBuilder
+}
+
+func NewTokenMapEncoder() *TokenMapEncoder {
+	return &TokenMapEncoder{
+		tokens:  make([][]string, 1),
+		indices: make([][]int, 1),
+	}
+}
+
+func (t *TokenMapEncoder) Add(token string, index int) {
+	if t.b != nil {
+		panic("Add after FinishAdds")
+	}
+	bucket := int(HashString(token) % uint64(len(t.tokens)))
+	t.tokens[bucket] = append(t.tokens[bucket], token)
+	t.indices[bucket] = append(t.indices[bucket], index)
+	if len(t.tokens[bucket]) > TokenMapMaxBucketSize {
+		tokens := t.tokens
+		indices := t.indices
+		t.tokens = make([][]string, len(t.tokens)*2)
+		t.indices = make([][]int, len(t.indices)*2)
+		for bucket := range tokens {
+			for i := range tokens[bucket] {
+				t.Add(tokens[bucket][i], indices[bucket][i])
+			}
+		}
+	}
+}
+
+func (t *TokenMapEncoder) FinishAdds() {
+	t.b = encoding.NewByteArraysBuilder(len(t.tokens))
+	f := func(bucket int, buffer []byte) error {
+		t.b.Reserve(bucket, len(buffer))
+		return nil
+	}
+	t.eachIndex(f)
+	t.b.FinishReservation()
+}
+
+func (t *TokenMapEncoder) Length() int {
+	if t.b == nil {
+		t.FinishAdds()
+	}
+	return t.b.Length()
+}
+
+func (t *TokenMapEncoder) eachIndex(f func(bucket int, buffer []byte) error) error {
+	var buffer [binary.MaxVarintLen64]byte
+	for bucket := range t.indices {
+		for _, index := range t.indices[bucket] {
+			n := binary.PutUvarint(buffer[0:], uint64(index))
+			if err := f(bucket, buffer[0:n]); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (t *TokenMapEncoder) Write(w io.WriterAt, offset encoding.Offset) (encoding.Offset, error) {
+	if t.b == nil {
+		t.FinishAdds()
+	}
+	offset, err := t.b.WriteHeader(w, offset)
+	if err != nil {
+		return 0, err
+	}
+	f := func(bucket int, buffer []byte) error {
+		return t.b.WriteItem(w, bucket, buffer)
+	}
+	t.eachIndex(f)
+	return offset, err
+}
+
+type TokenMapIterator struct {
+	bucket []byte
+}
+
+func (t *TokenMapIterator) Next() (int, bool) {
+	if len(t.bucket) == 0 {
+		return 0, false
+	}
+	v, n := binary.Uvarint(t.bucket)
+	t.bucket = t.bucket[n:]
+	return int(v), true
+}
+
+type TokenMap struct {
+	b *encoding.ByteArrays
+}
+
+func (t *TokenMap) Unmarshal(buffer []byte) int {
+	t.b = encoding.NewByteArrays(buffer)
+	return t.b.Length()
+}
+
+func (t *TokenMap) FindPossibleIndices(token string) TokenMapIterator {
+	bucket := int(HashString(token) % uint64(t.b.NumItems()))
+	return TokenMapIterator{bucket: t.b.Item(bucket)}
+}
+
+const Fnv64Prime = 0x00000100000001b3
+const Fnv64Offset = 0xcbf29ce484222325
+
+// An implementation of Fnv-1a hashing for strings
+// See https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+func HashString(s string) uint64 {
+	h := uint64(Fnv64Offset)
+	p := unsafe.Pointer(unsafe.StringData(s))
+	for i := 0; i < len(s); i++ {
+		b := *(*byte)(unsafe.Add(p, i))
+		h ^= uint64(b)
+		h *= Fnv64Prime
+	}
+	return h
+}
+
 type NamespaceIndicies []NamespaceIndex
 
 func (n *NamespaceIndicies) Marshal(buffer []byte) int {
@@ -1704,23 +1785,32 @@ type PostingListHeader struct {
 	Namespaces NamespaceIndicies
 }
 
+const PostingListHeaderMaxLength = 1024 // Empirical, for buffers
+
 func (p *PostingListHeader) Marshal(buffer []byte) int {
-	i := binary.PutUvarint(buffer[0:], uint64(len(p.Token)))
-	i += copy(buffer[i:], p.Token)
+	i := MarshalString(p.Token, buffer)
 	i += binary.PutUvarint(buffer[i:], uint64(p.Features))
 	i += p.Namespaces.Marshal(buffer[i:])
 	return i
 }
 
 func (p *PostingListHeader) Unmarshal(buffer []byte) int {
-	l, i := binary.Uvarint(buffer)
-	p.Token = string(buffer[i : i+int(l)])
-	i += int(l)
+	var i int
+	p.Token, i = UnmarshalString(buffer)
 	l, n := binary.Uvarint(buffer[i:])
 	p.Features = int(l)
 	i += n
 	i += p.Namespaces.Unmarshal(buffer[i:])
 	return i
+}
+
+func PostingListHeaderToken(buffer []byte) string {
+	s, _ := UnmarshalString(buffer)
+	return s
+}
+
+func PostingListHeaderTokenEquals(buffer []byte, token string) bool {
+	return MarshalledStringEquals(buffer, token)
 }
 
 const PostingListBlockSize = 64 // Determined experimentally for best compression
@@ -1744,8 +1834,7 @@ type FeatureIDIterator interface {
 }
 
 type PostingListEncoder struct {
-	Buffer []byte
-	Header *PostingListHeader
+	PostingList *PostingList
 
 	tn       TypeAndNamespace
 	ni       int
@@ -1753,14 +1842,14 @@ type PostingListEncoder struct {
 	previous uint64
 }
 
-func NewPostingListEncoder(buffer []byte, header *PostingListHeader) *PostingListEncoder {
+func NewPostingListEncoder(pl *PostingList) *PostingListEncoder {
+	pl.IDs = pl.IDs[0:0]
 	return &PostingListEncoder{
-		Buffer:   buffer,
-		Header:   header,
-		tn:       TypeAndNamespaceInvalid,
-		ni:       -1,
-		start:    0,
-		previous: 0,
+		PostingList: pl,
+		tn:          TypeAndNamespaceInvalid,
+		ni:          -1,
+		start:       0,
+		previous:    0,
 	}
 }
 
@@ -1769,42 +1858,29 @@ func (p *PostingListEncoder) Append(id FeatureID) {
 	if tnn != p.tn {
 		p.tn = tnn
 		p.ni++
-		p.Header.Namespaces = append(p.Header.Namespaces, NamespaceIndex{TypeAndNamespace: tnn, Index: len(p.Buffer)})
-		p.Buffer = padIDBlock(p.Buffer)
-		p.Header.Namespaces[p.ni].Index = len(p.Buffer)
+		p.PostingList.Header.Namespaces = append(p.PostingList.Header.Namespaces, NamespaceIndex{TypeAndNamespace: tnn, Index: len(p.PostingList.IDs)})
+		p.PostingList.IDs = padIDBlock(p.PostingList.IDs)
+		p.PostingList.Header.Namespaces[p.ni].Index = len(p.PostingList.IDs)
 	}
-	if len(p.Buffer)%PostingListBlockSize == 0 {
-		p.start = len(p.Buffer)
+	if len(p.PostingList.IDs)%PostingListBlockSize == 0 {
+		p.start = len(p.PostingList.IDs)
 		p.previous = 0
 	}
 	var varint [binary.MaxVarintLen64]byte
 	added := binary.PutUvarint(varint[0:], id.Value-p.previous)
-	if (len(p.Buffer)-p.start)+added > PostingListBlockSize {
-		p.Buffer = padIDBlock(p.Buffer)
-		p.start = len(p.Buffer)
+	if (len(p.PostingList.IDs)-p.start)+added > PostingListBlockSize {
+		p.PostingList.IDs = padIDBlock(p.PostingList.IDs)
+		p.start = len(p.PostingList.IDs)
 		added = binary.PutUvarint(varint[0:], id.Value)
 	}
 	for j := 0; j < added; j++ {
-		p.Buffer = append(p.Buffer, varint[j])
+		p.PostingList.IDs = append(p.PostingList.IDs, varint[j])
 	}
 	p.previous = id.Value
 }
 
-func FillPostingList(i FeatureIDIterator, token string, ids []byte, l *PostingListHeader) []byte {
-	l.Token = token
-	l.Namespaces = l.Namespaces[0:0]
-	encoder := NewPostingListEncoder(ids[0:0], l)
-	features := 0
-	for i.Next() {
-		features++
-		encoder.Append(i.FeatureID())
-	}
-	l.Features = features
-	return encoder.Buffer
-}
-
 type Iterator struct {
-	header *PostingListHeader
+	header PostingListHeader
 	ids    []byte
 	ns     int // The namespace of the current value
 	i      int // The index of the next varint id to be read within the ids slice
@@ -1812,14 +1888,11 @@ type Iterator struct {
 	nt     *NamespaceTable
 }
 
-func NewIterator(header *PostingListHeader, ids []byte, nt *NamespaceTable) *Iterator {
-	return &Iterator{
-		header: header,
-		ids:    ids,
-		ns:     0,
-		i:      0,
-		nt:     nt,
-	}
+func NewIterator(buffer []byte, nt *NamespaceTable) *Iterator {
+	i := &Iterator{ns: 0, i: 0, nt: nt}
+	start := i.header.Unmarshal(buffer)
+	i.ids = buffer[start:]
+	return i
 }
 
 func (i *Iterator) Next() bool {
@@ -1942,6 +2015,28 @@ func (i *Iterator) FeatureID() b6.FeatureID {
 
 func (i *Iterator) EstimateLength() int {
 	return (len(i.ids) - i.i) / 3
+}
+
+type PostingList struct {
+	Header PostingListHeader
+	IDs    []byte
+}
+
+func (p *PostingList) Fill(token string, i FeatureIDIterator) {
+	p.Header.Token = token
+	p.Header.Namespaces = p.Header.Namespaces[0:0]
+	encoder := NewPostingListEncoder(p)
+	features := 0
+	for i.Next() {
+		features++
+		encoder.Append(i.FeatureID())
+	}
+	p.Header.Features = features
+}
+
+func (p *PostingList) Marshal(buffer []byte) int {
+	n := p.Header.Marshal(buffer)
+	return n + copy(buffer[n:], p.IDs)
 }
 
 type FeatureBlockHeader struct {

@@ -1330,6 +1330,7 @@ func ValidateTagsAreSearchable(buildWorld BuildOSMWorld, t *testing.T) {
 	points := b6.AllPoints(b6.FindPoints(b6.IntersectsCap{cap}, w))
 	if len(points) != 1 {
 		t.Errorf("Expected to find 1 point, found %d", len(points))
+		return
 	}
 	if amenity := points[0].Get("#amenity"); !amenity.IsValid() {
 		t.Errorf("Expected amenity tag to be searchable")

@@ -1066,32 +1066,48 @@ func (w *World) ServeHTTP(rw http.ResponseWriter, rr *http.Request) {
 
 type Index struct {
 	w  *World
+	t  TokenMap
 	b  *encoding.ByteArrays
-	t  *search.Tokens // Cache decoded tokens for speed, by string and by index
 	nt *NamespaceTable
 }
 
 func NewIndex(data []byte, nt *NamespaceTable, w *World) (*Index, error) {
 	i := &Index{w: w, nt: nt}
-	i.b = encoding.NewByteArrays(data)
-	tokens := make(map[string]int, i.b.NumItems())
-	indices := make([]string, i.b.NumItems())
-	var h PostingListHeader
-	for j := 0; j < i.b.NumItems(); j++ {
-		h.Unmarshal(i.b.Item(j))
-		tokens[h.Token] = j
-		indices[j] = h.Token
-	}
-	i.t = search.NewFilledTokens(indices, tokens)
+	n := i.t.Unmarshal(data)
+	i.b = encoding.NewByteArrays(data[n:])
+	/*
+		tokens := make(map[string]int, i.b.NumItems())
+		indices := make([]string, i.b.NumItems())
+
+		var h PostingListHeader
+		for j := 0; j < i.b.NumItems(); j++ {
+			h.Unmarshal(i.b.Item(j))
+			tokens[h.Token] = j
+			indices[j] = h.Token
+		}
+	*/
 	return i, nil
 }
 
 func (i *Index) Begin(token string) search.Iterator {
-	if index, ok := i.t.Lookup(token); ok {
-		var header PostingListHeader
+	/*
+		if index, ok := i.t.Lookup(token); ok {
+			var header PostingListHeader
+			item := i.b.Item(index)
+			start := header.Unmarshal(item)
+			return NewIterator(&header, item[start:], i.nt)
+		}
+	*/
+	j := i.t.FindPossibleIndices(token)
+	for {
+		index, ok := j.Next()
+		if !ok {
+			break
+		}
 		item := i.b.Item(index)
-		start := header.Unmarshal(item)
-		return NewIterator(&header, item[start:], i.nt)
+		if PostingListHeaderTokenEquals(item, token) {
+			return NewIterator(item, i.nt)
+		}
 	}
 	return search.NewEmptyIterator()
 }
@@ -1108,8 +1124,34 @@ func (i *Index) NumTokens() int {
 	return i.b.NumItems()
 }
 
+type tokenIterator struct {
+	b *encoding.ByteArrays
+	i int
+}
+
+func (t *tokenIterator) Next() bool {
+	t.i++
+	return t.i <= t.b.NumItems()
+}
+
+func (t *tokenIterator) Token() string {
+	return PostingListHeaderToken(t.b.Item(t.i - 1))
+}
+
+func (t *tokenIterator) Advance(token string) bool {
+	start := t.i - 1
+	if start < 0 {
+		start = 0
+	}
+	i := sort.Search(t.b.NumItems()-start, func(j int) bool {
+		return PostingListHeaderToken(t.b.Item(start+j)) >= token
+	})
+	t.i = start + i + 1
+	return t.i <= t.b.NumItems()
+}
+
 func (i *Index) Tokens() search.TokenIterator {
-	return i.t.Tokens()
+	return &tokenIterator{b: i.b}
 }
 
 func (i *Index) Values() search.Values {
