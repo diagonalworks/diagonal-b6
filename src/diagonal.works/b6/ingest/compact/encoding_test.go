@@ -1,6 +1,7 @@
 package compact
 
 import (
+	"fmt"
 	"math/rand"
 	"reflect"
 	"sort"
@@ -28,8 +29,8 @@ func newOSMNamespaces() (*Namespaces, *NamespaceTable) {
 }
 
 func TestStringEncoding(t *testing.T) {
-	var buffer [20]byte
-	v := "0.32.3"
+	var buffer [40]byte
+	v := "渋谷スクランブル交差点"
 	l := MarshalString(v, buffer[0:])
 	for i := l; i < len(buffer); i++ {
 		buffer[i] = 'X'
@@ -37,6 +38,12 @@ func TestStringEncoding(t *testing.T) {
 	vv, l := UnmarshalString(buffer[0:])
 	if v != vv {
 		t.Errorf("Expected %q, found %q", v, vv)
+	}
+	if !MarshalledStringEquals(buffer[0:], v) {
+		t.Errorf("Expected strings to be equal")
+	}
+	if MarshalledStringEquals(buffer[0:], "Shibuya Scramble Crossing") {
+		t.Errorf("Expected strings to not be equal")
 	}
 }
 
@@ -670,6 +677,66 @@ func TestRelationEncoding(t *testing.T) {
 	}
 }
 
+func TestHashString(t *testing.T) {
+	hashes := make(map[uint64]struct{})
+	n := 1024
+	for i := 0; i < n; i++ {
+		token := fmt.Sprintf("building:levels=%d", i)
+		hashes[HashString(token)] = struct{}{}
+	}
+	if len(hashes) != n {
+		t.Errorf("Expected no collisons")
+	}
+}
+
+func TestTokenMapEncoding(t *testing.T) {
+	tokens := make([]string, 1024)
+	for i := 0; i < len(tokens); i++ {
+		tokens[i] = fmt.Sprintf("building:levels=%d", i) // Really tall!
+	}
+
+	e := NewTokenMapEncoder()
+	for i, token := range tokens {
+		e.Add(token, i)
+	}
+
+	var output encoding.Buffer
+	start := encoding.Offset(42)
+	if _, err := e.Write(&output, start); err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+		return
+	}
+
+	buffer := output.Bytes()
+	var m TokenMap
+	m.Unmarshal(buffer[start:])
+
+	lookups := 0
+	for _, token := range tokens {
+		found := false
+		i := m.FindPossibleIndices(token)
+		for {
+			index, ok := i.Next()
+			if !ok {
+				break
+			}
+			lookups++
+			if tokens[index] == token {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected to find %s", token)
+			return
+		}
+	}
+
+	if r := float64(lookups) / float64(len(tokens)); r > 1.5 {
+		t.Errorf("Expected a small number of lookups per key, found %f", r)
+	}
+}
+
 func TestNamespaceTableEncoding(t *testing.T) {
 	var nt NamespaceTable
 	nt.FillFromNamespaces(b6.StandardNamespaces)
@@ -767,16 +834,18 @@ func TestEncodeLargePostingList(t *testing.T) {
 	}
 	sort.Sort(&ids)
 
-	buffer := make([]byte, 2048)
-	var pl PostingListHeader
-	buffer = FillPostingList(ids.Begin(), "highway=primary", buffer, &pl)
-	if len(buffer) > 4*ids.Len() {
-		t.Errorf("Expected to average better compression than 3 bytes per ID (%d vs %d)", len(buffer), 4*ids.Len())
+	var pl PostingList
+	pl.Fill("highway=primary", ids.Begin())
+	if len(pl.IDs) > 4*ids.Len() {
+		t.Errorf("Expected to average better compression than 3 bytes per ID (%d vs %d)", len(pl.IDs), 4*ids.Len())
 	}
+
+	buffer := make([]byte, PostingListHeaderMaxLength+len(pl.IDs))
+	n := pl.Marshal(buffer)
 
 	tests := []struct {
 		name string
-		f    func(header *PostingListHeader, ids []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T)
+		f    func(item []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T)
 	}{
 		{"PostingListIteratorNext", ValidatePostingListIteratorNext},
 		{"PostingListIteratorAdvance", ValidatePostingListIteratorAdvance},
@@ -785,13 +854,13 @@ func TestEncodeLargePostingList(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) { test.f(&pl, buffer, &ids, nt, t) })
+		t.Run(test.name, func(t *testing.T) { test.f(buffer[0:n], &ids, nt, t) })
 	}
 }
 
-func ValidatePostingListIteratorNext(header *PostingListHeader, ids []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
+func ValidatePostingListIteratorNext(item []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
 	found := make(b6.FeatureIDs, 0, expected.Len())
-	i := NewIterator(header, ids, nt)
+	i := NewIterator(item, nt)
 	seen := make(map[b6.FeatureID]struct{})
 	for i.Next() {
 		if _, ok := seen[i.FeatureID()]; ok {
@@ -803,6 +872,8 @@ func ValidatePostingListIteratorNext(header *PostingListHeader, ids []byte, expe
 		found = append(found, i.FeatureID())
 	}
 
+	var header PostingListHeader
+	header.Unmarshal(item)
 	if len(found) != header.Features {
 		t.Errorf("Expected number of features in list to match count in header")
 	}
@@ -820,7 +891,7 @@ func ValidatePostingListIteratorNext(header *PostingListHeader, ids []byte, expe
 	}
 }
 
-func ValidatePostingListIteratorAdvance(header *PostingListHeader, ids []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
+func ValidatePostingListIteratorAdvance(item []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
 	cases := []struct {
 		target   FeatureID
 		delta    int
@@ -836,7 +907,7 @@ func ValidatePostingListIteratorAdvance(header *PostingListHeader, ids []byte, e
 	}
 
 	for ci, c := range cases {
-		i := NewIterator(header, ids, nt)
+		i := NewIterator(item, nt)
 		target := c.target.AddValue(c.delta)
 		if !i.Advance(nt.DecodeID(target)) {
 			t.Errorf("Expected advance to return true for case %d", ci)
@@ -848,8 +919,8 @@ func ValidatePostingListIteratorAdvance(header *PostingListHeader, ids []byte, e
 	}
 }
 
-func ValidatePostingListIteratorAdvanceBeyondEnd(header *PostingListHeader, ids []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
-	i := NewIterator(header, ids, nt)
+func ValidatePostingListIteratorAdvanceBeyondEnd(item []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
+	i := NewIterator(item, nt)
 	for j := 0; j < 42; j++ {
 		if !i.Next() {
 			t.Errorf("Expected iterator to advance")
@@ -865,8 +936,8 @@ func ValidatePostingListIteratorAdvanceBeyondEnd(header *PostingListHeader, ids 
 	}
 }
 
-func ValidatePostingListIteratorAdvanceBeforeCurrent(header *PostingListHeader, ids []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
-	i := NewIterator(header, ids, nt)
+func ValidatePostingListIteratorAdvanceBeforeCurrent(item []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
+	i := NewIterator(item, nt)
 	if !i.Advance(nt.DecodeID(expected.At(2500))) {
 		t.Errorf("Expected Advance() to return true")
 		return
@@ -896,20 +967,23 @@ func TestPostingListIteratorAdvanceToCurrentAtEndOfBlock(t *testing.T) {
 	}
 	sort.Sort(&ids)
 
-	var header PostingListHeader
-	buffer := make([]byte, 0)
-	encoder := NewPostingListEncoder(buffer, &header)
+	var pl PostingList
+	pl.IDs = make([]byte, 0)
+	encoder := NewPostingListEncoder(&pl)
 	blockStart := -1
 	for i := 0; i < ids.Len(); i++ {
 		encoder.Append(ids.At(i))
-		if len(encoder.Buffer)%PostingListBlockSize == 2 {
+		if len(pl.IDs)%PostingListBlockSize == 2 {
 			blockStart = i
 		}
 
 	}
 
+	buffer := make([]byte, PostingListHeaderMaxLength+len(pl.IDs))
+	n := pl.Marshal(buffer)
+
 	// Move to the end of a block
-	i := NewIterator(&header, encoder.Buffer, nt)
+	i := NewIterator(buffer[0:n], nt)
 	for {
 		if !i.Next() {
 			t.Errorf("Expected next to return true")
@@ -934,16 +1008,16 @@ func TestPostingListIteratorAdvanceWithinLastBlockExactMultiple(t *testing.T) {
 	// IDs was an exact multiple of PostingListBlockSize.
 	nss, nt := newOSMNamespaces()
 	var ids FeatureIDs
-	var header PostingListHeader
-	buffer := make([]byte, 0)
-	encoder := NewPostingListEncoder(buffer, &header)
+	var pl PostingList
+	pl.IDs = make([]byte, 0)
+	encoder := NewPostingListEncoder(&pl)
 	blocks := make([]int, 0)
 	v := 0
 	for {
 		id := FeatureID{Type: b6.FeatureTypePoint, Namespace: nss.ForType(b6.FeatureTypePoint), Value: uint64(v)}
 		ids.Append(id)
 		encoder.Append(id)
-		if len(encoder.Buffer)%PostingListBlockSize == 0 {
+		if len(pl.IDs)%PostingListBlockSize == 0 {
 			blocks = append(blocks, v)
 			if len(blocks) > 2 {
 				break
@@ -952,7 +1026,10 @@ func TestPostingListIteratorAdvanceWithinLastBlockExactMultiple(t *testing.T) {
 		v++
 	}
 
-	i := NewIterator(&header, encoder.Buffer, nt)
+	buffer := make([]byte, PostingListHeaderMaxLength+len(pl.IDs))
+	n := pl.Marshal(buffer)
+
+	i := NewIterator(buffer[0:n], nt)
 	target := nt.DecodeID(ids.At(blocks[len(blocks)-2]))
 	for {
 		if !i.Next() {
@@ -979,25 +1056,28 @@ func TestPostingListIteratorAdvanceWithinLastBlock(t *testing.T) {
 	// IDs was not an exact multiple of PostingListBlockSize.
 	nss, nt := newOSMNamespaces()
 	var ids FeatureIDs
-	var header PostingListHeader
-	buffer := make([]byte, 0)
-	encoder := NewPostingListEncoder(buffer, &header)
+	var pl PostingList
+	pl.IDs = make([]byte, 0)
+	encoder := NewPostingListEncoder(&pl)
 	blocks := make([]int, 0)
 	v := 0
 	for {
 		id := FeatureID{Type: b6.FeatureTypePoint, Namespace: nss.ForType(b6.FeatureTypePoint), Value: uint64(v)}
 		ids.Append(id)
 		encoder.Append(id)
-		if len(encoder.Buffer)%PostingListBlockSize == 0 {
+		if len(pl.IDs)%PostingListBlockSize == 0 {
 			blocks = append(blocks, v)
 		}
-		if len(blocks) > 2 && len(encoder.Buffer)%PostingListBlockSize == 3 { // 3 is arbitrary
+		if len(blocks) > 2 && len(pl.IDs)%PostingListBlockSize == 3 { // 3 is arbitrary
 			break
 		}
 		v++
 	}
 
-	i := NewIterator(&header, encoder.Buffer, nt)
+	buffer := make([]byte, PostingListHeaderMaxLength+len(pl.IDs))
+	n := pl.Marshal(buffer)
+
+	i := NewIterator(buffer[0:n], nt)
 	target := nt.DecodeID(ids.At(blocks[len(blocks)-2]))
 	for {
 		if !i.Next() {
@@ -1033,12 +1113,15 @@ func TestEncodePostingListWithShortBlock(t *testing.T) {
 		for i := 0; i < l; i++ {
 			subset.Append(ids[i])
 		}
-		buffer := make([]byte, PostingListBlockSize-1) // The buffer size is less than a full block
-		var pl PostingListHeader
-		buffer = FillPostingList(subset.Begin(), "highway=primary", buffer, &pl)
+		var pl PostingList
+		pl.IDs = make([]byte, PostingListBlockSize-1) // The buffer size is less than a full block
+		pl.Fill("highway=primary", subset.Begin())
+
+		buffer := make([]byte, PostingListHeaderMaxLength+len(pl.IDs))
+		n := pl.Marshal(buffer)
 
 		found := make(b6.FeatureIDs, 0, len(ids))
-		i := NewIterator(&pl, buffer, nt)
+		i := NewIterator(buffer[0:n], nt)
 		for i.Next() {
 			found = append(found, i.FeatureID())
 		}

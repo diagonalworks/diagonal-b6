@@ -883,15 +883,10 @@ func buildFeatures(source ingest.FeatureSource, o *Options, sb *encoding.StringT
 	return offset, closer.Close()
 }
 
-func buildIndex(byID *FeaturesByID, nt *NamespaceTable, offset encoding.Offset, output Output) error {
-	log.Printf("buildIndex: add")
-	index := make(map[string]*FeatureIDs)
-
+func fillIndex(byID *FeaturesByID, nt *NamespaceTable, index map[string]*FeatureIDs) ([]string, error) {
 	allTokens := make([]string, 0)
 	var lock sync.RWMutex
-	var features uint64
 	emit := func(feature b6.Feature, goroutine int) error {
-		atomic.AddUint64(&features, 1)
 		tokens := ingest.TokensForFeature(feature.(b6.PhysicalFeature))
 		for _, token := range tokens {
 			var ids *FeatureIDs
@@ -914,11 +909,11 @@ func buildIndex(byID *FeaturesByID, nt *NamespaceTable, offset encoding.Offset, 
 		return nil
 	}
 	options := b6.EachFeatureOptions{Cores: runtime.NumCPU()}
-	if err := byID.EachFeature(emit, &options); err != nil {
-		return err
-	}
-	log.Printf("buildIndex: finish")
-	sort.Strings(allTokens)
+	err := byID.EachFeature(emit, &options)
+	return allTokens, err
+}
+
+func sortIndexIDs(index map[string]*FeatureIDs) {
 	toSort := make(chan *FeatureIDs, runtime.NumCPU())
 	var wg sync.WaitGroup
 	finish := func() {
@@ -936,55 +931,80 @@ func buildIndex(byID *FeaturesByID, nt *NamespaceTable, offset encoding.Offset, 
 	}
 	close(toSort)
 	wg.Wait()
+}
 
-	arrays := encoding.NewByteArraysBuilder(len(index))
+func writeIndex(w io.WriterAt, offset encoding.Offset, tokens *TokenMapEncoder, lists *encoding.ByteArraysBuilder) (encoding.Offset, error) {
+	var buffer [BlockHeaderLength]byte
+	header := BlockHeader{
+		Type:   BlockTypeSearchIndex,
+		Length: uint64(tokens.Length() + lists.Length()),
+	}
+	l := header.Marshal(buffer[0:])
+	if _, err := w.WriteAt(buffer[0:l], int64(offset)); err != nil {
+		return 0, err
+	}
+	offset = offset.Add(l)
+	offset, err := tokens.Write(w, offset)
+	if err == nil {
+		offset, err = lists.WriteHeader(w, offset)
+	}
+	return offset, err
+}
+
+func buildIndex(byID *FeaturesByID, nt *NamespaceTable, offset encoding.Offset, output Output) error {
+	log.Printf("buildIndex: add")
+	index := make(map[string]*FeatureIDs)
+	allTokens, err := fillIndex(byID, nt, index)
+	if err != nil {
+		return err
+	}
+	log.Printf("buildIndex: sort")
+	sort.Strings(allTokens)
+	sortIndexIDs(index)
 
 	o, err := output.ReadWrite()
 	if err != nil {
 		return err
 	}
 
+	tokens := NewTokenMapEncoder()
+	for i, token := range allTokens {
+		tokens.Add(token, i)
+	}
+	tokens.FinishAdds()
+	lists := encoding.NewByteArraysBuilder(len(index))
+
 	stages := []func(token int, header []byte, ids []byte) error{
 		func(token int, header []byte, ids []byte) error {
-			arrays.Reserve(token, len(header))
-			arrays.Reserve(token, len(ids))
+			lists.Reserve(token, len(header))
+			lists.Reserve(token, len(ids))
 			return nil
 		},
 		func(token int, header []byte, ids []byte) error {
-			return arrays.WriteItem(o, token, header, ids)
+			return lists.WriteItem(o, token, header, ids)
 		},
 	}
 
-	var pl PostingListHeader
-	h := make([]byte, 1024)
-	ids := make([]byte, 0, 2048)
+	var pl PostingList
+	pl.IDs = make([]byte, 0, 2048)
+	buffer := make([]byte, PostingListHeaderMaxLength)
 	for i, stage := range stages {
 		if i == 1 {
-			arrays.FinishReservation()
-			var buffer [BlockHeaderLength]byte
-			header := BlockHeader{
-				Type:   BlockTypeSearchIndex,
-				Length: uint64(arrays.Length()),
-			}
-			l := header.Marshal(buffer[0:])
-			if _, err := o.WriteAt(buffer[0:l], int64(offset)); err != nil {
-				return err
-			}
-			offset = offset.Add(l)
-			if _, err := arrays.WriteHeader(o, offset); err != nil {
+			lists.FinishReservation()
+			if _, err := writeIndex(o, offset, tokens, lists); err != nil {
 				return err
 			}
 		}
 		for j, token := range allTokens {
-			ids = FillPostingList(index[token].Begin(), token, ids, &pl)
-			n := pl.Marshal(h)
-			if err := stage(j, h[0:n], ids); err != nil {
+			pl.Fill(token, index[token].Begin())
+			n := pl.Header.Marshal(buffer)
+			if err := stage(j, buffer[0:n], pl.IDs); err != nil {
 				return err
 			}
 		}
 	}
 
-	log.Printf("buildIndex: indexed %d features", features)
+	log.Printf("buildIndex: %d tokens", len(allTokens))
 	return o.Close()
 }
 
