@@ -665,6 +665,9 @@ func NewWorldFromSource(source FeatureSource, o *BuildOptions) (b6.World, error)
 		return nil
 	}
 	options := ReadOptions{Cores: o.Cores}
-	source.Read(options, f, context.Background())
+	if err := source.Read(options, f, context.Background()); err != nil {
+		return nil, err
+	}
+
 	return b.Finish(o)
 }
