@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"sort"
 	"sync"
@@ -1623,11 +1624,12 @@ func (n *NamespaceIndex) Unmarshal(buffer []byte) int {
 	return i + l
 }
 
-const TokenMapMaxBucketSize = 3
+const TokenMapMaxLoadFactor = 0.6
 
 type TokenMapEncoder struct {
 	tokens  [][]string
 	indices [][]int
+	n       int
 	b       *encoding.ByteArraysBuilder
 }
 
@@ -1639,23 +1641,29 @@ func NewTokenMapEncoder() *TokenMapEncoder {
 }
 
 func (t *TokenMapEncoder) Add(token string, index int) {
-	if t.b != nil {
-		panic("Add after FinishAdds")
-	}
-	bucket := int(HashString(token) % uint64(len(t.tokens)))
-	t.tokens[bucket] = append(t.tokens[bucket], token)
-	t.indices[bucket] = append(t.indices[bucket], index)
-	if len(t.tokens[bucket]) > TokenMapMaxBucketSize {
+	if (float64(t.n+1) / float64(len(t.tokens))) > TokenMapMaxLoadFactor {
+		{
+			log.Printf("add token: double to %d", len(t.tokens)*2)
+		}
 		tokens := t.tokens
 		indices := t.indices
 		t.tokens = make([][]string, len(t.tokens)*2)
 		t.indices = make([][]int, len(t.indices)*2)
+		t.n = 0
 		for bucket := range tokens {
 			for i := range tokens[bucket] {
-				t.Add(tokens[bucket][i], indices[bucket][i])
+				t.add(tokens[bucket][i], indices[bucket][i])
 			}
 		}
 	}
+	t.add(token, index)
+}
+
+func (t *TokenMapEncoder) add(token string, index int) {
+	bucket := int(HashString(token) % uint64(len(t.tokens)))
+	t.tokens[bucket] = append(t.tokens[bucket], token)
+	t.indices[bucket] = append(t.indices[bucket], index)
+	t.n++
 }
 
 func (t *TokenMapEncoder) FinishAdds() {
