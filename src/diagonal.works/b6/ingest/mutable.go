@@ -361,14 +361,17 @@ func modifyTags(t b6.Taggable, modifications map[string]modifiedTag) []b6.Tag {
 	seen := make(map[string]struct{})
 	for _, tag := range original {
 		seen[tag.Key] = struct{}{}
-		if modification, ok := modifications[tag.Key]; ok {
-			if !modification.deleted {
-				modified = append(modified, b6.Tag{Key: tag.Key, Value: modification.value})
+		if modifications != nil {
+			if modification, ok := modifications[tag.Key]; ok {
+				if !modification.deleted {
+					modified = append(modified, b6.Tag{Key: tag.Key, Value: modification.value})
+				}
+			} else {
+				modified = append(modified, tag)
 			}
-		} else {
-			modified = append(modified, tag)
 		}
 	}
+
 	for key, modification := range modifications {
 		if !modification.deleted {
 			if _, ok := seen[key]; !ok {
@@ -381,12 +384,15 @@ func modifyTags(t b6.Taggable, modifications map[string]modifiedTag) []b6.Tag {
 }
 
 func modifyTag(t b6.Taggable, key string, modifications map[string]modifiedTag) b6.Tag {
-	if modification, ok := modifications[key]; ok {
-		if modification.deleted {
-			return b6.InvalidTag()
+	if modifications != nil {
+		if modification, ok := modifications[key]; ok {
+			if modification.deleted {
+				return b6.InvalidTag()
+			}
+			return b6.Tag{Key: key, Value: modification.value}
 		}
-		return b6.Tag{Key: key, Value: modification.value}
 	}
+
 	return t.Get(key)
 }
 
@@ -405,41 +411,45 @@ func (m *modifiedTagsPoint) Get(key string) b6.Tag {
 
 type modifiedTagsPath struct {
 	b6.PathFeature
-	tags map[string]modifiedTag
+	tags ModifiedTags
 }
 
 func (m *modifiedTagsPath) AllTags() []b6.Tag {
-	return modifyTags(m.PathFeature, m.tags)
+	return modifyTags(m.PathFeature, m.tags[m.PathFeature.FeatureID()])
 }
 
 func (m *modifiedTagsPath) Get(key string) b6.Tag {
-	return modifyTag(m.PathFeature, key, m.tags)
+	return modifyTag(m.PathFeature, key, m.tags[m.PathFeature.FeatureID()])
+}
+
+func (m *modifiedTagsPath) Feature(i int) b6.PointFeature {
+	return &modifiedTagsPoint{m.PathFeature.Feature(i), m.tags[m.PathFeature.Feature(i).FeatureID()]}
 }
 
 type modifiedTagsArea struct {
 	b6.AreaFeature
-	tags map[string]modifiedTag
+	tags ModifiedTags
 }
 
 func (m *modifiedTagsArea) AllTags() []b6.Tag {
-	return modifyTags(m.AreaFeature, m.tags)
+	return modifyTags(m.AreaFeature, m.tags[m.AreaFeature.FeatureID()])
 }
 
 func (m *modifiedTagsArea) Get(key string) b6.Tag {
-	return modifyTag(m.AreaFeature, key, m.tags)
+	return modifyTag(m.AreaFeature, key, m.tags[m.AreaFeature.FeatureID()])
 }
 
 type modifiedTagsRelation struct {
 	b6.RelationFeature
-	tags map[string]modifiedTag
+	tags ModifiedTags
 }
 
 func (m *modifiedTagsRelation) AllTags() []b6.Tag {
-	return modifyTags(m.RelationFeature, m.tags)
+	return modifyTags(m.RelationFeature, m.tags[m.RelationFeature.FeatureID()])
 }
 
 func (m *modifiedTagsRelation) Get(key string) b6.Tag {
-	return modifyTag(m.RelationFeature, key, m.tags)
+	return modifyTag(m.RelationFeature, key, m.tags[m.RelationFeature.FeatureID()])
 }
 
 type ModifiedTag struct {
@@ -489,31 +499,19 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 }
 
 func (m ModifiedTags) WrapPointFeature(f b6.PointFeature) b6.PointFeature {
-	if tags, ok := m[f.FeatureID()]; ok {
-		return &modifiedTagsPoint{PointFeature: f, tags: tags}
-	}
-	return f
+	return &modifiedTagsPoint{PointFeature: f, tags: m[f.FeatureID()]}
 }
 
 func (m ModifiedTags) WrapPathFeature(f b6.PathFeature) b6.PathFeature {
-	if tags, ok := m[f.FeatureID()]; ok {
-		return &modifiedTagsPath{PathFeature: f, tags: tags}
-	}
-	return f
+	return &modifiedTagsPath{PathFeature: f, tags: m}
 }
 
 func (m ModifiedTags) WrapAreaFeature(f b6.AreaFeature) b6.AreaFeature {
-	if tags, ok := m[f.FeatureID()]; ok {
-		return &modifiedTagsArea{AreaFeature: f, tags: tags}
-	}
-	return f
+	return &modifiedTagsArea{AreaFeature: f, tags: m}
 }
 
 func (m ModifiedTags) WrapRelationFeature(f b6.RelationFeature) b6.RelationFeature {
-	if tags, ok := m[f.FeatureID()]; ok {
-		return &modifiedTagsRelation{RelationFeature: f, tags: tags}
-	}
-	return f
+	return &modifiedTagsRelation{RelationFeature: f, tags: m}
 }
 
 func (m ModifiedTags) WrapSegment(segment b6.Segment) b6.Segment {

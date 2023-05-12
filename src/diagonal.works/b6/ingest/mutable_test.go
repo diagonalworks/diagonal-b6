@@ -109,7 +109,7 @@ func TestMutableWorlds(t *testing.T) {
 		{"AddingFeaturesWithNoIDFails", ValidateAddingFeaturesWithNoIDFails},
 		{"AddTagToExistingFeature", ValidateAddTagToExistingFeature},
 		{"AddSearchableTagToExistingFeature", ValidateAddSearchableTagToExistingFeature},
-		{"AddTagToNonExistiantFeature", ValidateAddTagToNonExistiantFeature},
+		{"AddTagToNonExistingFeature", ValidateAddTagToNonExistingFeature},
 	}
 
 	for _, creator := range mutableWorldCreators {
@@ -785,7 +785,7 @@ func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 	}
 }
 
-func ValidateAddTagToNonExistiantFeature(w MutableWorld, t *testing.T) {
+func ValidateAddTagToNonExistingFeature(w MutableWorld, t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
 	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: "restaurant"}); err == nil {
 		t.Errorf("Expected an error, found none")
@@ -1311,6 +1311,64 @@ func TestWatchModifiedTags(t *testing.T) {
 	expected := ModifiedTag{caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"}}
 	if m != expected {
 		t.Errorf("Expected %v, found %v", expected, m)
+	}
+}
+
+func TestPropagateModifiedTags(t *testing.T) {
+	base := NewBasicMutableWorld()
+
+	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
+	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	if err := base.AddPoint(caravan); err != nil {
+		t.Error(err)
+		return
+	}
+
+	yumchaa := osmPoint(3790640853, 51.5355955, -0.1250640)
+	if err := base.AddPoint(yumchaa); err != nil {
+		t.Error(err)
+		return
+	}
+
+	granary := osmPath(222021576, []*PointFeature{caravan, yumchaa})
+	if err := base.AddPath(granary); err != nil {
+		t.Error(err)
+		return
+	}
+
+	w := NewMutableTagsOverlayWorld(base)
+	w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: "restaurant"})
+
+	if found := b6.FindPointByID(caravan.PointID, w); found != nil {
+		if found.Get("amenity").Value != "restaurant" {
+			t.Errorf("Failed to find expected tag value")
+		}
+	} else {
+		t.Errorf("Failed to find feature")
+	}
+
+	if path := b6.FindPathByID(granary.PathID, w); path != nil {
+		for i := 0; i < path.Len(); i++ {
+			if found := path.Feature(i); found.PointID() == caravan.PointID {
+				if found.Get("amenity").Value != "restaurant" {
+					t.Errorf("Failed to find expected tag value")
+				}
+			}
+		}
+	} else {
+		t.Errorf("Failed to find feature")
+	}
+
+	ss := w.Traverse(caravan.PointID)
+	for ss.Next() {
+		segment := ss.Segment()
+		for i := 0; i < segment.Feature.Len(); i++ {
+			if found := segment.Feature.Feature(i); found.PointID() == caravan.PointID {
+				if found.Get("amenity").Value != "restaurant" {
+					t.Errorf("Failed to find expected tag value")
+				}
+			}
+		}
 	}
 }
 
