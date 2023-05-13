@@ -44,7 +44,7 @@ func TestOverlayWorldReturnsPathsFromAllIndices(t *testing.T) {
 	overlay := NewOverlayWorld(worlds[0], worlds[1])
 
 	cap := s2.CapFromCenterAngle(nodes[0].Location.ToS2Point(), b6.MetersToAngle(500))
-	found := b6.AllPaths(b6.FindPaths(b6.IntersectsCap{cap}, overlay))
+	found := b6.AllPaths(b6.FindPaths(&b6.IntersectsCap{Cap: cap}, overlay))
 
 	expected := []osm.WayID{140633010, 557698825, 642639444, 807925586}
 	if len(found) != len(expected) {

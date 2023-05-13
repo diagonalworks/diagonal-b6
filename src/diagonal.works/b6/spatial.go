@@ -3,6 +3,7 @@ package b6
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"diagonal.works/b6/geometry"
 	pb "diagonal.works/b6/proto"
@@ -167,14 +168,17 @@ func NewIntersectsCellID(cell s2.CellID) Query {
 
 type IntersectsCap struct {
 	Cap s2.Cap
+
+	lock    sync.Mutex
+	polygon *s2.Polygon
 }
 
-func (i IntersectsCap) String() string {
+func (i *IntersectsCap) String() string {
 	ll := s2.LatLngFromPoint(i.Cap.Center())
 	return fmt.Sprintf("(intersects-cap %f %f %.2f)", ll.Lat.Degrees(), ll.Lng.Degrees(), AngleToMeters(i.Cap.Radius()))
 }
 
-func (i IntersectsCap) ToProto() (*pb.QueryProto, error) {
+func (i *IntersectsCap) ToProto() (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_IntersectsCap{
 			IntersectsCap: &pb.CapProto{
@@ -185,26 +189,48 @@ func (i IntersectsCap) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func (i IntersectsCap) Compile(index FeatureIndex, w World) search.Iterator {
+func (i *IntersectsCap) Compile(index FeatureIndex, w World) search.Iterator {
 	if index, ok := index.(FeatureIndex); ok {
-		// TODO: Implement a more exact way of calculating polygon/cap intersection
-		capLoop := s2.RegularLoop(i.Cap.Center(), i.Cap.Radius(), 1024)
-		capPolygon := s2.PolygonFromLoops([]*s2.Loop{capLoop})
-		return &intersectsCap{cap: i.Cap, capPolygon: capPolygon, index: index, iterator: search.NewSpatialFromRegion(i.Cap).Compile(index)}
+		return &intersectsCap{cap: i, index: index, iterator: search.NewSpatialFromRegion(i.Cap).Compile(index)}
 	}
 	return search.NewEmptyIterator()
 }
 
-func (i IntersectsCap) Matches(feature Feature, w World) bool {
-	polygon := s2.PolygonFromLoops([]*s2.Loop{s2.RegularLoop(i.Cap.Center(), i.Cap.Radius(), 1024)})
-	return capIntersectsFeature(i.Cap, polygon, feature)
+func (i *IntersectsCap) Matches(feature Feature, w World) bool {
+	switch f := feature.(type) {
+	case PointFeature:
+		if i.Cap.ContainsPoint(f.Point()) {
+			return true
+		}
+	case PathFeature:
+		projection, _ := f.Polyline().Project(i.Cap.Center())
+		if i.Cap.ContainsPoint(projection) {
+			return true
+		}
+	case AreaFeature:
+		for j := 0; j < f.Len(); j++ {
+			if i.IntersectsPolygon(f.Polygon(j)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (i *IntersectsCap) IntersectsPolygon(p *s2.Polygon) bool {
+	// TODO: Implement a more exact way of calculating polygon/cap intersection
+	i.lock.Lock()
+	if i.polygon == nil {
+		i.polygon = s2.PolygonFromLoops([]*s2.Loop{s2.RegularLoop(i.Cap.Center(), i.Cap.Radius(), 1024)})
+	}
+	i.lock.Unlock()
+	return i.polygon.Intersects(p)
 }
 
 type intersectsCap struct {
-	cap        s2.Cap
-	capPolygon *s2.Polygon
-	index      FeatureIndex
-	iterator   search.Iterator
+	cap      *IntersectsCap
+	index    FeatureIndex
+	iterator search.Iterator
 }
 
 func (i *intersectsCap) Next() bool {
@@ -213,36 +239,15 @@ func (i *intersectsCap) Next() bool {
 		if !ok {
 			return false
 		}
-		if capIntersectsFeature(i.cap, i.capPolygon, i.index.Feature(i.Value())) {
+		if i.cap.Matches(i.index.Feature(i.Value()), nil) {
 			return true
 		}
 	}
-}
-
-func capIntersectsFeature(cap s2.Cap, capPolygon *s2.Polygon, feature Feature) bool {
-	switch f := feature.(type) {
-	case PointFeature:
-		if cap.ContainsPoint(f.Point()) {
-			return true
-		}
-	case PathFeature:
-		projection, _ := f.Polyline().Project(cap.Center())
-		if cap.ContainsPoint(projection) {
-			return true
-		}
-	case AreaFeature:
-		for j := 0; j < f.Len(); j++ {
-			if f.Polygon(j).Intersects(capPolygon) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func (i *intersectsCap) Advance(key search.Key) bool {
 	ok := i.iterator.Advance(key)
-	for ok && !capIntersectsFeature(i.cap, i.capPolygon, i.index.Feature(i.Value())) {
+	for ok && !i.cap.Matches(i.index.Feature(i.Value()), nil) {
 		ok = i.iterator.Next()
 	}
 	return ok
@@ -594,7 +599,7 @@ func NewQueryFromProto(p *pb.QueryProto) (Query, error) {
 	case *pb.QueryProto_IntersectsCap:
 		ll := PointProtoToS2LatLng(q.IntersectsCap.Center)
 		cap := s2.CapFromCenterAngle(s2.PointFromLatLng(ll), MetersToAngle(q.IntersectsCap.RadiusMeters))
-		return IntersectsCap{cap}, nil
+		return &IntersectsCap{Cap: cap}, nil
 	case *pb.QueryProto_IntersectsFeature:
 		return IntersectsFeature{ID: NewFeatureIDFromProto(q.IntersectsFeature)}, nil
 	case *pb.QueryProto_IntersectsPoint:
