@@ -1046,12 +1046,6 @@ type ReadOptions struct {
 	Cores         int
 }
 
-type Emit func(f Feature, goroutine int) error
-
-type FeatureSource interface {
-	Read(options ReadOptions, emit Emit, ctx context.Context) error
-}
-
 type WorldFeatureSource struct {
 	World b6.World
 }

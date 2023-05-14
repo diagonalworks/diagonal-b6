@@ -91,6 +91,10 @@ func intersecting(g b6.Geometry, context *api.Context) (b6.Query, error) {
 	return b6.Empty{}, nil
 }
 
+func intersectingCap(center b6.Point, radius float64, context *api.Context) (b6.Query, error) {
+	return &b6.IntersectsCap{Cap: s2.CapFromCenterAngle(center.Point(), b6.MetersToAngle(radius))}, nil
+}
+
 func typePoint(context *api.Context) (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_Typed{
@@ -141,7 +145,7 @@ func within(a b6.Area, context *api.Context) (b6.Query, error) {
 }
 
 func withinCap(p b6.Point, radius float64, context *api.Context) (b6.Query, error) {
-	return b6.IntersectsCap{Cap: s2.CapFromCenterAngle(p.Point(), b6.MetersToAngle(radius))}, nil
+	return &b6.IntersectsCap{Cap: s2.CapFromCenterAngle(p.Point(), b6.MetersToAngle(radius))}, nil
 }
 
 func tagged(key string, value string, context *api.Context) (b6.Query, error) {

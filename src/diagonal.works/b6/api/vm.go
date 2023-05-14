@@ -25,6 +25,22 @@ type Context struct {
 	VM *VM
 }
 
+func (c *Context) Fork(n int) []*Context {
+	var vms []VM
+	if c.VM != nil {
+		vms = c.VM.Fork(n)
+	}
+	ctxs := make([]*Context, n)
+	for i := range ctxs {
+		copy := *c
+		ctxs[i] = &copy
+		if vms != nil {
+			ctxs[i].VM = &vms[i]
+		}
+	}
+	return ctxs
+}
+
 type Op uint8
 
 const (

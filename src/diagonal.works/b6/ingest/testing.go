@@ -224,7 +224,7 @@ func ValidateWaysWithMissingNodesArentIndexed(buildWorld BuildOSMWorld, t *testi
 		return
 	}
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(100))
-	paths := b6.AllPaths(b6.FindPaths(b6.IntersectsCap{cap}, w))
+	paths := b6.AllPaths(b6.FindPaths(&b6.IntersectsCap{Cap: cap}, w))
 
 	expected := 1
 	if len(paths) != expected {
@@ -248,7 +248,7 @@ func ValidatePointsWithoutTagsArentIndexed(buildWorld BuildOSMWorld, t *testing.
 		return
 	}
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(100))
-	points := b6.AllPoints(b6.FindPoints(b6.IntersectsCap{cap}, w))
+	points := b6.AllPoints(b6.FindPoints(&b6.IntersectsCap{Cap: cap}, w))
 
 	if len(points) == 1 {
 		if points[0].FeatureID().Value != uint64(nodes[0].ID) {
@@ -413,7 +413,7 @@ func ValidateRelationsAsAreas(buildWorld BuildOSMWorld, t *testing.T) {
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(500))
 
 	expectedAreas := 1
-	q := b6.Intersection{b6.IntersectsCap{cap}, b6.Tagged{Key: "#building", Value: "yes"}}
+	q := b6.Intersection{&b6.IntersectsCap{Cap: cap}, b6.Tagged{Key: "#building", Value: "yes"}}
 	if areas := b6.AllAreas(b6.FindAreas(q, w)); len(areas) != expectedAreas {
 		t.Errorf("Expected %d area, found %d", expectedAreas, len(areas))
 	} else {
@@ -1117,7 +1117,7 @@ func ValidateSpatialQueriesOnAnEmptyIndexReturnNothing(buildWorld BuildOSMWorld,
 	}
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(500))
-	query := b6.IntersectsCap{cap}
+	query := &b6.IntersectsCap{Cap: cap}
 	if paths := b6.AllPaths(b6.FindPaths(query, w)); len(paths) != 0 {
 		// The most likely failure mode is a panic()/nil pointer, rather than
 		// imaginary ways, but both are covered.
@@ -1327,7 +1327,7 @@ func ValidateTagsAreSearchable(buildWorld BuildOSMWorld, t *testing.T) {
 	}
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052)), b6.MetersToAngle(100))
-	points := b6.AllPoints(b6.FindPoints(b6.IntersectsCap{cap}, w))
+	points := b6.AllPoints(b6.FindPoints(&b6.IntersectsCap{Cap: cap}, w))
 	if len(points) != 1 {
 		t.Errorf("Expected to find 1 point, found %d", len(points))
 		return

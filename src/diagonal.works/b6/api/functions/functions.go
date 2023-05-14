@@ -37,6 +37,7 @@ var functions = api.FunctionSymbols{
 	"find-relations":   FindRelationFeatures,
 	"containing-areas": findAreasContainingPoints,
 	"intersecting":     intersecting,
+	"intersecting-cap": intersectingCap,
 	"tagged":           tagged,
 	"keyed":            keyed,
 	"and":              and,
@@ -192,6 +193,15 @@ var wrappers = []interface{}{
 				return result.(b6.Geometry), err
 			} else {
 				return nil, err
+			}
+		}
+	},
+	func(c api.Callable) func(b6.Geometry, *api.Context) (bool, error) {
+		return func(g b6.Geometry, context *api.Context) (bool, error) {
+			if result, err := api.Call1(g, c, context); result != nil {
+				return result.(bool), err
+			} else {
+				return false, err
 			}
 		}
 	},
