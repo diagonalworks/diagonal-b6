@@ -3,7 +3,6 @@ package b6
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"diagonal.works/b6/geometry"
 	pb "diagonal.works/b6/proto"
@@ -167,23 +166,31 @@ func NewIntersectsCellID(cell s2.CellID) Query {
 }
 
 type IntersectsCap struct {
-	Cap s2.Cap
+	cap      s2.Cap
+	interior s2.CellUnion
+	exterior s2.CellUnion
+}
 
-	lock    sync.Mutex
-	polygon *s2.Polygon
+func NewIntersectsCap(cap s2.Cap) *IntersectsCap {
+	coverer := s2.RegionCoverer{MaxLevel: 22, MaxCells: 4}
+	return &IntersectsCap{
+		cap:      cap,
+		interior: coverer.InteriorCovering(cap),
+		exterior: coverer.Covering(cap),
+	}
 }
 
 func (i *IntersectsCap) String() string {
-	ll := s2.LatLngFromPoint(i.Cap.Center())
-	return fmt.Sprintf("(intersects-cap %f %f %.2f)", ll.Lat.Degrees(), ll.Lng.Degrees(), AngleToMeters(i.Cap.Radius()))
+	ll := s2.LatLngFromPoint(i.cap.Center())
+	return fmt.Sprintf("(intersecting-cap %f,%f %.2f)", ll.Lat.Degrees(), ll.Lng.Degrees(), AngleToMeters(i.cap.Radius()))
 }
 
 func (i *IntersectsCap) ToProto() (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_IntersectsCap{
 			IntersectsCap: &pb.CapProto{
-				Center:       NewPointProtoFromS2Point(i.Cap.Center()),
-				RadiusMeters: AngleToMeters(i.Cap.Radius()),
+				Center:       NewPointProtoFromS2Point(i.cap.Center()),
+				RadiusMeters: AngleToMeters(i.cap.Radius()),
 			},
 		},
 	}, nil
@@ -191,7 +198,7 @@ func (i *IntersectsCap) ToProto() (*pb.QueryProto, error) {
 
 func (i *IntersectsCap) Compile(index FeatureIndex, w World) search.Iterator {
 	if index, ok := index.(FeatureIndex); ok {
-		return &intersectsCap{cap: i, index: index, iterator: search.NewSpatialFromRegion(i.Cap).Compile(index)}
+		return &intersectsCap{cap: i, index: index, iterator: search.NewSpatialFromRegion(i.cap).Compile(index)}
 	}
 	return search.NewEmptyIterator()
 }
@@ -199,12 +206,12 @@ func (i *IntersectsCap) Compile(index FeatureIndex, w World) search.Iterator {
 func (i *IntersectsCap) Matches(feature Feature, w World) bool {
 	switch f := feature.(type) {
 	case PointFeature:
-		if i.Cap.ContainsPoint(f.Point()) {
+		if i.cap.ContainsPoint(f.Point()) {
 			return true
 		}
 	case PathFeature:
-		projection, _ := f.Polyline().Project(i.Cap.Center())
-		if i.Cap.ContainsPoint(projection) {
+		projection, _ := f.Polyline().Project(i.cap.Center())
+		if i.cap.ContainsPoint(projection) {
 			return true
 		}
 	case AreaFeature:
@@ -217,14 +224,30 @@ func (i *IntersectsCap) Matches(feature Feature, w World) bool {
 	return false
 }
 
+// If the polygon has less than this number of vetices, it's faster to
+// skip the index and test the edges of the polygon directly. Derived
+// empirically via benchmarks alongside the unit tests.
+const indexUseFasterAboveVetexCount = 16
+
 func (i *IntersectsCap) IntersectsPolygon(p *s2.Polygon) bool {
-	// TODO: Implement a more exact way of calculating polygon/cap intersection
-	i.lock.Lock()
-	if i.polygon == nil {
-		i.polygon = s2.PolygonFromLoops([]*s2.Loop{s2.RegularLoop(i.Cap.Center(), i.Cap.Radius(), 1024)})
+	if p.Loop(0).NumVertices() > indexUseFasterAboveVetexCount {
+		for _, id := range i.interior {
+			if p.IntersectsCell(s2.CellFromCellID(id)) {
+				return true
+			}
+		}
+		outside := true
+		for _, id := range i.exterior {
+			if p.IntersectsCell(s2.CellFromCellID(id)) {
+				outside = false
+				break
+			}
+		}
+		if outside {
+			return false
+		}
 	}
-	i.lock.Unlock()
-	return i.polygon.Intersects(p)
+	return CapIntersectsPolygon(i.cap, p)
 }
 
 type intersectsCap struct {
@@ -259,6 +282,26 @@ func (i *intersectsCap) Value() search.Value {
 
 func (i *intersectsCap) EstimateLength() int {
 	return i.iterator.EstimateLength()
+}
+
+func CapIntersectsPolygon(c s2.Cap, p *s2.Polygon) bool {
+	inside := 0
+	for i := 0; i < p.NumLoops(); i++ {
+		loop := p.Loop(i)
+		onLeft := true
+		for j := 0; j < loop.NumEdges(); j++ {
+			edge := loop.Edge(j)
+			point := s2.Project(c.Center(), edge.V0, edge.V1)
+			if c.ContainsPoint(point) {
+				return true
+			}
+			onLeft = onLeft && s2.Sign(c.Center(), edge.V0, edge.V1)
+		}
+		if onLeft {
+			inside++
+		}
+	}
+	return inside%2 == 1
 }
 
 type IntersectsFeature struct {
@@ -599,7 +642,7 @@ func NewQueryFromProto(p *pb.QueryProto) (Query, error) {
 	case *pb.QueryProto_IntersectsCap:
 		ll := PointProtoToS2LatLng(q.IntersectsCap.Center)
 		cap := s2.CapFromCenterAngle(s2.PointFromLatLng(ll), MetersToAngle(q.IntersectsCap.RadiusMeters))
-		return &IntersectsCap{Cap: cap}, nil
+		return NewIntersectsCap(cap), nil
 	case *pb.QueryProto_IntersectsFeature:
 		return IntersectsFeature{ID: NewFeatureIDFromProto(q.IntersectsFeature)}, nil
 	case *pb.QueryProto_IntersectsPoint:

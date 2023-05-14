@@ -129,7 +129,7 @@ func mustBuildCamdenForBenchmarks() b6.World {
 
 var benchmarkSearchQuery = b6.Intersection{
 	b6.Keyed{Key: "#building"},
-	&b6.IntersectsCap{Cap: s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5305, -0.1232)), b6.MetersToAngle(1000.0))},
+	b6.NewIntersectsCap(s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5305, -0.1232)), b6.MetersToAngle(1000.0))),
 }
 
 func BenchmarkSearchWorld(b *testing.B) {
