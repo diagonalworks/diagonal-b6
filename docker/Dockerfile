@@ -16,6 +16,7 @@ COPY Makefile /build/Makefile
 COPY src /build/src
 COPY python /build/python
 COPY proto /build/proto
+COPY etc /build/etc
 COPY data /build/data
 COPY .git /build/.git
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build
