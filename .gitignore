@@ -1,7 +1,6 @@
 .vscode
 bin
 **/.DS_Store
-**/*.pb.go
 **/*_pb2.py
 **/*_grpc.py
 **/__pycache__
