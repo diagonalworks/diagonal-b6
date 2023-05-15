@@ -457,3 +457,31 @@ func TestShortestPathReturnsBuildings(t *testing.T) {
 		t.Errorf("Expected to find building when searching from a building")
 	}
 }
+
+func TestElevationWeights(t *testing.T) {
+	camden := camden.BuildCamdenForTests(t)
+	if camden == nil {
+		return
+	}
+
+	camdenWithHill := ingest.NewMutableTagsOverlayWorld(camden)
+	camdenWithHill.AddTag(ingest.FromOSMNodeID(4931754283).FeatureID(), b6.Tag{Key: "ele", Value: "100"})
+	camdenWithHill.AddTag(ingest.FromOSMNodeID(6773349520).FeatureID(), b6.Tag{Key: "ele", Value: "200"})
+
+	path := ComputeShortestPath(
+		ingest.FromOSMNodeID(33000703),
+		ingest.FromOSMNodeID(970237231),
+		500.0, ElevationWeights{}, camdenWithHill)
+	wayIDs := make(map[osm.WayID]bool)
+	for _, segment := range path {
+		wayIDs[osm.WayID(segment.Feature.FeatureID().Value)] = true
+	}
+
+	if !wayIDs[835618252] {
+		t.Errorf("Expected to find way %d", 835618252) // Longer way.
+	}
+
+	if wayIDs[502802551] {
+		t.Errorf("Didn't expect to find way %d", 502802551) // Shorter, but elevated way.
+	}
+}
