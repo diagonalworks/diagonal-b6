@@ -119,6 +119,9 @@ const (
 	NamespaceGBOSTerrain50Contours Namespace = "ordnancesurvey.co.uk/terrain-50/contours"
 	NamespaceGBCodePoint           Namespace = "ordnancesurvey.co.uk/code-point"
 
+	// For GTFS transport data.
+	NamespaceGTFS Namespace = "diagonal.works/ns/gtfs"
+
 	NamespaceInvalid Namespace = ""
 )
 
