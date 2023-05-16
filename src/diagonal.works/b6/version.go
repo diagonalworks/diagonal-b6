@@ -68,7 +68,7 @@ func gitDescription(binary string) (string, error) {
 }
 
 func gitCommits(binary string) (string, error) {
-	cmd := exec.Command(binary, "rev-list", "--count", "main")
+	cmd := exec.Command(binary, "rev-list", "--count", "origin/main")
 	output, err := cmd.Output()
 	commits := strings.TrimSpace(string(output))
 	if err != nil {

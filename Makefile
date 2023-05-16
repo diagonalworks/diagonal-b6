@@ -6,7 +6,7 @@ TARGETOS ?= $(shell uname -s | tr A-Z a-z)
 export TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
 
 
-all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-ingest-gb-uprn b6-ingest-gb-codepoint b6-connect b6-api python
+all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-ingest-gb-uprn b6-ingest-gb-codepoint b6-connect b6-api python docker
 
 .git/hooks/pre-commit: etc/pre-commit
 	cp $< $@
@@ -102,6 +102,19 @@ python-test: python b6-backend
 
 test: proto-go src/diagonal.works/b6/api/y.go
 	cd src/diagonal.works/b6; go test diagonal.works/b6/...
+
+docker: docker/Dockerfile.b6 docker/Dockerfile.ci
+
+docker/Dockerfile.b6: docker/Dockerfile.b6-build.inc docker/Dockerfile.b6.inc
+
+docker/Dockerfile.b6-ci: docker/Dockerfile.b6-build.inc docker/Dockerfile.b6-ci.inc
+
+docker/Dockerfile.%:
+	cat $^ > $@
+
+docker-b6-ci: docker/Dockerfile.b6-ci
+	docker build -t europe-docker.pkg.dev/diagonal-public/b6/b6-ci -f docker/Dockerfile.b6-ci .
+	docker push europe-docker.pkg.dev/diagonal-public/b6/b6-ci
 
 clean:
 	cd src/diagonal.works/b6; go clean
