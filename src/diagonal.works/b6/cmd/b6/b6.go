@@ -7,16 +7,14 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 
 	b6grpc "diagonal.works/b6/grpc"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
 	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/renderer"
+	"diagonal.works/b6/ui"
 
 	"google.golang.org/grpc"
 
@@ -52,36 +50,19 @@ func main() {
 		w = ingest.NewMutableOverlayWorld(base)
 	}
 
+	options := ui.Options{
+		StaticPath:     *staticFlag,
+		JavaScriptPath: *jsFlag,
+		Cores:          *coresFlag,
+		World:          w,
+	}
+
 	handler := http.NewServeMux()
-	handler.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			http.ServeFile(w, r, filepath.Join(*staticFlag, "index.html"))
-		} else {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		}
-	}))
-	handler.Handle("/b6.css", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(*staticFlag, "b6.css"))
-	}))
-	handler.Handle("/bundle.js", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(*jsFlag, "bundle.js"))
-	}))
-	handler.Handle("/images/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		i := strings.LastIndex(r.URL.Path, "/")
-		http.ServeFile(w, r, filepath.Join(*staticFlag, "images", r.URL.Path[i+1:]))
-	}))
-
-	tiles := &renderer.TileHandler{Renderer: &renderer.BasemapRenderer{World: w}}
-	handler.Handle("/tiles/base/", tiles)
-
-	handler.Handle("/bootstrap", http.HandlerFunc(ServeBootstrapHTTP))
-
-	shell, err := NewShellHandler(w, *coresFlag)
-	if err != nil {
+	if err := ui.RegisterWebInterface(handler, &options); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	handler.Handle("/shell", shell)
+	ui.RegisterTiles(handler, w)
 
 	handler.HandleFunc("/healthy", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
