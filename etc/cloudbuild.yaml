@@ -1,0 +1,8 @@
+options:
+  pool:
+    name: projects/diagonal-platform/locations/europe-west1/workerPools/ci
+steps:
+- name: "gcr.io/cloud-builders/git"
+  args: ["fetch", "--unshallow"]
+- name: "europe-docker.pkg.dev/diagonal-public/b6/b6-ci"
+  args: ["make", "test", "python-test"]

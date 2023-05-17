@@ -1,0 +1,10 @@
+*
+!Makefile
+!src
+!python
+!proto
+!etc
+!data
+!docker
+!.git
+src/diagonal.works/b6/cmd/b6/js/node_modules

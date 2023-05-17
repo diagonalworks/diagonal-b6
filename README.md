@@ -89,7 +89,8 @@ bin/linux/x86_64/b6 --world=data/camden.index
 ```
 You can run the entire build inside a docker container with:
 ```
-docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile
+make docker/Dockerfile.b6
+docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile.b6
 ```
 ## Ingesting data
 
