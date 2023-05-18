@@ -343,7 +343,7 @@ func NewMutableWorldFromSource(source FeatureSource, cores int) (b6.World, error
 		lock.Unlock()
 		return nil
 	}
-	options := ReadOptions{Cores: cores}
+	options := ReadOptions{Goroutines: cores}
 	err := source.Read(options, f, context.Background())
 	return w, err
 }

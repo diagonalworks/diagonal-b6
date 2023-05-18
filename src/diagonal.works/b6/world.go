@@ -745,7 +745,7 @@ type EachFeatureOptions struct {
 	SkipPaths     bool
 	SkipAreas     bool
 	SkipRelations bool
-	Cores         int
+	Goroutines    int
 }
 
 type World interface {

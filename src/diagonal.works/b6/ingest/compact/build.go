@@ -106,7 +106,7 @@ const (
 )
 
 type Options struct {
-	Cores                int
+	Goroutines           int
 	WorkDirectory        string
 	OutputFilename       string
 	PointsWorkOutputType OutputType
@@ -148,7 +148,10 @@ var tagBits = map[b6.FeatureType]int{
 type toMap func(id FeatureID, tag encoding.Tag, buffer []byte) error
 
 func emitPoints(source ingest.FeatureSource, o *Options, s *encoding.StringTableBuilder, nt *NamespaceTable, emit toMap) error {
-	goroutines := o.Cores * 2
+	goroutines := o.Goroutines
+	if goroutines < 1 {
+		goroutines = 1
+	}
 	buffers := make([][]byte, goroutines)
 	for i := range buffers {
 		buffers[i] = make([]byte, maxEncodedFeatureSize)
@@ -205,7 +208,7 @@ func emitPoints(source ingest.FeatureSource, o *Options, s *encoding.StringTable
 		SkipTags:      false,
 		SkipPaths:     false,
 		SkipRelations: false,
-		Cores:         goroutines,
+		Goroutines:    goroutines,
 	}
 	if err := source.Read(options, emitFeature, context.Background()); err != nil {
 		return err
@@ -361,7 +364,7 @@ func writePoints(o *Options, points FeatureBlocks, strings *encoding.StringTable
 	osmNamespaces := OSMNamespaces(nt)
 	for _, b := range points {
 		ns = b.Namespaces[b6.FeatureTypePoint]
-		if err := combinePoints(b.Map, &osmNamespaces, o.Cores, emit); err != nil {
+		if err := combinePoints(b.Map, &osmNamespaces, o.Goroutines, emit); err != nil {
 			return 0, err
 		}
 	}
@@ -380,7 +383,7 @@ func writePoints(o *Options, points FeatureBlocks, strings *encoding.StringTable
 	}
 	for _, b := range points {
 		ns = b.Namespaces[b6.FeatureTypePoint]
-		if err := combinePoints(b.Map, &osmNamespaces, o.Cores, emit); err != nil {
+		if err := combinePoints(b.Map, &osmNamespaces, o.Goroutines, emit); err != nil {
 			return 0, err
 		}
 	}
@@ -512,7 +515,7 @@ func (v *Validator) validateQueue(fs []ingest.Feature) []ingest.Feature {
 }
 
 func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *encoding.StringTableBuilder, nt *NamespaceTable, locations b6.LocationsByID, summary *Summary, emit toMap) error {
-	goroutines := o.Cores * 2
+	goroutines := o.Goroutines * 2
 	if goroutines == 0 {
 		goroutines = 1
 	}
@@ -589,7 +592,7 @@ func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *enco
 		SkipPaths:     false,
 		SkipRelations: false,
 		SkipTags:      false,
-		Cores:         goroutines,
+		Goroutines:    goroutines,
 	}
 	if err := source.Read(options, validateFeature, context.Background()); err != nil {
 		return err
@@ -798,7 +801,7 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 	}
 
 	options := ingest.ReadOptions{
-		Cores: o.Cores,
+		Goroutines: o.Goroutines,
 	}
 	if err := source.Read(options, emit, context.Background()); err != nil {
 		return err
@@ -908,7 +911,7 @@ func fillIndex(byID *FeaturesByID, nt *NamespaceTable, index map[string]*Feature
 		}
 		return nil
 	}
-	options := b6.EachFeatureOptions{Cores: runtime.NumCPU()}
+	options := b6.EachFeatureOptions{Goroutines: runtime.NumCPU()}
 	err := byID.EachFeature(emit, &options)
 	return allTokens, err
 }

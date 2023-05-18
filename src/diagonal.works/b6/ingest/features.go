@@ -795,7 +795,7 @@ func (f *FeaturesByID) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
 }
 
 func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
-	cores := options.Cores
+	cores := options.Goroutines
 	if cores < 1 {
 		cores = 1
 	}
@@ -1043,7 +1043,7 @@ type ReadOptions struct {
 	SkipAreas     bool
 	SkipRelations bool
 	SkipTags      bool
-	Cores         int
+	Goroutines    int
 }
 
 type WorldFeatureSource struct {
@@ -1056,7 +1056,7 @@ func (w WorldFeatureSource) Read(options ReadOptions, emit Emit, ctx context.Con
 		SkipPaths:     options.SkipPaths,
 		SkipAreas:     options.SkipAreas,
 		SkipRelations: options.SkipRelations,
-		Cores:         options.Cores,
+		Goroutines:    options.Goroutines,
 	}
 	f := func(f b6.Feature, goroutine int) error {
 		return emit(NewFeatureFromWorld(f), goroutine)
@@ -1067,7 +1067,7 @@ func (w WorldFeatureSource) Read(options ReadOptions, emit Emit, ctx context.Con
 type MemoryFeatureSource []Feature
 
 func (m MemoryFeatureSource) Read(options ReadOptions, emit Emit, ctx context.Context) error {
-	cores := options.Cores
+	cores := options.Goroutines
 	if cores < 1 {
 		cores = 1
 	}

@@ -72,7 +72,7 @@ func main() {
 
 	config := compact.Options{
 		OutputFilename:       *outputFlag,
-		Cores:                *cores,
+		Goroutines:           *cores,
 		WorkDirectory:        "",
 		PointsWorkOutputType: compact.OutputTypeMemory,
 	}

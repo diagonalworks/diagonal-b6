@@ -257,7 +257,6 @@ func (c copyFields) Fill(f *gdal.Feature, tags []b6.Tag) ([]b6.Tag, error) {
 }
 
 // Returns fields to be copied to features, and the field to be used as the ID
-// Returns fields to be copied to features, and the field to be used as the ID
 func (s *Source) makeCopyFields(d gdal.FeatureDefinition) (copyFields, copyField, error) {
 	cfs := make(copyFields, 0, len(s.CopyTags))
 	id := copyField{FieldIndex: -1}
@@ -373,6 +372,10 @@ func (s *Source) readFeaturePartsFromLayer(layer gdal.Layer, firstIndex int, opt
 }
 
 func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.Context) error {
+	if options.Goroutines < 1 {
+		options.Goroutines = 1
+	}
+
 	source := gdal.OpenDataSource(s.Filename, 0)
 	defer source.Destroy()
 
@@ -387,10 +390,14 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 			return err
 		}
 	}
+
+	parallelised, wait := ingest.ParalleliseEmit(emit, options.Goroutines, ctx)
+
 	wgs84 := gdal.CreateSpatialReference("")
 	if err := wgs84.FromEPSG(EPSGCodeWGS84); err != nil {
 		return err
 	}
+	emitted := 0
 	for _, p := range parts {
 		p.Geometries.TransformTo(wgs84)
 		for i := 0; i < p.Geometries.GeometryCount(); i++ {
@@ -406,7 +413,8 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 					f.AddTag(tag)
 				}
 				s.JoinTags.AddTags(p.RawIDs[i], f)
-				err = emit(f, 0)
+				err = parallelised(f, emitted%options.Goroutines)
+				emitted++
 			}
 			if err != nil {
 				return err
@@ -414,5 +422,5 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 		}
 		p.Geometries.Destroy()
 	}
-	return nil
+	return wait()
 }

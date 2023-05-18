@@ -69,7 +69,7 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 		}
 	}
 
-	goroutines := options.Cores
+	goroutines := options.Goroutines
 	if goroutines < 1 {
 		goroutines = 1
 	}
@@ -145,7 +145,7 @@ func (p point) ToGeoJSON() geojson.GeoJSON {
 }
 
 func filter(filter Filter, emit ingest.Emit, options ingest.ReadOptions, ctx *api.Context) ingest.Emit {
-	goroutines := options.Cores
+	goroutines := options.Goroutines
 	if goroutines < 1 {
 		goroutines = 1
 	}

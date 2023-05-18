@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	_ "net/http/pprof"
 	"os"
 	"path"
@@ -16,6 +15,7 @@ import (
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
 	"diagonal.works/b6/ingest/gdal"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/golang/geo/s2"
 
@@ -68,13 +68,13 @@ func findInputs(filename string, zipped bool, recurse bool, inputs []input) ([]i
 			if err != nil {
 				return nil, fmt.Errorf("can't open %s: %s", filename, err)
 			}
-			defer f.Close()
 			z, err := zip.NewReader(f, s.Size())
 			for _, zf := range z.File {
 				if isIngestable(zf.Name) {
 					inputs = append(inputs, zipFileInput{ZipFilename: filename, Filename: zf.Name})
 				}
 			}
+			f.Close()
 		}
 	} else if s.IsDir() {
 		entries, err := os.ReadDir(filename)
@@ -82,11 +82,11 @@ func findInputs(filename string, zipped bool, recurse bool, inputs []input) ([]i
 			return nil, fmt.Errorf("%s: %s", filename, err)
 		}
 		for _, entry := range entries {
-			next, err := findInputs(path.Join(filename, entry.Name()), zipped, recurse, inputs)
+			var err error
+			inputs, err = findInputs(path.Join(filename, entry.Name()), zipped, recurse, inputs)
 			if err != nil {
 				return nil, err
 			}
-			inputs = append(inputs, next...)
 		}
 	} else if isIngestable(filename) {
 		inputs = append(inputs, fileInput{Filename: filename})
@@ -97,12 +97,47 @@ func findInputs(filename string, zipped bool, recurse bool, inputs []input) ([]i
 type mergedSource []*gdal.Source
 
 func (m mergedSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.Context) error {
+	if options.Goroutines < 1 {
+		options.Goroutines = 1
+	}
+	perFile := options
+	perFile.Goroutines /= len(m)
+	if perFile.Goroutines < 1 {
+		perFile.Goroutines = 1
+	}
+	g, gc := errgroup.WithContext(ctx)
+	c := make(chan *gdal.Source)
+	for i := 0; i < options.Goroutines/perFile.Goroutines; i++ {
+		i := i
+		g.Go(func() error {
+			offset := func(f ingest.Feature, g int) error {
+				return emit(f, g+(i*perFile.Goroutines))
+			}
+			for {
+				select {
+				case <-gc.Done():
+					return nil
+				case s, ok := <-c:
+					if ok {
+						if err := s.Read(perFile, offset, ctx); err != nil {
+							return err
+						}
+					} else {
+						return nil
+					}
+				}
+			}
+		})
+	}
 	for _, s := range m {
-		if err := s.Read(options, emit, ctx); err != nil {
-			return err
+		select {
+		case <-gc.Done():
+			return g.Wait()
+		case c <- s:
 		}
 	}
-	return nil
+	close(c)
+	return g.Wait()
 }
 
 func main() {
@@ -122,7 +157,8 @@ func main() {
 	flag.Parse()
 
 	if *inputFlag == "" || *outputFlag == "" {
-		log.Fatal("Must specify --input and --output")
+		fmt.Fprintln(os.Stderr, "Must specify --input and --output")
+		os.Exit(1)
 	}
 
 	strategy, ok := idStrategies[*idStategyFlag]
@@ -133,7 +169,8 @@ func main() {
 				ss = append(ss, key)
 			}
 		}
-		log.Fatalf("No ID strategy %q - try one of %v", *idStategyFlag, ss)
+		fmt.Fprintf(os.Stderr, "No ID strategy %q - try one of %v", *idStategyFlag, ss)
+		os.Exit(1)
 	}
 
 	bounds := s2.FullRect()
@@ -141,13 +178,15 @@ func main() {
 		var err error
 		bounds, err = ingest.ParseBoundingBox(*boundingBoxFlag)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
 		}
 	}
 
 	inputs, err := findInputs(*inputFlag, *zippedFlag, *recurseFlag, []input{})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 
 	var joinTags ingest.JoinTags
@@ -197,12 +236,13 @@ func main() {
 
 	options := compact.Options{
 		OutputFilename:       *outputFlag,
-		Cores:                *coresFlag,
+		Goroutines:           *coresFlag,
 		WorkDirectory:        "",
 		PointsWorkOutputType: compact.OutputTypeMemory,
 	}
 
 	if err := compact.Build(source, &options); err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 }

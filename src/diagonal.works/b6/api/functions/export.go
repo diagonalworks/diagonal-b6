@@ -11,7 +11,7 @@ func exportWorld(filename string, c *api.Context) (int, error) {
 	source := ingest.WorldFeatureSource{World: c.World}
 	options := compact.Options{
 		OutputFilename:       filename,
-		Cores:                c.Cores,
+		Goroutines:           c.Cores,
 		WorkDirectory:        "",
 		PointsWorkOutputType: compact.OutputTypeMemory,
 	}

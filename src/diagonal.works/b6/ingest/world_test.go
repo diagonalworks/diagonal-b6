@@ -68,7 +68,7 @@ func buildMutableOverlayWorldOnBasic(nodes []osm.Node, ways []osm.Way, relations
 		}
 		return nil
 	}
-	options := ReadOptions{Cores: 2}
+	options := ReadOptions{Goroutines: 2}
 	if err := source.Read(options, emit, context.Background()); err != nil {
 		return nil, err
 	}
