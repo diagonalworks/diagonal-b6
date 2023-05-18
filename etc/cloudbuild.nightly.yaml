@@ -1,0 +1,13 @@
+options:
+  pool:
+    name: projects/diagonal-platform/locations/europe-west1/workerPools/ci
+steps:
+- name: "gcr.io/cloud-builders/git"
+  args: ["fetch", "--unshallow"]
+  allowFailure: true
+- name: "gcc"
+  args: ["make", "docker/Dockerfile.b6"]
+- name: "docker"
+  args: ["docker", "build", "--build-arg", "TARGETOS=linux", "--build-arg", "TARGETARCH=amd64", "-f", "docker/Dockerfile.b6", "-t", "europe-docker.pkg.dev/diagonal-public/b6/b6:nightly", "."]
+images:
+- "europe-docker.pkg.dev/diagonal-public/b6/b6:nightly"

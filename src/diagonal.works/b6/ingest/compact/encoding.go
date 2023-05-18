@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"sort"
 	"sync"
@@ -1642,9 +1641,6 @@ func NewTokenMapEncoder() *TokenMapEncoder {
 
 func (t *TokenMapEncoder) Add(token string, index int) {
 	if (float64(t.n+1) / float64(len(t.tokens))) > TokenMapMaxLoadFactor {
-		{
-			log.Printf("add token: double to %d", len(t.tokens)*2)
-		}
 		tokens := t.tokens
 		indices := t.indices
 		t.tokens = make([][]string, len(t.tokens)*2)
