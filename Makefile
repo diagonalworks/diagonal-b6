@@ -5,8 +5,7 @@ TARGETOS ?= $(shell uname -s | tr A-Z a-z)
 # Sets TARGETPLATFORM to something like linux/x86_64 or darwin/arm64
 export TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
 
-
-all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-ingest-gb-uprn b6-ingest-gb-codepoint b6-connect b6-api python docker
+all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-ingest-gb-uprn b6-ingest-gb-codepoint b6-connect b6-api python
 
 .git/hooks/pre-commit: etc/pre-commit
 	cp $< $@
