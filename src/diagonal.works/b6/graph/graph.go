@@ -152,7 +152,7 @@ func IsPathUsableByPedestrian(path b6.PathFeature) bool {
 type ElevationWeights struct{}
 
 func (ElevationWeights) IsUseable(segment b6.Segment) bool {
-	return true // naive, we can make this elevation-dependent
+	return SimpleHighwayWeights{}.IsUseable(segment)
 }
 
 func (ElevationWeights) Weight(segment b6.Segment) float64 {
@@ -175,8 +175,11 @@ func (ElevationWeights) Weight(segment b6.Segment) float64 {
 		stopElevation, ok := stop.Get("ele").FloatValue()
 
 		if fromMemory && ok {
-			// [up/down]hill := stopElevation - startElevation [>/<] 0
-			w += math.Abs(stopElevation - startElevation)
+			if stopElevation > startElevation { // Ascending.
+				// Naismith’s Rule adds ~6s/m of elevation,
+				// which we're normalizing against 1.42m/s avg. walking speed.
+				w += math.Abs(stopElevation-startElevation) * 6 * 1.42
+			}
 		}
 
 		weight += w
