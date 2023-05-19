@@ -149,6 +149,45 @@ func IsPathUsableByPedestrian(path b6.PathFeature) bool {
 	return false
 }
 
+type ElevationWeights struct{}
+
+func (ElevationWeights) IsUseable(segment b6.Segment) bool {
+	return SimpleHighwayWeights{}.IsUseable(segment)
+}
+
+func (ElevationWeights) Weight(segment b6.Segment) float64 {
+	var weight float64
+	elevation, fromMemory := 0.0, false
+
+	path := segment.Feature
+	for i := 0; i < path.Len()-1; i++ {
+		start := path.Feature(i)
+		stop := path.Feature(i + 1)
+		w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{start.Point(), stop.Point()}).Length())
+
+		startElevation, ok := start.Get("ele").FloatValue()
+		if ok {
+			elevation, fromMemory = startElevation, ok
+		} else {
+			startElevation, ok = elevation, fromMemory
+		}
+
+		stopElevation, ok := stop.Get("ele").FloatValue()
+
+		if fromMemory && ok {
+			if stopElevation > startElevation { // Ascending.
+				// Naismith’s Rule adds ~6s/m of elevation,
+				// which we're normalizing against 1.42m/s avg. walking speed.
+				w += math.Abs(stopElevation-startElevation) * 6 * 1.42
+			}
+		}
+
+		weight += w
+	}
+
+	return weight
+}
+
 func interpolateShortestPathDistances(segment b6.Segment, firstDistance s1.Angle, lastDistance s1.Angle) []s1.Angle {
 	distances := make([]s1.Angle, segment.Len())
 	distances[0] = firstDistance
