@@ -1535,7 +1535,7 @@ func ValidateEachFeature(buildWorld BuildOSMWorld, t *testing.T) {
 		SkipPaths:     true,
 		SkipAreas:     false,
 		SkipRelations: true,
-		Cores:         2,
+		Goroutines:    2,
 	}
 	if err := w.EachFeature(each, &options); err != nil {
 		t.Errorf("Expected no error from EachFeature, found: %s", err)

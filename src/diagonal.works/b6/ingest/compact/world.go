@@ -552,9 +552,9 @@ func (f *FeaturesByID) newRelationFromBuffer(fb *featureBlock, id uint64, b []by
 }
 
 func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
-	cores := options.Cores
-	if cores < 1 {
-		cores = 1
+	goroutines := options.Goroutines
+	if goroutines < 1 {
+		goroutines = 1
 	}
 
 	if !options.SkipPoints {
@@ -565,7 +565,7 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 				}
 				return nil
 			}
-			if err := fb.Map.EachItem(emit, cores); err != nil {
+			if err := fb.Map.EachItem(emit, goroutines); err != nil {
 				return err
 			}
 		}
@@ -576,7 +576,7 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 			emit := func(id uint64, tagged []encoding.Tagged, g int) error {
 				return each(f.newPathFromBuffer(fb, id, tagged[0].Data), g)
 			}
-			if err := fb.Map.EachItem(emit, cores); err != nil {
+			if err := fb.Map.EachItem(emit, goroutines); err != nil {
 				return err
 			}
 		}
@@ -587,7 +587,7 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 			emit := func(id uint64, tagged []encoding.Tagged, g int) error {
 				return each(f.newAreaFromBuffer(fb, id, tagged[0].Data), g)
 			}
-			if err := fb.Map.EachItem(emit, cores); err != nil {
+			if err := fb.Map.EachItem(emit, goroutines); err != nil {
 				return err
 			}
 		}
@@ -598,7 +598,7 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 			emit := func(id uint64, tagged []encoding.Tagged, g int) error {
 				return each(f.newRelationFromBuffer(fb, id, tagged[0].Data), g)
 			}
-			if err := fb.Map.EachItem(emit, cores); err != nil {
+			if err := fb.Map.EachItem(emit, goroutines); err != nil {
 				return err
 			}
 		}

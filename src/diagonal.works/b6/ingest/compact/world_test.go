@@ -19,7 +19,7 @@ func mergeOSM(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, base b
 	if err != nil {
 		return err
 	}
-	options := Options{Cores: 2, PointsWorkOutputType: OutputTypeMemory}
+	options := Options{Goroutines: 2, PointsWorkOutputType: OutputTypeMemory}
 	var index []byte
 	if base == nil {
 		if index, err = BuildInMemory(source, &options); err != nil {
@@ -114,7 +114,7 @@ func mustBuildCamdenForBenchmarks() b6.World {
 		panic(err)
 	}
 
-	options := Options{Cores: 2, PointsWorkOutputType: OutputTypeMemory}
+	options := Options{Goroutines: 2, PointsWorkOutputType: OutputTypeMemory}
 	var index []byte
 	if index, err = BuildInMemory(source, &options); err != nil {
 		panic(err)

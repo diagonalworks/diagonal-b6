@@ -174,7 +174,7 @@ func main() {
 		if postcodes, err = readCodepointOpen(*inputFlag); err == nil {
 			config := compact.Options{
 				OutputFilename:       *outputFlag,
-				Cores:                *coresFlag,
+				Goroutines:           *coresFlag,
 				WorkDirectory:        "",
 				PointsWorkOutputType: compact.OutputTypeMemory,
 			}

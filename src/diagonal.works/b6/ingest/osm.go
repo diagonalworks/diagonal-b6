@@ -320,7 +320,7 @@ func reassembleMultiPolygon(relation *osm.Relation, areaWays *IDSet, ways map[os
 }
 
 func (s *pbfSource) Read(options ReadOptions, emit Emit, ctx context.Context) error {
-	cores := options.Cores
+	cores := options.Goroutines
 	if cores < 1 {
 		cores = 1
 	}

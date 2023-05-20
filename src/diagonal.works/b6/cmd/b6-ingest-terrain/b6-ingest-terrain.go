@@ -12,6 +12,7 @@ import (
 	"archive/zip"
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"math"
@@ -19,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -71,8 +73,8 @@ const EPSGCodeWGS84 = 4326
 
 type emit func(s2.LatLng, float64) error
 
-func readTerrainGrid(filename string, e emit) error {
-	d, err := gdal.Open(filename, 0)
+func readTerrainGrid(archive string, filename string, e emit) error {
+	d, err := gdal.Open(fmt.Sprintf("/vsizip/%s/%s", archive, filename), 0)
 	if err != nil {
 		return err
 	}
@@ -108,26 +110,32 @@ func readTerrainGrid(filename string, e emit) error {
 	return nil
 }
 
-func readTerrainZip(filename string, tmp string, e emit) error {
-	d, err := os.MkdirTemp(tmp, "ingest-terrain")
+func readTerrainZip(filename string, e emit) error {
+	s, err := os.Stat(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("can't stat %s: %s", filename, err)
 	}
-	defer os.RemoveAll(d)
-	if err := extractZip(filename, d); err != nil {
-		return err
-	}
-	ascs, err := filepath.Glob(filepath.Join(d, "*.asc"))
+	f, err := os.Open(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("can't open %s: %s", filename, err)
 	}
+	z, err := zip.NewReader(f, s.Size())
+	ascs := make([]string, 0)
+	for _, zf := range z.File {
+		if strings.HasSuffix(zf.Name, ".asc") {
+			ascs = append(ascs, zf.Name)
+		}
+	}
+	f.Close()
 	for _, asc := range ascs {
-		readTerrainGrid(asc, e)
+		if err := readTerrainGrid(filename, asc, e); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func readElevations(directory string, tmp string, cores int) (b6.Elevations, error) {
+func readElevations(directory string, cores int) (b6.Elevations, error) {
 	filenames, err := filepath.Glob(filepath.Join(directory, "data/??/*.zip"))
 	if err != nil {
 		return nil, err
@@ -146,7 +154,7 @@ func readElevations(directory string, tmp string, cores int) (b6.Elevations, err
 	f := func() {
 		defer wg.Done()
 		for filename := range c {
-			if err := readTerrainZip(filename, tmp, e); err != nil {
+			if err := readTerrainZip(filename, e); err != nil {
 				log.Println(err.Error())
 				return
 			}
@@ -178,7 +186,7 @@ func (s *elevationSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx
 		SkipPaths:     options.SkipPaths,
 		SkipAreas:     options.SkipAreas,
 		SkipRelations: options.SkipRelations,
-		Cores:         options.Cores,
+		Goroutines:    options.Goroutines,
 	}
 	points := uint64(0)
 	elevations := uint64(0)
@@ -212,11 +220,10 @@ func (s *elevationSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx
 func main() {
 	inputFlag := flag.String("input", "", "Input directory with OS terrain data")
 	outputFlag := flag.String("output", "", "Input directory with OS terrain data")
-	tmpFlag := flag.String("tmp", "/tmp", "Temporary directory")
 	worldFlag := flag.String("world", "", "World to annotate with inclines")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	flag.Parse()
-	elevations, err := readElevations(*inputFlag, *tmpFlag, *coresFlag)
+	elevations, err := readElevations(*inputFlag, *coresFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -228,7 +235,7 @@ func main() {
 
 	options := compact.Options{
 		OutputFilename:       *outputFlag,
-		Cores:                *coresFlag,
+		Goroutines:           *coresFlag,
 		WorkDirectory:        "",
 		PointsWorkOutputType: compact.OutputTypeMemory,
 	}

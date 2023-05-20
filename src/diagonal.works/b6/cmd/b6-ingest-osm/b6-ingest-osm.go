@@ -32,7 +32,7 @@ func main() {
 		}
 		options := compact.Options{
 			OutputFilename:       *output,
-			Cores:                *cores,
+			Goroutines:           *cores,
 			WorkDirectory:        *scratch,
 			PointsWorkOutputType: t,
 		}
