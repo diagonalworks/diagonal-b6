@@ -7,11 +7,12 @@ go 1.20
 replace github.com/lukeroth/gdal v0.0.0-20220614134811-3c605a05e283 => github.com/diagonalworks/gdal v0.0.0-20230425060405-b7726afc0d73
 
 require (
-	github.com/apache/beam v2.19.0+incompatible
+	github.com/apache/beam v2.32.0+incompatible
 	github.com/golang/geo v0.0.0-20190916061304-5b978397cfec
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/lukeroth/gdal v0.0.0-20220614134811-3c605a05e283
 	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
+	golang.org/x/mod v0.10.0
 	golang.org/x/sync v0.1.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
@@ -31,7 +32,6 @@ require (
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
-	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
