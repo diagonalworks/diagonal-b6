@@ -1020,7 +1020,7 @@ func (w *World) Merge(data []byte) error {
 	var header Header
 	header.Unmarshal(data)
 	if header.Magic != HeaderMagic {
-		return fmt.Errorf("Bad header magic")
+		return fmt.Errorf("Bad header magic: expected %x, found %x", uint64(HeaderMagic), header.Magic)
 	}
 	if err := verifyVersion(&header, data); err != nil {
 		return err

@@ -1,6 +1,7 @@
 package encoding
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -8,6 +9,8 @@ import (
 	"sort"
 	"sync"
 	"syscall"
+
+	"github.com/apache/beam/sdks/go/pkg/beam/io/filesystem"
 )
 
 const MaxUint32 = (1 << 32) - 1
@@ -25,11 +28,45 @@ func Mmap(filename string) (Mmapped, error) {
 			m.Data, err = syscall.Mmap(int(f.Fd()), 0, int(stat.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
 		}
 	}
+	if err != nil {
+		err = fmt.Errorf("can't mmap %s: %s", filename, err)
+	}
 	return m, err
 }
 
 func (m Mmapped) Close() error {
 	return syscall.Munmap(m.Data)
+}
+
+// ReadToMmappedBuffer reads a (very large) file to a buffer created via mmap,
+// avoiding the Go garbage collector. Reading into a conventional slice causes
+// the structure to dominate the size of the heap, reducing the effectiveness of
+// garbage collecting shorter lived objects.
+func ReadToMmappedBuffer(filename string, fs filesystem.Interface, ctx context.Context) (Mmapped, error) {
+	var m Mmapped
+	size, err := fs.Size(ctx, filename)
+	if err == nil {
+		m.Data, err = syscall.Mmap(-1, 0, int(size), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_ANON|syscall.MAP_PRIVATE)
+		if err == nil {
+			var r io.ReadCloser
+			r, err = fs.OpenRead(ctx, filename)
+			if err == nil {
+				buffer := m.Data
+				for len(buffer) > 0 {
+					var n int
+					n, err = r.Read(buffer)
+					if err != nil {
+						break
+					}
+					buffer = buffer[n:]
+				}
+			}
+		}
+	}
+	if err != nil {
+		err = fmt.Errorf("can't read %s to mmapped buffer: %s", filename, err)
+	}
+	return m, err
 }
 
 type Buffer struct {

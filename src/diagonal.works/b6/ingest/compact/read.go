@@ -3,25 +3,26 @@ package compact
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"log"
 	"strings"
+	"sync"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/encoding"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/apache/beam/sdks/go/pkg/beam/io/filesystem"
 )
 
-type beamPBFSouce struct {
+type pbfSource struct {
 	Filename string
 	FS       filesystem.Interface
 	Ctx      context.Context
 }
 
-func (s *beamPBFSouce) Read(options osm.ReadOptions, emit osm.EmitWithGoroutine, ctx context.Context) error {
+func (s *pbfSource) Read(options osm.ReadOptions, emit osm.EmitWithGoroutine, ctx context.Context) error {
 	r, err := s.FS.OpenRead(s.Ctx, s.Filename)
 	if err != nil {
 		return err
@@ -30,17 +31,56 @@ func (s *beamPBFSouce) Read(options osm.ReadOptions, emit osm.EmitWithGoroutine,
 	return osm.ReadPBFWithOptions(r, emit, options)
 }
 
+type toRead struct {
+	Filename   string
+	Filesystem filesystem.Interface
+	IsCompact  bool
+}
+
+func (t toRead) Read(w *World, lock *sync.Mutex, cores int, ctx context.Context) (b6.World, error) {
+	if t.IsCompact {
+		m, err := encoding.Mmap(t.Filename)
+		if err == nil {
+			lock.Lock()
+			defer lock.Unlock()
+			log.Printf("Memory map %s", t.Filename)
+			return nil, w.Merge(m.Data)
+		} else {
+			lock.Lock()
+			log.Printf("Read %s", t.Filename)
+			lock.Unlock()
+			m, err := encoding.ReadToMmappedBuffer(t.Filename, t.Filesystem, ctx)
+			if err == nil {
+				lock.Lock()
+				defer lock.Unlock()
+				return nil, w.Merge(m.Data)
+			}
+			return nil, err
+		}
+	} else {
+		lock.Lock()
+		log.Printf("Index PBF %s", t.Filename)
+		lock.Unlock()
+		pbf := pbfSource{
+			Filename: t.Filename,
+			FS:       t.Filesystem,
+			Ctx:      ctx,
+		}
+		o := ingest.BuildOptions{Cores: cores}
+		return ingest.NewWorldFromOSMSource(&pbf, &o)
+	}
+}
+
 func ReadWorld(input string, cores int) (b6.World, error) {
 	ctx := context.Background()
 	sources := strings.Split(input, ",")
-	expanded := make([]string, 0, len(sources))
-	isRegion := make([]bool, 0, len(sources))
-	fss := make([]filesystem.Interface, 0, len(sources))
-	close := make([]io.Closer, len(sources))
+	tr := make([]toRead, 0)
+	toClose := make([]io.Closer, len(sources))
+
 	for i, s := range sources {
-		var hasRegionPrefix, hasOSMPRefix bool
-		if hasRegionPrefix = strings.HasPrefix(s, "region:"); hasRegionPrefix {
-			s = strings.TrimPrefix(s, "region:")
+		var hasCompactPrefix, hasOSMPRefix bool
+		if hasCompactPrefix = strings.HasPrefix(s, "compact:"); hasCompactPrefix {
+			s = strings.TrimPrefix(s, "compact:")
 		} else if hasOSMPRefix = strings.HasPrefix(s, "osm:"); hasOSMPRefix {
 			s = strings.TrimPrefix(s, "osm:")
 		}
@@ -48,72 +88,73 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 		if err != nil {
 			return nil, err
 		}
-		close[i] = fs
+		toClose[i] = fs
 		children, err := fs.List(ctx, s+"/*")
 		if err != nil {
 			return nil, err
 		}
-		if len(children) > 0 {
-			for _, c := range children {
-				expanded = append(expanded, c)
-				fss = append(fss, fs)
-				isRegion = append(isRegion, (hasRegionPrefix || !strings.HasSuffix(c, ".pbf")) && !hasOSMPRefix)
-			}
-		} else {
-			expanded = append(expanded, s)
-			fss = append(fss, fs)
-			isRegion = append(isRegion, (hasRegionPrefix || !strings.HasSuffix(s, ".pbf")) && !hasOSMPRefix)
+		if len(children) == 0 {
+			children = []string{s}
+		}
+		for _, child := range children {
+			tr = append(tr, toRead{
+				Filename:   child,
+				Filesystem: fs,
+				IsCompact:  (hasCompactPrefix || !strings.HasSuffix(child, ".pbf")) && !hasOSMPRefix,
+			})
 		}
 	}
 
 	worlds := make([]b6.World, 0)
-	rw := NewWorld()
-	for i, s := range expanded {
-		if isRegion[i] {
-			m, err := encoding.Mmap(s)
-			if err == nil {
-				log.Printf("Memory map %s", s)
-				if err := rw.Merge(m.Data); err != nil {
-					return nil, err
-				}
-			} else {
-				log.Printf("Read %s", s)
-				r, err := fss[i].OpenRead(ctx, s)
-				if err != nil {
-					return nil, err
-				}
-				defer r.Close()
-				// TODO: Parallelise reading
-				data, err := ioutil.ReadAll(r)
-				if err != nil {
-					return nil, err
-				}
-				if err := rw.Merge(data); err != nil {
-					return nil, err
+	cw := NewWorld()
+	var lock sync.Mutex
+
+	g, gc := errgroup.WithContext(ctx)
+	c := make(chan toRead)
+	for i := 0; i < cores; i++ {
+		g.Go(func() error {
+			for {
+				select {
+				case <-gc.Done():
+					return nil
+				case t, ok := <-c:
+					if ok {
+						w, err := t.Read(cw, &lock, cores, ctx)
+						if err == nil && w != nil {
+							lock.Lock()
+							worlds = append(worlds, w)
+							lock.Unlock()
+						}
+						return err
+					} else {
+						return nil
+					}
 				}
 			}
-		} else {
-			log.Printf("Index PBF %s", s)
-			pbf := beamPBFSouce{
-				Filename: s,
-				FS:       fss[i],
-				Ctx:      ctx,
+		})
+	}
+	g.Go(func() error {
+		for _, t := range tr {
+			select {
+			case <-gc.Done():
+				return nil
+			case c <- t:
 			}
-			o := ingest.BuildOptions{Cores: cores}
-			w, err := ingest.NewWorldFromOSMSource(&pbf, &o)
-			if err != nil {
-				return nil, err
-			}
-			worlds = append(worlds, w)
 		}
+		close(c)
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
-	overlay := b6.World(rw)
+	overlay := b6.World(cw)
 	for i := len(worlds) - 1; i >= 0; i-- {
 		overlay = ingest.NewOverlayWorld(worlds[i], overlay)
 	}
 
-	for _, c := range close {
+	for _, c := range toClose {
 		c.Close()
 	}
 	return overlay, nil
