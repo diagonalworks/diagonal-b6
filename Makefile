@@ -79,7 +79,7 @@ python/diagonal_b6/%_pb2.py: proto/%.proto
 	mv $@.modified $@
 
 python/diagonal_b6/%_pb2_grpc.py: proto/%.proto
-	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal_b6 --grpc_python_out=python/diagonal_b6 $<
+	python3 -m grpc_tools.protoc -Iproto --grpc_python_out=python/diagonal_b6 $<
 	sed -e 's/import geometry_pb2/import diagonal_b6.geometry_pb2/' $@ > $@.modified
 	mv $@.modified $@
 	sed -e 's/import features_pb2/import diagonal_b6.features_pb2/' $@ > $@.modified	

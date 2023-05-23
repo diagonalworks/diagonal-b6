@@ -1075,29 +1075,10 @@ func NewIndex(data []byte, nt *NamespaceTable, w *World) (*Index, error) {
 	i := &Index{w: w, nt: nt}
 	n := i.t.Unmarshal(data)
 	i.b = encoding.NewByteArrays(data[n:])
-	/*
-		tokens := make(map[string]int, i.b.NumItems())
-		indices := make([]string, i.b.NumItems())
-
-		var h PostingListHeader
-		for j := 0; j < i.b.NumItems(); j++ {
-			h.Unmarshal(i.b.Item(j))
-			tokens[h.Token] = j
-			indices[j] = h.Token
-		}
-	*/
 	return i, nil
 }
 
 func (i *Index) Begin(token string) search.Iterator {
-	/*
-		if index, ok := i.t.Lookup(token); ok {
-			var header PostingListHeader
-			item := i.b.Item(index)
-			start := header.Unmarshal(item)
-			return NewIterator(&header, item[start:], i.nt)
-		}
-	*/
 	j := i.t.FindPossibleIndices(token)
 	for {
 		index, ok := j.Next()

@@ -8,10 +8,8 @@ from diagonal_b6 import api_pb2_grpc
 
 class Connection:
 
-    def __init__(self, stub, url, token):
+    def __init__(self, stub):
         self.stub = stub
-        self.url = url
-        self.token = token
 
     def __call__(self, e):
         request = api_pb2.EvaluateRequestProto()
@@ -21,12 +19,10 @@ class Connection:
 
 def connect_insecure(address):
     channel = grpc.insecure_channel(address)
-    return Connection(api_pb2_grpc.B6Stub(channel), _url(address, secure=False), "local")
+    return Connection(api_pb2_grpc.B6Stub(channel))
 
-def _url(address, secure=False):
-    if address.find(":") > 0:
-        host, port = address.split(":")
-        address = host + ":" + str(int(port)-1)
-    if secure:
-        return "https://" + address
-    return "http://" + address
+def connect(address, token, root_certificates=None):
+    channel_credentials = grpc.ssl_channel_credentials(root_certificates=root_certificates)
+    credentials = grpc.composite_channel_credentials(channel_credentials, grpc.access_token_call_credentials(token))
+    channel = grpc.secure_channel(address, credentials)
+    return Connection(api_pb2_grpc.B6Stub(channel))
