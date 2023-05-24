@@ -61,6 +61,7 @@ message LiteralNodeProto {
 message CallNodeProto {
     NodeProto function = 1;
     repeated NodeProto args = 2;
+    bool pipelined = 3;
 }
 
 message LambdaNodeProto {

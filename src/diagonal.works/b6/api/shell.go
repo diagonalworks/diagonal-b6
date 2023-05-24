@@ -12,6 +12,9 @@ import (
 
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
+	"github.com/golang/geo/s1"
+	"github.com/golang/geo/s2"
+	"google.golang.org/protobuf/proto"
 )
 
 type SymbolArgCounts interface {
@@ -144,13 +147,13 @@ func ParseFeatureIDToken(token string) (b6.FeatureID, error) {
 	return id, err
 }
 
-func StringToExpression(s string) string {
+func UnparseString(s string) string {
 	// TODO: Formalise our own string token semantics, rather than kind-of
 	// relying on go.
 	return fmt.Sprintf("%q", s)
 }
 
-func FeatureIDToExpression(id b6.FeatureID, abbreviate bool) string {
+func UnparseFeatureID(id b6.FeatureID, abbreviate bool) string {
 	if abbreviate {
 		for _, alias := range aliases {
 			if alias.Namespace == id.Namespace && (alias.Type == b6.FeatureTypeInvalid || alias.Type == id.Type) {
@@ -184,6 +187,7 @@ type Token struct {
 
 type lexer struct {
 	Expression string
+	LHS        *pb.NodeProto
 	Index      int
 	Top        *pb.NodeProto
 	Err        error
@@ -431,28 +435,6 @@ func reduceTag(key *pb.NodeProto, value *pb.NodeProto, l *lexer) *pb.NodeProto {
 	}
 }
 
-/*
-func reduceString(s string) *pb.NodeProto {
-	return &pb.NodeProto{
-		Node: &pb.NodeProto_Literal{
-			Literal: &pb.LiteralNodeProto{
-				Value: &pb.LiteralNodeProto_StringValue{
-					StringValue: s,
-				},
-			},
-		},
-	}
-}
-
-func reduceSymbol(s string) *pb.NodeProto {
-	return &pb.NodeProto{
-		Node: &pb.NodeProto_Symbol{
-			Symbol: s,
-		},
-	}
-}
-*/
-
 func reduceCall(symbol *pb.NodeProto, l *lexer) *pb.NodeProto {
 	return reduceCallWithArgs(symbol, []*pb.NodeProto{}, l)
 }
@@ -490,39 +472,37 @@ func reduceArg(arg *pb.NodeProto) []*pb.NodeProto {
 }
 
 func reduceRootCall(root *pb.NodeProto, l *lexer) *pb.NodeProto {
-	if root == nil {
-		return nil
-	}
-
-	stack := []*pb.NodeProto{root}
-	for len(stack) > 0 {
-		top := stack[len(stack)-1]
-		stack = stack[0 : len(stack)-1]
-		switch n := top.Node.(type) {
-		case *pb.NodeProto_Call:
-			stack = append(stack, n.Call.Function)
-			for i := len(n.Call.Args) - 1; i >= 0; i-- {
-				stack = append(stack, n.Call.Args[i])
-			}
-		}
+	if l.LHS != nil {
+		root = Pipeline(l.LHS, root)
+		l.LHS = nil
 	}
 	return root
 }
 
-func reducePipeline(a *pb.NodeProto, b *pb.NodeProto, l *lexer) *pb.NodeProto {
-	if a == nil || b == nil {
-		return nil
-	}
+// Return a node that calls right with left as an argument
+func Pipeline(left *pb.NodeProto, right *pb.NodeProto) *pb.NodeProto {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Call{
 			Call: &pb.CallNodeProto{
-				Function: b,
-				Args:     []*pb.NodeProto{a},
+				Function:  right,
+				Args:      []*pb.NodeProto{left},
+				Pipelined: true,
 			},
 		},
-		Begin: a.Begin,
-		End:   b.End,
+		Begin: left.Begin,
+		End:   right.End,
 	}
+}
+
+func reducePipeline(left *pb.NodeProto, right *pb.NodeProto, l *lexer) *pb.NodeProto {
+	if left == nil || right == nil {
+		return nil
+	}
+	if l.LHS != nil {
+		left = Pipeline(l.LHS, left)
+		l.LHS = nil
+	}
+	return Pipeline(left, right)
 }
 
 func reduceLambda(symbols []*pb.NodeProto, e *pb.NodeProto) *pb.NodeProto {
@@ -649,6 +629,16 @@ func reduceOr(a *pb.NodeProto, b *pb.NodeProto) *pb.NodeProto {
 func ParseExpression(expression string) (*pb.NodeProto, error) {
 	yyErrorVerbose = true
 	l := lexer{Expression: expression}
+	yyParse(&l)
+	if l.Top == nil {
+		return nil, l.Err
+	}
+	return l.Top, l.Err
+}
+
+func ParseExpressionWithLHS(expression string, lhs *pb.NodeProto) (*pb.NodeProto, error) {
+	yyErrorVerbose = true
+	l := lexer{Expression: expression, LHS: lhs}
 	yyParse(&l)
 	if l.Top == nil {
 		return nil, l.Err
@@ -810,31 +800,129 @@ func TagToExpression(t b6.Tag) string {
 	return EscapeTagKey(t.Key) + "=" + EscapeTagValue(t.Value)
 }
 
-func QueryToExpression(q b6.Query) (string, bool) {
+func UnparseQuery(q b6.Query) (string, bool) {
+	if expression, ok := unparseQuery(q); ok {
+		return "[" + expression + "]", true
+	}
+	return "", false
+}
+
+func unparseQuery(q b6.Query) (string, bool) {
 	// TODO: Escape query literals properly
 	switch q := q.(type) {
 	case b6.Tagged:
 		return TagToExpression(b6.Tag(q)), true
 	case b6.Keyed:
-		return q.Key, true
+		return "[" + q.Key + "]", true
 	case b6.Intersection:
 		qs := make([]string, len(q))
 		for i := range q {
 			var ok bool
-			if qs[i], ok = QueryToExpression(q[i]); !ok {
+			if qs[i], ok = unparseQuery(q[i]); !ok {
 				return "", false
 			}
 		}
-		return "[" + strings.Join(qs, "&") + "]", true
+		return strings.Join(qs, " & "), true
 	case b6.Union:
 		qs := make([]string, len(q))
 		for i := range q {
 			var ok bool
-			if qs[i], ok = QueryToExpression(q[i]); !ok {
+			if qs[i], ok = unparseQuery(q[i]); !ok {
 				return "", false
 			}
 		}
-		return "[" + strings.Join(qs, "&") + "|", true
+		return strings.Join(qs, " | "), true
 	}
 	return "", false
+}
+
+func UnparseNode(n *pb.NodeProto) (string, bool) {
+	return unparseNode(n, true)
+}
+
+func unparseNode(n *pb.NodeProto, top bool) (string, bool) {
+	switch n := n.Node.(type) {
+	case *pb.NodeProto_Symbol:
+		return n.Symbol, true
+	case *pb.NodeProto_Call:
+		if n.Call.Pipelined {
+			return unparsePipelinedCall(n.Call, top)
+		} else {
+			return unparseCall(n.Call, top)
+		}
+	case *pb.NodeProto_Literal:
+		return unparseLiteral(n.Literal)
+	}
+	return "", false
+}
+
+func unparsePipelinedCall(c *pb.CallNodeProto, top bool) (string, bool) {
+	lhs, ok := unparseNode(c.Args[0], true)
+	if !ok {
+		return "", false
+	}
+	var cc pb.CallNodeProto
+	proto.Merge(&cc, c)
+	cc.Args = cc.Args[1:]
+	rhs, ok := unparseCall(&cc, true)
+	if !ok {
+		return "", false
+	}
+	if top {
+		return lhs + " | " + rhs, true
+	} else {
+		return "(" + lhs + " | " + rhs + ")", true
+	}
+}
+
+func unparseCall(c *pb.CallNodeProto, top bool) (string, bool) {
+	if len(c.Args) == 0 {
+		return unparseNode(c.Function, top)
+	}
+	parts := []string{}
+	if part, ok := unparseNode(c.Function, false); ok {
+		parts = append(parts, part)
+	} else {
+		return "", false
+	}
+	for _, arg := range c.Args {
+		if part, ok := unparseNode(arg, false); ok {
+			parts = append(parts, part)
+		} else {
+			return "", false
+		}
+	}
+	joined := strings.Join(parts, " ")
+	if top {
+		return joined, true
+	} else {
+		return "(" + joined + ")", true
+	}
+}
+
+func unparseLiteral(l *pb.LiteralNodeProto) (string, bool) {
+	switch l := l.Value.(type) {
+	case *pb.LiteralNodeProto_StringValue:
+		return UnparseString(l.StringValue), true
+	case *pb.LiteralNodeProto_IntValue:
+		return fmt.Sprintf("%d", l.IntValue), true
+	case *pb.LiteralNodeProto_FloatValue:
+		return fmt.Sprintf("%.2f", l.FloatValue), true
+	case *pb.LiteralNodeProto_TagValue:
+		return TagToExpression(b6.Tag{Key: l.TagValue.Key, Value: l.TagValue.Value}), true
+	case *pb.LiteralNodeProto_FeatureIDValue:
+		id := b6.NewFeatureIDFromProto(l.FeatureIDValue)
+		return UnparseFeatureID(id, true), true
+	case *pb.LiteralNodeProto_PointValue:
+		ll := s2.LatLng{Lat: s1.Angle(l.PointValue.LatE7) * s1.E7, Lng: s1.Angle(l.PointValue.LngE7) * s1.E7}
+		return fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees()), true
+	case *pb.LiteralNodeProto_QueryValue:
+		if q, err := b6.NewQueryFromProto(l.QueryValue); err == nil {
+			return UnparseQuery(q)
+		} else {
+			return "", false
+		}
+	default:
+		return fmt.Sprintf("(broken-value \"%v\")", l), true
+	}
 }

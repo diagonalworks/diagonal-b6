@@ -155,6 +155,7 @@ func TestParseExpression(t *testing.T) {
 							End:   22,
 						},
 					},
+					Pipelined: true,
 				},
 			},
 			Begin: 0,
@@ -497,7 +498,7 @@ func TestParseExpression(t *testing.T) {
 			Begin: 0,
 			End:   9,
 		}},
-		{"PipelineWithExplicitLambda", `all-areas | {a -> highlight a}`, &pb.NodeProto{
+		{"PipeineWithExplicitLambda", `all-areas | {a -> highlight a}`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
 				Call: &pb.CallNodeProto{
 					Function: &pb.NodeProto{
@@ -524,6 +525,7 @@ func TestParseExpression(t *testing.T) {
 							End:   9,
 						},
 					},
+					Pipelined: true,
 				},
 			},
 			Begin: 0,
@@ -567,12 +569,14 @@ func TestParseExpression(t *testing.T) {
 											End:   9,
 										},
 									},
+									Pipelined: true,
 								},
 							},
 							Begin: 0,
 							End:   18,
 						},
 					},
+					Pipelined: true,
 				},
 			},
 			Begin: 0,
@@ -822,11 +826,31 @@ func TestToFeatureIDExpression(t *testing.T) {
 		{b6.FeatureIDFromGBONSCode("E01000953", 2011, b6.FeatureTypeArea).FeatureID(), "/gb/ons/2011/E01000953"},
 	}
 	for _, test := range tests {
-		if token := FeatureIDToExpression(test.ID, true); token != test.Token {
+		if token := UnparseFeatureID(test.ID, true); token != test.Token {
 			t.Errorf("Expected token %q for %s, found %q", test.Token, test.ID, token)
 		}
 		if id, err := ParseFeatureIDToken(test.Token); err != nil || id != test.ID {
 			t.Errorf("Expected id %s for %q, found %s", test.ID, test.Token, id)
+		}
+	}
+}
+
+func TestUnparseExpression(t *testing.T) {
+	tests := []string{
+		"42",
+		"/w/140633010",
+		"[#amenity=cafe]",
+		"[#amenity=cafe | #amenity=restaurant]",
+		"area (find-feature /a/427900370)",
+		"find-feature /a/427900370 | area",
+	}
+	for _, test := range tests {
+		if node, err := ParseExpression(test); err == nil {
+			if roundtrip, ok := UnparseNode(node); !ok || roundtrip != test {
+				t.Errorf("Expected %q, found %q", test, roundtrip)
+			}
+		} else {
+			t.Errorf("Failed to parse %q: %s", test, err)
 		}
 	}
 }

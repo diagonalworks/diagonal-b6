@@ -1,6 +1,57 @@
-#html {
+@font-face {
+    font-family: "Unica 77";
+    font-weight: 300;
+    src: url("https://diagonal.works/fonts/unica77-light.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Unica 77";
+    font-weight: 300;
+    src: url("https://diagonal.works/fonts/unica77-light.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Unica 77";
+    font-weight: 400;
+    src: url("https://diagonal.works/fonts/unica77-regular.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Unica 77";
+    font-weight: 400;
+    src: url("https://diagonal.works/fonts/unica77-regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Unica 77";
+    font-weight: 500;
+    src: url("https://diagonal.works/fonts/unica77-medium.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Unica 77";
+    font-weight: 500;
+    src: url("https://diagonal.works/fonts/unica77-medium.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Unica 77";
+    font-weight: 700;
+    src: url("https://diagonal.works/fonts/unica77-bold.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Unica 77";
+    font-weight: 700;
+    src: url("https://diagonal.works/fonts/unica77-bold.woff2") format("woff2");
+}
+
+html {
     background: white;
-    font-family: "Roboto", sans-serif;
+    font-family: "Unica 77", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
 }
 
 #map {
@@ -8,9 +59,9 @@
     top: 0px;
     left: 0px;
     bottom: 0px;
-    right: 0px;    
+    right: 0px;
     border: 1px solid #7779b0;
-    border-radius: 2px;    
+    border-radius: 2px;
 }
 
 .ol-zoom {
@@ -22,7 +73,8 @@
     background-color: white;
 }
 
-.ol-zoom:hover, .ol-zoom:focus {
+.ol-zoom:hover,
+.ol-zoom:focus {
     background-color: white;
 }
 
@@ -34,7 +86,8 @@
     border: 0px;
 }
 
-.ol-zoom-in:hover, .ol-zoom-in:focus {
+.ol-zoom-in:hover,
+.ol-zoom-in:focus {
     background-color: white;
 }
 
@@ -46,94 +99,378 @@
     border: 0px;
 }
 
-.ol-zoom-out:hover, .ol-zoom-in:focus {
+.ol-zoom-out:hover,
+.ol-zoom-in:focus {
     background-color: white;
 }
 
 .ol-control button {
     height: 24px;
-    width: 24px; 
+    width: 24px;
     cursor: pointer;
 }
 
 #shell {
     position: absolute;
-    height: 360px;
-    max-height: 360px;
-    overflow: scroll;
-    left: 0px;
-    right: 0px;
-    border-bottom: 1px solid #7779b0;
-    border-left: 1px solid #7779b0;
-    border-right: 1px solid #7779b0;
-    border-radius: 2px;
-    background: white;
+    left: 10px;
+    top: 42px;
+    width: 1000px;
+    line-height: 22px;
+    font-size: 16px;
     z-index: 1;
-    transition: all 0.5s;
-    padding-left: 4px;
-    padding-right: 4px;
-    font-family: "Roboto Mono", monospace;
-    font-weight: 300;
-    font-size: 12px;
+    transition: all 0.3s;
+    background: white;
+    padding: 12px;
+    border: 1px solid #a6abbf;
+    border-radius: 3px;
 }
-
-#shell > .items {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-}
-
 
 #shell.closed {
-    top: -362px;
+    left: -10010px;
 }
 
-#shell.open {
-    top: 0px;
+.clickable {
+    cursor: pointer;
 }
 
-#shell > .items > .line {
-    line-height: 18px;
-    min-height: 18px;
-    height: 18px;
+form.shell {
+    display: flex;
+    flex-direction: row;
+}
+
+form.shell > .prompt {
+    color: #528dff;
+    margin-right: 8px;
+}
+
+form.shell > input {
+    border: 0px;
+    padding: 0px;
+    outline: 0px;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    flex: 1 0 auto;
+}
+
+.blocks {
+    position: absolute;
+    width: 350px;
+    background: white;
+    border: 1px solid #a6abbf;
+    border-radius: 3px;
+    line-height: 22px;
+}
+
+.blocks ul {
+    margin: 0px;
+    padding-top: 8px;
+    padding-left: 16px;
+}
+
+.block {
+    font-size: 16px;
+}
+
+.block ul {
+    padding: 0px;
+}
+
+.top {
+    padding: 12px;
+    border-bottom: 1px solid #e5e8f2;
+    border-radius: 3px;
+}
+
+.blocks > .block:last-child {
+    /* as a value can scroll, ensure the border above
+       the termainal is always there. Requires removing
+       the border from the last .top element */
+    border-top: 1px solid #e5e8f2;
+}
+
+.top-last {
+    border-bottom: 0px;
+}
+
+.feature {
+    padding: 0px;
+}
+
+.block:last-child>div {
+    border-bottom: 0px;
+}
+
+.block .pipeline-stage {
+    background: #f8f9fe;
+    cursor: grab;
     overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
-#shell > .items > .line > .literal:hover {
-    text-decoration: underline;
+.dragging .pipeline-stage {
+    cursor: grabbing;
 }
 
-#shell span.prompt {
-    color: #6f84f0;
-    padding-right: 4px;
+.block-container.feature {
+    padding: 0px;
 }
 
-#shell span.name {
-    font-family: "Roboto", sans-serif;
-    font-style: italic;
+.block .feature ul {
+    max-height: 200px;
+    overflow: scroll;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 
-#shell span.invalid {
-    font-family: "Roboto", sans-serif;
-    font-style: italic;
-    text-decoration: line-through;
+.block .feature li {
+    display: flex;
+    flex-direction: row;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 1px;
+    padding-bottom: 1px;
 }
 
-#shell > .items > form {
-    height: 18px;
+.block .feature li span {
+    display: block;
+}
+
+.block .feature li .prefix {
+    flex: 0 0 14px;
+    font-weight: 500;
+}
+
+.block .feature li .key {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    flex: 1 0 auto;
+    margin-right: 46px;
+    font-weight: 500;
+}
+
+.block .feature li .value {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    flex: 0 1 auto;
+}
+
+.block .title-count {
+    display: flex;
+    flex-direction: row;
+}
+
+.block .title-count .title {
+    flex: 1 0 auto;
+}
+
+.block .title-count .count {
+    flex: 0 0 auto;
+}
+
+.block .feature .points-last .title .top {
+    transition: border-bottom 0.5s ease;
+}
+
+.block .feature .points-last:not(.open) .title .top {
+    border-bottom-color: white;
+}
+
+.block .feature .points ul {
+    max-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    overflow: hidden;
+    transition: max-height 0.5s ease-in-out;
+}
+
+.block .feature .points.open ul {
+    max-height: 230px;
+    overflow: scroll;
+    transition: max-height 0.5s ease-in-out;
+}
+
+.block .feature .points ul li {
+    display: block;
+    padding: 0px;
+}
+
+.block .collection {
+    max-height: 230px;
+    padding: 0px;
+    overflow: scroll;
+}
+
+.block h3 {
+    display: block;
+    font-family: inherit;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: inherit;
     margin: 0px;
 }
 
-#shell > .items > form > input {
-    display: inline-block;
-    border: 0px;
-    outline: 0px;
-    width: 80%;
+.block .collection li {
+    display: block;
+}
+
+li div.collection-feature {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    font-size: 16px;
+    box-sizing: border-box;
+    height: 46px;
+}
+
+.block span.icon {
+    flex: 0 0 auto;
+    display: block;
+    background-repeat: no-repeat;
+    background-size: cover;
+    margin-right: 8px;
+}
+
+.block span.icon-point {
+    background-image: url("/images/point.png");
+    width: 9px;
+    height: 9px;
+}
+
+.block span.icon-path {
+    background-image: url("/images/path.png");
+    width: 29px;
+    height: 25px;
+}
+
+.block span.icon-area {
+    background-image: url("/images/area.png");
+    width: 17px;
+    height: 17px;
+}
+
+.block span.label {
+    flex: 1 2 auto;
+    font-weight: 500;
+    color: #20263b;
+}
+
+.block span.namespace {
+    flex: 0 0 auto;
+    font-weight: 400;
+    color: #a9aec5;
+    margin-right: 8px;
+}
+
+.block span.id {
+    flex: 0 1 auto;
+    font-weight: 400;
+    color: #20263b;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.block .block-container.shell ul {
+    display: none;
     padding: 0px;
-    height: 18px;
-    font-family: inherit;
-    font-weight: inherit;
-    font-size: inherit;
-    font-variant-ligatures: none;
-    line-height: inherit;
+}
+
+.block .block-container.shell ul.focussed {
+    display: block;
+}
+
+.block .block-container.shell li {
+    display: block;
+    margin-top: 6px;
+    margin-left: 24px;
+    margin-bottom: 6px;
+    margin-right: 8px;
+    padding-top: 2px;
+    padding-left: 4px;
+    padding-bottom: 2px;
+    border: 1px solid white;
+    border-radius: 3px;
+}
+
+.block .block-container.shell li.highlighted {
+    border: 1px solid #528dff;
+    border-radius: 3px;
+}
+
+.block .block-container.geometry {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.block .block-container.geometry span {
+    display: block;
+}
+
+.block .block-container.collection-key-value {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.block .block-container.collection-key-value .key {
+    flex: 1 1 auto;
+    box-sizing: border-box;
+}
+
+.block .block-container.collection-key-value .value {
+    flex: 0 1 auto;
+}
+
+.block .block-container.collection-key-value .key div,span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.block .block-container.collection-key-value .value div,span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.block .block-container.collection-feature-key {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+.block .placeholder {
+    background: #f8d7d0;
+}
+
+.block .error {
+    background: #ed968a;
+}
+
+.geojson-palette {
+    display: none;
+}
+
+.geojson-palette-point {
+    stroke: #ef8a6d;
+    stroke-width: 1;
+    fill: #f8d6bf;
+}
+
+.geojson-palette-path {
+    stroke: #ef8a6d;
+    stroke-width: 2;
+}
+
+.geojson-palette-area {
+    stroke: #ef8a6d;
+    stroke-width: 1;
+    fill: #f8d6bf;
 }

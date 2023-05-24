@@ -267,3 +267,7 @@ func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {
 	}
 	return nil, false
 }
+
+func CanUseAsArg(have reflect.Type, want reflect.Type) bool {
+	return have.AssignableTo(want) || have.ConvertibleTo(want)
+}
