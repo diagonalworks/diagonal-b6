@@ -163,8 +163,13 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 
 	elevation, fromMemory := 0.0, false
 
+	first, last := segment.First, segment.Last
+	if first > last {
+		first, last = last, first
+	}
+
 	path := segment.Feature
-	for i := 0; i < path.Len()-1; i++ {
+	for i := first; i < last; i++ {
 		start := path.Feature(i)
 		stop := path.Feature(i + 1)
 		w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{start.Point(), stop.Point()}).Length())
