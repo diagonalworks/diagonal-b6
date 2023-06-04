@@ -1,7 +1,6 @@
 package functions
 
 import (
-	"fmt"
 	"math"
 	"sort"
 
@@ -46,17 +45,7 @@ func clamp(v int, low int, high int, context *api.Context) (int, error) {
 }
 
 func gt(a interface{}, b interface{}, context *api.Context) (bool, error) {
-	if a, ok := a.(int); ok {
-		if b, ok := b.(int); ok {
-			return a > b, nil
-		}
-	}
-	if a, ok := a.(float64); ok {
-		if b, ok := b.(float64); ok {
-			return a > b, nil
-		}
-	}
-	return false, fmt.Errorf("can't compare %T with %T", a, b)
+	return api.Greater(a, b)
 }
 
 type byIndex struct {

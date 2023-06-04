@@ -138,6 +138,61 @@ type FloatNumber float64
 
 func (_ FloatNumber) isNumber() {}
 
+func Less(a interface{}, b interface{}) (bool, error) {
+	switch a := a.(type) {
+	case int:
+		if b, ok := b.(int); ok {
+			return a < b, nil
+		}
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a < b, nil
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a < b, nil
+		}
+	case b6.FeatureID:
+		if b, ok := b.(b6.FeatureID); ok {
+			return a.Less(b), nil
+		}
+	}
+	return false, fmt.Errorf("can't compare %T with %T", a, b)
+}
+
+func Equal(a interface{}, b interface{}) (bool, error) {
+	switch a := a.(type) {
+	case int:
+		if b, ok := b.(int); ok {
+			return a == b, nil
+		}
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a == b, nil
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a == b, nil
+		}
+	case b6.FeatureID:
+		if b, ok := b.(b6.FeatureID); ok {
+			return a == b, nil
+		}
+	}
+	return false, fmt.Errorf("can't compare %T with %T", a, b)
+}
+
+func Greater(a interface{}, b interface{}) (bool, error) {
+	var err error
+	var ok bool
+	if ok, err = Less(a, b); err == nil && !ok {
+		if ok, err = Equal(a, b); err == nil && !ok {
+			return true, nil
+		}
+	}
+	return false, err
+}
+
 var featureInterface = reflect.TypeOf((*b6.Feature)(nil)).Elem()
 var queryInterface = reflect.TypeOf((*b6.Query)(nil)).Elem()
 var numberInterface = reflect.TypeOf((*Number)(nil)).Elem()

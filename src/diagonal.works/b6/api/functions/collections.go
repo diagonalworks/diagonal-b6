@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"container/heap"
 	"fmt"
 
 	"diagonal.works/b6"
@@ -103,6 +104,95 @@ var _ api.Collection = &takeCollection{}
 
 func take(c api.Collection, n int, _ *api.Context) (api.Collection, error) {
 	return &takeCollection{c: c, n: n}, nil
+}
+
+// TODO: Don't just use anyanypair, use an int.
+type topFloatHeap []api.AnyAnyPair
+
+func (h topFloatHeap) Len() int           { return len(h) }
+func (h topFloatHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h topFloatHeap) Less(i, j int) bool { return h[i][1].(float64) < h[j][1].(float64) }
+func (h *topFloatHeap) Push(x any) {
+	*h = append(*h, x.(api.AnyAnyPair))
+}
+func (h *topFloatHeap) Pop() any {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+type topIntHeap []api.AnyAnyPair
+
+func (h topIntHeap) Len() int           { return len(h) }
+func (h topIntHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h topIntHeap) Less(i, j int) bool { return h[i][1].(int) < h[j][1].(int) }
+func (h *topIntHeap) Push(x any) {
+	*h = append(*h, x.(api.AnyAnyPair))
+}
+func (h *topIntHeap) Pop() any {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+func top(c api.Collection, n int, _ *api.Context) (api.Collection, error) {
+	i := c.Begin()
+	var err error
+	first := true
+	float := false
+	var h heap.Interface
+	for {
+		var ok bool
+		ok, err = i.Next()
+		if !ok || err != nil {
+			break
+		}
+		if first {
+			switch i.Value().(type) {
+			case int:
+				float = false
+				ih := make(topIntHeap, 0, 8)
+				h = &ih
+			case float64:
+				float = true
+				fh := make(topFloatHeap, 0, 8)
+				h = &fh
+			default:
+				return nil, fmt.Errorf("Can't order values of type %T", i.Value())
+			}
+			first = false
+		} else {
+			if float {
+				if _, ok := i.Value().(float64); !ok {
+					return nil, fmt.Errorf("Expected float64, found %T", i.Value())
+				}
+			} else {
+				if _, ok := i.Value().(int); !ok {
+					return nil, fmt.Errorf("Expected int, found %T", i.Value())
+				}
+			}
+		}
+		heap.Push(h, api.AnyAnyPair{i.Key(), i.Value()})
+		if h.Len() > n {
+			heap.Pop(h)
+		}
+	}
+	r := api.ArrayAnyCollection{
+		Keys:   make([]interface{}, h.Len()),
+		Values: make([]interface{}, h.Len()),
+	}
+	j := 0
+	for h.Len() > 0 {
+		p := heap.Pop(h).(api.AnyAnyPair)
+		r.Keys[len(r.Keys)-1-j] = p[0]
+		r.Values[len(r.Values)-1-j] = p[1]
+		j++
+	}
+	return &r, err
 }
 
 type filterCollection struct {
