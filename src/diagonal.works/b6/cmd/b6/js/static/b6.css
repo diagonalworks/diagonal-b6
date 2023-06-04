@@ -444,6 +444,7 @@ li div.collection-feature {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
+    align-items: center;
 }
 
 .block .placeholder {

@@ -19,11 +19,12 @@ var functions = api.FunctionSymbols{
 	"second":       second,
 	// collections
 	"collection":   collection,
+	"count-values": countValues,
 	"filter":       filter,
 	"flattern":     flattern,
-	"take":         take,
 	"sum-by-key":   sumByKey,
-	"count-values": countValues,
+	"take":         take,
+	"top":          top,
 	// search
 	"find-feature":     findFeature,
 	"find-point":       findPointFeature,

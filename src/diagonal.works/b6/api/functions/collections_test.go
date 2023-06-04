@@ -45,6 +45,100 @@ func TestTake(t *testing.T) {
 	}
 }
 
+func TestTopFloat(t *testing.T) {
+	values := make([]float64, 1000)
+	for i := range values {
+		values[i] = float64(i)
+	}
+	r := rand.New(rand.NewSource(42))
+	r.Shuffle(len(values), func(i int, j int) {
+		values[i], values[j] = values[j], values[i]
+	})
+
+	keys := make([]interface{}, len(values))
+	for i := range keys {
+		keys[i] = fmt.Sprintf("%d", i)
+	}
+
+	n := 100
+	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
+	selected, err := top(collection, n, &api.Context{})
+	if err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+		return
+	}
+
+	filled := make([]float64, 0, n)
+	if err := api.FillSliceFromValues(selected, &filled); err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+
+	if n != len(filled) {
+		t.Errorf("Expected %d values, found %d", n, len(filled))
+	}
+
+	for i, v := range filled {
+		expected := float64(len(values) - i - 1)
+		if v != expected {
+			t.Errorf("expected %f, found %f at index %d", expected, v, i)
+		}
+	}
+}
+
+func TestTopInt(t *testing.T) {
+	values := make([]int, 1000)
+	for i := range values {
+		values[i] = i
+	}
+	r := rand.New(rand.NewSource(42))
+	r.Shuffle(len(values), func(i int, j int) {
+		values[i], values[j] = values[j], values[i]
+	})
+
+	keys := make([]interface{}, len(values))
+	for i := range keys {
+		keys[i] = fmt.Sprintf("%d", i)
+	}
+
+	n := 100
+	collection := &api.ArrayAnyIntCollection{Keys: keys, Values: values}
+	selected, err := top(collection, n, &api.Context{})
+	if err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+		return
+	}
+
+	filled := make([]int, 0, n)
+	if err := api.FillSliceFromValues(selected, &filled); err != nil {
+		t.Errorf("Expected no error, found %s", err)
+		return
+	}
+
+	if n != len(filled) {
+		t.Errorf("Expected %d values, found %d", n, len(filled))
+	}
+
+	for i, v := range filled {
+		expected := len(values) - i - 1
+		if v != expected {
+			t.Errorf("expected %d, found %d at index %d", expected, v, i)
+		}
+	}
+}
+
+func TestTopWithMixedValuesGivesAnError(t *testing.T) {
+	collection := api.ArrayAnyCollection{
+		Keys:   []interface{}{"0", "1"},
+		Values: []interface{}{0, 1.0},
+	}
+
+	_, err := top(&collection, 1, &api.Context{})
+	if err == nil {
+		t.Errorf("Expected an error, found none")
+	}
+}
+
 func TestFilter(t *testing.T) {
 	r := rand.New(rand.NewSource(42))
 	values := make([]float64, 1000)
