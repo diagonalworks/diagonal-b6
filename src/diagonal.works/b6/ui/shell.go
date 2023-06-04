@@ -146,7 +146,7 @@ func fillSpansFromFeature(f b6.Feature, spans []SpanJSON) []SpanJSON {
 }
 
 func fillSpansFromFeatureID(id b6.FeatureID, abbreviate bool, spans []SpanJSON) []SpanJSON {
-	return append(spans, SpanJSON{Text: api.FeatureIDToExpression(id, abbreviate), Class: "literal"})
+	return append(spans, SpanJSON{Text: api.UnparseFeatureID(id, abbreviate), Class: "literal"})
 }
 
 func fillSpansFromTag(t b6.Tag, spans []SpanJSON) []SpanJSON {
@@ -279,11 +279,11 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 		var boundaries string
 		var points string
 		if layer := mapLayersForQuery(v); layer.Has(MapLayerBoundaries) {
-			if e, ok := api.QueryToExpression(v); ok {
+			if e, ok := api.UnparseQuery(v); ok {
 				boundaries = e
 			}
 		} else if layer.Has(MapLayerPoints) {
-			if e, ok := api.QueryToExpression(v); ok {
+			if e, ok := api.UnparseQuery(v); ok {
 				points = e
 			}
 		}

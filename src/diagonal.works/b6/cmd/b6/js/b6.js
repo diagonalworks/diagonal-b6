@@ -53,6 +53,90 @@ function waterwayWidth(resolution) {
     return scaleWidth(32.0, resolution);
 }
 
+function newGeoJSONSourceAndLayer(pointStyle, pathStyle, areaStyle) {
+    const point = new Style({
+        image: new Circle({
+            radius: 4,
+            stroke: new Stroke({
+                color: pointStyle["stroke"],
+                width: +pointStyle["stroke-width"].replace("px", ""),
+            }),
+            fill: new Fill({
+                color: pointStyle["fill"],
+            }),
+        }),
+    });
+
+    const path = new Style({
+        stroke: new Stroke({
+            color: pathStyle["stroke"],
+            width: +pointStyle["stroke-width"].replace("px", ""),
+        })
+    });
+
+    const area = new Style({
+        stroke: new Stroke({
+            color: areaStyle["stroke"],
+            width: +areaStyle["stroke-width"].replace("px", ""),
+        }),
+        fill: new Fill({
+            color: areaStyle["fill"],
+        })
+    })
+
+    const source = new VectorSource({
+       features: [],
+    })
+
+    const layer = new VectorLayer({
+        source: source,
+        style: function(feature, resolution) {
+            var s = point;
+            switch (feature.getGeometry().getType()) {
+                case "LineString":
+                case "MultiLineString":
+                    s = path;
+                case "Polygon":
+                case "MultiPolygon":
+                    s = area;
+            }
+            var cloned = false;
+            const label = feature.get("name") || feature.get("label");
+            if (label) {
+                s = s.clone();
+                cloned = true;
+                s.setText(new Text({
+                    text: label,
+                    textAlign: "left",
+                    offsetX: 6,
+                    offsetY: 1,
+                    font: '"Roboto" 12px',
+                }));
+            }
+            if (feature.get("-diagonal-stroke")) {
+                if (!cloned) {
+                    s = s.clone();
+                    cloned = true;
+                }
+                if (s.getStroke()) {
+                    s.getStroke().setColor(feature.get("-diagonal-stroke"));
+                }
+            }
+            if (feature.get("-diagonal-fill")) {
+                if (!cloned) {
+                    s = s.clone();
+                    cloned = true;
+                }
+                if (s.getFill()) {
+                    s.getFill().setColor(feature.get("-diagonal-fill"));
+                }
+            }
+            return s;
+        }
+    })
+    return [source, layer];
+}
+
 function setupMap(state) {
     const zoom = new Zoom({
         zoomInLabel: "",
@@ -275,83 +359,6 @@ function setupMap(state) {
         },
     });
 
-    const geojsonCircle = new Style({
-        image: new Circle({
-            radius: 4,
-            fill: new Fill({
-                color: GeoJSONFillColour,
-            }),
-        }),
-    });
-
-    const geojsonStroke = new Style({
-        stroke: new Stroke({
-            color: GeoJSONFillColour,
-            width: 2,
-        })
-    });
-
-    const geojsonFill = new Style({
-        stroke: new Stroke({
-            color: "#a5a6f1",
-            width: 2,
-        }),
-        fill: new Fill({
-            color: GeoJSONFillColour,
-        })
-    })
-
-    const geoJSONSource = new VectorSource({
-       features: [],
-    })
-
-    const geojson = new VectorLayer({
-        source: geoJSONSource,
-        style: function(feature, resolution) {
-            var s = geojsonCircle;
-            switch (feature.getGeometry().getType()) {
-                case "LineString":
-                case "MultiLineString":
-                    s = geojsonStroke;
-                case "Polygon":
-                case "MultiPolygon":
-                    s = geojsonFill;
-            }
-            var cloned = false;
-            const label = feature.get("name") || feature.get("label");
-            if (label) {
-                s = s.clone();
-                cloned = true;
-                s.setText(new Text({
-                    text: label,
-                    textAlign: "left",
-                    offsetX: 6,
-                    offsetY: 1,
-                    font: '"Roboto" 12px',
-                }));
-            }
-            if (feature.get("-diagonal-stroke")) {
-                if (!cloned) {
-                    s = s.clone();
-                    cloned = true;
-                }
-                if (s.getStroke()) {
-                    s.getStroke().setColor(feature.get("-diagonal-stroke"));
-                }
-            }
-            if (feature.get("-diagonal-fill")) {
-                if (!cloned) {
-                    s = s.clone();
-                    cloned = true;
-                }
-                if (s.getFill()) {
-                    s.getFill().setColor(feature.get("-diagonal-fill"));
-                }
-            }
-            return s;
-        }
-    })
-
     const view = new View({
         center: fromLonLat(InitialCenter),
         zoom: InitalZoom,
@@ -359,21 +366,11 @@ function setupMap(state) {
 
     const map = new Map({
         target: "map",
-        layers: [background, boundaries, water, landuse, roadOutlines, roadFills, buildings, points, labels, geojson],
+        layers: [background, boundaries, water, landuse, roadOutlines, roadFills, buildings, points, labels],
         interactions: InteractionDefaults(),
         controls: [zoom],
         view: view,
     });
-
-    const renderGeoJSON = (g) => {
-        geoJSONSource.clear();
-        const features = new GeoJSONFormat().readFeatures(g, {
-            dataProjection: "EPSG:4326",
-            featureProjection: view.getProjection(),
-        });
-        geoJSONSource.addFeatures(features);
-        geoJSONSource.changed();
-    }
 
     const searchableLayers = [buildings, roadOutlines, landuse, water];
 
@@ -384,34 +381,457 @@ function setupMap(state) {
         points.changed();
     };
 
-    return [map, renderGeoJSON, searchableLayers, updateMap];
-}
-
-function setupShell(version, handleResponse) {
-    const shell = new Shell("shell", version, handleResponse);
-    d3.select("body").on("keydown", (e) => {
-        if (e.key == "`" || e.key == "~") {
-            e.preventDefault();
-            shell.toggle();
-        }
-    });
-    return shell;
+    return [map, searchableLayers, updateMap];
 }
 
 function lonLatToLiteral(ll) {
     return `${ll[1].toPrecision(8)}, ${ll[0].toPrecision(8)}`
 }
 
-function showFeature(feature, shell) {
+function showFeature(feature, blocks) {
     const ns = feature.get("ns");
     const id = feature.get("id");
     const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
     if (ns && id && types[feature.getType()]) {
-        shell.evaluateExpression(`show /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`);
+        const request = {
+            method: "POST",
+            body: JSON.stringify({Expression: `find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`}),
+            headers: {
+                "Content-type": "application/json; charset=UTF-8"
+            }
+        }
+        d3.json("/block", request).then(response => {
+            blocks.renderBlocks(response);
+        });
     }
 }
 
-function showFeatureAtPixel(pixel, layers, shell) {
+const BlockRenderers = {
+    "pipeline-stage": renderPipelineStageBlock,
+    "feature": renderFeatureBlock,
+    "int": renderIntBlock,
+    "float": renderFloatBlock,
+    "string": renderStringBlock,
+    "int-result": renderIntResultBlock,
+    "float-result": renderFloatResultBlock,
+    "string-result": renderStringResultBlock,
+    "area": renderAreaBlock,
+    "path": renderPathBlock,
+    "geojson-feature-collection": renderGeoJSONFeatureCollectionBlock,
+    "geojson-feature": renderGeoJSONFeatureBlock,
+    "title-count": renderTitleCountBlock,
+    "collection": renderCollectionBlock,
+    "collection-feature": renderCollectionFeatureBlock,
+    "collection-key-value": renderCollectionKeyValueBlock,
+    "collection-feature-key": renderCollectionFeatureKeyBlock,
+    "shell": renderShellBlock,
+    "error": renderStringBlock,
+    "placeholder": renderPlaceholderBlock,
+}
+
+const BlocksOrigin = [10, 100];
+
+function elementPosition(element) {
+    return [+element.style("left").replace("px", ""), +element.style("top").replace("px", "")];
+}
+
+class Blocks {
+    constructor(map) {
+        this.map = map;
+        this.dragging = null;
+        this.html = d3.select("html");
+        this.dragPointerOrigin = [0,0];
+        this.dragElementOrigin = [0,0];
+        this.setupGeoJSONStyles();
+        this.addGeoJSONLayer();
+    }
+
+    setupGeoJSONStyles() {
+        const palette = d3.select("body").selectAll(".geojson-palette").data([1]).join(
+            enter => {
+                const palette = enter.append("svg").classed("geojson-palette", true);
+                palette.append("g").classed("geojson-palette-point", true);
+                palette.append("g").classed("geojson-palette-path", true);
+                palette.append("g").classed("geojson-palette-area", true);
+                return palette;
+            },
+        );
+        this.pointStyle = getComputedStyle(palette.select(".geojson-palette-point").node());
+        this.pathStyle = getComputedStyle(palette.select(".geojson-palette-path").node());
+        this.areaStyle = getComputedStyle(palette.select(".geojson-palette-area").node());
+    }
+
+    addGeoJSONLayer() {
+        const sl = newGeoJSONSourceAndLayer(this.pointStyle, this.pathStyle, this.areaStyle);
+        this.geoJSONSource = sl[0];
+        this.geoJSONLayer = sl[1];
+        this.map.addLayer(this.geoJSONLayer);
+    }
+
+    evaluateExpression(expression) {
+        this.evaluateExpressionInContext(null, expression);
+    }
+
+    evaluateNode(node) {
+        this.evaluateExpressionInContext(node, null);
+    }
+
+    evaluateExpressionInContext(node, expression) {
+        const body = JSON.stringify({Node: node, Expression: expression});
+        const request = {
+            method: "POST",
+            body: body,
+            headers: {
+                "Content-type": "application/json; charset=UTF-8"
+            }
+        }
+        d3.json("/block", request).then(response => {
+            this.renderBlocks(response);
+        });
+    }
+
+    renderBlocks(response) {
+        response.Blocks.push({Type: "shell"});
+        const root = d3.select("body").selectAll(".featured-blocks").data([1]).join("div");        
+        root.attr("class", "featured-blocks blocks");
+        root.style("left",  `${BlocksOrigin[0]}px`);
+        root.style("top", `${BlocksOrigin[1]}px`);
+        const blocks = root.selectAll(".block").data(response.Blocks).join("div");
+        blocks.attr("class", "block");
+        this.renderBlock(blocks, root, response);
+    }
+
+    renderBlock(target, root, response) {   
+        const divs = target.selectAll(".block-container").data(d => [d], d => d.Type).join(
+            enter => {
+                const div = enter.append("div");
+                div.attr("class", d => `block-container ${d.Type}`);
+                return div;
+            },
+            update => {
+                return update;
+            },
+        )
+        const blocks = this;
+        const f = function(d) {
+            if (d.MapCenter) {
+                blocks.map.getView().animate({
+                    center: fromLonLat([parseFloat(d.MapCenter[0]), parseFloat(d.MapCenter[1])]),
+                    duration: 500,
+                });
+            }
+            if (d.GeoJSON) {
+                blocks.geoJSONSource.clear();
+                const features = new GeoJSONFormat().readFeatures(d.GeoJSON, {
+                    dataProjection: "EPSG:4326",
+                    featureProjection: blocks.map.getView().getProjection(),
+                });
+                blocks.geoJSONSource.addFeatures(features);
+                blocks.geoJSONSource.changed();
+            }
+            if (BlockRenderers[d.Type]) {
+                BlockRenderers[d.Type].apply(null, [d3.select(this), root, response, blocks]);
+            } else {
+                throw new Error(`No renderer for block ${d.Type}`);
+            }
+        }
+        divs.each(f);
+    }
+
+    handleDragStart(event, root) {
+        event.preventDefault();
+        if (root.classed("featured-blocks")) {
+            this.addGeoJSONLayer();
+            root.attr("class", "blocks");
+        }
+        this.dragging = root;
+        this.dragging.classed("dragging", true);
+        this.dragPointerOrigin = d3.pointer(event, this.html);
+        this.dragElementOrigin = elementPosition(root);
+    }
+
+    handlePointerMove(event) {
+        if (this.dragging) {
+            event.preventDefault();
+            const pointer = d3.pointer(event, this.html);
+            const delta = [pointer[0]-this.dragPointerOrigin[0], pointer[1]-this.dragPointerOrigin[1]];
+            const left = Math.round(this.dragElementOrigin[0]+delta[0]);
+            const top = Math.round(this.dragElementOrigin[1]+delta[1]);
+            this.dragging.style("left", `${left}px`);
+            this.dragging.style("top", `${top}px`);
+        }
+    }
+
+    handleDragEnd(event) {
+        if (this.dragging) {
+            event.preventDefault();
+            this.dragging.classed("dragging", false);
+            this.dragging = null;
+        }
+    }
+}
+
+function renderPipelineStageBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    block.text(d => `${d.Expression}`);
+    block.on("mousedown", e => {
+        blocks.handleDragStart(e, root);
+    });
+}
+
+function renderPlaceholderBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    block.text(d => `${d.RawValue}`);
+}
+
+function renderFeatureBlock(block, root, response, blocks) {
+    const ul = block.selectAll(".tags").data(d => [d]).join("ul").attr("class", "tags top");
+    const formatTags = t => [
+        {class: "prefix", text: t.Prefix},
+        {class: "key", text: t.Key, prefix: t.Prefix, key: t.Key, value: t.Value},
+        {class: "value", text: t.Value},
+    ];
+    const li = ul.selectAll("li").data(d => d.Tags.map(formatTags)).join("li");
+    li.selectAll("span").data(d => d).join("span").attr("class", d => d.class).text(d => d.text);
+    const clickableKeys = ul.selectAll(".key").data(d => d.Tags).filter(d => d.KeyExpression);
+    clickableKeys.classed("clickable", true).on("click", (e, d) => {
+        e.preventDefault();
+        blocks.evaluateNode(d.KeyExpression);
+    });
+    const clickableValues = ul.selectAll(".value").data(d => d.Tags).filter(d => d.ValueExpression);
+    clickableValues.classed("clickable", true).on("click", (e, d) => {
+        e.preventDefault();
+        blocks.evaluateNode(d.ValueExpression);
+    });
+
+    const lastPoint = renderFeatureBlockPoints(block, root, response, blocks);
+    if (!lastPoint.empty()) {
+        block.select(".points").classed("points-last", true);
+        lastPoint.classed("top-last", true);
+    } else {
+        ul.classed("top-last", true);
+    }
+}
+
+function renderFeatureBlockPoints(block, root, response, blocks) {
+    const points = block.selectAll(".points").data(d => d.Points && d.Points.length > 0 ? [d] : []).join(
+        enter => {
+            const div = enter.append("div");
+            div.attr("class", "points");
+            div.append("div").classed("title", true);
+            div.append("ul");
+            return div
+        }
+    );
+    const title = points.select(".title").datum(d => {return {Type: "title-count", Title: "Points", Count: d.Points.length};});
+    blocks.renderBlock(title, root, response);
+    title.on("click", e => {
+        e.preventDefault();
+        points.classed("open", !points.classed("open"));
+    });
+    const li = points.select("ul").selectAll("li").data(d => d.Points).join("li");
+    blocks.renderBlock(li, root, response);
+    return li.filter((d, i, l) => i == l.length - 1).select(".top");
+}
+
+function renderIntBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    block.text(d => `${d.Value}`);
+}
+
+function renderIntResultBlock(block, root, response, blocks) {
+    renderIntBlock(block, root, response, blocks)
+    block.classed("top-last", true);
+}
+
+function renderFloatBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    block.text(d => `${d3.format(".2f")(d.Value)}`);
+}
+
+function renderFloatResultBlock(block, root, response, blocks) {
+    renderFloatBlock(block, root, response, blocks)
+    block.classed("top-last", true);
+}
+
+function renderStringBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    block.classed("top-last", true);
+    block.text(d => `${d.Value}`);
+}
+
+function renderStringResultBlock(block, root, response, blocks) {
+    renderStringBlock(block, root, response, blocks)
+    block.classed("top-last", true);
+}
+
+function renderAreaBlock(block, root, response, blocks) {
+    renderGeometryBlock("area", "m²", block, root, response, blocks);
+}
+
+function renderPathBlock(block, root, response, blocks) {
+    renderGeometryBlock("path", "m", block, root, response, blocks);
+}
+
+function renderGeometryBlock(geometry, units, block, root, response, blocks) {
+    block.classed("top", true);
+    block.classed("top-last", true);
+    block.classed("geometry", true);
+    const spans = block.selectAll("span").data(d => [
+        {class: `icon icon-${geometry}`, text: ""},
+        {class: "", text: `${d3.format(".2f")(d.Dimension)}${units}`},
+    ]);
+    spans.join("span").attr("class", d => d.class).text(d => d.text);
+}
+
+function renderGeoJSONFeatureCollectionBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    block.classed("top-last", true);
+    block.classed("geometry", true);
+    const spans = block.selectAll("span").data(d => [
+        {class: `icon icon-area`, text: ""},
+        {class: "", text: `${d3.format("i")(d.Dimension)} GeoJSON ${d.Dimension == 1 ? "feature" : "features"}`},
+    ]);
+    spans.join("span").attr("class", d => d.class).text(d => d.text);
+}
+
+function renderGeoJSONFeatureBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    block.classed("top-last", true);
+    block.classed("geometry", true);
+    const spans = block.selectAll("span").data(d => [
+        {class: `icon icon-area`, text: ""},
+        {class: "", text: "GeoJSON feature"},
+    ]);
+    spans.join("span").attr("class", d => d.class).text(d => d.text);
+}
+
+function renderTitleCountBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    const spans = block.selectAll("span").data(d => [
+        {class: "title", text: d.Title},
+        {class: "count", text: d.Count >= 0 ? `${d.Count}` : ""},
+    ]);
+    spans.join("span").attr("class", d => d.class).text(d => d.text);
+}
+
+function renderCollectionBlock(block, root, response, blocks) {
+    console.log("renderCollectionBlock", block.datum());
+    const title = block.selectAll(".title").data(d => [d.Title]).join("div").classed("title", true);
+    blocks.renderBlock(title, root, response);
+    const ul = block.selectAll("ul").data(d => [d]).join("ul");
+    const li = ul.selectAll("li").data(d => d.Items).join("li");
+    blocks.renderBlock(li, root, response);
+    li.filter((d, i, l) => i == l.length - 1).select(".top").classed("top-last", true);
+}
+
+function renderCollectionFeatureBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    const spans = block.selectAll("span").data(d => [
+        {class: `icon icon-${d.Icon}`, text: ""},
+        {class: "label", text: d.Label},
+        {class: "namespace", text: d.Namespace},
+        {class: "id", text: d.ID},
+    ]);
+    spans.join("span").attr("class", d => d.class).text(d => d.text);
+    block.filter(d => d.Expression).classed("clickable", true).on("click", (e, d) => {
+        e.preventDefault();
+        blocks.evaluateNode(d.Expression);
+    });
+}
+
+function renderCollectionKeyValueBlock(block, root, response, blocks) {
+    const spans = block.selectAll("span").data(d => [d.Key, d.Value]).join("span");
+    spans.attr("class", (d, i) => ["key", "value"][i]);
+    blocks.renderBlock(spans);
+}
+
+function renderCollectionFeatureKeyBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    const spans = block.selectAll("span").data(d => [
+        {class: `icon icon-${d.Icon}`, text: ""},
+        {class: "namespace", text: d.Namespace},
+        {class: "id", text: d.ID},
+    ]);
+    spans.join("span").attr("class", d => d.class).text(d => d.text);
+    block.filter(d => d.Expression).classed("clickable", true).on("click", (e, d) => {
+        e.preventDefault();
+        blocks.evaluateNode(d.Expression);
+    });
+}
+
+const TerminalMaxSuggestions = 6;
+
+function renderShellBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    const input = block.selectAll(".shell").data([1]).join(
+        enter => {
+            const form = enter.append("form").attr("class", "shell");
+            form.append("div").attr("class", "prompt").text("b6");
+            form.append("input").attr("type", "text");
+            return form
+        },
+        update => update,
+        exit => exit.remove(),
+    );
+    const state = {suggestions: response.Functions ? response.Functions.toSorted() : [], highlighted: 0};
+    input.select("input").on("focusin", e => {
+        block.select("ul").classed("focussed", true);
+    });
+    input.select("input").on("focusout", e => {
+        block.select("ul").classed("focussed", false);
+    });
+    input.on("keyup", e => {
+        switch (e.key) {
+            case "ArrowUp":
+                state.highlighted--;
+                e.preventDefault();
+                break;
+            case "ArrowDown":
+                state.highlighted++;
+                e.preventDefault();
+                break;
+            default:
+                state.highlighted = 0;
+                break;
+        }
+        renderShellSuggestions(block, state);
+    });
+    input.on("submit", e => {
+        e.preventDefault();
+        acceptTerminalSuggestion(block, state, response, blocks);
+        return;
+    });
+    renderShellSuggestions(block, state);
+}
+
+function renderShellSuggestions(block, state) {
+    const entered = block.select("input").node().value;
+    const filtered = state.suggestions.filter(s => s.startsWith(entered));
+    state.filtered = filtered;
+    const suggestions = filtered.slice(0, TerminalMaxSuggestions).map(s => {return {text: s, highlighted: false}});
+    if (state.highlighted < 0) {
+        state.highlighted = 0
+    } else if (state.highlighted >= filtered.length) {
+        state.highlighted = filtered.length - 1;
+    }
+    if (state.highlighted >= 0) {
+        suggestions[state.highlighted].highlighted = true;
+    }
+    const ul = block.selectAll("ul").data([1]).join("ul");
+    const li = ul.selectAll("li").data(suggestions).join("li");
+    li.text(d => d.text).classed("highlighted", d => d.highlighted);
+}
+
+function acceptTerminalSuggestion(block, state, response, blocks) {
+    var expression = block.select("input").node().value;
+    if (state.highlighted >= 0 && state.filtered[state.highlighted].length > expression.length) {
+        expression = state.filtered[state.highlighted];
+    }
+    blocks.evaluateExpressionInContext(response.Node, expression);
+}
+
+function showFeatureAtPixel(pixel, layers, blocks) {
     const search = (i, found) => {
         if (i < layers.length) {
             if (layers[i].getVisible()) {
@@ -428,7 +848,7 @@ function showFeatureAtPixel(pixel, layers, shell) {
             }
         }
     };
-    search(0, f => showFeature(f, shell));
+    search(0, f => showFeature(f, blocks));
 }
 
 function idKey(id) {
@@ -447,35 +867,75 @@ function idKeyFromFeature(feature) {
     return `/${type}/${feature.get("ns")}/${feature.get("id")}`
 }
 
+function setupShell(target, blocks) {
+    target.selectAll("form").data([1]).join(
+        enter => {
+            const form = enter.append("form").attr("class", "shell");
+            form.append("div").attr("class", "prompt").text("b6");
+            form.append("input").attr("type", "text");
+            return form;
+        },
+        update => {
+            return update;
+        },
+    );
+    const state = {history: [], index: 0};
+    d3.select("body").on("keydown", (e) => {
+        if (e.key == "`" || e.key == "~") {
+            e.preventDefault();
+            target.classed("closed", !target.classed("closed"));
+            target.select("input").node().focus();
+        } else if (e.key == "ArrowUp") {
+            e.preventDefault();
+            if (state.index < state.history.length) {
+                state.index++;
+                target.select("input").node().value = state.history[state.history.length - state.index];
+            }
+        } else if (e.key == "ArrowDown") {
+            e.preventDefault();
+            if (state.index > 0) {
+                state.index--;
+                if (state.index == 0) {
+                    target.select("input").node().value = "";
+                } else {
+                    target.select("input").node().value = state.history[state.history.length - state.index];
+                }
+            }
+        }
+    });
+    target.select("form").on("submit", (e) => {
+        e.preventDefault();
+        target.classed("closed", true);
+        const expression = target.select("input").node().value;
+        state.history.push(expression);
+        state.index = 0;
+        blocks.evaluateExpression(expression);
+        target.select("input").node().value = "";
+    })
+}
+
 function setup(bootstrapResponse) {
     const state = {};
-    const [map, renderGeoJSON, searchableLayers, buildingsChanged] = setupMap(state);
+    const [map, searchableLayers, buildingsChanged] = setupMap(state);
 
-    const handleResponse = (response) => {
-        if (response.Center) {
-            map.getView().animate({
-                center: fromLonLat([parseFloat(response.Center[0]), parseFloat(response.Center[1])]),
-                duration: 500,
-            });
-        }
-        if (response.GeoJSON) {
-            renderGeoJSON(response.GeoJSON)
-        }
-        if (response.FeatureColours) {
-            state.featureColours = {};
-            for (const i in response.FeatureColours) {
-                state.featureColours[idKey(response.FeatureColours[i][0])] = response.FeatureColours[i][1];
-            }
-            buildingsChanged();
-        }
-    }
-    const shell = setupShell(bootstrapResponse.Version, handleResponse);
+    const blocks = new Blocks(map);
+    const html = d3.select("html");
+    html.on("pointermove", e => {
+        blocks.handlePointerMove(e);
+    });
+    html.on("mouseup", e => {
+        blocks.handleDragEnd(e);
+    });
+
+    setupShell(d3.select("#shell"), blocks);
 
     map.on("singleclick", e => {
         if (e.originalEvent.shiftKey) {
-            showFeatureAtPixel(e.pixel, searchableLayers, shell);
+            showFeatureAtPixel(e.pixel, searchableLayers, blocks);
+            e.stopPropagation();
         } else {
-            shell.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))));
+            blocks.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))));
+            e.stopPropagation();
         }
     });
 }
