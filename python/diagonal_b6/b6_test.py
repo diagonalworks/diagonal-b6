@@ -65,6 +65,10 @@ class B6Test(unittest.TestCase):
     def test_uk_ons_boundary_id(self):
         self.assertEqual(b6.uk_ons_boundary_id("E01000953").value, 76343044687353)
 
+    def test_area_str(self):
+        area = self.connection(b6.find_area(b6.osm_way_area_id(COAL_DROPS_YARD_WEST_BUILDING_ID)))
+        self.assertEqual("<Area /area/openstreetmap.org/way/222021572>", str(area))
+
     def test_relation_members(self):
         greenway = self.connection(b6.find_relation(b6.osm_relation_id(JUBILEE_GREENWAY_ID)))
         paths = ([str(m) for m in greenway.members() if m.is_path()])
@@ -81,6 +85,11 @@ class B6Test(unittest.TestCase):
         for d in degrees:
             self.assertGreaterEqual(d, 0)
             self.assertLess(d, 10)
+
+    def test_send_evaluated_feature_back_to_server(self):
+        point = self.connection(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)))
+        degree = self.connection(b6.degree(point))
+        self.assertEqual(degree, self.connection(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)).degree()))
 
     def test_path_lengths(self):
         lengths = [length for (id, length) in self.connection(b6.find_paths(b6.keyed("#highway")).length())]

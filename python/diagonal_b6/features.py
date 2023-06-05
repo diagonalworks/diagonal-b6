@@ -42,7 +42,7 @@ class FeatureID(expression.Literal):
 
     def __str__(self):
         type = features_pb2.FeatureType.Name(self.type).replace("FeatureType", "").lower()
-        return "%s/%s/%d" % (type, self.namespace, self.value)
+        return "/%s/%s/%d" % (type, self.namespace, self.value)
 
     def __repr__(self):
         return str(self)
@@ -58,7 +58,7 @@ class FeatureID(expression.Literal):
         query.spatial.area.id.namespace = self.namespace
         query.spatial.area.id.value = self.value
 
-class Feature:
+class Feature(expression.Node):
 
     def is_point(self):
         return self.id.is_point()
@@ -105,10 +105,15 @@ class Feature:
     def all_tags(self):
         return [(tag.key, tag.value) for tag in self._pb.tags]
 
+    def to_node_proto(self):
+        node = api_pb2.NodeProto()
+        node.call.function.symbol = "find-feature"
+        node.call.args.add().CopyFrom(self.id.to_node_proto())
+        return node
+
     def __str__(self):
         type = features_pb2.FeatureType.Name(self.id.type).replace("FeatureType", "").title()
-        namespace = features_pb2.FeatureIDProto.Namespace.Name(self.id.namespace).replace("Namespace", "").lower()
-        return "<%s %s:%d>" % (type, namespace, self.id.value)
+        return "<%s %s>" % (type, self.id)
 
     def _fill_query(self, query):
         return self.id._fill_query(query)
