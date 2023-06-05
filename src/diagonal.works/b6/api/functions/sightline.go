@@ -23,6 +23,11 @@ func sightline(from b6.Point, radius float64, context *api.Context) (b6.Area, er
 }
 
 func Sightline(center s2.Point, radius s1.Angle, w b6.World) *s2.Polygon {
+	defer func() {
+		if r := recover(); r != nil {
+			panic(fmt.Sprintf("panic in Sightline %s: %v", s2.LatLngFromPoint(center).String(), r))
+		}
+	}()
 	return SightlineUsingPolarCoordinates2(center, radius, w)
 }
 
@@ -459,8 +464,8 @@ func (b byEventAngle) Len() int      { return len(b.events) }
 func (b byEventAngle) Swap(i, j int) { b.events[i], b.events[j] = b.events[j], b.events[i] }
 func (b byEventAngle) Less(i, j int) bool {
 	// Order events by the angle at which they occur. For events at the same angle,
-	// we ensure the begin events occur before end events, and that begin events are order
-	// be distance (closest to center to furthest), and end events are reverse ordered by
+	// we ensure the begin events occur before end events, and that begin events are ordered
+	// by distance (closest to center to furthest), and end events are reverse ordered by
 	// distance.
 	ie, je := b.edges[b.events[i].edge], b.edges[b.events[j].edge]
 	var ip, jp polarPoint
@@ -479,7 +484,7 @@ func (b byEventAngle) Less(i, j int) bool {
 			if b.events[i].begin {
 				if ip.R == jp.R {
 					if ie.V1.R == je.V1.R {
-						// At this point, the edges are duplicate
+						// Edges are duplicate
 						return b.events[i].edge < b.events[j].edge
 					}
 					return ie.V1.R < je.V1.R
@@ -488,7 +493,7 @@ func (b byEventAngle) Less(i, j int) bool {
 			}
 			if ip.R == jp.R {
 				if ie.V0.R == je.V0.R {
-					// At this point, the edges are duplicate
+					// Edges are duplicate
 					return b.events[i].edge < b.events[j].edge
 				}
 				return ie.V0.R > je.V0.R
@@ -504,7 +509,7 @@ var reference = s2.PointFromCoords(0.0, 0.0, 1.0)
 
 type polarPoint struct {
 	R s1.Angle // Distance from center
-	T s1.Angle // Angle
+	T s1.Angle // Angle counterclockwise from reference line from the center to the North pole
 }
 
 type polarEdge struct {
@@ -583,7 +588,7 @@ func SightlineUsingPolarCoordinates2(center s2.Point, radius s1.Angle, w b6.Worl
 
 	barriers := make([]s2.Edge, 0, 64)
 	cap := s2.CapFromCenterAngle(center, radius)
-	features := b6.FindAreas(b6.Intersection{b6.MightIntersect{cap}, b6.Keyed{"#building"}}, w)
+	features := b6.FindAreas(b6.Intersection{b6.MightIntersect{Region: cap}, b6.Keyed{Key: "#building"}}, w)
 	for features.Next() {
 		area := features.Feature()
 		for i := 0; i < area.Len(); i++ {
@@ -668,8 +673,11 @@ func SightlineUsingPolarCoordinates2(center s2.Point, radius s1.Angle, w b6.Worl
 			v0v1 = math.Pi - v0v1
 		}
 		rv0 := math.Pi - s2.TurnAngle(v0, center, reference)
-		if rv0+v0v1 < 2*math.Pi {
+		if rv0+v0v1 <= 2*math.Pi {
 			rv1 := math.Pi - s2.TurnAngle(v1, center, reference)
+			if rv1 < rv0 { // true if rv0 ~= 2*math.Pi, and so is rounded to 0.
+				rv1 += 2 * math.Pi
+			}
 			polar[i] = polarEdge{V0: polarPoint{R: center.Distance(v0), T: rv0}, V1: polarPoint{R: center.Distance(v1), T: rv1}}
 		} else {
 			p := polarEdge{V0: polarPoint{R: center.Distance(v0), T: rv0}, V1: polarPoint{R: center.Distance(v1), T: rv0 + v0v1}}
