@@ -68,7 +68,7 @@ const (
 	ukONSNumberMask = 0xffffffff
 )
 
-func FeatureIDFromGBONSCode(code string, year int, t FeatureType) FeatureID {
+func FeatureIDFromUKONSCode(code string, year int, t FeatureType) FeatureID {
 	// ONS codes are a letter followed by 8 digits
 	if len(code) != 9 {
 		return FeatureIDInvalid
@@ -82,7 +82,7 @@ func FeatureIDFromGBONSCode(code string, year int, t FeatureType) FeatureID {
 	return FeatureID{Type: t, Namespace: NamespaceUKONSBoundaries, Value: codeBits | yearBits | uint64(n)}
 }
 
-func GBONSCodeFromFeatureID(id FeatureID) (string, int, bool) {
+func UKONSCodeFromFeatureID(id FeatureID) (string, int, bool) {
 	if id.Namespace != NamespaceUKONSBoundaries {
 		return "", 0, false
 	}

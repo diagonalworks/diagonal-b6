@@ -351,6 +351,17 @@ func featureID(f b6.Feature) string {
 		return code.Value
 	} else if ref := f.Get("ref"); ref.IsValid() {
 		return ref.Value
+	} else {
+		switch f.FeatureID().Namespace {
+		case b6.NamespaceGBCodePoint:
+			if postcode, ok := b6.PostcodeFromPointID(f.FeatureID().ToPointID()); ok {
+				return postcode
+			}
+		case b6.NamespaceUKONSBoundaries:
+			if code, _, ok := b6.UKONSCodeFromFeatureID(f.FeatureID()); ok {
+				return code
+			}
+		}
 	}
 	return fmt.Sprintf("%d", f.FeatureID().Value)
 }

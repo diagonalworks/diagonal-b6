@@ -125,7 +125,7 @@ func (o *Options) PointsWorkOutput() Output {
 }
 
 const (
-	maxEncodedFeatureSize = 1 << 19 // Measured empirically
+	maxEncodedFeatureSize = 64 * 1024 * 1204 // Measured empirically
 
 	// Tags used for the first pass
 	PointTag         encoding.Tag = 0
