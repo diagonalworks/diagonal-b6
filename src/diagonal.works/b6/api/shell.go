@@ -88,11 +88,25 @@ var aliases = []NamespaceAlias{
 		ToString:   idToUint64,
 	},
 	{
-		Prefix:     "/gb/ons/",
-		Namespace:  b6.NamespaceGBONSBoundaries,
+		Prefix:     "/uk/ons/",
+		Namespace:  b6.NamespaceUKONSBoundaries,
 		Type:       b6.FeatureTypeArea,
-		FromString: idFromGBONS,
-		ToString:   idToGBONS,
+		FromString: idFromUKONS,
+		ToString:   idToUKONS,
+	},
+	{
+		Prefix:     "/gb/codepoint/",
+		Namespace:  b6.NamespaceGBCodePoint,
+		Type:       b6.FeatureTypePoint,
+		FromString: idFromGBCodePoint,
+		ToString:   idToGBCodePoint,
+	},
+	{
+		Prefix:     "/gb/uprn/",
+		Namespace:  b6.NamespaceGBUPRN,
+		Type:       b6.FeatureTypePoint,
+		FromString: idFromUint64,
+		ToString:   idToUint64,
 	},
 }
 
@@ -109,7 +123,7 @@ func idToUint64(a *NamespaceAlias, id b6.FeatureID) string {
 	return a.Prefix + strconv.FormatUint(id.Value, 10)
 }
 
-func idFromGBONS(a *NamespaceAlias, token string) (b6.FeatureID, error) {
+func idFromUKONS(a *NamespaceAlias, token string) (b6.FeatureID, error) {
 	id := b6.FeatureIDInvalid
 	parts := strings.Split(token[len(a.Prefix):], "/")
 	if len(parts) == 2 {
@@ -125,12 +139,21 @@ func idFromGBONS(a *NamespaceAlias, token string) (b6.FeatureID, error) {
 	return id, err
 }
 
-func idToGBONS(a *NamespaceAlias, id b6.FeatureID) string {
+func idToUKONS(a *NamespaceAlias, id b6.FeatureID) string {
 	code, year, ok := b6.GBONSCodeFromFeatureID(id)
 	if ok {
 		return fmt.Sprintf("%s%d/%s", a.Prefix, year, code)
 	}
 	return b6.FeatureIDInvalid.String()
+}
+
+func idFromGBCodePoint(a *NamespaceAlias, token string) (b6.FeatureID, error) {
+	return b6.PointIDFromGBPostcode(token[len(a.Prefix):]).FeatureID(), nil
+}
+
+func idToGBCodePoint(a *NamespaceAlias, id b6.FeatureID) string {
+	postcode, _ := b6.PostcodeFromPointID(id.ToPointID())
+	return a.Prefix + strings.ToLower(postcode)
 }
 
 func ParseFeatureIDToken(token string) (b6.FeatureID, error) {

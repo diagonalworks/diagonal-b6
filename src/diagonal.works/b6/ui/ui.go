@@ -181,7 +181,7 @@ var labelsForNamespace = map[b6.Namespace]string{
 	b6.NamespaceOSMNode:         "OSM",
 	b6.NamespaceOSMWay:          "OSM",
 	b6.NamespaceOSMRelation:     "OSM",
-	b6.NamespaceGBONSBoundaries: "ONS",
+	b6.NamespaceUKONSBoundaries: "ONS",
 	b6.NamespaceGBUPRN:          "UPRN",
 	b6.NamespaceGBCodePoint:     "Codepoint",
 	b6.NamespaceGTFS:            "GTFS",
