@@ -117,7 +117,7 @@ func TestAddAreas(t *testing.T) {
 		IDsToReplace: map[b6.Namespace]b6.Namespace{
 			b6.NamespacePrivate:        b6.NamespaceDiagonalEntrances,
 			b6.NamespacePrivate + "/1": b6.NamespaceDiagonalAccessPoints,
-			b6.NamespacePrivate + "/2": b6.NamespaceGBONSBoundaries,
+			b6.NamespacePrivate + "/2": b6.NamespaceUKONSBoundaries,
 		},
 	}
 

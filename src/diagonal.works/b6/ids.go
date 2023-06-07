@@ -61,11 +61,11 @@ func PostcodeFromPointID(id PointID) (string, bool) {
 }
 
 const (
-	gbONSCodeShift  = 40
-	gbONSYearShift  = 32
-	gbONSYearMask   = 0xff
-	gbONSLetterMask = 0xff
-	gbONSNumberMask = 0xffffffff
+	ukONSCodeShift  = 40
+	ukONSYearShift  = 32
+	ukONSYearMask   = 0xff
+	ukONSLetterMask = 0xff
+	ukONSNumberMask = 0xffffffff
 )
 
 func FeatureIDFromGBONSCode(code string, year int, t FeatureType) FeatureID {
@@ -77,16 +77,16 @@ func FeatureIDFromGBONSCode(code string, year int, t FeatureType) FeatureID {
 	if err != nil {
 		return FeatureIDInvalid
 	}
-	codeBits := uint64(uint8(byte(code[0]))) << gbONSCodeShift
-	yearBits := uint64(uint8(year-1900)) << gbONSYearShift
-	return FeatureID{Type: t, Namespace: NamespaceGBONSBoundaries, Value: codeBits | yearBits | uint64(n)}
+	codeBits := uint64(uint8(byte(code[0]))) << ukONSCodeShift
+	yearBits := uint64(uint8(year-1900)) << ukONSYearShift
+	return FeatureID{Type: t, Namespace: NamespaceUKONSBoundaries, Value: codeBits | yearBits | uint64(n)}
 }
 
 func GBONSCodeFromFeatureID(id FeatureID) (string, int, bool) {
-	if id.Namespace != NamespaceGBONSBoundaries {
+	if id.Namespace != NamespaceUKONSBoundaries {
 		return "", 0, false
 	}
-	year := int((id.Value>>gbONSYearShift)&gbONSYearMask) + 1900
-	letter := string(byte((id.Value >> gbONSCodeShift) & gbONSLetterMask))
-	return fmt.Sprintf("%s%08d", letter, id.Value&gbONSNumberMask), year, true
+	year := int((id.Value>>ukONSYearShift)&ukONSYearMask) + 1900
+	letter := string(byte((id.Value >> ukONSCodeShift) & ukONSLetterMask))
+	return fmt.Sprintf("%s%08d", letter, id.Value&ukONSNumberMask), year, true
 }
