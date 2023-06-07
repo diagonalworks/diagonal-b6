@@ -8,6 +8,12 @@ def from_point_proto(p):
 
 expression.register_literal("pointValue", from_point_proto)
 
+def to_point_proto(ll):
+    p = geometry_pb2.PointProto()
+    p.lat_e7 = int(ll[0] * 1e7)
+    p.lng_e7 = int(ll[1] * 1e7)
+    return p
+
 def from_polyline_proto(p):
     return Polyline(p)
 

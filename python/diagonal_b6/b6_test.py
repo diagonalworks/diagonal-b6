@@ -43,6 +43,10 @@ class B6Test(unittest.TestCase):
         unittest.TestCase.__init__(self, name)
         self.connection = connection
 
+    def test_get_tag(self):
+        name = b6.find_feature(b6.osm_way_area_id(LIGHTERMAN_WAY_ID)).get("name")
+        self.assertEqual(("name", "The Lighterman"), self.connection(name))
+
     def test_find_areas(self):
         names = [building.get_string("name") for (id, building) in self.connection(b6.find_areas(b6.keyed("#building")))]
         self.assertEqual(len(names), BUILDINGS_IN_GRANARY_SQUARE)
@@ -468,6 +472,22 @@ class B6Test(unittest.TestCase):
         before = len(self.connection(reachable))
         after = len(self.connection(b6.with_change(close_road, lambda: reachable)))
         self.assertGreater(before, after)
+
+    def test_get_tags_from_list_of_ids(self):
+        names = b6.feature_ids([b6.osm_way_area_id(id) for id in (LIGHTERMAN_WAY_ID, GRANARY_SQUARE_WAY_ID)]).map(lambda f: f.get_string("name"))
+        expected = [(0, "The Lighterman"), (1, "Granary Square")]
+        self.assertEqual(expected, self.connection(names))
+
+    def test_make_tags_from_list_of_strings(self):
+        tags = b6.strings(["primary", "secondary"]).map(lambda v: b6.tag("#highway", v))
+        expected = [(0, ("#highway", "primary")), (1, ("#highway", "secondary"))]
+        self.assertEqual(expected, self.connection(tags))
+
+    def test_convex_hull_from_list_of_lat_lngs(self):
+        caps = b6.lls([(51.535387, -0.125277), (51.537088, -0.125781)]).map(lambda c: b6.cap_polygon(c, 20.0))
+        areas = self.connection(caps.map(b6.area))
+        hull_area = self.connection(b6.convex_hull(caps).area())
+        self.assertGreater(hull_area, sum([a for _, a in areas]))
 
 def main():
     parser = argparse.ArgumentParser()

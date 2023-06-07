@@ -39,7 +39,9 @@ func (s *StringStringPair) FromPair(p Pair) error {
 var _ Pair = StringStringPair{}
 
 func Resolve(id b6.Identifiable, w b6.World) b6.Feature {
-	if f, ok := id.(b6.Feature); ok {
+	if id == nil {
+		return nil
+	} else if f, ok := id.(b6.Feature); ok {
 		return f
 	}
 	return w.FindFeatureByID(id.FeatureID())

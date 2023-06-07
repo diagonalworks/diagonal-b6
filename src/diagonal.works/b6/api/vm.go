@@ -8,9 +8,6 @@ import (
 
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
-
-	"github.com/golang/geo/s1"
-	"github.com/golang/geo/s2"
 )
 
 type Context struct {
@@ -314,42 +311,11 @@ func compileLambda(lambda *pb.LambdaNodeProto, c *compilation) (*lambdaCall, err
 }
 
 func compileLiteral(literal *pb.LiteralNodeProto, c *compilation) error {
-	switch v := literal.Value.(type) {
-	case *pb.LiteralNodeProto_NilValue:
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(nil)})
-	case *pb.LiteralNodeProto_BoolValue:
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(v.BoolValue)})
-	case *pb.LiteralNodeProto_StringValue:
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(v.StringValue)})
-	case *pb.LiteralNodeProto_IntValue:
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(v.IntValue)})
-	case *pb.LiteralNodeProto_FloatValue:
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(v.FloatValue)})
-	case *pb.LiteralNodeProto_QueryValue:
-		if q, err := b6.NewQueryFromProto(v.QueryValue); err == nil {
-			c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(q)})
-		} else {
-			return err
-		}
-	case *pb.LiteralNodeProto_FeatureIDValue:
-		id := b6.NewFeatureIDFromProto(v.FeatureIDValue)
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(id)})
-	case *pb.LiteralNodeProto_PointValue:
-		ll := s2.LatLng{Lat: s1.Angle(v.PointValue.LatE7) * s1.E7, Lng: s1.Angle(v.PointValue.LngE7) * s1.E7}
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(b6.PointFromLatLng(ll))})
-	case *pb.LiteralNodeProto_PathValue:
-		p := b6.PolylineProtoToS2Polyline(v.PathValue)
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(b6.PathFromS2Points(*p))})
-	case *pb.LiteralNodeProto_AreaValue:
-		m := b6.MultiPolygonProtoToS2MultiPolygon(v.AreaValue)
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(b6.AreaFromS2Polygons(m))})
-	case *pb.LiteralNodeProto_TagValue:
-		tag := b6.Tag{Key: v.TagValue.Key, Value: v.TagValue.Value}
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(tag)})
-	default:
-		return fmt.Errorf("Don't know how to compile literal %T", literal.Value)
+	v, err := FromProto(literal)
+	if err == nil {
+		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(v)})
 	}
-	return nil
+	return err
 }
 
 const MaxArgs = 32
