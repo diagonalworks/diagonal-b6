@@ -129,7 +129,7 @@ func idFromUKONS(a *NamespaceAlias, token string) (b6.FeatureID, error) {
 	if len(parts) == 2 {
 		year, err := strconv.Atoi(parts[0])
 		if err == nil {
-			id = b6.FeatureIDFromGBONSCode(parts[1], year, a.Type)
+			id = b6.FeatureIDFromUKONSCode(parts[1], year, a.Type)
 		}
 	}
 	var err error
@@ -140,7 +140,7 @@ func idFromUKONS(a *NamespaceAlias, token string) (b6.FeatureID, error) {
 }
 
 func idToUKONS(a *NamespaceAlias, id b6.FeatureID) string {
-	code, year, ok := b6.GBONSCodeFromFeatureID(id)
+	code, year, ok := b6.UKONSCodeFromFeatureID(id)
 	if ok {
 		return fmt.Sprintf("%s%d/%s", a.Prefix, year, code)
 	}

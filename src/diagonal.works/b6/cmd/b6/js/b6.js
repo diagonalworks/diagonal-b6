@@ -808,6 +808,17 @@ function renderShellBlock(block, root, response, blocks) {
     input.select("input").on("focusout", e => {
         block.select("ul").classed("focussed", false);
     });
+    input.on("keydown", e => {
+        switch (e.key) {
+            case "Tab":
+                const node = input.select("input").node();
+                if (state.highlighted >= 0 && state.filtered[state.highlighted].length > node.value.length) {
+                    node.value = state.filtered[state.highlighted] + " ";
+                }
+                e.preventDefault();
+                break;
+        }
+    });
     input.on("keyup", e => {
         switch (e.key) {
             case "ArrowUp":

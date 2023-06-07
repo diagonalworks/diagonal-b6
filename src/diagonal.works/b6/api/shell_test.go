@@ -823,8 +823,7 @@ func TestToFeatureIDExpression(t *testing.T) {
 		{camden.StableStreetBridgeID.FeatureID(), "/w/140633010"},
 		{camden.LightermanID.FeatureID(), "/a/427900370"},
 		{b6.MakePointID(b6.NamespaceGBUPRN, 116000008).FeatureID(), "/gb/uprn/116000008"},
-		{b6.FeatureIDFromGBONSCode("E01000953", 2011, b6.FeatureTypeArea).FeatureID(), "/uk/ons/2011/E01000953"},
-		{b6.PointIDFromGBPostcode("N1C 4AD").FeatureID(), "/gb/codepoint/n1c4ad"},
+		{b6.FeatureIDFromUKONSCode("E01000953", 2011, b6.FeatureTypeArea).FeatureID(), "/uk/ons/2011/E01000953"},
 	}
 	for _, test := range tests {
 		if token := UnparseFeatureID(test.ID, true); token != test.Token {

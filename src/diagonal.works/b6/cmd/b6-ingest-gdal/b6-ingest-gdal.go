@@ -27,7 +27,8 @@ var idStrategies = map[string]gdal.IDStrategy{
 	"":            gdal.IndexIDStrategy,
 	"strip":       gdal.StripNonDigitsIDStrategy,
 	"hash":        gdal.HashIDStrategy,
-	"gb-ons-2011": gdal.GBONS2011IDStrategy,
+	"uk-ons-2011": gdal.UKONS2011IDStrategy,
+	"uk-ons-2022": gdal.UKONS2022IDStrategy,
 }
 
 type input interface {
