@@ -12,6 +12,7 @@ import (
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
 
+	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
 	"google.golang.org/protobuf/proto"
 )
@@ -313,4 +314,55 @@ func collectionToProto(collection Collection) (*pb.NodeProto, error) {
 			},
 		},
 	}, nil
+}
+
+func FromProto(p *pb.LiteralNodeProto) (interface{}, error) {
+	switch v := p.Value.(type) {
+	case *pb.LiteralNodeProto_NilValue:
+		return nil, nil
+	case *pb.LiteralNodeProto_BoolValue:
+		return v.BoolValue, nil
+	case *pb.LiteralNodeProto_StringValue:
+		return v.StringValue, nil
+	case *pb.LiteralNodeProto_IntValue:
+		return v.IntValue, nil
+	case *pb.LiteralNodeProto_FloatValue:
+		return v.FloatValue, nil
+	case *pb.LiteralNodeProto_QueryValue:
+		return b6.NewQueryFromProto(v.QueryValue)
+	case *pb.LiteralNodeProto_FeatureIDValue:
+		return b6.NewFeatureIDFromProto(v.FeatureIDValue), nil
+	case *pb.LiteralNodeProto_PointValue:
+		ll := s2.LatLng{Lat: s1.Angle(v.PointValue.LatE7) * s1.E7, Lng: s1.Angle(v.PointValue.LngE7) * s1.E7}
+		return b6.PointFromLatLng(ll), nil
+	case *pb.LiteralNodeProto_PathValue:
+		p := b6.PolylineProtoToS2Polyline(v.PathValue)
+		return b6.PathFromS2Points(*p), nil
+	case *pb.LiteralNodeProto_AreaValue:
+		m := b6.MultiPolygonProtoToS2MultiPolygon(v.AreaValue)
+		return b6.AreaFromS2Polygons(m), nil
+	case *pb.LiteralNodeProto_TagValue:
+		return b6.Tag{Key: v.TagValue.Key, Value: v.TagValue.Value}, nil
+	case *pb.LiteralNodeProto_CollectionValue:
+		c := &ArrayAnyCollection{
+			Keys:   make([]interface{}, len(v.CollectionValue.Keys)),
+			Values: make([]interface{}, len(v.CollectionValue.Values)),
+		}
+		if len(c.Keys) != len(c.Values) {
+			return nil, fmt.Errorf("Number of keys doesn't match the number of values: %d vs %d", len(c.Keys), len(c.Values))
+		}
+		var err error
+		for i := range c.Keys {
+			c.Keys[i], err = FromProto(v.CollectionValue.Keys[i])
+			if err != nil {
+				return nil, err
+			}
+			c.Values[i], err = FromProto(v.CollectionValue.Values[i])
+			if err != nil {
+				return nil, err
+			}
+		}
+		return c, nil
+	}
+	return nil, fmt.Errorf("Don't know how to convert literal %T", p.Value)
 }

@@ -62,6 +62,7 @@ type AreaFeatureCollection Collection
 type RelationFeatureCollection Collection
 type IntStringCollection Collection
 type IntTagCollection Collection
+type IntFeatureIDCollection Collection
 type StringStringCollection Collection
 type FeatureIDAnyCollection Collection
 type FeatureIDIntCollection Collection
@@ -70,6 +71,7 @@ type FeatureIDTagCollection Collection
 type FeatureIDFeatureIDCollection Collection
 type FeatureIDStringStringPairCollection Collection
 type AnyFloatCollection Collection
+type AnyGeometryCollection Collection
 type AnyRenderableCollection Collection
 
 type ArrayAnyCollection struct {

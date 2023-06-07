@@ -106,6 +106,7 @@ var functions = api.FunctionSymbols{
 	"centroid":                 centroid,
 	"sightline":                sightline,
 	"snap-area-edges":          snapAreaEdges,
+	"convex-hull":              convexHull,
 	// tiles
 	"tile-ids":     tileIDs,
 	"tile-ids-hex": tileIDsHex,

@@ -120,6 +120,7 @@ register_literal("nilValue", lambda v: None)
 register_literal("intValue", lambda v: v)
 register_literal("floatValue", lambda v: v)
 register_literal("stringValue", lambda v: v)
+register_literal("tagValue", lambda v: (v.key, v.value))
 register_literal("geoJSONValue", lambda v: json.loads(gzip.decompress(v)))
 
 def from_literal_node_proto(literal):

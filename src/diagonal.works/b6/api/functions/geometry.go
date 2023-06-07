@@ -165,3 +165,29 @@ func snapAreaEdges(g b6.Area, query b6.Query, threshold float64, context *api.Co
 	}
 	return b6.AreaFromS2Polygons(snapped), nil
 }
+
+func convexHull(c api.AnyGeometryCollection, context *api.Context) (b6.Area, error) {
+	query := s2.NewConvexHullQuery()
+	i := c.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		switch g := i.Value().(type) {
+		case b6.Point:
+			query.AddPoint(g.Point())
+		case b6.Path:
+			for i := 0; i < g.Len(); i++ {
+				query.AddPoint(g.Point(i))
+			}
+		case b6.Area:
+			for i := 0; i < g.Len(); i++ {
+				query.AddPolygon(g.Polygon(i))
+			}
+		}
+	}
+	return b6.AreaFromS2Loop(query.ConvexHull()), nil
+}

@@ -89,12 +89,16 @@ func collectionForType(t reflect.Type) Collection {
 		return Collection{Name: n, Key: "int", Value: "string"}
 	case "IntTagCollection":
 		return Collection{Name: n, Key: "int", Value: "Tag"}
+	case "IntFeatureIDCollection":
+		return Collection{Name: n, Key: "int", Value: "FeatureID"}
 	case "StringStringCollection":
 		return Collection{Name: n, Key: "string", Value: "string"}
 	case "FeatureIDIntCollection":
 		return Collection{Name: n, Key: "FeatureID", Value: "int"}
 	case "AnyFloatCollection":
 		return Collection{Name: n, Key: "any", Value: "float64"}
+	case "AnyGeometryCollection":
+		return Collection{Name: n, Key: "any", Value: "Geometry"}
 	case "AnyRenderableCollection":
 		return Collection{Name: n, Key: "any", Value: "Renderable"}
 	case "FeatureIDStringCollection":
@@ -137,6 +141,7 @@ func generateAPI() error {
 
 	// Force inclusion of parent types that aren't used in functions
 	types[reflect.TypeOf((*api.AreaCollection)(nil)).Elem()] = struct{}{}
+	types[reflect.TypeOf((*api.IntFeatureIDCollection)(nil)).Elem()] = struct{}{}
 
 	for t := range types {
 		if t.Implements(CollectionType) {
