@@ -54,6 +54,15 @@ html {
     -webkit-text-size-adjust: 100%;
 }
 
+a {
+    text-decoration: inherit;
+    color: inherit;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
 #map {
     position: absolute;
     top: 0px;
