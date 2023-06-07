@@ -435,6 +435,52 @@ function elementPosition(element) {
     return [+element.style("left").replace("px", ""), +element.style("top").replace("px", "")];
 }
 
+function lookupGeoJSONStyles() {
+    const palette = d3.select("body").selectAll(".geojson-palette").data([1]).join(
+        enter => {
+            const palette = enter.append("svg").classed("geojson-palette", true);
+            palette.append("g").classed("geojson-palette-point", true);
+            palette.append("g").classed("geojson-palette-path", true);
+            palette.append("g").classed("geojson-palette-area", true);
+            return palette;
+        },
+    );
+    const pointStyle = getComputedStyle(palette.select(".geojson-palette-point").node());
+    const pathStyle = getComputedStyle(palette.select(".geojson-palette-path").node());
+    const areaStyle = getComputedStyle(palette.select(".geojson-palette-area").node());
+    return [pointStyle, pathStyle, areaStyle];
+}
+
+class BlockResources {
+    constructor(block, map) {
+        if (block.GeoJSON) {
+            const [point, path, area] = lookupGeoJSONStyles();
+            const [source, layer] = newGeoJSONSourceAndLayer(point, path, area);
+            const features = new GeoJSONFormat().readFeatures(block.GeoJSON, {
+                dataProjection: "EPSG:4326",
+                featureProjection: map.getView().getProjection(),
+            });
+            source.addFeatures(features);
+            this.layer = layer;
+            map.addLayer(this.layer);
+
+            const blob = new Blob([JSON.stringify(block.GeoJSON, null, 2)], {
+                type: "application/json",
+            });
+            this.blobURL = URL.createObjectURL(blob);
+        }
+    }
+
+    remove(map) {
+        if (this.layer) {
+            map.removeLayer(this.layer);
+        }
+        if (this.blobURL) {
+            URL.revokeObjectURL(this.blobURL);
+        }
+    }
+}
+
 class Blocks {
     constructor(map) {
         this.map = map;
@@ -442,30 +488,6 @@ class Blocks {
         this.html = d3.select("html");
         this.dragPointerOrigin = [0,0];
         this.dragElementOrigin = [0,0];
-        this.setupGeoJSONStyles();
-        this.addGeoJSONLayer();
-    }
-
-    setupGeoJSONStyles() {
-        const palette = d3.select("body").selectAll(".geojson-palette").data([1]).join(
-            enter => {
-                const palette = enter.append("svg").classed("geojson-palette", true);
-                palette.append("g").classed("geojson-palette-point", true);
-                palette.append("g").classed("geojson-palette-path", true);
-                palette.append("g").classed("geojson-palette-area", true);
-                return palette;
-            },
-        );
-        this.pointStyle = getComputedStyle(palette.select(".geojson-palette-point").node());
-        this.pathStyle = getComputedStyle(palette.select(".geojson-palette-path").node());
-        this.areaStyle = getComputedStyle(palette.select(".geojson-palette-area").node());
-    }
-
-    addGeoJSONLayer() {
-        const sl = newGeoJSONSourceAndLayer(this.pointStyle, this.pathStyle, this.areaStyle);
-        this.geoJSONSource = sl[0];
-        this.geoJSONLayer = sl[1];
-        this.map.addLayer(this.geoJSONLayer);
     }
 
     evaluateExpression(expression) {
@@ -514,23 +536,19 @@ class Blocks {
         )
         const blocks = this;
         const f = function(d) {
+            if (this.__block__) {
+                this.__block__.remove(blocks.map);
+            }
+            const resources = new BlockResources(d, blocks.map)
+            this.__block__ = resources;
             if (d.MapCenter) {
                 blocks.map.getView().animate({
                     center: fromLonLat([parseFloat(d.MapCenter[0]), parseFloat(d.MapCenter[1])]),
                     duration: 500,
                 });
             }
-            if (d.GeoJSON) {
-                blocks.geoJSONSource.clear();
-                const features = new GeoJSONFormat().readFeatures(d.GeoJSON, {
-                    dataProjection: "EPSG:4326",
-                    featureProjection: blocks.map.getView().getProjection(),
-                });
-                blocks.geoJSONSource.addFeatures(features);
-                blocks.geoJSONSource.changed();
-            }
             if (BlockRenderers[d.Type]) {
-                BlockRenderers[d.Type].apply(null, [d3.select(this), root, response, blocks]);
+                BlockRenderers[d.Type].apply(null, [d3.select(this), root, response, blocks, resources]);
             } else {
                 throw new Error(`No renderer for block ${d.Type}`);
             }
@@ -541,7 +559,6 @@ class Blocks {
     handleDragStart(event, root) {
         event.preventDefault();
         if (root.classed("featured-blocks")) {
-            this.addGeoJSONLayer();
             root.attr("class", "blocks");
         }
         this.dragging = root;
@@ -684,26 +701,37 @@ function renderGeometryBlock(geometry, units, block, root, response, blocks) {
     spans.join("span").attr("class", d => d.class).text(d => d.text);
 }
 
-function renderGeoJSONFeatureCollectionBlock(block, root, response, blocks) {
+function renderGeoJSONFeatureCollectionBlock(block, root, response, blocks, resources) {
     block.classed("top", true);
     block.classed("top-last", true);
     block.classed("geometry", true);
     const spans = block.selectAll("span").data(d => [
-        {class: `icon icon-area`, text: ""},
-        {class: "", text: `${d3.format("i")(d.Dimension)} GeoJSON ${d.Dimension == 1 ? "feature" : "features"}`},
+        {class: `icon icon-area`},
+        {class: "link"},
     ]);
-    spans.join("span").attr("class", d => d.class).text(d => d.text);
+    spans.join("span").attr("class", d => d.class);
+    const a = renderGeoJSONBlobLink(block.select(".link"), resources);
+    a.text(d => `${d3.format("i")(d.Dimension)} GeoJSON ${d.Dimension == 1 ? "feature" : "features"}`);
 }
 
-function renderGeoJSONFeatureBlock(block, root, response, blocks) {
+function renderGeoJSONFeatureBlock(block, root, response, blocks, resources) {
     block.classed("top", true);
     block.classed("top-last", true);
     block.classed("geometry", true);
     const spans = block.selectAll("span").data(d => [
-        {class: `icon icon-area`, text: ""},
-        {class: "", text: "GeoJSON feature"},
+        {class: `icon icon-area`},
+        {class: "link"},
     ]);
     spans.join("span").attr("class", d => d.class).text(d => d.text);
+    const a = renderGeoJSONBlobLink(block.select(".link"), resources);
+    a.text("GeoJSON feature");
+}
+
+function renderGeoJSONBlobLink(target, resources) {
+    const a = target.selectAll("a").data(d => [d]).join("a");
+    a.node().href = resources.blobURL;
+    a.node().download = "b6-result.geojson";
+    return a;
 }
 
 function renderTitleCountBlock(block, root, response, blocks) {
@@ -716,7 +744,6 @@ function renderTitleCountBlock(block, root, response, blocks) {
 }
 
 function renderCollectionBlock(block, root, response, blocks) {
-    console.log("renderCollectionBlock", block.datum());
     const title = block.selectAll(".title").data(d => [d.Title]).join("div").classed("title", true);
     blocks.renderBlock(title, root, response);
     const ul = block.selectAll("ul").data(d => [d]).join("ul");
