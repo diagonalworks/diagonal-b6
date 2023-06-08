@@ -5,10 +5,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"sort"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/apache/beam/sdks/go/pkg/beam/io/filesystem"
 )
@@ -38,13 +40,30 @@ func (m Mmapped) Close() error {
 	return syscall.Munmap(m.Data)
 }
 
+func formatBytes(b int) string {
+	suffixes := []struct {
+		basis int
+		unit  string
+	}{{1024 * 1024 * 1024, "Gb"}, {1024 * 1024, "Mb"}, {1024, "Kb"}}
+	for _, s := range suffixes {
+		if b >= s.basis {
+			return fmt.Sprintf("%.2f%s", float64(b)/float64(s.basis), s.unit)
+		}
+	}
+	return fmt.Sprintf("%db", b)
+}
+
+const ReadToMmappedBufferReports = 20 * time.Second
+
 // ReadToMmappedBuffer reads a (very large) file to a buffer created via mmap,
 // avoiding the Go garbage collector. Reading into a conventional slice causes
 // the structure to dominate the size of the heap, reducing the effectiveness of
 // garbage collecting shorter lived objects.
-func ReadToMmappedBuffer(filename string, fs filesystem.Interface, ctx context.Context) (Mmapped, error) {
+func ReadToMmappedBuffer(filename string, fs filesystem.Interface, ctx context.Context, status chan<- string) (Mmapped, error) {
 	var m Mmapped
 	size, err := fs.Size(ctx, filename)
+	start := time.Now()
+	reported := start
 	if err == nil {
 		m.Data, err = syscall.Mmap(-1, 0, int(size), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_ANON|syscall.MAP_PRIVATE)
 		if err == nil {
@@ -59,12 +78,25 @@ func ReadToMmappedBuffer(filename string, fs filesystem.Interface, ctx context.C
 						break
 					}
 					buffer = buffer[n:]
+					if status != nil {
+						if d := time.Now().Sub(reported); d > ReadToMmappedBufferReports {
+							s := fmt.Sprintf("%s: %s, %d%%.", filename, formatBytes(len(m.Data)-len(buffer)), ((len(m.Data)-len(buffer))*100.0)/len(m.Data))
+							if len(buffer) != len(m.Data) {
+								rate := float64(len(m.Data)-len(buffer)) / float64(time.Now().Sub(start))
+								remaining := time.Duration(float64(len(buffer)) / rate)
+								s += fmt.Sprintf(" %s remaining.", remaining.Truncate(time.Minute).String())
+							}
+							status <- s
+							reported = time.Now()
+						}
+					}
 				}
 			}
 		}
 	}
 	if err != nil {
 		err = fmt.Errorf("can't read %s to mmapped buffer: %s", filename, err)
+		log.Println(err.Error())
 	}
 	return m, err
 }

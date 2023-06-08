@@ -906,6 +906,7 @@ type World struct {
 	byID    *FeaturesByID
 	indices []*Index
 	status  string
+	lock    sync.Mutex
 }
 
 func (w *World) FindFeatureByID(id b6.FeatureID) b6.Feature {
@@ -1017,6 +1018,9 @@ func NewWorldFromData(data []byte) (*World, error) {
 }
 
 func (w *World) Merge(data []byte) error {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
 	var header Header
 	header.Unmarshal(data)
 	if header.Magic != HeaderMagic {
