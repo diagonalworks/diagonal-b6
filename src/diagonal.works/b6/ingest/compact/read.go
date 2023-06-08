@@ -2,6 +2,7 @@ package compact
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -37,30 +38,22 @@ type toRead struct {
 	IsCompact  bool
 }
 
-func (t toRead) Read(w *World, lock *sync.Mutex, cores int, ctx context.Context) (b6.World, error) {
+func (t toRead) Read(w *World, status chan<- string, cores int, ctx context.Context) (b6.World, error) {
 	if t.IsCompact {
 		m, err := encoding.Mmap(t.Filename)
 		if err == nil {
-			lock.Lock()
-			defer lock.Unlock()
-			log.Printf("Memory map %s", t.Filename)
+			status <- fmt.Sprintf("Memory map %s", t.Filename)
 			return nil, w.Merge(m.Data)
 		} else {
-			lock.Lock()
-			log.Printf("Read %s", t.Filename)
-			lock.Unlock()
-			m, err := encoding.ReadToMmappedBuffer(t.Filename, t.Filesystem, ctx)
+			status <- fmt.Sprintf("Read %s", t.Filename)
+			m, err := encoding.ReadToMmappedBuffer(t.Filename, t.Filesystem, ctx, status)
 			if err == nil {
-				lock.Lock()
-				defer lock.Unlock()
-				return nil, w.Merge(m.Data)
+				w.Merge(m.Data)
 			}
 			return nil, err
 		}
 	} else {
-		lock.Lock()
-		log.Printf("Index PBF %s", t.Filename)
-		lock.Unlock()
+		status <- fmt.Sprintf("Index PBF %s", t.Filename)
 		pbf := pbfSource{
 			Filename: t.Filename,
 			FS:       t.Filesystem,
@@ -74,7 +67,7 @@ func (t toRead) Read(w *World, lock *sync.Mutex, cores int, ctx context.Context)
 func ReadWorld(input string, cores int) (b6.World, error) {
 	ctx := context.Background()
 	sources := strings.Split(input, ",")
-	tr := make([]toRead, 0)
+	trs := make([]toRead, 0)
 	toClose := make([]io.Closer, len(sources))
 
 	for i, s := range sources {
@@ -97,7 +90,7 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 			children = []string{s}
 		}
 		for _, child := range children {
-			tr = append(tr, toRead{
+			trs = append(trs, toRead{
 				Filename:   child,
 				Filesystem: fs,
 				IsCompact:  (hasCompactPrefix || !strings.HasSuffix(child, ".pbf")) && !hasOSMPRefix,
@@ -107,45 +100,31 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 
 	worlds := make([]b6.World, 0)
 	cw := NewWorld()
+	status := make(chan string)
 	var lock sync.Mutex
 
-	g, gc := errgroup.WithContext(ctx)
-	c := make(chan toRead)
-	for i := 0; i < cores; i++ {
+	g, _ := errgroup.WithContext(ctx)
+	for i := range trs {
+		tr := trs[i]
 		g.Go(func() error {
-			for {
-				select {
-				case <-gc.Done():
-					return nil
-				case t, ok := <-c:
-					if ok {
-						w, err := t.Read(cw, &lock, cores, ctx)
-						if err == nil && w != nil {
-							lock.Lock()
-							worlds = append(worlds, w)
-							lock.Unlock()
-						}
-						return err
-					} else {
-						return nil
-					}
-				}
+			w, err := tr.Read(cw, status, cores, ctx)
+			if err == nil && w != nil {
+				lock.Lock()
+				worlds = append(worlds, w)
+				lock.Unlock()
 			}
+			return err
 		})
 	}
-	g.Go(func() error {
-		for _, t := range tr {
-			select {
-			case <-gc.Done():
-				return nil
-			case c <- t:
-			}
+	go func() {
+		for s := range status {
+			log.Println(s)
 		}
-		close(c)
-		return nil
-	})
+	}()
 
-	if err := g.Wait(); err != nil {
+	err := g.Wait()
+	close(status)
+	if err != nil {
 		return nil, err
 	}
 
