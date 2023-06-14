@@ -219,7 +219,7 @@ func (s *elevationSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx
 
 func main() {
 	inputFlag := flag.String("input", "", "Input directory with OS terrain data")
-	outputFlag := flag.String("output", "", "Input directory with OS terrain data")
+	outputFlag := flag.String("output", "", "Output directory with OS terrain data")
 	worldFlag := flag.String("world", "", "World to annotate with inclines")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	flag.Parse()
