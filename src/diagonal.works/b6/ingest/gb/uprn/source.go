@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -75,7 +77,10 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 	}
 	filtered := filter(s.Filter, emit, options, s.Context)
 	p, wait := ingest.ParalleliseEmit(filtered, goroutines, ctx)
-	err = s.read(r, p, columns, goroutines)
+	if err := s.read(r, p, columns, goroutines); err != nil {
+		wait()
+		return err
+	}
 	return wait()
 }
 
@@ -163,4 +168,95 @@ func filter(filter Filter, emit ingest.Emit, options ingest.ReadOptions, ctx *ap
 		}
 		return nil
 	}
+}
+
+// ClusterSourceS2Level is the S2 cell level used for clustering nearby UPRNs.
+// Level 25 has cells with edges around 30cm in length.
+const ClusterSourceS2Level = 25
+
+// ClusterSource returns single points for locations at which a number
+// of UPRNs are present.
+type ClusterSource struct {
+	UPRNs     ingest.FeatureSource // Usually uprn.Source, above, except for testing
+	centroids map[s2.CellID]uint16
+}
+
+func (s *ClusterSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.Context) error {
+	if !options.SkipPoints {
+		if s.centroids == nil {
+			if err := s.fillCentroids(options, ctx); err != nil {
+				return err
+			}
+		}
+
+		goroutines := options.Goroutines
+		if goroutines < 1 {
+			goroutines = 1
+		}
+		ps := make([]ingest.PointFeature, goroutines*2)
+		for i := range ps {
+			ps[i] = ingest.PointFeature{
+				PointID: b6.PointID{
+					Namespace: b6.NamespaceDiagonalUPRNCluster,
+				},
+				Tags: []b6.Tag{{Key: "#place", Value: "uprn_cluster"}, {Key: "uprn_cluster:size", Value: "0"}},
+			}
+		}
+		parallelised, wait := ingest.ParalleliseEmit(emit, goroutines, ctx)
+		clusters := 0
+		for c, count := range s.centroids {
+			slot := clusters % len(ps)
+			clusters++
+			ps[slot].PointID.Value = uint64(c)
+			ps[slot].Tags[1].Value = strconv.Itoa(int(count))
+			ps[slot].Location = c.LatLng()
+			if err := parallelised(&ps[slot], slot%goroutines); err != nil {
+				wait()
+				return err
+			}
+		}
+		return wait()
+	}
+	return nil
+}
+
+type byCellID []s2.CellID
+
+func (b byCellID) Len() int           { return len(b) }
+func (b byCellID) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b byCellID) Less(i, j int) bool { return b[i] < b[j] }
+
+func (s *ClusterSource) fillCentroids(options ingest.ReadOptions, ctx context.Context) error {
+	goroutines := options.Goroutines
+	if goroutines < 1 {
+		goroutines = 1
+	}
+	centroids := make([][]s2.CellID, goroutines)
+	for i := range centroids {
+		centroids[i] = make([]s2.CellID, 0, 1024)
+	}
+	addUprn := func(f ingest.Feature, goroutine int) error {
+		if p, ok := f.(*ingest.PointFeature); ok {
+			centroid := s2.CellIDFromLatLng(p.Location).Parent(ClusterSourceS2Level)
+			centroids[goroutine] = append(centroids[goroutine], centroid)
+		}
+		return nil
+	}
+	s.UPRNs.Read(options, addUprn, ctx)
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func(i int) {
+			defer wg.Done()
+			sort.Sort(byCellID(centroids[i]))
+		}(i)
+	}
+	wg.Wait()
+	s.centroids = make(map[s2.CellID]uint16, len(centroids[0])*goroutines)
+	for _, cs := range centroids {
+		for _, c := range cs {
+			s.centroids[c]++
+		}
+	}
+	return nil
 }

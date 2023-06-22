@@ -69,6 +69,20 @@ func TestParseExpression(t *testing.T) {
 			Begin: 0,
 			End:   13,
 		}},
+		{"LiteralSearchableTagWithToken", `#nhs:hospital=yes`, &pb.NodeProto{
+			Node: &pb.NodeProto_Literal{
+				Literal: &pb.LiteralNodeProto{
+					Value: &pb.LiteralNodeProto_TagValue{
+						TagValue: &pb.TagProto{
+							Key:   "#nhs:hospital",
+							Value: "yes",
+						},
+					},
+				},
+			},
+			Begin: 0,
+			End:   17,
+		}},
 		{"LiteralTagWithQuotes", `name="The Lighterman"`, &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
 				Literal: &pb.LiteralNodeProto{

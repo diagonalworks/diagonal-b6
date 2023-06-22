@@ -206,11 +206,6 @@ func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature) []*Fea
 	case b6.AreaFeature:
 		tfs = fillFeaturesFromArea(f, tags, tfs)
 	}
-	for _, tf := range tfs {
-		fillNameFromFeature(tf, f)
-		fillColourFromFeature(tf, f)
-		fillIDFromFeature(tf, f)
-	}
 	return tfs
 }
 
@@ -220,6 +215,7 @@ func fillFeaturesFromPoint(point b6.PointFeature, tags []b6.Tag, fs []*Feature) 
 	for _, t := range tags {
 		f.Tags[t.Key] = t.Value
 	}
+	fillTagsFromTags(f, point)
 	return append(fs, f)
 }
 
@@ -229,6 +225,7 @@ func fillFeaturesFromPath(path b6.PathFeature, tags []b6.Tag, fs []*Feature) []*
 	for _, t := range tags {
 		f.Tags[t.Key] = t.Value
 	}
+	fillTagsFromTags(f, path)
 	return append(fs, f)
 }
 
@@ -239,9 +236,16 @@ func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature) []*
 		for _, t := range tags {
 			f.Tags[t.Key] = t.Value
 		}
+		fillTagsFromTags(f, area)
 		fs = append(fs, f)
 	}
 	return fs
+}
+
+func fillTagsFromTags(tf *Feature, f b6.Feature) {
+	fillNameFromFeature(tf, f)
+	fillColourFromFeature(tf, f)
+	fillIDFromFeature(tf, f)
 }
 
 func fillNameFromFeature(tf *Feature, f b6.Feature) {

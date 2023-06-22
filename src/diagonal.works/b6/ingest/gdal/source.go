@@ -46,6 +46,10 @@ var (
 	UKONS2022IDStrategy IDStrategy = func(value string, i int, t b6.FeatureType, ns b6.Namespace) (b6.FeatureID, error) {
 		return b6.FeatureIDFromUKONSCode(value, 2022, t), nil
 	}
+
+	UKONS2023IDStrategy IDStrategy = func(value string, i int, t b6.FeatureType, ns b6.Namespace) (b6.FeatureID, error) {
+		return b6.FeatureIDFromUKONSCode(value, 2023, t), nil
+	}
 )
 
 const (

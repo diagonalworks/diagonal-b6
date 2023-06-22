@@ -424,6 +424,7 @@ const BlockRenderers = {
     "collection-feature": renderCollectionFeatureBlock,
     "collection-key-value": renderCollectionKeyValueBlock,
     "collection-feature-key": renderCollectionFeatureKeyBlock,
+    "collection-key-or-value": renderCollectionKeyOrValueBlock,
     "shell": renderShellBlock,
     "error": renderStringBlock,
     "placeholder": renderPlaceholderBlock,
@@ -781,6 +782,15 @@ function renderCollectionFeatureKeyBlock(block, root, response, blocks) {
         {class: "id", text: d.ID},
     ]);
     spans.join("span").attr("class", d => d.class).text(d => d.text);
+    block.filter(d => d.Expression).classed("clickable", true).on("click", (e, d) => {
+        e.preventDefault();
+        blocks.evaluateNode(d.Expression);
+    });
+}
+
+function renderCollectionKeyOrValueBlock(block, root, response, blocks) {
+    block.classed("top", true);
+    block.text(d => d.Value);
     block.filter(d => d.Expression).classed("clickable", true).on("click", (e, d) => {
         e.preventDefault();
         blocks.evaluateNode(d.Expression);
