@@ -23,6 +23,7 @@ import (
 func main() {
 	inputFlag := flag.String("input", "", "Input open UPRN CSV, gzipped")
 	outputFlag := flag.String("output", "", "Output index")
+	featuresFlag := flag.String("place", "uprn", "Output #place type: uprn or uprn_cluster")
 	boundingBoxFlag := flag.String("bounding-box", "", "lat,lng,lat,lng bounding box to crop points outside")
 	filterFlag := flag.String("filter", "", "A b6 shell expression for a function taking a point feature and returning a boolean")
 	joinFlag := flag.String("join", "", "Join tag values from a CSV")
@@ -70,13 +71,24 @@ func main() {
 		}
 	}
 
+	var toIndex ingest.FeatureSource
+	switch *featuresFlag {
+	case "uprn":
+		toIndex = source
+	case "uprn_cluster":
+		toIndex = &uprn.ClusterSource{UPRNs: source}
+	default:
+		fmt.Fprintln(os.Stderr, "Expected --features=uprn or --features=uprn_cluster")
+		os.Exit(1)
+	}
+
 	config := compact.Options{
 		OutputFilename:       *outputFlag,
 		Goroutines:           *cores,
 		WorkDirectory:        "",
 		PointsWorkOutputType: compact.OutputTypeMemory,
 	}
-	if err := compact.Build(source, &config); err != nil {
+	if err := compact.Build(toIndex, &config); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}

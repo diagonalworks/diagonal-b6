@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"diagonal.works/b6"
@@ -93,6 +94,42 @@ func (f *FeatureBlockJSON) Fill(feature b6.Feature, w b6.World) {
 	if p, ok := feature.(b6.PhysicalFeature); ok {
 		center := geojson.FromS2Point(b6.Center(p))
 		f.MapCenter = &center
+	}
+}
+
+func intLiteral(value int) *pb.NodeProto {
+	return &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_IntValue{
+					IntValue: int64(value),
+				},
+			},
+		},
+	}
+}
+
+func floatLiteral(value float64) *pb.NodeProto {
+	return &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_FloatValue{
+					FloatValue: value,
+				},
+			},
+		},
+	}
+}
+
+func stringLiteral(value string) *pb.NodeProto {
+	return &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_StringValue{
+					StringValue: value,
+				},
+			},
+		},
 	}
 }
 
@@ -295,17 +332,13 @@ func (b *CollectionKeyValueBlockJSON) Fill(key interface{}, value interface{}) {
 		block.Fill(f)
 		b.Key = &block
 	} else {
-		b.Key = StringBlockJSON{Type: "string", Value: fmt.Sprintf("%+v", key)}
+		var k CollectionKeyOrValueBlockJSON
+		k.Fill(key)
+		b.Key = &k
 	}
-	// TODO: Factor out when we rework blocks
-	switch value := value.(type) {
-	case int:
-		b.Value = IntBlockJSON{Type: "int", Value: value}
-	case float64:
-		b.Value = FloatBlockJSON{Type: "float", Value: value}
-	default:
-		b.Value = StringBlockJSON{Type: "string", Value: fmt.Sprintf("%+v", value)}
-	}
+	var v CollectionKeyOrValueBlockJSON
+	v.Fill(value)
+	b.Value = &v
 }
 
 type CollectionFeatureBlockJSON struct {
@@ -384,6 +417,37 @@ func (b *CollectionFeatureKeyBlockJSON) Fill(f b6.Identifiable) {
 	b.Namespace = LabelForNamespace(f.FeatureID().Namespace)
 	b.ID = fmt.Sprintf("%v", f.FeatureID().Value)
 	b.Expression = (*NodeJSON)(findFeatureExpression(f))
+}
+
+type CollectionKeyOrValueBlockJSON struct {
+	Type       string
+	Value      string
+	Expression *NodeJSON
+}
+
+func (b *CollectionKeyOrValueBlockJSON) Fill(v interface{}) {
+	b.Type = "collection-key-or-value"
+	// TODO: Factor out when we rework blocks
+	switch v := v.(type) {
+	case int:
+		b.Value = strconv.Itoa(v)
+		b.Expression = (*NodeJSON)(intLiteral(v))
+	case float64:
+		b.Value = fmt.Sprintf("%f", v)
+		b.Expression = (*NodeJSON)(floatLiteral(v))
+	case string:
+		b.Value = v
+		b.Expression = (*NodeJSON)(stringLiteral(v))
+	case b6.Tag:
+		b.Value = api.TagToExpression(v)
+		b.Expression = (*NodeJSON)(taggedQueryLiteral(v.Key, v.Value))
+	default:
+		b.Value = fmt.Sprintf("%+v", v)
+	}
+}
+
+func (b *CollectionKeyOrValueBlockJSON) BlockType() string {
+	return b.Type
 }
 
 type FloatBlockJSON struct {

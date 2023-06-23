@@ -313,7 +313,7 @@ func (l *lexer) lexTagKeyLiteral(yylval *yySymType) int {
 	i := l.Index + 1
 	for i < len(l.Expression) {
 		r, w := utf8.DecodeRuneInString(l.Expression[i:])
-		if !(unicode.IsLetter(r) || unicode.IsDigit(r)) {
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == ':') {
 			break
 		}
 		i += w

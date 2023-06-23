@@ -6,8 +6,10 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"runtime"
+	rpprof "runtime/pprof"
 	"sync"
 
 	b6grpc "diagonal.works/b6/grpc"
@@ -62,12 +64,18 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	ui.RegisterTiles(handler, w)
+	ui.RegisterTiles(handler, w, *coresFlag)
 
 	handler.HandleFunc("/healthy", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte("ok"))
 	}))
+
+	handler.HandleFunc("/i/pprof/", pprof.Index)
+	handler.HandleFunc("/i/pprof/profile", pprof.Profile)
+	for _, p := range rpprof.Profiles() {
+		handler.Handle(fmt.Sprintf("/i/pprof/%s", p.Name()), pprof.Handler(p.Name()))
+	}
 
 	var grpcServer *grpc.Server
 	var lock sync.RWMutex
