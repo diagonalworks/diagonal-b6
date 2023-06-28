@@ -16,6 +16,7 @@ import (
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
+	"diagonal.works/b6/renderer"
 	"github.com/golang/geo/s2"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -235,12 +236,13 @@ type CollectionBlockJSON struct {
 }
 
 const CollectionBlockItemLimit = 200
+const CollectionBlockHighlightLimit = 10000
 
 func (f CollectionBlockJSON) BlockType() string {
 	return f.Type
 }
 
-func (b *CollectionBlockJSON) Fill(c api.Collection, w b6.World) error {
+func (b *CollectionBlockJSON) Fill(c api.Collection, r *BlockResponseJSON, w b6.World) error {
 	count := -1
 	if countable, ok := c.(api.Countable); ok {
 		count = countable.Count()
@@ -256,18 +258,31 @@ func (b *CollectionBlockJSON) Fill(c api.Collection, w b6.World) error {
 	if isFeatureCollection(keys, values) || isArrayCollection(keys, values) {
 		for i := range values {
 			if f, ok := values[i].(b6.Feature); ok {
-				var item CollectionFeatureBlockJSON
-				item.Fill(f)
-				b.Items = append(b.Items, item)
+				if len(b.Items) < CollectionBlockItemLimit {
+					var item CollectionFeatureBlockJSON
+					item.Fill(f)
+					b.Items = append(b.Items, item)
+				}
+				r.Highlighted.Add(f.FeatureID())
 			} else {
-				b.Items = append(b.Items, StringBlockJSON{Type: "string", Value: fmt.Sprintf("%+v", values[i])})
+				if len(b.Items) < CollectionBlockItemLimit {
+					b.Items = append(b.Items, StringBlockJSON{Type: "string", Value: fmt.Sprintf("%+v", values[i])})
+				}
 			}
 		}
 	} else {
 		for i := range keys {
-			var item CollectionKeyValueBlockJSON
-			item.Fill(keys[i], values[i])
-			b.Items = append(b.Items, &item)
+			if len(b.Items) < CollectionBlockItemLimit {
+				var item CollectionKeyValueBlockJSON
+				item.Fill(keys[i], values[i])
+				b.Items = append(b.Items, &item)
+			}
+			if f, ok := keys[i].(b6.Identifiable); ok {
+				r.Highlighted.Add(f.FeatureID())
+			}
+			if f, ok := values[i].(b6.Identifiable); ok {
+				r.Highlighted.Add(f.FeatureID())
+			}
 		}
 	}
 	return nil
@@ -284,7 +299,7 @@ func fillKeyValues(c api.Collection, keys []interface{}, values []interface{}) (
 		}
 		keys = append(keys, i.Key())
 		values = append(values, i.Value())
-		if len(keys) >= CollectionBlockItemLimit {
+		if len(keys) >= CollectionBlockHighlightLimit {
 			break
 		}
 	}
@@ -439,7 +454,7 @@ func (b *CollectionKeyOrValueBlockJSON) Fill(v interface{}) {
 		b.Value = v
 		b.Expression = (*NodeJSON)(stringLiteral(v))
 	case b6.Tag:
-		b.Value = api.TagToExpression(v)
+		b.Value = api.UnparseTag(v)
 		b.Expression = (*NodeJSON)(taggedQueryLiteral(v.Key, v.Value))
 	default:
 		b.Value = fmt.Sprintf("%+v", v)
@@ -516,6 +531,13 @@ func (n *NodeJSON) UnmarshalJSON(b []byte) error {
 	return protojson.Unmarshal(b, (*pb.NodeProto)(n))
 }
 
+type FeatureIDSetJSON map[string][]string
+
+func (f FeatureIDSetJSON) Add(id b6.FeatureID) {
+	key := fmt.Sprintf("/%s/%s", id.Type.String(), id.Namespace.String())
+	f[key] = append(f[key], strconv.FormatUint(id.Value, 16))
+}
+
 type BlocksJSON []Block
 
 type BlockRequestJSON struct {
@@ -524,13 +546,16 @@ type BlockRequestJSON struct {
 }
 
 type BlockResponseJSON struct {
-	Blocks    BlocksJSON
-	Node      *NodeJSON
-	Functions []string
+	Blocks      BlocksJSON
+	Node        *NodeJSON
+	Functions   []string
+	Highlighted FeatureIDSetJSON
+	QueryLayers []string
 }
 
 type BlockHandler struct {
 	World            ingest.MutableWorld
+	RenderRules      renderer.RenderRules
 	Cores            int
 	FunctionSymbols  api.FunctionSymbols
 	FunctionWrappers api.FunctionWrappers
@@ -538,7 +563,7 @@ type BlockHandler struct {
 
 func (b *BlockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	request := BlockRequestJSON{Node: &NodeJSON{}}
-	response := BlockResponseJSON{Node: &NodeJSON{}}
+	response := BlockResponseJSON{Node: &NodeJSON{}, Highlighted: make(FeatureIDSetJSON)}
 
 	if r.Method == "GET" {
 		request.Expression = r.URL.Query().Get("e")
@@ -591,7 +616,7 @@ func (b *BlockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	response.Node = (*NodeJSON)(node)
 	result, err := api.Evaluate(node, &context)
 	if err == nil {
-		response.Blocks = fillBlocksFromResult(response.Blocks, result, b.World)
+		fillResponseFromResult(&response, result, b.RenderRules, b.World)
 		response.Functions = fillMatchingFunctionSymbols(response.Functions, result, b.FunctionSymbols)
 	} else {
 		response.Blocks = fillBlocksFromError(response.Blocks, err)
@@ -644,31 +669,37 @@ func fillBlocksFromExpression(blocks BlocksJSON, node *pb.NodeProto, root bool) 
 	return blocks
 }
 
-func fillBlocksFromResult(blocks BlocksJSON, result interface{}, w b6.World) BlocksJSON {
+func fillResponseFromResult(response *BlockResponseJSON, result interface{}, rules renderer.RenderRules, w b6.World) {
 	if i, ok := api.ToInt(result); ok {
-		blocks = append(blocks, IntBlockJSON{Type: "int-result", Value: i})
+		response.Blocks = append(response.Blocks, IntBlockJSON{Type: "int-result", Value: i})
 	} else if f, ok := api.ToFloat(result); ok {
-		blocks = append(blocks, FloatBlockJSON{Type: "float-result", Value: f})
+		response.Blocks = append(response.Blocks, FloatBlockJSON{Type: "float-result", Value: f})
 	} else {
 		switch r := result.(type) {
 		case b6.Feature:
 			block := FeatureBlockJSON{Type: "feature"}
 			block.Fill(r, w)
-			blocks = append(blocks, block)
+			response.Blocks = append(response.Blocks, block)
+			response.Highlighted.Add(r.FeatureID())
 		case b6.Tag:
-			blocks = append(blocks, StringBlockJSON{Type: "string", Value: api.TagToExpression(r)})
+			response.Blocks = append(response.Blocks, StringBlockJSON{Type: "string-result", Value: api.UnparseTag(r)})
+			if !rules.IsRendered(r) {
+				if q, ok := api.UnparseQuery(b6.Tagged(r)); ok {
+					response.QueryLayers = append(response.QueryLayers, q)
+				}
+			}
 		case b6.Query:
 			if q, ok := api.UnparseQuery(r); ok {
-				blocks = append(blocks, StringBlockJSON{Type: "string", Value: q})
+				response.Blocks = append(response.Blocks, StringBlockJSON{Type: "string-result", Value: q})
 			} else {
-				blocks = append(blocks, StringBlockJSON{Type: "string", Value: "query"})
+				response.Blocks = append(response.Blocks, StringBlockJSON{Type: "string-result", Value: "query"})
 			}
 		case api.Collection:
 			block := CollectionBlockJSON{Type: "collection"}
-			if err := block.Fill(r, w); err == nil {
-				blocks = append(blocks, block)
+			if err := block.Fill(r, response, w); err == nil {
+				response.Blocks = append(response.Blocks, block)
 			} else {
-				blocks = fillBlocksFromError(blocks, err)
+				response.Blocks = fillBlocksFromError(response.Blocks, err)
 			}
 		case b6.Area:
 			block := GeometryBlockJSON{
@@ -678,39 +709,38 @@ func fillBlocksFromResult(blocks BlocksJSON, result interface{}, w b6.World) Blo
 			for i := 0; i < r.Len(); i++ {
 				block.Dimension += b6.AreaToMeters2(r.Polygon(i).Area())
 			}
-			blocks = append(blocks, block)
+			response.Blocks = append(response.Blocks, block)
 		case b6.Path:
 			block := GeometryBlockJSON{
 				Type:      "path",
 				GeoJSON:   r.ToGeoJSON(),
 				Dimension: b6.AngleToMeters(r.Polyline().Length()),
 			}
-			blocks = append(blocks, block)
+			response.Blocks = append(response.Blocks, block)
 		case *geojson.FeatureCollection:
 			block := GeometryBlockJSON{
 				Type:      "geojson-feature-collection",
 				GeoJSON:   r,
 				Dimension: float64(len(r.Features)),
 			}
-			blocks = append(blocks, block)
+			response.Blocks = append(response.Blocks, block)
 		case *geojson.Feature:
 			block := GeometryBlockJSON{
 				Type:    "geojson-feature",
 				GeoJSON: r,
 			}
-			blocks = append(blocks, block)
+			response.Blocks = append(response.Blocks, block)
 		case string:
-			blocks = append(blocks, StringBlockJSON{Type: "string-result", Value: r})
+			response.Blocks = append(response.Blocks, StringBlockJSON{Type: "string-result", Value: r})
 		case b6.Point:
 			block := PointBlockJSON{Type: "string-result", Value: pointToExpression(r.Point())}
 			center := geojson.FromS2Point(r.Point())
 			block.MapCenter = &center
-			blocks = append(blocks, block)
+			response.Blocks = append(response.Blocks, block)
 		default:
-			blocks = append(blocks, PlaceholderBlockJSON{Type: "placeholder", RawValue: fmt.Sprintf("%+v", r)})
+			response.Blocks = append(response.Blocks, PlaceholderBlockJSON{Type: "placeholder", RawValue: fmt.Sprintf("%+v", r)})
 		}
 	}
-	return blocks
 }
 
 func fillBlocksFromError(blocks BlocksJSON, err error) BlocksJSON {
@@ -737,6 +767,7 @@ func NewBlockHandler(w ingest.MutableWorld, cores int) *BlockHandler {
 	}
 	return &BlockHandler{
 		World:            w,
+		RenderRules:      renderer.BasemapRenderRules,
 		Cores:            cores,
 		FunctionSymbols:  local,
 		FunctionWrappers: functions.Wrappers(),

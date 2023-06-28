@@ -55,7 +55,7 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 }
 
 func RegisterTiles(root *http.ServeMux, w b6.World, cores int) {
-	base := &renderer.TileHandler{Renderer: &renderer.BasemapRenderer{World: w}}
+	base := &renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: renderer.BasemapRenderRules, World: w}}
 	root.Handle("/tiles/base/", base)
 	query := &renderer.TileHandler{Renderer: renderer.NewQueryRenderer(w, cores)}
 	root.Handle("/tiles/query/", query)

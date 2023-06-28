@@ -53,91 +53,83 @@ function waterwayWidth(resolution) {
     return scaleWidth(32.0, resolution);
 }
 
-function newGeoJSONSourceAndLayer(pointStyle, pathStyle, areaStyle) {
+function newGeoJSONStyle(state, styles) {
     const point = new Style({
         image: new Circle({
             radius: 4,
             stroke: new Stroke({
-                color: pointStyle["stroke"],
-                width: +pointStyle["stroke-width"].replace("px", ""),
+                color: styles["geojson-point"]["stroke"],
+                width: +styles["geojson-point"]["stroke-width"].replace("px", ""),
             }),
             fill: new Fill({
-                color: pointStyle["fill"],
+                color: styles["geojson-point"]["fill"],
             }),
         }),
     });
 
     const path = new Style({
         stroke: new Stroke({
-            color: pathStyle["stroke"],
-            width: +pointStyle["stroke-width"].replace("px", ""),
+            color: styles["geojson-path"]["stroke"],
+            width: +styles["geojson-path"]["stroke-width"].replace("px", ""),
         })
     });
 
     const area = new Style({
         stroke: new Stroke({
-            color: areaStyle["stroke"],
-            width: +areaStyle["stroke-width"].replace("px", ""),
+            color: styles["geojson-area"]["stroke"],
+            width: +styles["geojson-area"]["stroke-width"].replace("px", ""),
         }),
         fill: new Fill({
-            color: areaStyle["fill"],
+            color: styles["geojson-area"]["fill"],
         })
     })
 
-    const source = new VectorSource({
-       features: [],
-    })
-
-    const layer = new VectorLayer({
-        source: source,
-        style: function(feature, resolution) {
-            var s = point;
-            switch (feature.getGeometry().getType()) {
-                case "LineString":
-                case "MultiLineString":
-                    s = path;
-                case "Polygon":
-                case "MultiPolygon":
-                    s = area;
-            }
-            var cloned = false;
-            const label = feature.get("name") || feature.get("label");
-            if (label) {
+    return function(feature, resolution) {
+        var s = point;
+        switch (feature.getGeometry().getType()) {
+            case "LineString":
+            case "MultiLineString":
+                s = path;
+            case "Polygon":
+            case "MultiPolygon":
+                s = area;
+        }
+        var cloned = false;
+        const label = feature.get("name") || feature.get("label");
+        if (label) {
+            s = s.clone();
+            cloned = true;
+            s.setText(new Text({
+                text: label,
+                textAlign: "left",
+                offsetX: 6,
+                offsetY: 1,
+                font: '"Roboto" 12px',
+            }));
+        }
+        if (feature.get("-diagonal-stroke")) {
+            if (!cloned) {
                 s = s.clone();
                 cloned = true;
-                s.setText(new Text({
-                    text: label,
-                    textAlign: "left",
-                    offsetX: 6,
-                    offsetY: 1,
-                    font: '"Roboto" 12px',
-                }));
             }
-            if (feature.get("-diagonal-stroke")) {
-                if (!cloned) {
-                    s = s.clone();
-                    cloned = true;
-                }
-                if (s.getStroke()) {
-                    s.getStroke().setColor(feature.get("-diagonal-stroke"));
-                }
+            if (s.getStroke()) {
+                s.getStroke().setColor(feature.get("-diagonal-stroke"));
             }
-            if (feature.get("-diagonal-fill")) {
-                if (!cloned) {
-                    s = s.clone();
-                    cloned = true;
-                }
-                if (s.getFill()) {
-                    s.getFill().setColor(feature.get("-diagonal-fill"));
-                }
-            }
-            return s;
         }
-    })
-    return [source, layer];
+        if (feature.get("-diagonal-fill")) {
+            if (!cloned) {
+                s = s.clone();
+                cloned = true;
+            }
+            if (s.getFill()) {
+                s.getFill().setColor(feature.get("-diagonal-fill"));
+            }
+        }
+        return s;
+    }
 }
 
-function setupMap(state) {
+function setupMap(state, styles) {
     const zoom = new Zoom({
         zoomInLabel: "",
         zoomOutLabel: "",
@@ -295,18 +287,18 @@ function setupMap(state) {
         stroke: new Stroke({color: "#4f5a7d", width: 0.3})
     });
 
+    const highlightedBuildingFill = new Style({
+        fill: new Fill({color: styles["highlighted-area"]["fill"]}),
+        stroke: new Stroke({color: styles["highlighted-area"]["stroke"], width: 0.3})
+    });
+
     const buildings = new VectorTileLayer({
         source: baseSource,
         style: function(feature, resolution) {
             if (feature.get("layer") == "building") {
-                if (state.featureColours) {
-                    const colour = state.featureColours[idKeyFromFeature(feature)];
-                    if (colour) {
-                        return new Style({
-                            fill: new Fill({color: colour}),
-                            stroke: new Stroke({color: "#4f5a7d", width: 0.3})
-                        });
-                    }
+                const id = idKeyFromFeature(feature);
+                if (state.highlighted[id]) {
+                    return highlightedBuildingFill;
                 }
                 return buildingFill;
             }
@@ -374,14 +366,14 @@ function setupMap(state) {
 
     const searchableLayers = [buildings, roadOutlines, landuse, water];
 
-    const updateMap = () => {
+    const highlightChanged = () => {
         boundaries.changed();
         buildings.changed();
         roadFills.changed();
         points.changed();
     };
 
-    return [map, searchableLayers, updateMap];
+    return [map, searchableLayers, highlightChanged];
 }
 
 function lonLatToLiteral(ll) {
@@ -452,11 +444,71 @@ function lookupGeoJSONStyles() {
     return [pointStyle, pathStyle, areaStyle];
 }
 
-class BlockResources {
-    constructor(block, map) {
+function lookupStyles(names) {
+    const palette = d3.select("body").selectAll(".palette").data([1]).join("g");
+    palette.classed("palette", true);
+    const items = palette.selectAll("g").data(names).join("g");
+    items.attr("class", d => d);
+    const styles = {};
+    for (const i in names) {
+        styles[names[i]] = getComputedStyle(palette.select("." + names[i]).node());
+    }
+    return styles;
+}
+
+class RenderedResponse {
+    constructor(response, blocks) {
+        if (response.Highlighted) {
+            this.highlighted = response.Highlighted;
+            for (const i in this.highlighted) {
+                const values = this.highlighted[i];
+                for (const j in values) {
+                    blocks.addHighlight(i + "/" + values[j])
+                }
+            }
+        }
+        this.layers = []
+        if (response.QueryLayers) {
+            for (const i in response.QueryLayers) {
+                this.layers.push(blocks.addQueryLayer(response.QueryLayers[i]));
+            }
+        }
+    }
+
+    redrawHighlights() {
+        for (const i in this.layers) {
+            this.layers[i].changed();
+        }
+    }
+
+    remove(blocks) {        
+        for (const i in this.layers) {
+            blocks.removeLayer(this.layers[i]);
+        }
+        if (this.highlighted) {
+            for (const i in this.highlighted) {
+                const values = this.highlighted[i];
+                for (const j in values) {
+                    blocks.removeHighlight(i + "/" + values[j])
+                }
+            }
+        }
+        for (const i in this.layers) {
+            blocks.removeLayer(this.layers[i]);
+        }
+    }
+}
+
+class RenderedBlock {
+    constructor(block, map, geojsonStyle) {
         if (block.GeoJSON) {
-            const [point, path, area] = lookupGeoJSONStyles();
-            const [source, layer] = newGeoJSONSourceAndLayer(point, path, area);
+            const source = new VectorSource({
+                features: [],
+             })
+             const layer = new VectorLayer({
+                 source: source,
+                 style: geojsonStyle,
+             })
             const features = new GeoJSONFormat().readFeatures(block.GeoJSON, {
                 dataProjection: "EPSG:4326",
                 featureProjection: map.getView().getProjection(),
@@ -483,12 +535,18 @@ class BlockResources {
 }
 
 class Blocks {
-    constructor(map) {
+    constructor(map, state, queryStyle, geojsonStyle, highlightChanged) {
         this.map = map;
+        this.state = state;
+        this.queryStyle = queryStyle;
+        this.geojsonStyle = geojsonStyle;
+        this.basemapHighlightChanged = highlightChanged;
         this.dragging = null;
         this.html = d3.select("html");
         this.dragPointerOrigin = [0,0];
         this.dragElementOrigin = [0,0];
+        this.rendered = [];
+        this.needHighlightRedraw = false;
     }
 
     evaluateExpression(expression) {
@@ -513,18 +571,75 @@ class Blocks {
         });
     }
 
+    addHighlight(idKey) {
+        if (this.state.highlighted[idKey]) {
+            this.state.highlighted[idKey]++;
+        } else {
+            this.state.highlighted[idKey] = 1;
+        }
+        this.needHighlightRedraw = true;
+    }
+
+    removeHighlight(idKey) {
+        if (--this.state.highlighted[idKey] == 0) {
+            delete this.state.highlighted[idKey];
+        }
+        this.needHighlightRedraw = true;
+    }
+
+    redrawHighlights() {
+        for (const i in this.rendered) {
+            this.rendered[i].redrawHighlights();
+        }
+        this.basemapHighlightChanged();
+    }
+
+    addQueryLayer(query) {
+        const params = new URLSearchParams({"q": query});
+        const source = new VectorTileSource({
+            format: new MVT(),
+            url: "/tiles/query/{z}/{x}/{y}.mvt?" + params.toString(),
+            minZoom: 14,
+        });
+        const layer = new VectorTileLayer({
+            source: source,
+            style: this.queryStyle,
+        });
+        this.map.addLayer(layer);
+        return layer;
+    }
+
+    removeLayer(layer) {
+        this.map.removeLayer(layer);
+    }
+
     renderBlocks(response) {
         response.Blocks.push({Type: "shell"});
         const root = d3.select("body").selectAll(".featured-blocks").data([1]).join("div");        
         root.attr("class", "featured-blocks blocks");
         root.style("left",  `${BlocksOrigin[0]}px`);
         root.style("top", `${BlocksOrigin[1]}px`);
-        const blocks = root.selectAll(".block").data(response.Blocks).join("div");
-        blocks.attr("class", "block");
-        this.renderBlock(blocks, root, response);
+        const blocks = this;
+        const f = function(d) {
+            if (this.__rendered__) {
+                this.__rendered__.remove(blocks);
+                blocks.rendered = blocks.rendered.filter(r => r != this.__rendered__);
+            }
+            this.__rendered__ = new RenderedResponse(response, blocks);
+            blocks.rendered.push(this.__rendered__);
+        }
+        root.each(f);
+        const divs = root.selectAll(".block").data(response.Blocks).join("div");
+        divs.attr("class", "block");
+        this.renderBlock(divs, root, response);
+        if (this.needHighlightRedraw) {
+            this.redrawHighlights();
+            this.needHighlightRedraw = false;            
+        }
     }
 
-    renderBlock(target, root, response) {   
+    renderBlock(target, root, response) {
+        const blocks = this;
         const divs = target.selectAll(".block-container").data(d => [d], d => d.Type).join(
             enter => {
                 const div = enter.append("div");
@@ -534,14 +649,22 @@ class Blocks {
             update => {
                 return update;
             },
-        )
-        const blocks = this;
-        const f = function(d) {
-            if (this.__block__) {
-                this.__block__.remove(blocks.map);
+            exit => {
+                exit.each(function() {
+                    if (this.__rendered__) {
+                        this.__rendered__.remove(blocks.map);
+                        delete this.__rendered__;
+                    }
+                });
+                exit.remove();
             }
-            const resources = new BlockResources(d, blocks.map)
-            this.__block__ = resources;
+        )
+        const f = function(d) {
+            if (this.__rendered__) {
+                this.__rendered__.remove(blocks.map);
+            }
+            const rendered = new RenderedBlock(d, blocks.map, blocks.geojsonStyle);
+            this.__rendered__ = rendered;
             if (d.MapCenter) {
                 blocks.map.getView().animate({
                     center: fromLonLat([parseFloat(d.MapCenter[0]), parseFloat(d.MapCenter[1])]),
@@ -549,7 +672,7 @@ class Blocks {
                 });
             }
             if (BlockRenderers[d.Type]) {
-                BlockRenderers[d.Type].apply(null, [d3.select(this), root, response, blocks, resources]);
+                BlockRenderers[d.Type].apply(null, [d3.select(this), root, response, blocks, rendered]);
             } else {
                 throw new Error(`No renderer for block ${d.Type}`);
             }
@@ -681,6 +804,9 @@ function renderStringBlock(block, root, response, blocks) {
 function renderStringResultBlock(block, root, response, blocks) {
     renderStringBlock(block, root, response, blocks)
     block.classed("top-last", true);
+    block.on("mousedown", e => {
+        blocks.handleDragStart(e, root);
+    });
 }
 
 function renderAreaBlock(block, root, response, blocks) {
@@ -702,7 +828,7 @@ function renderGeometryBlock(geometry, units, block, root, response, blocks) {
     spans.join("span").attr("class", d => d.class).text(d => d.text);
 }
 
-function renderGeoJSONFeatureCollectionBlock(block, root, response, blocks, resources) {
+function renderGeoJSONFeatureCollectionBlock(block, root, response, blocks, rendered) {
     block.classed("top", true);
     block.classed("top-last", true);
     block.classed("geometry", true);
@@ -711,11 +837,11 @@ function renderGeoJSONFeatureCollectionBlock(block, root, response, blocks, reso
         {class: "link"},
     ]);
     spans.join("span").attr("class", d => d.class);
-    const a = renderGeoJSONBlobLink(block.select(".link"), resources);
+    const a = renderGeoJSONBlobLink(block.select(".link"), rendered);
     a.text(d => `${d3.format("i")(d.Dimension)} GeoJSON ${d.Dimension == 1 ? "feature" : "features"}`);
 }
 
-function renderGeoJSONFeatureBlock(block, root, response, blocks, resources) {
+function renderGeoJSONFeatureBlock(block, root, response, blocks, rendered) {
     block.classed("top", true);
     block.classed("top-last", true);
     block.classed("geometry", true);
@@ -724,13 +850,13 @@ function renderGeoJSONFeatureBlock(block, root, response, blocks, resources) {
         {class: "link"},
     ]);
     spans.join("span").attr("class", d => d.class).text(d => d.text);
-    const a = renderGeoJSONBlobLink(block.select(".link"), resources);
+    const a = renderGeoJSONBlobLink(block.select(".link"), rendered);
     a.text("GeoJSON feature");
 }
 
-function renderGeoJSONBlobLink(target, resources) {
+function renderGeoJSONBlobLink(target, rendered) {
     const a = target.selectAll("a").data(d => [d]).join("a");
-    a.node().href = resources.blobURL;
+    a.node().href = rendered.blobURL;
     a.node().download = "b6-result.geojson";
     return a;
 }
@@ -962,11 +1088,126 @@ function setupShell(target, blocks) {
     })
 }
 
-function setup(bootstrapResponse) {
-    const state = {};
-    const [map, searchableLayers, buildingsChanged] = setupMap(state);
+function newQueryStyle(state, styles) {
+    const point = new Style({
+        image: new Circle({
+            radius: 4,
+            stroke: new Stroke({
+                color: styles["query-point"]["stroke"],
+                width: +styles["query-point"]["stroke-width"].replace("px", ""),
+            }),
+        }),
+    });
 
-    const blocks = new Blocks(map);
+    const highlightedPoint = new Style({
+        image: new Circle({
+            radius: 4,
+            stroke: new Stroke({
+                color: styles["highlighted-point"]["stroke"],
+                width: +styles["highlighted-point"]["stroke-width"].replace("px", ""),
+            }),
+            fill: new Fill({
+                color: styles["highlighted-point"]["fill"],
+            }),
+        }),
+    });
+
+    const path = new Style({
+        stroke: new Stroke({
+            color: styles["query-path"]["stroke"],
+            width: +styles["query-path"]["stroke-width"].replace("px", ""),
+        })
+    });
+
+    const highlightedPath = new Style({
+        stroke: new Stroke({
+            color: styles["highlighted-path"]["stroke"],
+            width: +styles["highlighted-path"]["stroke-width"].replace("px", ""),
+        })
+    });
+
+    const area = new Style({
+        stroke: new Stroke({
+            color: styles["query-area"]["stroke"],
+            width: +styles["query-area"]["stroke-width"].replace("px", ""),
+        }),
+        fill: new Fill({
+            color: styles["query-area"]["fill"],
+        })
+    })
+
+    const highlightedArea = new Style({
+        stroke: new Stroke({
+            color: styles["highlighted-area"]["stroke"],
+            width: +styles["highlighted-area"]["stroke-width"].replace("px", ""),
+        }),
+        fill: new Fill({
+            color: styles["highlighted-area"]["fill"],
+        })
+    })
+
+    const boundary = new Style({
+        stroke: new Stroke({
+            color: styles["query-area"]["stroke"],
+            width: +styles["query-area"]["stroke-width"].replace("px", ""),
+        }),
+    })
+
+    const highlightedBoundary = new Style({
+        stroke: new Stroke({
+            color: styles["highlighted-area"]["stroke"],
+            width: +styles["highlighted-area"]["stroke-width"].replace("px", ""),
+        }),
+    })
+
+
+    return function(feature, resolution) {
+        if (feature.get("layer") != "background") {
+            const id = idKeyFromFeature(feature);
+            const highlighted = state.highlighted[id];
+            switch (feature.getGeometry().getType()) {
+                case "Point":
+                    return highlighted ? highlightedPoint : point;
+                case "LineString":
+                    return highlighted ? highlightedPath : path;
+                case "MultiLineString":
+                    return highlighted ? highlightedPath : path;
+                case "Polygon":
+                    if (feature.get("boundary")) {
+                        return highlighted ? highlightedBoundary : boundary;
+                    } else {
+                        return highlighted ? highlightedArea : area;
+                    }
+                case "MultiPolygon":
+                    if (feature.get("boundary")) {
+                        return highlighted ? highlightedBoundary : boundary;
+                    } else {
+                        return highlighted ? highlightedArea : area;
+                    }
+            }
+        }
+    }
+}
+
+const Styles = [
+    "highlighted-point",
+    "highlighted-path",
+    "highlighted-area",
+    "geojson-point",
+    "geojson-path",
+    "geojson-area",
+    "query-point",
+    "query-path",
+    "query-area",
+];
+
+function setup(bootstrapResponse) {
+    const state = {highlighted: {}};
+    const styles = lookupStyles(Styles);
+    const [map, searchableLayers, highlightChanged] = setupMap(state, styles);
+    const queryStyle = newQueryStyle(state, styles);
+    const geojsonStyle = newGeoJSONStyle(state, styles);
+    const blocks = new Blocks(map, state, queryStyle, geojsonStyle, highlightChanged);
     const html = d3.select("html");
     html.on("pointermove", e => {
         blocks.handlePointerMove(e);

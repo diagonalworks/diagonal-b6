@@ -46,7 +46,7 @@ func TestFeaturesHaveTagsForNamespaceAndID(t *testing.T) {
 	}
 
 	projection := b6.NewTileMercatorProjection(16)
-	r := BasemapRenderer{World: granarySquare}
+	r := BasemapRenderer{RenderRules: BasemapRenderRules, World: granarySquare}
 	tile, err := r.Render(projection.TileFromLatLng(s2.LatLngFromDegrees(51.53531, -0.12434)), &TileArgs{})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
@@ -101,7 +101,7 @@ func TestFeaturesAreOrderedByLayerTag(t *testing.T) {
 	}
 
 	projection := b6.NewTileMercatorProjection(16)
-	r := BasemapRenderer{World: mutable}
+	r := BasemapRenderer{RenderRules: BasemapRenderRules, World: mutable}
 	tile, err := r.Render(projection.TileFromLatLng(s2.LatLngFromDegrees(51.53531, -0.12434)), &TileArgs{})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)

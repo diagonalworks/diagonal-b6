@@ -151,7 +151,7 @@ func fillSpansFromFeatureID(id b6.FeatureID, abbreviate bool, spans []SpanJSON) 
 
 func fillSpansFromTag(t b6.Tag, spans []SpanJSON) []SpanJSON {
 	if t.IsValid() {
-		return append(spans, SpanJSON{Text: api.TagToExpression(t), Class: "literal"})
+		return append(spans, SpanJSON{Text: api.UnparseTag(t), Class: "literal"})
 	}
 	return append(spans, SpanJSON{Text: "tag", Class: "invalid"})
 }
