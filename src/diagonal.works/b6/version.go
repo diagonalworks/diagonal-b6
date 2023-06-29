@@ -16,7 +16,7 @@ import (
 // indicators of a, b or rc, since that's all Python allows.
 // For consistency, we tie the version of a backend and client library build
 // to this version, using AdvanceVersionFromGit.
-const ApiVersion = "0.0.2"
+const ApiVersion = "0.0.3"
 
 // BackendVersion is a semver 2.0.0 compliant version for the backend binary,
 // generated at build time by AdvanceVersionFromGit, and stamped into the
