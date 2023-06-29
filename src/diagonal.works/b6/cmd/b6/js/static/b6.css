@@ -363,6 +363,8 @@ li div.collection-feature {
 
 .block span.label {
     flex: 1 2 auto;
+    min-width: min-content;
+    padding-right: 4px;
     font-weight: 500;
     color: #20263b;
 }
@@ -464,23 +466,56 @@ li div.collection-feature {
     background: #ed968a;
 }
 
-.geojson-palette {
+.palette {
     display: none;
 }
 
-.geojson-palette-point {
+.palette > .highlighted-point {
+    stroke: #37589f;
+    fill: #5f8ef7;
+    stroke-width: 1;
+}
+
+.palette > .highlighted-path {
+    stroke: #37589f;
+    stroke-width: 2;
+}
+
+.palette > .highlighted-area {
+    stroke: #37589f;
+    stroke-width: 1;
+    fill: #93acf6;
+}
+
+.palette > .geojson-point {
     stroke: #ef8a6d;
     stroke-width: 1;
     fill: #f8d6bf;
 }
 
-.geojson-palette-path {
+.palette > .geojson-path {
     stroke: #ef8a6d;
     stroke-width: 2;
 }
 
-.geojson-palette-area {
+.palette > .geojson-area {
     stroke: #ef8a6d;
     stroke-width: 1;
     fill: #f8d6bf;
+}
+
+.palette > .query-point {
+    stroke: #4f5a7d;
+    stroke-width: 1;
+}
+
+.palette > .query-path {
+    stroke: #4f5a7d;
+    stroke-width: 2;
+}
+
+.palette > .query-area {
+    stroke: #4f5a7d;
+    stroke-width: 1;
+    fill: #ffffff;
 }

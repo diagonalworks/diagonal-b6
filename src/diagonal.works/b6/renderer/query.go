@@ -10,16 +10,32 @@ import (
 )
 
 type QueryRenderer struct {
+	rules RenderRules
 	world b6.World
 	cores int
 	fs    api.FunctionSymbols
 	fw    api.FunctionWrappers
 }
 
-const QueryRendererMaxFeaturesPerTile = 1000
+// QueryRenderRules is used to fill in an tile feature attributre
+// describing the type of the feature, similar to BasemapRenderer
+var QueryRenderRules = RenderRules{
+	{Tag: b6.Tag{Key: "#amenity"}},
+	{Tag: b6.Tag{Key: "#boundary"}},
+	{Tag: b6.Tag{Key: "#highway"}},
+	{Tag: b6.Tag{Key: "#landuse"}},
+	{Tag: b6.Tag{Key: "#natural"}},
+	{Tag: b6.Tag{Key: "#place"}},
+	{Tag: b6.Tag{Key: "#railway"}},
+	{Tag: b6.Tag{Key: "#water"}},
+	{Tag: b6.Tag{Key: "#waterway"}},
+}
+
+const QueryRendererMaxFeaturesPerTile = 10000
 
 func NewQueryRenderer(w b6.World, cores int) *QueryRenderer {
 	return &QueryRenderer{
+		rules: QueryRenderRules,
 		world: w,
 		cores: cores,
 		fs:    functions.Functions(),
@@ -56,28 +72,33 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 	bounds := tile.RectBound()
 	features := r.world.FindFeatures(b6.Intersection{q, b6.MightIntersect{Region: bounds}})
 	rendered := make([]*Feature, 0, 4)
-	var tags [1]b6.Tag
-	tags[0].Key = "v"
 	n := 0
+	tags := make([]b6.Tag, 0, 4)
 	for features.Next() {
+		f := features.Feature()
+		tags = tags[0:0]
+		for _, rule := range r.rules {
+			if t := f.Get(rule.Tag.Key); t.IsValid() && (rule.Tag.Value == "" || t.Value == rule.Tag.Value) {
+				tags = append(tags, b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value})
+				break
+			}
+		}
 		if fv != nil {
-			if v, err := fv(features.Feature()); err == nil {
+			if v, err := fv(f); err == nil {
 				switch v := v.(type) {
 				case int:
-					tags[0].Value = fmt.Sprintf("%d", v)
+					tags = append(tags, b6.Tag{Key: "v", Value: fmt.Sprintf("%d", v)})
 				case string:
-					tags[0].Value = v
+					tags = append(tags, b6.Tag{Key: "v", Value: v})
 				case fmt.Stringer:
-					tags[0].Value = v.String()
-				default:
-					tags[0].Value = ""
+					tags = append(tags, b6.Tag{Key: "v", Value: v.String()})
 				}
-				rendered = FillFeaturesFromFeature(features.Feature(), tags[0:], rendered)
+				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered)
 			} else {
-				rendered = FillFeaturesFromFeature(features.Feature(), tags[0:0], rendered)
+				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered)
 			}
 		} else {
-			rendered = FillFeaturesFromFeature(features.Feature(), tags[0:0], rendered)
+			rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered)
 		}
 		n++
 		if n > QueryRendererMaxFeaturesPerTile {

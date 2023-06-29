@@ -819,7 +819,7 @@ func EscapeTagValue(v string) string {
 	return v
 }
 
-func TagToExpression(t b6.Tag) string {
+func UnparseTag(t b6.Tag) string {
 	return EscapeTagKey(t.Key) + "=" + EscapeTagValue(t.Value)
 }
 
@@ -834,9 +834,9 @@ func unparseQuery(q b6.Query) (string, bool) {
 	// TODO: Escape query literals properly
 	switch q := q.(type) {
 	case b6.Tagged:
-		return TagToExpression(b6.Tag(q)), true
+		return UnparseTag(b6.Tag(q)), true
 	case b6.Keyed:
-		return "[" + q.Key + "]", true
+		return q.Key, true
 	case b6.Intersection:
 		qs := make([]string, len(q))
 		for i := range q {
@@ -932,7 +932,7 @@ func unparseLiteral(l *pb.LiteralNodeProto) (string, bool) {
 	case *pb.LiteralNodeProto_FloatValue:
 		return fmt.Sprintf("%.2f", l.FloatValue), true
 	case *pb.LiteralNodeProto_TagValue:
-		return TagToExpression(b6.Tag{Key: l.TagValue.Key, Value: l.TagValue.Value}), true
+		return UnparseTag(b6.Tag{Key: l.TagValue.Key, Value: l.TagValue.Value}), true
 	case *pb.LiteralNodeProto_FeatureIDValue:
 		id := b6.NewFeatureIDFromProto(l.FeatureIDValue)
 		return UnparseFeatureID(id, true), true
