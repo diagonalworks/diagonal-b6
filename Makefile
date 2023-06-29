@@ -102,7 +102,7 @@ python-test: python b6-backend
 test: proto-go src/diagonal.works/b6/api/y.go
 	cd src/diagonal.works/b6; go test diagonal.works/b6/...
 
-docker: docker/Dockerfile.b6 docker/Dockerfile.ci
+docker: docker/Dockerfile.b6 docker/Dockerfile.b6-ci
 
 docker/Dockerfile.b6: docker/Dockerfile.b6-build.inc docker/Dockerfile.b6.inc
 

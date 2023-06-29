@@ -488,20 +488,20 @@ li div.collection-feature {
 }
 
 .palette > .geojson-point {
-    stroke: #ef8a6d;
+    stroke: #37589f;
+    fill: #5f8ef7;
     stroke-width: 1;
-    fill: #f8d6bf;
 }
 
 .palette > .geojson-path {
-    stroke: #ef8a6d;
+    stroke: #37589f;
     stroke-width: 2;
 }
 
 .palette > .geojson-area {
-    stroke: #ef8a6d;
+    stroke: #37589f;
     stroke-width: 1;
-    fill: #f8d6bf;
+    fill: #93acf6;
 }
 
 .palette > .query-point {
