@@ -1,3 +1,11 @@
+## v0.0.3: June 2023
+
+* Redesigned the web interface, adding the ability to show
+  multiple expression results at the same time, add features to
+  the basemap by tag, and highlight features returned from expressions.
+* Added reachability by public transit.
+* Added elevation penaltites to walking reachability.
+
 ## v0.0.2: May 2023
 
 * Add a version number to the b6 binary, and to index files.
