@@ -1,16 +1,17 @@
 # b6
 
 Bedrock, or [b6](https://diagonal.works/b6), is Diagonal's geospatial analysis
-engine. It reads a structured representation of the world into memory, and
+engine. It reads a compact representation of the world into memory, and
 makes it available for analysis, for example from a Python script or iPython
-notebook. It also provides a rudimentary web interface for exploring the
-available data. Communication between Python and b6 happens over
+notebook. It also provides a simple web interface for exploring data. Communication between Python and b6 happens over
 [GRPC](https://grpc.io).
 
 We use b6 for the analysis behind our
-[work for clients](http://diagonal.works/journal). Typically, we generate
-results for different scenarios as JSON, and load them into bespoke
-visualisations built with [d3](https://d3js.org/). We also directly embed
+[work for clients](http://diagonal.works/journal). We use the web interface
+to explore data at the outset of a project, before generating analysis
+results for different scenarios as JSON. We load these results into
+interactive visualisations and tools built with [d3](https://d3js.org/).
+When working with larger datasets, or building more complex tools, we embed
 the [Go library](src/diagonal.works/b6/world.go) into custom
 binaries to build tools that support dynamic analysis.
 
@@ -18,22 +19,23 @@ Working in the urban environment, the impact of the projects we support on
 the communities around them outlasts our own involvement. We have a duty to
 allow these communities to understand and build on our work beyond our time
 with the project. We open sourced b6 to enable this - and to comply with our
-[charter](http://diagonal.works/charter), which requires transparency.
+[charter](http://diagonal.works/charter), which requires our work to be
+ transparent.
 
 We built b6 for ourselves, and don't expect it to be useful for a wide range
-of people. We've also yet to write as much public documentation as we'd like.
+of people. We don't have as much public documentation as we'd like yet.
 However, if you do find it useful, or interesting, we'd be excited to [hear
 about what you're up to](mailto:hello@diagonal.works).
 
 ## Quickstart
 
-We provide a docker package for the b6 backend. Running:
+The simplest way to try b6 is with the docker package we provide:
 
 ```
 docker run -p 8001:8001 -p 8002:8002 europe-docker.pkg.dev/diagonal-public/b6/b6
 ```
 
-Will start an instance of the backend, with a web interface on port 8001, and
+This starts an instance of b6, with a web interface on port 8001, and
 a GRPC interface for analysis from Python on port 8002, hosting a small amount
 of data from OpenStreetMap for the area of London around
 [Diagonal's spiritual home](https://www.dishoom.com/kings-cross/). Viewing
@@ -45,19 +47,78 @@ To try out analysis, you'll need to install the Python client library, via:
 python -m pip install diagonal_b6
 ```
 
-Right now, the best (and only) documentation for analysis functionality are the [unit tests](python/diagonal_b6/b6_test.py).
+There's a [Python notebook](python/docs/01_Search.ipynb) that introduces the
+client library, and an overview b6 concepts in our
+[FOSS4G 2023 talk](https://diagonal.works/foss4g-2023). The
+[unit tests](python/diagonal_b6/b6_test.py) are the best place to discover the
+functions b6 provides, and see how they're used.
 
-In the web interface, a left click will recenter the
-map. Pressing backtick will drop down a terminal window. Shift click will
-tell you about the geographic feature at that location. Entering a lat, lng
-in the terminal will jump you to that location. Entering
-`find [#amenity=cafe] | take 10 | show` will highlight 10 cafe, as the terminal
-supports all the functionality available through Python. We've yet to properly
-document it publicly, however.
+## The web interface, and the b6 shell
+
+![The b6 web interface](python/docs/b6-screenshot.jpg)
+
+In the web interface, a left click will show a result window for the lat, lng
+of that location. Holding shift while left clicking will show a result window
+with the feature rendered on the map at that location. The result window can
+be dragged if you'd like to keep it around, otherwise it will be replaced by
+the next click.
+
+There's an input box labelled _b6_ at the bottom of each result window. We call
+this the b6 shell. The shell lets you enter a b6 function to run on the value
+shown in the result window. For example, clicking a point on the map to show
+the lat, lng and entering `sightline 300` will show an estimated viewshed
+polygon from that point, with a cutoff of 300m. The Python client library and
+the shell provide the same set of functions. 
+
+Pressing backtick will slide open a b6 shell that's not associated with a
+result. This is a good starting point for jumping to new locations and finding
+data. Entering `51.537028, -0.128169` will jump the map to a pocket park.
+
+You can search for features by tags that start with a `#`. For example,
+`find (tagged "#amenity" "bench")` will show places to sit. `find` returns
+feaures matching a query, and `tagged` returns a query that will match
+features by tag value. As searching is so common, the shell provides a shorthand
+for queries: `find [#amenity=bench]`. `find` will highlight the matching
+features on the map, if they're shown. A result window for a tag will add
+features with that tag to the map, so if you'd like to see benches, enter
+`#amenity=bench` (which is shorthand for `tag "#amenity" "bench"`), and drag
+the window to keep it around. (To close windows, you have to reload the UI -
+it's a work in progress!).
+
+We often restrict searches to a radius around a location.
+`find (and (intersecting-cap 51.537028, -0.128169 500) [#building])` will
+return buildings within 500m of the park.
+
+Nesting brackets in the shell quickly becomes tedious, so we provide a shorthand
+for piplining functions with `|`, which calls the next function the result of
+the current call as the first argument. `take (find [#amenity=bench]) 10`, which
+returns the first 10 benches ordered by ID, can be written as
+`find [#amenity=bench] | take 10`. When you use the shell at the bottom of
+a result window, you're adding to a pipeline that starts with the result in the
+window.
+
+## Ingesting data
+
+If you have a small amount of data you'd like to work with, in OSM PBF format,
+you can read it directly by putting in a directory by itself and replacing the
+`/world` directory in the image:
+
+```
+docker run -v /path/with/data:/world -p 8001:8001 -p 8002:8002 europe-docker.pkg.dev/diagonal-public/b6/b6
+```
+
+For larger datasets, or datasets in formats other than OSM PBF, you'll need to
+use one of the [ingestion tools](src/diagonal.works/b6/cmd) from either the
+docker image. These tools convert source data into a compact representation for
+efficient reading by the backend, that we call an index. `b6-ingest-osm` produces
+an index for OpenStreetMap data, while `b6-ingest-gdal` will produce an index for
+anything the GDAL library can ready. Our ingest tools aren't documented
+publicly yet.
 
 ## Building and running from source
 
-We depend on the [protocol buffer](https://protobuf.dev/) compiler, and
+You only need to build b6 from source if you're planning to change it. We
+depend on the [protocol buffer](https://protobuf.dev/) compiler, and
 [npm](https://www.npmjs.com/) at build time. To ingest and reproject data from
 shapefiles, we depend on [gdal](https://gdal.org/), though it's not required
 when working with OpenStreetMap, and we don't use it at run time. To install these on an Ubuntu based system, for example:
@@ -92,22 +153,6 @@ You can run the entire build inside a docker container with:
 make docker/Dockerfile.b6
 docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile.b6 .
 ```
-## Ingesting data
 
-If you have a small amount of data you'd like to work with, in OSM PBF format,
-you can read it directly by putting in a directory by itself and replacing the
-`/world` directory in the image:
-
-```
-docker run -v /path/with/data:/world -p 8001:8001 -p 8002:8002 europe-docker.pkg.dev/diagonal-public/b6/b6
-```
-
-For larger datasets, or datasets in formats other than OSM PBF, you'll need to
-use one of the [ingestion tools](src/diagonal.works/b6/cmd) from either the
-docker image. These tools convert source data into a compact representation for
-efficient reading by the backend, that we call an index. `b6-ingest-osm` produces
-an index for OpenStreetMap data, while `b6-ingest-gdal` will produce an index for
-anything the GDAL library can ready. Our ingest tools aren't documented
-publicly yet.
 
 
