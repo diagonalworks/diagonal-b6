@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"log"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"diagonal.works/b6"
@@ -138,13 +140,13 @@ func geometryToS2MultiPolygon(g gdal.Geometry) geometry.MultiPolygon {
 
 func geometryToS2Region(g gdal.Geometry) (s2.Region, error) {
 	switch g.Type() {
-	case gdal.GT_Point:
+	case gdal.GT_Point, gdal.GT_Point25D:
 		return geometryToS2Point(g), nil
-	case gdal.GT_LineString:
+	case gdal.GT_LineString, gdal.GT_LineString25D:
 		return geometryToS2Polyline(g), nil
-	case gdal.GT_Polygon:
+	case gdal.GT_Polygon, gdal.GT_Polygon25D:
 		return geometryToS2Polygon(g), nil
-	case gdal.GT_MultiPolygon:
+	case gdal.GT_MultiPolygon, gdal.GT_MultiPolygon25D:
 		return geometryToS2MultiPolygon(g), nil
 	}
 	return nil, fmt.Errorf("Can't convert geometry type %s", geometryTypeToString(g.Type()))
@@ -152,16 +154,92 @@ func geometryToS2Region(g gdal.Geometry) (s2.Region, error) {
 
 func geometryTypeToFeatureType(t gdal.GeometryType) (b6.FeatureType, error) {
 	switch t {
-	case gdal.GT_Point:
+	case gdal.GT_Point, gdal.GT_Point25D:
 		return b6.FeatureTypePoint, nil
-	case gdal.GT_LineString:
+	case gdal.GT_LineString, gdal.GT_LineString25D:
 		return b6.FeatureTypePath, nil
-	case gdal.GT_Polygon:
+	case gdal.GT_Polygon, gdal.GT_Polygon25D:
 		return b6.FeatureTypeArea, nil
-	case gdal.GT_MultiPolygon:
+	case gdal.GT_MultiPolygon, gdal.GT_MultiPolygon25D:
 		return b6.FeatureTypeArea, nil
 	}
 	return b6.FeatureTypeInvalid, fmt.Errorf("Can't convert geometry type %s", geometryTypeToString(t))
+}
+
+const batchTransformerBatchSize = 20000
+
+type batchTransformer struct {
+	Bounds           s2.Rect
+	CopyTags         []CopyTag
+	AddTags          []b6.Tag
+	JoinTags         ingest.JoinTags
+	Goroutines       int
+	Emit             ingest.Emit
+	SpatialReference gdal.SpatialReference
+	FeatureIndex     int
+
+	geometries  gdal.Geometry
+	originalIDs []string
+	b6IDs       []b6.FeatureID
+	tags        [][]b6.Tag
+}
+
+func (b *batchTransformer) Transform(g gdal.Geometry, originalID string, b6ID b6.FeatureID, tags []b6.Tag, ctx context.Context) error {
+	if b.geometries.IsNull() {
+		b.geometries = gdal.Create(gdal.GT_GeometryCollection)
+		b.geometries.SetSpatialReference(b.SpatialReference)
+	}
+	b.geometries.AddGeometry(g)
+	b.originalIDs = append(b.originalIDs, originalID)
+	b.b6IDs = append(b.b6IDs, b6ID)
+	b.tags = append(b.tags, tags)
+	if len(b.originalIDs) > batchTransformerBatchSize {
+		if err := b.Flush(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *batchTransformer) Flush(ctx context.Context) error {
+	if b.geometries.IsNull() {
+		return nil
+	}
+
+	wgs84 := gdal.CreateSpatialReference("")
+	if err := wgs84.FromEPSG(EPSGCodeWGS84); err != nil {
+		return err
+	}
+	b.geometries.TransformTo(wgs84)
+
+	for i := 0; i < b.geometries.GeometryCount(); i++ {
+		region, err := geometryToS2Region(b.geometries.Geometry(i))
+		if err == nil {
+			if !intersects(region.RectBound(), b.Bounds) {
+				continue
+			}
+			f := newFeatureFromS2Region(region)
+			f.SetFeatureID(b.b6IDs[i])
+			f.SetTags(b.tags[i])
+			for _, tag := range b.AddTags {
+				f.AddTag(tag)
+			}
+			b.JoinTags.AddTags(b.originalIDs[i], f)
+			err = b.Emit(f, b.FeatureIndex%b.Goroutines)
+			b.FeatureIndex++
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	b.geometries.Destroy()
+	b.geometries = gdal.Geometry{}
+	wgs84.Destroy()
+	b.originalIDs = b.originalIDs[0:0]
+	b.b6IDs = b.b6IDs[0:0]
+	b.tags = b.tags[0:0]
+	return nil
 }
 
 type CopyTag struct {
@@ -271,7 +349,11 @@ func (s *Source) makeCopyFields(d gdal.FeatureDefinition) (copyFields, copyField
 	for _, c := range s.CopyTags {
 		i := d.FieldIndex(c.Field)
 		if i < 0 {
-			return cfs, id, fmt.Errorf("No field named %q", c.Field)
+			found := make([]string, d.FieldCount())
+			for j := 0; j < d.FieldCount(); j++ {
+				found[j] = d.FieldDefinition(j).Name()
+			}
+			return cfs, id, fmt.Errorf("No field named %q; found: %s", c.Field, strings.Join(found, ","))
 		}
 		d := d.FieldDefinition(i)
 		cf := copyField{FieldName: d.Name(), FieldIndex: i, Key: c.Key, Type: d.Type()}
@@ -308,19 +390,10 @@ func (s *Source) makeCopyFields(d gdal.FeatureDefinition) (copyFields, copyField
 	return cfs, id, nil
 }
 
-// featureParts collects the geometries of all read features in a gdal
-// GeometryCollection, so we can transform them to WGS84 in a single call,
-// as the per-call overhead of Transform is high.
-type featureParts struct {
-	Geometries gdal.Geometry
-	IDs        []b6.FeatureID
-	RawIDs     []string
-	Tags       [][]b6.Tag
-}
-
 func shouldSkip(t gdal.GeometryType, options *ingest.ReadOptions) bool {
 	tt, err := geometryTypeToFeatureType(t)
 	if err != nil {
+		log.Printf("%s", err)
 		return true
 	}
 	switch tt {
@@ -334,51 +407,6 @@ func shouldSkip(t gdal.GeometryType, options *ingest.ReadOptions) bool {
 	return false
 }
 
-func (s *Source) readFeaturePartsFromLayer(layer gdal.Layer, firstIndex int, options *ingest.ReadOptions) (featureParts, error) {
-	parts := featureParts{Geometries: gdal.Create(gdal.GT_GeometryCollection)}
-	parts.Geometries.SetSpatialReference(layer.SpatialReference())
-
-	definition := layer.Definition()
-	copyTags, copyID, err := s.makeCopyFields(definition)
-	if err != nil {
-		return featureParts{}, err
-	}
-
-	i := firstIndex
-	for {
-		feature := layer.NextFeature()
-		if feature == nil {
-			break
-		}
-		if shouldSkip(feature.Geometry().Type(), options) {
-			continue
-		}
-		parts.Geometries.AddGeometry(feature.Geometry())
-		v, err := copyID.Value(feature)
-		if err == nil {
-			t, err := geometryTypeToFeatureType(feature.Geometry().Type())
-			if err == nil {
-				id, err := s.IDStrategy(v, i, t, s.Namespace)
-				if err == nil {
-					parts.RawIDs = append(parts.RawIDs, v)
-					parts.IDs = append(parts.IDs, id)
-				}
-			}
-
-		}
-		if err != nil {
-			return featureParts{}, err
-		}
-		if t, err := copyTags.Fill(feature, []b6.Tag{}); err == nil {
-			parts.Tags = append(parts.Tags, t)
-		} else {
-			return featureParts{}, err
-		}
-		i++
-	}
-	return parts, nil
-}
-
 func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.Context) error {
 	if options.Goroutines < 1 {
 		options.Goroutines = 1
@@ -386,49 +414,54 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 
 	source := gdal.OpenDataSource(s.Filename, 0)
 	defer source.Destroy()
-
-	parts := make([]featureParts, 0)
-	firstIndex := 0
-	for i := 0; i < source.LayerCount(); i++ {
-		layer := source.LayerByIndex(i)
-		if p, err := s.readFeaturePartsFromLayer(layer, firstIndex, &options); err == nil {
-			parts = append(parts, p)
-			firstIndex += p.Geometries.GeometryCount()
-		} else {
-			return err
-		}
-	}
-
 	parallelised, wait := ingest.ParalleliseEmit(emit, options.Goroutines, ctx)
 
-	wgs84 := gdal.CreateSpatialReference("")
-	if err := wgs84.FromEPSG(EPSGCodeWGS84); err != nil {
-		return err
-	}
-	emitted := 0
-	for _, p := range parts {
-		p.Geometries.TransformTo(wgs84)
-		for i := 0; i < p.Geometries.GeometryCount(); i++ {
-			region, err := geometryToS2Region(p.Geometries.Geometry(i))
-			if err == nil {
-				if !intersects(region.RectBound(), s.Bounds) {
-					continue
-				}
-				f := newFeatureFromS2Region(region)
-				f.SetFeatureID(p.IDs[i])
-				f.SetTags(p.Tags[i])
-				for _, tag := range s.AddTags {
-					f.AddTag(tag)
-				}
-				s.JoinTags.AddTags(p.RawIDs[i], f)
-				err = parallelised(f, emitted%options.Goroutines)
-				emitted++
+	featureIndex := 0
+	for i := 0; i < source.LayerCount(); i++ {
+		layer := source.LayerByIndex(i)
+		b := batchTransformer{
+			Bounds:           s.Bounds,
+			AddTags:          s.AddTags,
+			JoinTags:         s.JoinTags,
+			Goroutines:       options.Goroutines,
+			Emit:             parallelised,
+			SpatialReference: layer.SpatialReference(),
+			FeatureIndex:     featureIndex,
+		}
+		definition := layer.Definition()
+		copyTags, copyID, err := s.makeCopyFields(definition)
+		if err != nil {
+			return err
+		}
+		for {
+			feature := layer.NextFeature()
+			if feature == nil {
+				break
 			}
+			if shouldSkip(feature.Geometry().Type(), &options) {
+				continue
+			}
+			var originalID string
+			var b6ID b6.FeatureID
+			if originalID, err = copyID.Value(feature); err == nil {
+				var t b6.FeatureType
+				if t, err = geometryTypeToFeatureType(feature.Geometry().Type()); err == nil {
+					b6ID, err = s.IDStrategy(originalID, i, t, s.Namespace)
+				}
+			}
+			if err != nil {
+				return fmt.Errorf("can't make ID for feature from field %q with value %q: %s", copyID.FieldName, originalID, err)
+			}
+			tags, err := copyTags.Fill(feature, []b6.Tag{})
 			if err != nil {
 				return err
 			}
+			if err := b.Transform(feature.Geometry(), originalID, b6ID, tags, ctx); err != nil {
+				return err
+			}
 		}
-		p.Geometries.Destroy()
+		b.Flush(ctx)
+		featureIndex = b.FeatureIndex
 	}
 	return wait()
 }

@@ -382,21 +382,26 @@ func TestGeometryMixedEncoding(t *testing.T) {
 
 	var buffer [128]byte
 	n := g.Marshal(nt.Encode(b6.NamespaceOSMNode), buffer[0:])
-	var gg PathGeometryMixed
-	nn := gg.Unmarshal(nt.Encode(b6.NamespaceOSMNode), buffer[0:n])
-	if len(g.Points) != len(g.Points) {
-		t.Errorf("Expected length %d, found %d", len(g.Points), len(gg.Points))
+
+	gg, nn := UnmarshalPathGeometry(nt.Encode(b6.NamespaceOSMNode), buffer[0:n])
+	if gg.Len() != len(g.Points) {
+		t.Errorf("Expected length %d, found %d", len(g.Points), gg.Len())
 	} else {
 		for i := range g.Points {
-			if !reflect.DeepEqual(g.Points[i], gg.Points[i]) {
-				t.Errorf("Expected %+v, found %+v at index %d", g.Points[i], gg.Points[i], i)
+			if ll, ok := gg.LatLng(i); ok {
+				if ll != g.Points[i].LatLng {
+					t.Errorf("Expected latlng %v, found %v", g.Points[i].LatLng, ll)
+				}
+			} else if id, ok := gg.PointID(i); ok {
+				if id != g.Points[i].Reference {
+					t.Errorf("Expected reference %v, found %v", g.Points[i].Reference, id)
+				}
 			}
 		}
 	}
 	if n != nn {
 		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
 	}
-
 }
 
 func TestFullPointEncoding(t *testing.T) {

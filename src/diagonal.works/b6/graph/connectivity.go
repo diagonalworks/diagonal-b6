@@ -46,15 +46,23 @@ func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weigh
 		}
 		stack = stack[0:0]
 		seen := make(map[b6.SegmentKey]struct{})
-		segments := w.Traverse(path.Feature(0).PointID())
+		first := path.Feature(0)
+		if first == nil {
+			continue
+		}
+		segments := w.Traverse(first.PointID())
 		var origin s2.Point
 		for segments.Next() {
 			segment := segments.Segment()
 			if segment.Feature.FeatureID() == path.FeatureID() {
 				seen[segment.ToKey()] = struct{}{}
-				origin = segment.FirstFeature().Point()
-				stack = append(stack, segment.LastFeature())
-				break
+				if first := segment.FirstFeature(); first != nil {
+					origin = first.Point()
+					if last := segment.LastFeature(); last != nil {
+						stack = append(stack, last)
+						break
+					}
+				}
 			}
 		}
 
@@ -76,7 +84,9 @@ func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weigh
 							connected = true
 							break
 						} else {
-							stack = append(stack, segment.LastFeature())
+							if last := segment.LastFeature(); last != nil {
+								stack = append(stack, segment.LastFeature())
+							}
 							seen[segment.ToKey()] = struct{}{}
 						}
 					}

@@ -69,3 +69,55 @@ func ParalleliseEmit(emit Emit, goroutines int, ctx context.Context) (Emit, Wait
 	}
 	return parallelised, wait
 }
+
+// MergedSource reads from each of given Sources, reading as many in parallel as
+// the number of goroutines allows. The number of goroutines available to the
+// underlying Source is divided accordingly
+type MergedFeatureSource []FeatureSource
+
+func (m MergedFeatureSource) Read(options ReadOptions, emit Emit, ctx context.Context) error {
+	if len(m) == 0 {
+		return nil
+	}
+	if options.Goroutines < 1 {
+		options.Goroutines = 1
+	}
+	perFile := options
+	perFile.Goroutines /= len(m)
+	if perFile.Goroutines < 1 {
+		perFile.Goroutines = 1
+	}
+	g, gc := errgroup.WithContext(ctx)
+	c := make(chan FeatureSource)
+	for i := 0; i < options.Goroutines/perFile.Goroutines; i++ {
+		i := i
+		g.Go(func() error {
+			offset := func(f Feature, g int) error {
+				return emit(f, g+(i*perFile.Goroutines))
+			}
+			for {
+				select {
+				case <-gc.Done():
+					return nil
+				case s, ok := <-c:
+					if ok {
+						if err := s.Read(perFile, offset, ctx); err != nil {
+							return err
+						}
+					} else {
+						return nil
+					}
+				}
+			}
+		})
+	}
+	for _, s := range m {
+		select {
+		case <-gc.Done():
+			return g.Wait()
+		case c <- s:
+		}
+	}
+	close(c)
+	return g.Wait()
+}

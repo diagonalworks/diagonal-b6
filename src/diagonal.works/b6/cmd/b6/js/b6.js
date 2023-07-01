@@ -260,8 +260,9 @@ function setupMap(state, styles) {
             if (feature.get("layer") == "road") {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
+                    const id = idKeyFromFeature(feature);
                     if (state.featureColours) {
-                        const colour = state.featureColours[idKeyFromFeature(feature)];
+                        const colour = state.featureColours[id];
                         if (colour) {
                             return new Style({
                                 stroke: new Stroke({
@@ -271,12 +272,21 @@ function setupMap(state, styles) {
                             });
                         }
                     }
-                    return new Style({
-                        stroke: new Stroke({
-                            color: "#e1e1ee",
-                            width: width
-                        })
-                    });
+                    if (state.highlighted[id]) {
+                        return new Style({
+                            stroke: new Stroke({
+                                color: styles["highlighted-road-fill"]["stroke"],
+                                width: width
+                            })
+                        });
+                    } else {
+                        return new Style({
+                            stroke: new Stroke({
+                                color: styles["road-fill"]["stroke"],
+                                width: width
+                            })
+                        });
+                    }
                 }
             }
         },
@@ -1190,6 +1200,8 @@ function newQueryStyle(state, styles) {
 }
 
 const Styles = [
+    "road-fill",
+    "highlighted-road-fill",
     "highlighted-point",
     "highlighted-path",
     "highlighted-area",

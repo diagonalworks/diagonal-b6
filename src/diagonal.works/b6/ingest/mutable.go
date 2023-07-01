@@ -425,7 +425,10 @@ func (m *modifiedTagsPath) Get(key string) b6.Tag {
 }
 
 func (m *modifiedTagsPath) Feature(i int) b6.PointFeature {
-	return &modifiedTagsPoint{m.PathFeature.Feature(i), m.tags}
+	if f := m.PathFeature.Feature(i); f != nil {
+		return &modifiedTagsPoint{f, m.tags}
+	}
+	return nil
 }
 
 type modifiedTagsArea struct {
@@ -439,6 +442,17 @@ func (m *modifiedTagsArea) AllTags() []b6.Tag {
 
 func (m *modifiedTagsArea) Get(key string) b6.Tag {
 	return modifyTag(m.AreaFeature, key, m.tags[m.AreaFeature.FeatureID()])
+}
+
+func (m *modifiedTagsArea) Feature(i int) []b6.PathFeature {
+	if f := m.AreaFeature.Feature(i); f != nil {
+		wrapped := make([]b6.PathFeature, len(f))
+		for j, p := range f {
+			wrapped[j] = &modifiedTagsPath{p, m.tags}
+		}
+		return wrapped
+	}
+	return nil
 }
 
 type modifiedTagsRelation struct {

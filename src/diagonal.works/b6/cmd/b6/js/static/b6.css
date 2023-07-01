@@ -470,6 +470,14 @@ li div.collection-feature {
     display: none;
 }
 
+.palette > .road-fill {
+    stroke: #e1e1ee;
+}
+
+.palette > .highlighted-road-fill {
+    stroke: #37589f;
+}
+
 .palette > .highlighted-point {
     stroke: #37589f;
     fill: #5f8ef7;
