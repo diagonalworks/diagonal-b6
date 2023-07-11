@@ -251,7 +251,7 @@ func (l *lexer) Lex(yylval *yySymType) int {
 	case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
 		return l.lexSymbolLiteral(yylval)
 	}
-	l.Err = fmt.Errorf("Bad token %q", l.Expression[l.Index:])
+	l.Err = fmt.Errorf("bad token %q", l.Expression[l.Index:])
 	return eof
 }
 
@@ -279,7 +279,7 @@ func (l *lexer) lexStringLiteral(yylval *yySymType) int {
 			return STRING
 		}
 	}
-	l.Err = fmt.Errorf("Unterminated string constant")
+	l.Err = fmt.Errorf("unterminated string constant")
 	return eof
 }
 
@@ -313,7 +313,7 @@ func (l *lexer) lexTagKeyLiteral(yylval *yySymType) int {
 	i := l.Index + 1
 	for i < len(l.Expression) {
 		r, w := utf8.DecodeRuneInString(l.Expression[i:])
-		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == ':') {
+		if !isValidSymbolRune(r) {
 			break
 		}
 		i += w
@@ -337,12 +337,12 @@ func (l *lexer) lexNumericLiteral(yylval *yySymType) int {
 		r, w := utf8.DecodeRuneInString(l.Expression[i:])
 		if r == '-' {
 			if i != l.Index {
-				l.Err = fmt.Errorf("Unexpected -")
+				l.Err = fmt.Errorf("unexpected -")
 				return eof
 			}
 		} else if r == '.' {
 			if decimal {
-				l.Err = fmt.Errorf("Unexpected .")
+				l.Err = fmt.Errorf("unexpected .")
 				return eof
 			}
 			decimal = true
@@ -785,7 +785,7 @@ func EscapeTagKey(v string) string {
 	if v == "" {
 		return ""
 	}
-	escape := (v[0] < 'a' && v[0] > 'z') && (v[0] < 'A' && v[0] > 'Z') && v[0] != '#' && v[0] != '@'
+	escape := (v[0] < 'a' && v[0] > 'z') && (v[0] < 'A' && v[0] > 'Z') && v[0] != '_' && v[0] != '#' && v[0] != '@'
 	if !escape {
 		for _, r := range v[1:] {
 			if escape = !isValidSymbolRune(r); escape {
@@ -804,7 +804,7 @@ func EscapeTagValue(v string) string {
 	if v == "" {
 		return ""
 	}
-	escape := (v[0] < 'a' && v[0] > 'z') && (v[0] < 'A' && v[0] > 'Z')
+	escape := (v[0] < 'a' && v[0] > 'z') && (v[0] < 'A' && v[0] > 'Z') && v[0] != '_'
 	if !escape {
 		for _, r := range v[1:] {
 			if escape = !isValidSymbolRune(r); escape {
