@@ -87,7 +87,6 @@ func (f *FeatureBlockJSON) Fill(feature b6.Feature, w b6.World) {
 				b.Fill(point)
 				f.Points = append(f.Points, b)
 			} else {
-				f.Points = append(f.Points)
 				f.Points = append(f.Points, StringBlockJSON{Type: "string", Value: pointToExpression(path.Point(i))})
 			}
 		}

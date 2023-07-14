@@ -65,6 +65,25 @@ func (t *Tags) RemoveTag(key string) {
 	*t = (*t)[0:w]
 }
 
+func (t *Tags) RemoveTags(keys []string) {
+	w := 0
+	for r := range *t {
+		var i int
+		for i = 0; i < len(keys); i++ {
+			if (*t)[r].Key == keys[i] {
+				break
+			}
+		}
+		if i == len(keys) {
+			if w != r {
+				(*t)[w] = (*t)[r]
+			}
+			w++
+		}
+	}
+	*t = (*t)[0:w]
+}
+
 func (t Tags) AllTags() []b6.Tag {
 	return t
 }

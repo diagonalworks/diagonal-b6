@@ -1,13 +1,11 @@
 package main
 
 import (
-	"archive/zip"
 	"context"
 	"flag"
 	"fmt"
 	_ "net/http/pprof"
 	"os"
-	"path"
 	"runtime"
 	"strings"
 
@@ -15,7 +13,6 @@ import (
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
 	"diagonal.works/b6/ingest/gdal"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/golang/geo/s2"
 
@@ -29,116 +26,6 @@ var idStrategies = map[string]gdal.IDStrategy{
 	"hash":        gdal.HashIDStrategy,
 	"uk-ons-2011": gdal.UKONS2011IDStrategy,
 	"uk-ons-2022": gdal.UKONS2022IDStrategy,
-}
-
-type input interface {
-	FilenameForGDAL() string
-}
-
-type fileInput struct {
-	Filename string
-}
-
-func (f fileInput) FilenameForGDAL() string {
-	return f.Filename
-}
-
-type zipFileInput struct {
-	ZipFilename string
-	Filename    string
-}
-
-func (z zipFileInput) FilenameForGDAL() string {
-	return fmt.Sprintf("/vsizip/%s/%s", z.ZipFilename, z.Filename)
-}
-
-func isIngestable(filename string) bool {
-	return strings.HasSuffix(filename, ".shp") || strings.HasSuffix(filename, ".geojson")
-}
-
-func findInputs(filename string, zipped bool, recurse bool, inputs []input) ([]input, error) {
-	s, err := os.Stat(filename)
-	if err != nil {
-		// If we can't stat the file, it may be because it's a gdal virtual
-		// path, like /vsizip/....
-		return append(inputs, fileInput{Filename: filename}), nil
-	}
-	if strings.HasSuffix(filename, ".zip") {
-		if zipped {
-			f, err := os.Open(filename)
-			if err != nil {
-				return nil, fmt.Errorf("can't open %s: %s", filename, err)
-			}
-			z, err := zip.NewReader(f, s.Size())
-			for _, zf := range z.File {
-				if isIngestable(zf.Name) {
-					inputs = append(inputs, zipFileInput{ZipFilename: filename, Filename: zf.Name})
-				}
-			}
-			f.Close()
-		}
-	} else if s.IsDir() {
-		entries, err := os.ReadDir(filename)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %s", filename, err)
-		}
-		for _, entry := range entries {
-			var err error
-			inputs, err = findInputs(path.Join(filename, entry.Name()), zipped, recurse, inputs)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else if isIngestable(filename) {
-		inputs = append(inputs, fileInput{Filename: filename})
-	}
-	return inputs, nil
-}
-
-type mergedSource []*gdal.Source
-
-func (m mergedSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.Context) error {
-	if options.Goroutines < 1 {
-		options.Goroutines = 1
-	}
-	perFile := options
-	perFile.Goroutines /= len(m)
-	if perFile.Goroutines < 1 {
-		perFile.Goroutines = 1
-	}
-	g, gc := errgroup.WithContext(ctx)
-	c := make(chan *gdal.Source)
-	for i := 0; i < options.Goroutines/perFile.Goroutines; i++ {
-		i := i
-		g.Go(func() error {
-			offset := func(f ingest.Feature, g int) error {
-				return emit(f, g+(i*perFile.Goroutines))
-			}
-			for {
-				select {
-				case <-gc.Done():
-					return nil
-				case s, ok := <-c:
-					if ok {
-						if err := s.Read(perFile, offset, ctx); err != nil {
-							return err
-						}
-					} else {
-						return nil
-					}
-				}
-			}
-		})
-	}
-	for _, s := range m {
-		select {
-		case <-gc.Done():
-			return g.Wait()
-		case c <- s:
-		}
-	}
-	close(c)
-	return g.Wait()
 }
 
 func main() {
@@ -184,7 +71,7 @@ func main() {
 		}
 	}
 
-	inputs, err := findInputs(*inputFlag, *zippedFlag, *recurseFlag, []input{})
+	inputs, err := gdal.FindInputs(*inputFlag, *zippedFlag, *recurseFlag, []string{})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -220,10 +107,10 @@ func main() {
 		}
 	}
 
-	source := make(mergedSource, len(inputs))
+	source := make(ingest.MergedFeatureSource, len(inputs))
 	for i, ii := range inputs {
 		source[i] = &gdal.Source{
-			Filename:      ii.FilenameForGDAL(),
+			Filename:      ii,
 			Namespace:     b6.Namespace(*namespaceFlag),
 			IDField:       *idFlag,
 			IDStrategy:    strategy,

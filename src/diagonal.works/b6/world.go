@@ -119,6 +119,9 @@ const (
 	NamespaceUKONSBoundaries       Namespace = "statistics.gov.uk/datasets/regions"
 	NamespaceGBUPRN                Namespace = "ordnancesurvey.co.uk/uprn"
 	NamespaceGBOSTerrain50Contours Namespace = "ordnancesurvey.co.uk/terrain-50/contours"
+	NamespaceGBOSOpenRoadsLinks    Namespace = "ordnancesurvey.co.uk/os-open-roads/links"
+	NamespaceGBOSOpenRoadsNodes    Namespace = "ordnancesurvey.co.uk/os-open-roads/nodes"
+	NamespaceGBOSMapBuildings      Namespace = "www.ordnancesurvey.co.uk/os-open-map-local/buildings"
 	NamespaceGBCodePoint           Namespace = "ordnancesurvey.co.uk/code-point"
 
 	// For GTFS transport data.

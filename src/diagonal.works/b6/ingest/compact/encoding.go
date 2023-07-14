@@ -693,9 +693,9 @@ func MarshalGeometryEncodingAndLength(e GeometryEncoding, l int, buffer []byte) 
 	case GeometryEncodingReferences:
 		v = uint64(l) << 1
 	case GeometryEncodingLatLngs:
-		v = uint64(l)<<2 | 1
+		v = (uint64(l) << 2) | 1
 	case GeometryEncodingMixed:
-		v = uint64(l)<<2 | 3
+		v = (uint64(l) << 2) | 3
 	default:
 		panic("Unexpected GeometryEncoding")
 	}
@@ -845,7 +845,7 @@ func (g *PathGeometryMixed) LatLng(i int) (LatLng, bool) {
 }
 
 func (g *PathGeometryMixed) Marshal(primary Namespace, buffer []byte) int {
-	i := MarshalGeometryEncodingAndLength(GeometryEncodingLatLngs, len(g.Points), buffer)
+	i := MarshalGeometryEncodingAndLength(GeometryEncodingMixed, len(g.Points), buffer)
 	references := make(Bits, len(g.Points))
 	for j, r := range g.Points {
 		references[j] = r.Reference != ReferenceInvald

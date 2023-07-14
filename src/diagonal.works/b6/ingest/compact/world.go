@@ -272,10 +272,23 @@ func (m *marshalledPath) Len() int {
 }
 
 func (m *marshalledPath) Point(i int) s2.Point {
-	id := m.feature(i)
-	ll, ok := m.byID.FindLocationByID(id)
-	if !ok {
-		panic(fmt.Sprintf("Missing point %s", id))
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.fillGeometry()
+	var ll s2.LatLng
+	if r, ok := m.geometry.PointID(i); ok {
+		id := b6.MakePointID(m.fb.NamespaceTable.Decode(r.Namespace), r.Value)
+		var ok bool
+		ll, ok = m.byID.FindLocationByID(id)
+		if !ok {
+			panic(fmt.Sprintf("Missing point %s", id))
+		}
+	} else {
+		cll, ok := m.geometry.LatLng(i)
+		if !ok {
+			panic("Expected a latlng")
+		}
+		ll = cll.ToS2LatLng()
 	}
 	return s2.PointFromLatLng(ll)
 }

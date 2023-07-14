@@ -1372,6 +1372,83 @@ func TestPropagateModifiedTags(t *testing.T) {
 	}
 }
 
+func TestModifiedTagsOnPathWithPlainLatLngs(t *testing.T) {
+	base := NewBasicMutableWorld()
+
+	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
+	yumchaa := osmPoint(3790640853, 51.5355955, -0.1250640)
+
+	for _, p := range []*PointFeature{caravan, yumchaa} {
+		if err := base.AddPoint(p); err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	path := NewPathFeature(3)
+	path.PathID = FromOSMWayID(222021576)
+	path.SetPointID(0, caravan.PointID)
+	path.SetLatLng(1, s2.LatLngFromDegrees(51.535490, -0.125167))
+	path.SetPointID(2, yumchaa.PointID)
+
+	if err := base.AddPath(path); err != nil {
+		t.Error(err)
+		return
+	}
+
+	w := NewMutableTagsOverlayWorld(base)
+	w.AddTag(path.FeatureID(), b6.Tag{Key: "#highway", Value: "path"})
+
+	if path := b6.FindPathByID(path.PathID, w); path != nil {
+		if path.Feature(0).FeatureID() != caravan.FeatureID() {
+			t.Errorf("Expected ID %s, found %s", caravan.FeatureID(), path.Feature(0).FeatureID())
+		}
+		if path.Feature(1) != nil {
+			t.Errorf("Expected nil feature for lat, lng")
+		}
+	} else {
+		t.Errorf("Failed to find feature")
+	}
+}
+
+func TestModifiedTagsFeatureFromArea(t *testing.T) {
+	path := NewPathFeature(5)
+	path.PathID = FromOSMWayID(265714033)
+	path.SetLatLng(0, s2.LatLngFromDegrees(51.5369431, -0.1231868))
+	path.SetLatLng(1, s2.LatLngFromDegrees(51.5365692, -0.1230608))
+	path.SetLatLng(2, s2.LatLngFromDegrees(51.5365536, -0.1229421))
+	path.SetLatLng(3, s2.LatLngFromDegrees(51.5367378, -0.1229110))
+	path.SetLatLng(4, s2.LatLngFromDegrees(51.5369431, -0.1231868))
+
+	area := NewAreaFeature(1)
+	area.AreaID = AreaIDFromOSMWayID(265714033)
+	area.SetPathIDs(0, []b6.PathID{path.PathID})
+	area.AddTag(b6.Tag{Key: "#leisure", Value: "playground"})
+
+	base := NewBasicMutableWorld()
+	if err := base.AddPath(path); err != nil {
+		t.Errorf("Failed to add path: %s", err)
+		return
+	}
+	if err := base.AddArea(area); err != nil {
+		t.Errorf("Failed to add area: %s", err)
+		return
+	}
+
+	overlay := NewMutableOverlayWorld(base)
+	overlay.AddTag(path.FeatureID(), b6.Tag{Key: "barrier", Value: "fence"})
+
+	found := b6.FindAreaByID(area.AreaID, overlay)
+	if found == nil {
+		t.Errorf("Expected to find feature")
+		return
+	}
+
+	if b := found.Feature(0)[0].Get("barrier"); !b.IsValid() || b.Value != "fence" {
+		t.Error("Expected to find added tag value")
+	}
+}
+
 func TestSnapshot(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
 	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
