@@ -39,7 +39,7 @@ func newShortestPathSearch(origin b6.Feature, mode string, distance float64, fea
 	return s, nil
 }
 
-func ReachablePoints(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (api.PointFeatureCollection, error) {
+func reachablePoints(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.PointFeatureCollection, error) {
 	points := &api.ArrayPointFeatureCollection{Features: make([]b6.PointFeature, 0)}
 	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
 	if err == nil {
@@ -54,7 +54,7 @@ func ReachablePoints(origin b6.Feature, mode string, distance float64, query b6.
 	return points, nil
 }
 
-func FindReachableFeaturesWithPathStates(origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection, context *api.Context) (api.FeatureCollection, error) {
+func findReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (api.FeatureCollection, error) {
 	features := &api.ArrayFeatureCollection{Features: make([]b6.Feature, 0)}
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
@@ -99,12 +99,12 @@ func FindReachableFeaturesWithPathStates(origin b6.Feature, mode string, distanc
 	return features, err
 }
 
-func ReachableFeatures(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (api.FeatureCollection, error) {
-	return FindReachableFeaturesWithPathStates(origin, mode, distance, query, nil, context)
+func reachableFeatures(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.FeatureCollection, error) {
+	return findReachableFeaturesWithPathStates(context, origin, mode, distance, query, nil)
 }
 
-func ClosestFeature(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (b6.Feature, error) {
-	feature, _, err := findClosest(origin, mode, distance, query, context)
+func closestFeature(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Feature, error) {
+	feature, _, err := findClosest(context, origin, mode, distance, query)
 	return feature, err
 }
 
@@ -113,12 +113,12 @@ func ClosestFeature(origin b6.Feature, mode string, distance float64, query b6.Q
 // return a new primitive Route instance that described the route to that feature,
 // allowing distance to be derived. Neither are possible right now, so this is a
 // stopgap. TODO: Improve this API.
-func ClosestFeatureDistance(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (float64, error) {
-	_, distance, err := findClosest(origin, mode, distance, query, context)
+func closestFeatureDistance(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (float64, error) {
+	_, distance, err := findClosest(context, origin, mode, distance, query)
 	return distance, err
 }
 
-func findClosest(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (b6.Feature, float64, error) {
+func findClosest(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Feature, float64, error) {
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		// TODO: This expands the search everywhere up to the maximum distance, and we
@@ -152,7 +152,7 @@ func findClosest(origin b6.Feature, mode string, distance float64, query b6.Quer
 	return nil, 0.0, err
 }
 
-func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, query b6.Query, context *api.Context) (api.FeatureIDIntCollection, error) {
+func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.FeatureIDIntCollection, error) {
 	features := &api.ArrayFeatureIDIntCollection{Keys: make([]b6.FeatureID, 0), Values: make([]int, 0)}
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
@@ -199,7 +199,7 @@ func PathsToReachFeatures(origin b6.Feature, mode string, distance float64, quer
 	return features, err
 }
 
-func ReachableArea(origin b6.Feature, mode string, distance float64, context *api.Context) (float64, error) {
+func reachableArea(context *api.Context, origin b6.Feature, mode string, distance float64) (float64, error) {
 	area := 0.0
 	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
 	if err == nil {
@@ -215,7 +215,7 @@ func ReachableArea(origin b6.Feature, mode string, distance float64, context *ap
 	return area, err
 }
 
-func connect(a b6.PointFeature, b b6.PointFeature, c *api.Context) (ingest.Change, error) {
+func connect(c *api.Context, a b6.PointFeature, b b6.PointFeature) (ingest.Change, error) {
 	add := &ingest.AddFeatures{
 		IDsToReplace: map[b6.Namespace]b6.Namespace{b6.NamespacePrivate: b6.NamespaceDiagonalAccessPoints},
 	}
@@ -238,7 +238,7 @@ func connect(a b6.PointFeature, b b6.PointFeature, c *api.Context) (ingest.Chang
 	return add, nil
 }
 
-func connectToNetwork(feature b6.Feature, c *api.Context) (ingest.Change, error) {
+func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error) {
 	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
 	connections := graph.NewConnections()

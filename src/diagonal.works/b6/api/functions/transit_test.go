@@ -26,7 +26,7 @@ func TestFindReachablePoints(t *testing.T) {
 	}
 
 	query := b6.Tagged{Key: "#barrier", Value: "gate"}
-	collection, err := ReachablePoints(origin, "walk", 1000.0, query, &context)
+	collection, err := reachablePoints(&context, origin, "walk", 1000.0, query)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -66,7 +66,7 @@ func TestFindReachableFeatures(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	collection, err := ReachableFeatures(origin, "walk", 1000.0, b6.Keyed{"#amenity"}, &context)
+	collection, err := reachableFeatures(&context, origin, "walk", 1000.0, b6.Keyed{"#amenity"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -105,7 +105,7 @@ func TestPathsToReachFeatures(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	collection, err := PathsToReachFeatures(origin, "walk", 1000.0, b6.Keyed{"#amenity"}, &context)
+	collection, err := pathsToReachFeatures(&context, origin, "walk", 1000.0, b6.Keyed{"#amenity"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

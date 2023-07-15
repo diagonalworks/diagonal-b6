@@ -49,7 +49,7 @@ func (c *compactArrayStringCollection) Next() (bool, error) {
 var _ api.Collection = &compactArrayStringCollection{}
 var _ api.Countable = &compactArrayStringCollection{}
 
-func s2Points(area b6.Area, minLevel int, maxLevel int, context *api.Context) (api.StringPointCollection, error) {
+func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (api.StringPointCollection, error) {
 	coverer := s2.RegionCoverer{MinLevel: minLevel, MaxLevel: maxLevel}
 	cells := make(map[s2.CellID]struct{})
 	for i := 0; i < area.Len(); i++ {
@@ -66,7 +66,7 @@ func s2Points(area b6.Area, minLevel int, maxLevel int, context *api.Context) (a
 	return &api.ArrayPointCollection{Keys: keys, Values: values}, nil
 }
 
-func s2Grid(area b6.Area, level int, context *api.Context) (api.StringStringCollection, error) {
+func s2Grid(context *api.Context, area b6.Area, level int) (api.StringStringCollection, error) {
 	coverer := s2.RegionCoverer{MinLevel: level, MaxLevel: level}
 	cells := make(map[s2.CellID]struct{})
 	for i := 0; i < area.Len(); i++ {
@@ -82,7 +82,7 @@ func s2Grid(area b6.Area, level int, context *api.Context) (api.StringStringColl
 	return &compactArrayStringCollection{strings: tokens}, nil
 }
 
-func s2Covering(area b6.Area, minLevel int, maxLevel int, context *api.Context) (api.StringStringCollection, error) {
+func s2Covering(context *api.Context, area b6.Area, minLevel int, maxLevel int) (api.StringStringCollection, error) {
 	coverer := s2.RegionCoverer{MinLevel: minLevel, MaxLevel: maxLevel}
 	cells := make(s2.CellUnion, 0, 4)
 	for i := 0; i < area.Len(); i++ {
@@ -95,11 +95,11 @@ func s2Covering(area b6.Area, minLevel int, maxLevel int, context *api.Context) 
 	return &compactArrayStringCollection{strings: tokens}, nil
 }
 
-func s2Center(token string, context *api.Context) (b6.Point, error) {
+func s2Center(context *api.Context, token string) (b6.Point, error) {
 	return b6.PointFromS2Point(s2.CellIDFromToken(token).Point()), nil
 }
 
-func s2Polygon(token string, context *api.Context) (b6.Area, error) {
+func s2Polygon(context *api.Context, token string) (b6.Area, error) {
 	cell := s2.CellFromCellID(s2.CellIDFromToken(token))
 	points := make([]s2.Point, 4)
 	for i := range points {

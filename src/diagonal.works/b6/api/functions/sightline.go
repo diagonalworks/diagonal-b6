@@ -18,7 +18,7 @@ import (
 const verbose = false
 const verboseGeoJSON = false
 
-func sightline(from b6.Point, radius float64, context *api.Context) (b6.Area, error) {
+func sightline(context *api.Context, from b6.Point, radius float64) (b6.Area, error) {
 	return b6.AreaFromS2Polygon(Sightline(from.Point(), b6.MetersToAngle(radius), context.World)), nil
 }
 

@@ -6,7 +6,7 @@ import (
 	"diagonal.works/b6/ingest/compact"
 )
 
-func exportWorld(filename string, c *api.Context) (int, error) {
+func exportWorld(c *api.Context, filename string) (int, error) {
 	// TODO: Shouldn't return anything
 	source := ingest.WorldFeatureSource{World: c.World}
 	options := compact.Options{

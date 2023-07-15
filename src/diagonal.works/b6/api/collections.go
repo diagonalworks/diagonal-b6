@@ -634,7 +634,7 @@ var _ Countable = &ArrayTagCollection{}
 func FillMap(c Collection, toFill interface{}) error {
 	f := reflect.ValueOf(toFill)
 	if f.Kind() != reflect.Map {
-		return fmt.Errorf("expected a map, found %T", f)
+		return fmt.Errorf("expected a map, found %T", toFill)
 	}
 	kt := f.Type().Key()
 	vt := f.Type().Elem()

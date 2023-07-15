@@ -19,15 +19,45 @@ class Literal(Node):
     def to_literal_proto(self):
         raise NotImplementedError()
 
+class LiteralInt(Literal):
+
+    def __init__(self, v):
+        self.v = v
+
+    def to_literal_proto(self):
+        n = api_pb2.LiteralNodeProto()
+        n.intValue = self.v
+        return n
+
+class LiteralFloat(Literal):
+
+    def __init__(self, v):
+        self.v = v
+
+    def to_literal_proto(self):
+        n = api_pb2.LiteralNodeProto()
+        n.floatValue = self.v
+        return n
+
+class LiteralString(Literal):
+
+    def __init__(self, v):
+        self.v = v
+
+    def to_literal_proto(self):
+        n = api_pb2.LiteralNodeProto()
+        n.stringValue = self.v
+        return n
+
 class Symbol(Node):
 
     def __init__(self, name):
         self.name = name
 
     def to_node_proto(self):
-        node = api_pb2.NodeProto()
-        node.symbol = self.name
-        return node
+        n = api_pb2.NodeProto()
+        n.symbol = self.name
+        return n
 
 class Call(Node):
 
@@ -36,11 +66,12 @@ class Call(Node):
         self.args = args
 
     def to_node_proto(self):
-        node = api_pb2.NodeProto()
-        node.call.function.CopyFrom(self.function.to_node_proto())
+        n = api_pb2.NodeProto()
+        n.call.function.CopyFrom(self.function.to_node_proto())
         for arg in self.args:
-            node.call.args.add().CopyFrom(to_node_proto(arg))
-        return node
+            node = to_node(arg)
+            n.call.args.add().CopyFrom(node.to_node_proto())
+        return n
 
 class Lambda(Node):
 
@@ -56,7 +87,8 @@ class Lambda(Node):
         args = ["_%s_%d" % (name, id(n)) for name in inspect.signature(self.function).parameters]
         for arg in args:
             n.lambda_.args.append(arg)
-        n.lambda_.node.CopyFrom(to_node_proto(self.function(*[type(Symbol(name)) for (name, type) in zip(args, self.arg_types)])))
+        node = to_node(self.function(*[type(Symbol(name)) for (name, type) in zip(args, self.arg_types)]))
+        n.lambda_.node.CopyFrom(node.to_node_proto())
         return n
 
     def __call__(self, *args):
@@ -81,28 +113,40 @@ class Result(Node):
     def to_node_proto(self):
         return self.node.to_node_proto()
 
+class ListCollectionResult(Result):
+
+    @classmethod
+    def _values(cls):
+        return Result
+
+class DictCollectionResult(Result):
+
+    @classmethod
+    def _values(cls):
+        return Result
+
 class Placeholder(Node):
 
     def to_node_proto(self):
         raise Exception("Placeholder can't be converted to a proto")
 
-def to_node_proto(v):
+def to_node(v):
     if isinstance(v, Node):
-        return v.to_node_proto()
+        return v
     elif isinstance(v, int):
-       n = api_pb2.NodeProto()
-       n.literal.intValue = v
-       return n
+       return LiteralInt(v)
     elif isinstance(v, float):
-        n = api_pb2.NodeProto()
-        n.literal.floatValue = v
-        return n
+       return LiteralFloat(v)
     elif isinstance(v, str):
-        n = api_pb2.NodeProto()
-        n.literal.stringValue = v
-        return n
+       return LiteralString(v)
+    elif isinstance(v, list):
+        pairs = [Call(Symbol("pair"), [LiteralInt(i), to_node(vv)]) for (i, vv) in enumerate(v)]
+        return ListCollectionResult(Call(Symbol("collection"), pairs))
+    elif isinstance(v, dict):
+        pairs = [Call(Symbol("pair"), [to_node(k), to_node(vv)]) for (k, vv) in v.items()]
+        return DictCollectionResult(Call(Symbol("collection"), pairs))
     elif callable(v):
-        return to_lambda(v).to_node_proto()
+        return to_lambda(v)
     else:
         raise ValueError("Can't convert %s to proto" % (v,))
 
@@ -138,10 +182,12 @@ def from_collection_proto(collection):
 register_literal("collectionValue", from_collection_proto)
 
 def _map(collection, f):
+    collection = to_node(collection)
     result = f(collection._values()(Placeholder()))
     return result._collection()(Call(Symbol("map"), [collection, to_lambda(f).with_arg_types((collection._values(),))]))
 
 def _filter(collection, f):
+    collection = to_node(collection)
     return type(collection)(Call(Symbol("filter"), [collection, to_lambda(f).with_arg_types((collection._values(),))]))
 
 

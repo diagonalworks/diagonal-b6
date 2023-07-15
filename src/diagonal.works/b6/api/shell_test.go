@@ -13,6 +13,34 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func zeroBeginAndEndLocations(n *pb.NodeProto) {
+	n.Begin = 0
+	n.End = 0
+	switch n := n.Node.(type) {
+	case *pb.NodeProto_Call:
+		zeroBeginAndEndLocations(n.Call.Function)
+		for _, arg := range n.Call.Args {
+			zeroBeginAndEndLocations(arg)
+		}
+	case *pb.NodeProto_Lambda_:
+		zeroBeginAndEndLocations(n.Lambda_.Node)
+	}
+}
+
+type testFunctionArgCounts map[string]int
+
+func (fs testFunctionArgCounts) ArgCount(symbol string) (int, bool) {
+	n, ok := fs[symbol]
+	return n, ok
+}
+
+func (fs testFunctionArgCounts) IsVariadic(symbol string) (bool, bool) {
+	if _, ok := fs[symbol]; ok {
+		return false, true
+	}
+	return false, false
+}
+
 func TestParseExpression(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -27,8 +55,6 @@ func TestParseExpression(t *testing.T) {
 					},
 				},
 			},
-			Begin: 0,
-			End:   2,
 		}},
 		{"LiteralFloat", "42.0", &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
@@ -38,8 +64,6 @@ func TestParseExpression(t *testing.T) {
 					},
 				},
 			},
-			Begin: 0,
-			End:   4,
 		}},
 		{"LiteralLatLng", `19.4008, -99.1663`, &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
@@ -52,8 +76,6 @@ func TestParseExpression(t *testing.T) {
 					},
 				},
 			},
-			Begin: 0,
-			End:   17,
 		}},
 		{"LiteralTag", `#highway=path`, &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
@@ -66,8 +88,6 @@ func TestParseExpression(t *testing.T) {
 					},
 				},
 			},
-			Begin: 0,
-			End:   13,
 		}},
 		{"LiteralSearchableTagWithToken", `#nhs:hospital=yes`, &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
@@ -80,8 +100,6 @@ func TestParseExpression(t *testing.T) {
 					},
 				},
 			},
-			Begin: 0,
-			End:   17,
 		}},
 		{"LiteralTagWithQuotes", `name="The Lighterman"`, &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
@@ -94,8 +112,6 @@ func TestParseExpression(t *testing.T) {
 					},
 				},
 			},
-			Begin: 0,
-			End:   21,
 		}},
 		{"SimpleCall", `find-feature /n/6082053666`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -104,8 +120,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "find-feature",
 						},
-						Begin: 0,
-						End:   12,
 					},
 					Args: []*pb.NodeProto{
 						{
@@ -120,14 +134,10 @@ func TestParseExpression(t *testing.T) {
 									},
 								},
 							},
-							Begin: 13,
-							End:   26,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   26,
 		}},
 		{"Pipeline2Stages", `find "highway=primary" | highlight`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -136,8 +146,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "highlight",
 						},
-						Begin: 25,
-						End:   34,
 					},
 					Args: []*pb.NodeProto{
 						{
@@ -147,8 +155,6 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "find",
 										},
-										Begin: 0,
-										End:   4,
 									},
 									Args: []*pb.NodeProto{
 										{
@@ -159,21 +165,15 @@ func TestParseExpression(t *testing.T) {
 													},
 												},
 											},
-											Begin: 5,
-											End:   22,
 										},
 									},
 								},
 							},
-							Begin: 0,
-							End:   22,
 						},
 					},
 					Pipelined: true,
 				},
 			},
-			Begin: 0,
-			End:   34,
 		}},
 		{"Group", `find (intersecting 19.4008, -99.1663)`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -182,8 +182,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "find",
 						},
-						Begin: 0,
-						End:   4,
 					},
 					Args: []*pb.NodeProto{
 						{
@@ -193,8 +191,6 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "intersecting",
 										},
-										Begin: 6,
-										End:   18,
 									},
 									Args: []*pb.NodeProto{
 										{
@@ -208,20 +204,14 @@ func TestParseExpression(t *testing.T) {
 													},
 												},
 											},
-											Begin: 19,
-											End:   36,
 										},
 									},
 								},
 							},
-							Begin: 6,
-							End:   36,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   36,
 		}},
 		{"FeatureID", "pair 55.614929, -2.8048709 /area/openstreetmap.org/way/115912092", &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -230,8 +220,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "pair",
 						},
-						Begin: 0,
-						End:   4,
 					},
 					Args: []*pb.NodeProto{
 						{
@@ -245,8 +233,6 @@ func TestParseExpression(t *testing.T) {
 									},
 								},
 							},
-							Begin: 5,
-							End:   26,
 						},
 						{
 							Node: &pb.NodeProto_Literal{
@@ -260,14 +246,10 @@ func TestParseExpression(t *testing.T) {
 									},
 								},
 							},
-							Begin: 27,
-							End:   64,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   64,
 		},
 		},
 		{"NestedGroups", "find (intersecting (find-area /area/openstreetmap.org/way/115912092))", &pb.NodeProto{
@@ -277,8 +259,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "find",
 						},
-						Begin: 0,
-						End:   4,
 					},
 					Args: []*pb.NodeProto{
 						{
@@ -288,8 +268,6 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "intersecting",
 										},
-										Begin: 6,
-										End:   18,
 									},
 									Args: []*pb.NodeProto{
 										{
@@ -299,8 +277,6 @@ func TestParseExpression(t *testing.T) {
 														Node: &pb.NodeProto_Symbol{
 															Symbol: "find-area",
 														},
-														Begin: 20,
-														End:   29,
 													},
 													Args: []*pb.NodeProto{
 														{
@@ -315,26 +291,18 @@ func TestParseExpression(t *testing.T) {
 																	},
 																},
 															},
-															Begin: 30,
-															End:   67,
 														},
 													},
 												},
 											},
-											Begin: 20,
-											End:   67,
 										},
 									},
 								},
 							},
-							Begin: 6,
-							End:   67,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   67,
 		}},
 		{"ExplicitLambdaWithArg", `map {f -> tag f "name"} (all-areas)`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -343,8 +311,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "map",
 						},
-						Begin: 0,
-						End:   3,
 					},
 					Args: []*pb.NodeProto{
 						{
@@ -354,8 +320,6 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "tag",
 										},
-										Begin: 10,
-										End:   13,
 									},
 									Args: []*pb.NodeProto{
 										{
@@ -366,14 +330,10 @@ func TestParseExpression(t *testing.T) {
 													},
 												},
 											},
-											Begin: 16,
-											End:   22,
 										},
 									},
 								},
 							},
-							Begin: 5,
-							End:   22,
 						},
 						{
 							Node: &pb.NodeProto_Call{
@@ -382,19 +342,13 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "all-areas",
 										},
-										Begin: 25,
-										End:   34,
 									},
 								},
 							},
-							Begin: 25,
-							End:   34,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   34,
 		}},
 		{"ImplicitLambda", `map (tag "name") (all-areas)`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -403,8 +357,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "map",
 						},
-						Begin: 0,
-						End:   3,
 					},
 					Args: []*pb.NodeProto{
 						{
@@ -414,8 +366,6 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "tag",
 										},
-										Begin: 5,
-										End:   8,
 									},
 									Args: []*pb.NodeProto{
 										{
@@ -426,14 +376,10 @@ func TestParseExpression(t *testing.T) {
 													},
 												},
 											},
-											Begin: 9,
-											End:   15,
 										},
 									},
 								},
 							},
-							Begin: 5,
-							End:   15,
 						},
 						{
 							Node: &pb.NodeProto_Call{
@@ -442,19 +388,13 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "all-areas",
 										},
-										Begin: 18,
-										End:   27,
 									},
 								},
 							},
-							Begin: 18,
-							End:   27,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   27,
 		}},
 		{"ExplicitLambdaWithoutArgs", `with-change {-> building-access}`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -463,8 +403,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "with-change",
 						},
-						Begin: 0,
-						End:   11,
 					},
 					Args: []*pb.NodeProto{
 						{
@@ -478,24 +416,16 @@ func TestParseExpression(t *testing.T) {
 													Node: &pb.NodeProto_Symbol{
 														Symbol: "building-access",
 													},
-													Begin: 16,
-													End:   31,
 												},
 											},
 										},
-										Begin: 16,
-										End:   31,
 									},
 								},
 							},
-							Begin: 16,
-							End:   31,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   31,
 		}},
 		{"RootCallWithoutArgs", `all-areas`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -504,13 +434,9 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "all-areas",
 						},
-						Begin: 0,
-						End:   9,
 					},
 				},
 			},
-			Begin: 0,
-			End:   9,
 		}},
 		{"PipeineWithExplicitLambda", `all-areas | {a -> highlight a}`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -519,8 +445,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "highlight",
 						},
-						Begin: 18,
-						End:   27,
 					},
 					Args: []*pb.NodeProto{
 						&pb.NodeProto{
@@ -530,20 +454,14 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "all-areas",
 										},
-										Begin: 0,
-										End:   9,
 									},
 								},
 							},
-							Begin: 0,
-							End:   9,
 						},
 					},
 					Pipelined: true,
 				},
 			},
-			Begin: 0,
-			End:   29,
 		}},
 		{"Pipeline3Stages", `all-areas | filter | highlight`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -552,8 +470,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "highlight",
 						},
-						Begin: 21,
-						End:   30,
 					},
 					Args: []*pb.NodeProto{
 						&pb.NodeProto{
@@ -563,8 +479,6 @@ func TestParseExpression(t *testing.T) {
 										Node: &pb.NodeProto_Symbol{
 											Symbol: "filter",
 										},
-										Begin: 12,
-										End:   18,
 									},
 									Args: []*pb.NodeProto{
 										&pb.NodeProto{
@@ -574,27 +488,19 @@ func TestParseExpression(t *testing.T) {
 														Node: &pb.NodeProto_Symbol{
 															Symbol: "all-areas",
 														},
-														Begin: 0,
-														End:   9,
 													},
 												},
 											},
-											Begin: 0,
-											End:   9,
 										},
 									},
 									Pipelined: true,
 								},
 							},
-							Begin: 0,
-							End:   18,
 						},
 					},
 					Pipelined: true,
 				},
 			},
-			Begin: 0,
-			End:   30,
 		}},
 		{"QueryTagWithoutValue", `find [#building]`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -603,8 +509,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "find",
 						},
-						Begin: 0,
-						End:   4,
 					},
 					Args: []*pb.NodeProto{
 						&pb.NodeProto{
@@ -619,14 +523,10 @@ func TestParseExpression(t *testing.T) {
 									},
 								},
 							},
-							Begin: 6,
-							End:   15,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   15,
 		}},
 		{"QueryNested", `find [#building=yes & [#shop=supermarket | #shop=convenience]]`, &pb.NodeProto{
 			Node: &pb.NodeProto_Call{
@@ -635,8 +535,6 @@ func TestParseExpression(t *testing.T) {
 						Node: &pb.NodeProto_Symbol{
 							Symbol: "find",
 						},
-						Begin: 0,
-						End:   4,
 					},
 					Args: []*pb.NodeProto{
 						&pb.NodeProto{
@@ -686,18 +584,164 @@ func TestParseExpression(t *testing.T) {
 									},
 								},
 							},
-							Begin: 6,
-							End:   60,
 						},
 					},
 				},
 			},
-			Begin: 0,
-			End:   60,
+		}},
+		{"CollectionLiteral", `{"motorway": 36.0, "primary": 32.0}`, &pb.NodeProto{
+			Node: &pb.NodeProto_Call{
+				Call: &pb.CallNodeProto{
+					Function: &pb.NodeProto{
+						Node: &pb.NodeProto_Symbol{
+							Symbol: "collection",
+						},
+					},
+					Args: []*pb.NodeProto{
+						&pb.NodeProto{
+							Node: &pb.NodeProto_Call{
+								Call: &pb.CallNodeProto{
+									Function: &pb.NodeProto{
+										Node: &pb.NodeProto_Symbol{
+											Symbol: "pair",
+										},
+									},
+									Args: []*pb.NodeProto{
+										&pb.NodeProto{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_StringValue{
+														StringValue: "motorway",
+													},
+												},
+											},
+										},
+										&pb.NodeProto{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_FloatValue{
+														FloatValue: 36.0,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						&pb.NodeProto{
+							Node: &pb.NodeProto_Call{
+								Call: &pb.CallNodeProto{
+									Function: &pb.NodeProto{
+										Node: &pb.NodeProto_Symbol{
+											Symbol: "pair",
+										},
+									},
+									Args: []*pb.NodeProto{
+										&pb.NodeProto{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_StringValue{
+														StringValue: "primary",
+													},
+												},
+											},
+										},
+										&pb.NodeProto{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_FloatValue{
+														FloatValue: 32.0,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}},
+		{"CollectionLiteralWithImplicitKeys", `{"motorway", "primary"}`, &pb.NodeProto{
+			Node: &pb.NodeProto_Call{
+				Call: &pb.CallNodeProto{
+					Function: &pb.NodeProto{
+						Node: &pb.NodeProto_Symbol{
+							Symbol: "collection",
+						},
+					},
+					Args: []*pb.NodeProto{
+						&pb.NodeProto{
+							Node: &pb.NodeProto_Call{
+								Call: &pb.CallNodeProto{
+									Function: &pb.NodeProto{
+										Node: &pb.NodeProto_Symbol{
+											Symbol: "pair",
+										},
+									},
+									Args: []*pb.NodeProto{
+										&pb.NodeProto{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_IntValue{
+														IntValue: 0,
+													},
+												},
+											},
+										},
+										&pb.NodeProto{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_StringValue{
+														StringValue: "motorway",
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						&pb.NodeProto{
+							Node: &pb.NodeProto_Call{
+								Call: &pb.CallNodeProto{
+									Function: &pb.NodeProto{
+										Node: &pb.NodeProto_Symbol{
+											Symbol: "pair",
+										},
+									},
+									Args: []*pb.NodeProto{
+										&pb.NodeProto{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_IntValue{
+														IntValue: 1,
+													},
+												},
+											},
+										},
+										&pb.NodeProto{
+											Node: &pb.NodeProto_Literal{
+												Literal: &pb.LiteralNodeProto{
+													Value: &pb.LiteralNodeProto_StringValue{
+														StringValue: "primary",
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		}},
 	}
 
-	functions := FunctionArgCounts{
+	functions := testFunctionArgCounts{
 		"all-areas":    0,
 		"area":         1,
 		"count-values": 1,
@@ -716,6 +760,7 @@ func TestParseExpression(t *testing.T) {
 		f := func(t *testing.T) {
 			top, err := ParseExpression(test.expression)
 			top = Simplify(top, functions)
+			zeroBeginAndEndLocations(top) // Locations are tested separately below
 			if err == nil {
 				if !proto.Equal(top, test.top) {
 					t.Errorf("%s: expected %s, found %s", test.expression, prototext.Format(test.top), prototext.Format(top))
@@ -725,6 +770,84 @@ func TestParseExpression(t *testing.T) {
 			}
 		}
 		t.Run(test.name, f)
+	}
+}
+func TestParseExpressionFillsBeginAndEndLocations(t *testing.T) {
+	expression := `find [#building=yes & [#shop=supermarket | #shop=convenience]]`
+	expected := &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "find",
+					},
+					Begin: 0,
+					End:   4,
+				},
+				Args: []*pb.NodeProto{
+					&pb.NodeProto{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_QueryValue{
+									QueryValue: &pb.QueryProto{
+										Query: &pb.QueryProto_Intersection{
+											Intersection: &pb.QueriesProto{
+												Queries: []*pb.QueryProto{
+													&pb.QueryProto{
+														Query: &pb.QueryProto_Tagged{
+															Tagged: &pb.TagProto{
+																Key:   "#building",
+																Value: "yes",
+															},
+														},
+													},
+													&pb.QueryProto{
+														Query: &pb.QueryProto_Union{
+															Union: &pb.QueriesProto{
+																Queries: []*pb.QueryProto{
+																	&pb.QueryProto{
+																		Query: &pb.QueryProto_Tagged{
+																			Tagged: &pb.TagProto{
+																				Key:   "#shop",
+																				Value: "supermarket",
+																			},
+																		},
+																	},
+																	&pb.QueryProto{
+																		Query: &pb.QueryProto_Tagged{
+																			Tagged: &pb.TagProto{
+																				Key:   "#shop",
+																				Value: "convenience",
+																			},
+																		},
+																	},
+																},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						Begin: 6,
+						End:   60,
+					},
+				},
+			},
+		},
+		Begin: 0,
+		End:   60,
+	}
+	top, err := ParseExpression(expression)
+	if err == nil {
+		if !proto.Equal(top, expected) {
+			t.Errorf("%s: expected %s, found %s", expression, prototext.Format(expected), prototext.Format(top))
+		}
+	} else {
+		t.Errorf("%s: expected no error, found %s", expression, err)
 	}
 }
 

@@ -19,9 +19,10 @@ type Interface struct {
 }
 
 type Function struct {
-	Name   string
-	Args   []string
-	Result string
+	Name       string
+	Args       []string
+	Result     string
+	IsVariadic bool
 }
 
 type Collection struct {
@@ -45,19 +46,22 @@ func nameForType(t reflect.Type) string {
 		return "any"
 	} else if t.Kind() == reflect.Func {
 		name := "Function"
-		for i := 0; i < t.NumIn()-1; i++ {
+		for i := 1; i < t.NumIn(); i++ {
 			name += strings.Title(nameForType(t.In(i)))
 		}
 		name += strings.Title(nameForType(t.Out(0)))
 		return name
 	} else if i := strings.LastIndex(t.Name(), "."); i >= 0 {
 		return t.Name()[i+1:]
+	} else if t.Name() == "" {
+		panic(fmt.Sprintf("no name for %+v", t))
 	}
 	return t.Name()
 }
 
 func isBuiltin(t reflect.Type) bool {
-	return t.Kind() == reflect.Int || t.Kind() == reflect.Float64 || t.Kind() == reflect.String
+	var a any
+	return t.Kind() == reflect.Int || t.Kind() == reflect.Float64 || t.Kind() == reflect.String || t == reflect.TypeOf(a)
 }
 
 func collectionForType(t reflect.Type) Collection {
@@ -129,9 +133,16 @@ func generateAPI() error {
 		t := reflect.TypeOf(f)
 		if t.Kind() == reflect.Func {
 			ff := Function{Name: name, Args: []string{}}
-			for i := 0; i < t.NumIn()-1; i++ {
-				ff.Args = append(ff.Args, nameForType(t.In(i)))
-				types[t.In(i)] = struct{}{}
+			for i := 1; i < t.NumIn(); i++ {
+				var in reflect.Type
+				if i == t.NumIn()-1 && t.IsVariadic() {
+					in = t.In(i).Elem()
+					ff.IsVariadic = true
+				} else {
+					in = t.In(i)
+				}
+				ff.Args = append(ff.Args, nameForType(in))
+				types[in] = struct{}{}
 			}
 			ff.Result = nameForType(t.Out(0))
 			types[t.Out(0)] = struct{}{}
@@ -148,10 +159,11 @@ func generateAPI() error {
 			output.Collections = append(output.Collections, collectionForType(t))
 		} else if t.Kind() == reflect.Func {
 			f := Function{Name: nameForType(t), Args: []string{}}
-			for i := 0; i < t.NumIn()-1; i++ {
+			for i := 1; i < t.NumIn(); i++ {
 				f.Args = append(f.Args, nameForType(t.In(i)))
 			}
 			f.Result = nameForType(t.Out(0))
+			f.IsVariadic = t.IsVariadic()
 			output.FunctionArgs = append(output.FunctionArgs, f)
 		} else if !isBuiltin(t) {
 			ts := make([]reflect.Type, 0)

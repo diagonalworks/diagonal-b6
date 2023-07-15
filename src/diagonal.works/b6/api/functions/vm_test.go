@@ -261,8 +261,8 @@ func TestConvertQueryToFunctionReturningBoolWithSpecificFeature(t *testing.T) {
 	if granarySquare == nil {
 		return
 	}
-	apply := func(f func(b6.PointFeature, *api.Context) (bool, error), c *api.Context) (bool, error) {
-		return f(b6.FindPointByID(ingest.FromOSMNodeID(camden.VermuteriaNode), c.World), c)
+	apply := func(c *api.Context, f func(*api.Context, b6.PointFeature) (bool, error)) (bool, error) {
+		return f(c, b6.FindPointByID(ingest.FromOSMNodeID(camden.VermuteriaNode), c.World))
 	}
 	c := &api.Context{
 		World: granarySquare,
@@ -281,7 +281,7 @@ func TestConvertQueryToFunctionReturningBoolWithSpecificFeature(t *testing.T) {
 
 func TestConvertIntAndFloat64ToNumber(t *testing.T) {
 	w := ingest.NewBasicMutableWorld()
-	increment := func(n api.Number, c *api.Context) (int, error) {
+	increment := func(c *api.Context, n api.Number) (int, error) {
 		switch n := n.(type) {
 		case api.IntNumber:
 			return int(n) + 1, nil
@@ -310,7 +310,7 @@ func TestCallLambdaWithNoArguments(t *testing.T) {
 	c := &api.Context{
 		World: w,
 		FunctionSymbols: api.FunctionSymbols{
-			"call": func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+			"call": func(c *api.Context, f func(*api.Context) (interface{}, error)) (interface{}, error) {
 				return f(c)
 			},
 		},
@@ -346,10 +346,10 @@ func TestReturnAnErrorFromALambda(t *testing.T) {
 	c := &api.Context{
 		World: w,
 		FunctionSymbols: api.FunctionSymbols{
-			"call": func(f func(*api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+			"call": func(c *api.Context, f func(*api.Context) (interface{}, error)) (interface{}, error) {
 				return f(c)
 			},
-			"broken": func(_ int, c *api.Context) (interface{}, error) {
+			"broken": func(c *api.Context, _ int) (interface{}, error) {
 				return nil, fmt.Errorf("broken")
 			},
 		},
@@ -358,6 +358,50 @@ func TestReturnAnErrorFromALambda(t *testing.T) {
 	e := "call {-> broken 42}"
 	r, err := api.EvaluateString(e, c)
 	if r != nil || err == nil || err.Error() != "broken" {
-		t.Errorf("Expected an error")
+		t.Errorf("Expected an error, found: %+v", err)
+	}
+}
+
+func TestMapLiteralCollection(t *testing.T) {
+	w := ingest.NewBasicMutableWorld()
+	e := `map {highway="motorway": 2, highway="primary": 6} (add 1)`
+	if result, err := api.EvaluateString(e, NewContext(w)); err != nil {
+		t.Error(err)
+		return
+	} else {
+		collection := make(map[b6.Tag]int)
+		if err := api.FillMap(result.(api.Collection), collection); err != nil {
+			t.Errorf("Expected no error, found %q", err)
+		} else {
+			expected := map[b6.Tag]int{
+				b6.Tag{Key: "highway", Value: "motorway"}: 3,
+				b6.Tag{Key: "highway", Value: "primary"}:  7,
+			}
+			if !reflect.DeepEqual(expected, collection) {
+				t.Errorf("Expected %q, found %q", expected, collection)
+			}
+		}
+	}
+}
+
+func TestMapLiteralCollectionWithImplicitKeys(t *testing.T) {
+	w := ingest.NewBasicMutableWorld()
+	e := `map {36, 42} (add 1)`
+	if result, err := api.EvaluateString(e, NewContext(w)); err != nil {
+		t.Error(err)
+		return
+	} else {
+		collection := make(map[int]int)
+		if err := api.FillMap(result.(api.Collection), collection); err != nil {
+			t.Errorf("Expected no error, found %q", err)
+		} else {
+			expected := map[int]int{
+				0: 37,
+				1: 43,
+			}
+			if !reflect.DeepEqual(expected, collection) {
+				t.Errorf("Expected %q, found %q", expected, collection)
+			}
+		}
 	}
 }

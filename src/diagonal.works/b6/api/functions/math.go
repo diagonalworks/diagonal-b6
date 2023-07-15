@@ -7,35 +7,41 @@ import (
 	"diagonal.works/b6/api"
 )
 
-func divide(a api.Number, b api.Number, context *api.Context) (api.Number, error) {
-	switch b := b.(type) {
-	case api.IntNumber:
-		switch a := a.(type) {
-		case api.IntNumber:
+func divide(context *api.Context, a api.Number, b api.Number) (api.Number, error) {
+	if a, ok := a.(api.IntNumber); ok {
+		if b, ok := b.(api.IntNumber); ok {
 			return api.IntNumber(int(a) / int(b)), nil
-		case api.FloatNumber:
-			return api.FloatNumber(float64(a) / float64(b)), nil
 		}
-	case api.FloatNumber:
-		switch a := a.(type) {
-		case api.IntNumber:
-			return api.FloatNumber(float64(a) / float64(b)), nil
-		case api.FloatNumber:
-			return api.FloatNumber(float64(a) / float64(b)), nil
-		}
+		return api.FloatNumber(float64(a) / float64(b.(api.FloatNumber))), nil
 	}
-	panic("bad number")
+	if b, ok := b.(api.IntNumber); ok {
+		return api.FloatNumber(float64(a.(api.FloatNumber)) / float64(b)), nil
+	}
+	return api.FloatNumber(float64(a.(api.FloatNumber)) / float64(b.(api.FloatNumber))), nil
 }
 
-func divideInt(a int, b float64, context *api.Context) (float64, error) {
+func divideInt(context *api.Context, a int, b float64) (float64, error) {
 	return float64(a) / b, nil
 }
 
-func addInts(a int, b int, context *api.Context) (int, error) {
+func add(context *api.Context, a api.Number, b api.Number) (api.Number, error) {
+	if a, ok := a.(api.IntNumber); ok {
+		if b, ok := b.(api.IntNumber); ok {
+			return api.IntNumber(int(a) + int(b)), nil
+		}
+		return api.FloatNumber(float64(a) + float64(b.(api.FloatNumber))), nil
+	}
+	if b, ok := b.(api.IntNumber); ok {
+		return api.FloatNumber(float64(a.(api.FloatNumber)) + float64(b)), nil
+	}
+	return api.FloatNumber(float64(a.(api.FloatNumber)) + float64(b.(api.FloatNumber))), nil
+}
+
+func addInts(context *api.Context, a int, b int) (int, error) {
 	return a + b, nil
 }
 
-func clamp(v int, low int, high int, context *api.Context) (int, error) {
+func clamp(context *api.Context, v int, low int, high int) (int, error) {
 	if v < low {
 		return low, nil
 	} else if v > high {
@@ -44,7 +50,7 @@ func clamp(v int, low int, high int, context *api.Context) (int, error) {
 	return v, nil
 }
 
-func gt(a interface{}, b interface{}, context *api.Context) (bool, error) {
+func gt(context *api.Context, a interface{}, b interface{}) (bool, error) {
 	return api.Greater(a, b)
 }
 
@@ -64,7 +70,7 @@ func (b byIndex) Less(i, j int) bool {
 // TODO: percentiles inefficiently calculates the exact percentile by sorting the entire
 // collection. We could use a histogram sketch instead, maybe constructed in the
 // background with Collection
-func percentiles(collection api.AnyFloatCollection, context *api.Context) (api.AnyFloatCollection, error) {
+func percentiles(context *api.Context, collection api.AnyFloatCollection) (api.AnyFloatCollection, error) {
 	keys := make([]interface{}, 0)
 	values := make([]float64, 0)
 	i := collection.Begin()
@@ -96,7 +102,7 @@ func percentiles(collection api.AnyFloatCollection, context *api.Context) (api.A
 	return &api.ArrayAnyFloatCollection{Keys: keys, Values: values}, nil
 }
 
-func count(collection api.Collection, context *api.Context) (int, error) {
+func count(context *api.Context, collection api.Collection) (int, error) {
 	if c, ok := collection.(api.Countable); ok {
 		return c.Count(), nil
 	}

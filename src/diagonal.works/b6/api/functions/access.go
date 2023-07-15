@@ -6,7 +6,7 @@ import (
 	"diagonal.works/b6/graph"
 )
 
-func buildingAccess(origins api.FeatureCollection, limit float64, mode string, c *api.Context) (api.FeatureIDFeatureIDCollection, error) {
+func buildingAccess(c *api.Context, origins api.FeatureCollection, limit float64, mode string) (api.FeatureIDFeatureIDCollection, error) {
 	o := make(map[b6.FeatureID]b6.Feature)
 	i := origins.Begin()
 	for {

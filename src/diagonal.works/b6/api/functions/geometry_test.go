@@ -20,7 +20,7 @@ func TestDistanceToPointMeters(t *testing.T) {
 	}
 
 	point := b6.PointFromLatLngDegrees(51.53586, -0.12564)
-	distance, err := distanceToPointMeters(path, point, context)
+	distance, err := distanceToPointMeters(context, path, point)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	}

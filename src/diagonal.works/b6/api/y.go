@@ -6,13 +6,13 @@ package api
 
 import __yyfmt__ "fmt"
 
-//line shell.y:4
+//line shell.y:3
 
 import (
 	pb "diagonal.works/b6/proto"
 )
 
-//line shell.y:21
+//line shell.y:20
 type yySymType struct {
 	yys   int
 	node  *pb.NodeProto
@@ -41,6 +41,7 @@ var yyToknames = [...]string{
 	"']'",
 	"'='",
 	"'&'",
+	"':'",
 	"FLOAT",
 	"INT",
 	"FEATURE_ID",
@@ -61,73 +62,102 @@ var yyExca = [...]int{
 	-1, 1,
 	1, -1,
 	-2, 0,
+	-1, 35,
+	14, 33,
+	-2, 38,
+	-1, 36,
+	14, 34,
+	-2, 39,
+	-1, 37,
+	14, 35,
+	-2, 40,
+	-1, 38,
+	14, 36,
+	-2, 42,
+	-1, 39,
+	14, 37,
+	-2, 43,
 }
 
 const yyPrivate = 57344
 
-const yyLast = 90
+const yyLast = 132
 
 var yyAct = [...]int{
-	10, 37, 2, 17, 5, 44, 16, 31, 18, 24,
-	20, 55, 12, 13, 14, 23, 11, 15, 22, 33,
-	30, 43, 29, 18, 17, 28, 24, 16, 42, 18,
-	35, 45, 34, 12, 13, 14, 4, 11, 15, 51,
-	40, 3, 38, 39, 41, 50, 54, 49, 53, 33,
-	33, 33, 33, 48, 61, 62, 57, 58, 59, 60,
-	17, 36, 52, 16, 20, 18, 26, 47, 19, 12,
-	13, 14, 23, 11, 15, 19, 19, 63, 56, 46,
-	19, 25, 1, 27, 21, 32, 9, 8, 7, 6,
+	11, 48, 34, 23, 2, 5, 19, 42, 32, 69,
+	25, 3, 52, 55, 46, 10, 45, 7, 49, 50,
+	44, 65, 59, 41, 21, 63, 51, 64, 25, 53,
+	54, 62, 47, 39, 56, 38, 18, 67, 66, 17,
+	27, 19, 18, 21, 61, 20, 13, 14, 15, 24,
+	12, 16, 40, 36, 37, 31, 35, 16, 29, 68,
+	60, 20, 73, 44, 44, 44, 44, 71, 83, 84,
+	79, 80, 81, 82, 39, 78, 38, 77, 18, 1,
+	26, 17, 20, 19, 85, 20, 28, 70, 13, 14,
+	15, 4, 12, 16, 18, 22, 58, 17, 43, 19,
+	18, 57, 33, 30, 13, 14, 15, 24, 12, 16,
+	40, 75, 76, 72, 74, 16, 18, 9, 8, 6,
+	0, 0, 0, 0, 0, 0, 40, 36, 37, 72,
+	35, 16,
 }
 
 var yyPact = [...]int{
-	19, -1000, 61, -1000, -2, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, 77, -1000, -1000, 54, 5, 19, 13, 19,
-	25, 55, -1000, 52, -1000, 30, 25, 1, 19, -1000,
-	73, 56, 40, 32, 50, 36, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, 19, -6, 69, -1000, -1000, 13, 13,
-	13, 13, 25, 25, 68, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000,
+	73, -1000, 38, -1000, 31, -1000, -1000, -1000, -1000, -1000,
+	-1000, -1000, -1000, 76, -1000, -1000, 28, 37, 73, -4,
+	73, 0, 89, -1000, 12, -1000, -3, 0, 9, 73,
+	92, 12, -1000, 8, -1000, -1000, -1000, -1000, -1000, -1000,
+	-1000, 54, 33, 18, 14, 26, 25, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, 73, -9, 78, -1000, 111, 95,
+	-1000, -1000, -4, -4, -4, -4, 0, 0, 75, -1000,
+	-1000, -1000, 12, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000,
 }
 
 var yyPgo = [...]int{
-	0, 4, 89, 88, 41, 18, 2, 87, 86, 1,
-	0, 7, 85, 84, 83, 82,
+	0, 5, 119, 17, 11, 3, 4, 118, 117, 103,
+	8, 102, 2, 15, 1, 0, 7, 98, 95, 86,
+	79,
 }
 
 var yyR1 = [...]int{
-	0, 15, 6, 6, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 2, 3, 3, 4, 4, 4, 13,
-	13, 5, 5, 7, 7, 14, 14, 8, 10, 11,
-	11, 11, 11, 11, 11, 12, 12, 12, 12, 9,
-	9,
+	0, 20, 6, 6, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 2, 3, 3, 4, 4, 4,
+	18, 18, 5, 5, 7, 7, 19, 19, 8, 9,
+	9, 10, 10, 11, 11, 11, 11, 11, 12, 12,
+	12, 12, 12, 12, 13, 15, 16, 16, 16, 16,
+	16, 16, 17, 17, 17, 17, 14, 14,
 }
 
 var yyR2 = [...]int{
 	0, 1, 3, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 3, 3, 3, 1, 2, 1, 2,
-	1, 1, 1, 5, 4, 1, 3, 3, 3, 1,
-	3, 3, 3, 3, 1, 1, 3, 1, 3, 1,
-	1,
+	1, 1, 1, 1, 3, 3, 3, 1, 2, 1,
+	2, 1, 1, 1, 5, 4, 1, 3, 3, 1,
+	3, 3, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 3, 3, 1, 3, 3, 3,
+	3, 1, 1, 3, 1, 3, 1, 1,
 }
 
 var yyChk = [...]int{
-	-1000, -15, -6, -4, 17, -1, -2, -3, -7, -8,
-	-10, 18, 14, 15, 16, 19, 8, 5, 10, 7,
-	12, -13, -5, 17, -1, 4, 12, -14, 20, 17,
-	-6, -11, -12, -10, 19, 17, -4, -9, 17, 18,
-	-5, 14, -9, 20, 4, -6, 6, 11, 13, 7,
-	13, 7, 12, 12, -6, 17, 9, -11, -11, -11,
-	-11, -9, -9, 9,
+	-1000, -20, -6, -4, 18, -1, -2, -3, -7, -8,
+	-13, -15, 19, 15, 16, 17, 20, 8, 5, 10,
+	7, 12, -18, -5, 18, -1, 4, 12, -19, 21,
+	-9, 18, -10, -11, -12, 19, 16, 17, -3, -13,
+	15, -6, -16, -17, -15, 20, 18, -4, -14, 18,
+	19, -5, 15, -14, 21, 4, -6, 9, 4, 14,
+	6, 11, 13, 7, 13, 7, 12, 12, -6, 18,
+	9, -10, 18, -12, 19, 16, 17, -3, -13, -16,
+	-16, -16, -16, -14, -14, 9,
 }
 
 var yyDef = [...]int{
-	0, -2, 1, 3, 16, 18, 4, 5, 6, 7,
-	8, 9, 10, 11, 12, 0, 0, 0, 0, 0,
-	0, 17, 20, 21, 22, 0, 0, 0, 0, 25,
-	0, 0, 29, 34, 35, 37, 2, 15, 39, 40,
-	19, 13, 14, 0, 0, 0, 27, 28, 0, 0,
-	0, 0, 0, 0, 0, 26, 24, 30, 32, 31,
-	33, 36, 38, 23,
+	0, -2, 1, 3, 17, 19, 4, 5, 6, 7,
+	8, 9, 10, 11, 12, 13, 0, 0, 0, 0,
+	0, 0, 18, 21, 22, 23, 0, 0, 0, 0,
+	0, 26, 29, 0, 32, -2, -2, -2, -2, -2,
+	41, 0, 0, 46, 51, 52, 54, 2, 16, 56,
+	57, 20, 14, 15, 0, 0, 0, 28, 0, 0,
+	44, 45, 0, 0, 0, 0, 0, 0, 0, 27,
+	25, 30, 0, 31, 38, 39, 40, 42, 43, 47,
+	49, 48, 50, 53, 55, 24,
 }
 
 var yyTok1 = [...]int{
@@ -136,7 +166,7 @@ var yyTok1 = [...]int{
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 13, 3,
 	5, 6, 3, 3, 4, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 14, 3,
 	3, 12, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -147,7 +177,7 @@ var yyTok1 = [...]int{
 }
 
 var yyTok2 = [...]int{
-	2, 3, 14, 15, 16, 17, 18, 19, 20,
+	2, 3, 15, 16, 17, 18, 19, 20, 21,
 }
 
 var yyTok3 = [...]int{
@@ -493,139 +523,169 @@ yydefault:
 
 	case 1:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line shell.y:33
+//line shell.y:32
 		{
 			yylex.(*lexer).Top = reduceRootCall(yyDollar[1].node, yylex.(*lexer))
 		}
 	case 2:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line shell.y:39
+//line shell.y:38
 		{
 			yyVAL.node = reducePipeline(yyDollar[1].node, yyDollar[3].node, yylex.(*lexer))
 		}
-	case 13:
+	case 14:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:57
 		{
 			yyVAL.node = reduceLatLng(yyDollar[1].node, yyDollar[3].node, yylex.(*lexer))
 		}
-	case 14:
+	case 15:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:63
 		{
 			yyVAL.node = reduceTag(yyDollar[1].node, yyDollar[3].node, yylex.(*lexer))
 		}
-	case 15:
+	case 16:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:67
 		{
 			yyVAL.node = reduceTag(yyDollar[1].node, yyDollar[3].node, yylex.(*lexer))
 		}
-	case 16:
+	case 17:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:73
 		{
 			yyVAL.node = reduceCall(yyDollar[1].node, yylex.(*lexer))
 		}
-	case 17:
+	case 18:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line shell.y:77
 		{
 			yyVAL.node = reduceCallWithArgs(yyDollar[1].node, yyDollar[2].nodes, yylex.(*lexer))
 		}
-	case 19:
+	case 20:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line shell.y:84
 		{
 			yyVAL.nodes = reduceArgs(yyDollar[1].nodes, yyDollar[2].node)
 		}
-	case 20:
+	case 21:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:88
 		{
 			yyVAL.nodes = reduceArg(yyDollar[1].node)
 		}
-	case 23:
+	case 24:
 		yyDollar = yyS[yypt-5 : yypt+1]
 //line shell.y:98
 		{
 			yyVAL.node = reduceLambda(yyDollar[2].nodes, yyDollar[4].node)
 		}
-	case 24:
+	case 25:
 		yyDollar = yyS[yypt-4 : yypt+1]
 //line shell.y:102
 		{
 			yyVAL.node = reduceLambdaWithoutArgs(yyDollar[3].node)
 		}
-	case 25:
+	case 26:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:108
 		{
 			yyVAL.nodes = reduceSymbolsSymbol(yyDollar[1].node)
 		}
-	case 26:
+	case 27:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:112
 		{
 			yyVAL.nodes = reduceSymbolsSymbols(yyDollar[1].nodes, yyDollar[3].node)
 		}
-	case 27:
+	case 28:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:118
 		{
-			yyVAL.node = yyDollar[2].node
+			yyVAL.node = reduceCollectionItems(yyDollar[2].node)
 		}
-	case 28:
-		yyDollar = yyS[yypt-3 : yypt+1]
+	case 29:
+		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:124
 		{
-			yyVAL.node = yyDollar[2].node
+			yyVAL.node = reduceCollectionItemsKeyValue(yyDollar[1].node)
 		}
 	case 30:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line shell.y:131
+//line shell.y:128
 		{
-			yyVAL.node = reduceAnd(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.node = reduceCollectionItemsItemsKeyValue(yyDollar[1].node, yyDollar[3].node)
 		}
 	case 31:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line shell.y:135
+//line shell.y:134
+		{
+			yyVAL.node = reduceCollectionKeyValue(yyDollar[1].node, yyDollar[3].node)
+		}
+	case 32:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line shell.y:138
+		{
+			yyVAL.node = reduceCollectionValueWithImplictKey(yyDollar[1].node)
+		}
+	case 44:
+		yyDollar = yyS[yypt-3 : yypt+1]
+//line shell.y:159
+		{
+			yyVAL.node = yyDollar[2].node
+		}
+	case 45:
+		yyDollar = yyS[yypt-3 : yypt+1]
+//line shell.y:165
+		{
+			yyVAL.node = yyDollar[2].node
+		}
+	case 47:
+		yyDollar = yyS[yypt-3 : yypt+1]
+//line shell.y:172
 		{
 			yyVAL.node = reduceAnd(yyDollar[1].node, yyDollar[3].node)
 		}
-	case 32:
+	case 48:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line shell.y:139
+//line shell.y:176
+		{
+			yyVAL.node = reduceAnd(yyDollar[1].node, yyDollar[3].node)
+		}
+	case 49:
+		yyDollar = yyS[yypt-3 : yypt+1]
+//line shell.y:180
 		{
 			yyVAL.node = reduceOr(yyDollar[1].node, yyDollar[3].node)
 		}
-	case 33:
+	case 50:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line shell.y:143
+//line shell.y:184
 		{
 			yyVAL.node = reduceOr(yyDollar[1].node, yyDollar[3].node)
 		}
-	case 35:
+	case 52:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line shell.y:150
+//line shell.y:191
 		{
 			yyVAL.node = reduceTagKey(yyDollar[1].node)
 		}
-	case 36:
+	case 53:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line shell.y:154
+//line shell.y:195
 		{
 			yyVAL.node = reduceTagKeyValue(yyDollar[1].node, yyDollar[3].node)
 		}
-	case 37:
+	case 54:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line shell.y:158
+//line shell.y:199
 		{
 			yyVAL.node = reduceTagKey(yyDollar[1].node)
 		}
-	case 38:
+	case 55:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line shell.y:162
+//line shell.y:203
 		{
 			yyVAL.node = reduceTagKeyValue(yyDollar[1].node, yyDollar[3].node)
 		}

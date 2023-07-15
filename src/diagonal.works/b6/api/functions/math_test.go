@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"reflect"
 	"testing"
 
 	"diagonal.works/b6"
@@ -22,7 +23,7 @@ func TestPercentiles(t *testing.T) {
 		keys[i] = fmt.Sprintf("%d", i)
 	}
 
-	collection, err := percentiles(&api.ArrayAnyFloatCollection{Keys: keys, Values: values}, nil)
+	collection, err := percentiles(&api.Context{}, &api.ArrayAnyFloatCollection{Keys: keys, Values: values})
 	if err != nil {
 		t.Error(err)
 		return
@@ -60,13 +61,13 @@ func TestCount(t *testing.T) {
 	context := &api.Context{
 		World: granarySquare,
 	}
-	collection, err := Find(b6.Keyed{"#building"}, context)
+	collection, err := find(context, b6.Keyed{"#building"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
 	}
 
-	count, err := count(collection, context)
+	count, err := count(context, collection)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -74,5 +75,41 @@ func TestCount(t *testing.T) {
 	expected := camden.BuildingsInGranarySquare
 	if count != expected {
 		t.Errorf("Expected count to return %d, found %d", expected, count)
+	}
+}
+
+func TestAdd(t *testing.T) {
+	tests := []struct {
+		a api.Number
+		b api.Number
+		r api.Number
+	}{
+		{api.IntNumber(2), api.IntNumber(3), api.IntNumber(5)},
+		{api.IntNumber(2), api.FloatNumber(3.0), api.FloatNumber(5.0)},
+		{api.FloatNumber(2.0), api.IntNumber(3.0), api.FloatNumber(5.0)},
+		{api.FloatNumber(2.0), api.FloatNumber(3.0), api.FloatNumber(5.0)},
+	}
+	for _, test := range tests {
+		if r, err := add(&api.Context{}, test.a, test.b); err != nil || !reflect.DeepEqual(r, test.r) {
+			t.Errorf("Expected %T(%v) + %T(%v) = %T(%v), found %T(%v)", test.a, test.a, test.b, test.b, test.r, test.r, r, r)
+		}
+	}
+}
+
+func TestDivide(t *testing.T) {
+	tests := []struct {
+		a api.Number
+		b api.Number
+		r api.Number
+	}{
+		{api.IntNumber(6), api.IntNumber(2), api.IntNumber(3)},
+		{api.IntNumber(6), api.FloatNumber(2.0), api.FloatNumber(3.0)},
+		{api.FloatNumber(6.0), api.IntNumber(2.0), api.FloatNumber(3.0)},
+		{api.FloatNumber(6.0), api.FloatNumber(2.0), api.FloatNumber(3.0)},
+	}
+	for _, test := range tests {
+		if r, err := divide(&api.Context{}, test.a, test.b); err != nil || !reflect.DeepEqual(r, test.r) {
+			t.Errorf("Expected %T(%v) / %T(%v) = %T(%v), found %T(%v)", test.a, test.a, test.b, test.b, test.r, test.r, r, r)
+		}
 	}
 }

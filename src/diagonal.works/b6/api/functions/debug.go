@@ -9,7 +9,7 @@ import (
 	"diagonal.works/b6/search"
 )
 
-func debugTokens(id b6.Identifiable, c *api.Context) (api.IntStringCollection, error) {
+func debugTokens(c *api.Context, id b6.Identifiable) (api.IntStringCollection, error) {
 	if f := api.Resolve(id, c.World); f != nil {
 		if p, ok := f.(b6.PhysicalFeature); ok {
 			return &api.ArrayIntStringCollection{
@@ -24,6 +24,6 @@ func debugTokens(id b6.Identifiable, c *api.Context) (api.IntStringCollection, e
 	return nil, fmt.Errorf("No feature with id %s", id.FeatureID())
 }
 
-func debugAllQuery(token string, c *api.Context) (search.Query, error) {
+func debugAllQuery(c *api.Context, token string) (search.Query, error) {
 	return search.All{Token: token}, nil
 }
