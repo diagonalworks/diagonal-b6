@@ -8,7 +8,7 @@ import (
 
 %}
 
-%token ',' '(' ')' '|' '{' '}' '[' ']' '=' '&'
+%token ',' '(' ')' '|' '{' '}' '[' ']' '=' '&' ':'
 %token <node> FLOAT
 %token <node> INT
 %token <node> FEATURE_ID
@@ -22,7 +22,7 @@ import (
     nodes []*pb.NodeProto
 }
 
-%type <node> expression latlng tag call arg pipeline lambda group tagvalue query query_expression query_tag
+%type <node> expression latlng tag call arg pipeline lambda collection collection_items collection_key_value collection_key collection_value group tagvalue query query_expression query_tag
 %type <nodes> args symbols
 
 %%
@@ -44,6 +44,7 @@ expression:
     latlng
 |   tag
 |   lambda
+|   collection
 |   group
 |   query
 |   STRING
@@ -111,6 +112,47 @@ symbols:
     {
         $$ = reduceSymbolsSymbols($1, $3)
     }
+
+collection:
+    '{' collection_items '}'
+    {
+        $$ = reduceCollectionItems($2)
+    }
+
+collection_items:
+    collection_key_value
+    {
+        $$ = reduceCollectionItemsKeyValue($1)
+    }
+|   collection_items ',' collection_key_value
+    {
+        $$ = reduceCollectionItemsItemsKeyValue($1, $3)
+    }
+
+collection_key_value:
+    collection_key ':' collection_value
+    {
+        $$ = reduceCollectionKeyValue($1, $3)
+    }
+|   collection_value
+    {
+        $$ = reduceCollectionValueWithImplictKey($1)
+    }
+
+collection_key:
+    STRING
+|   INT
+|   FEATURE_ID
+|   tag
+|   group
+
+collection_value:
+    STRING
+|   INT
+|   FEATURE_ID
+|   FLOAT
+|   tag
+|   group
 
 group:
    '(' pipeline ')'

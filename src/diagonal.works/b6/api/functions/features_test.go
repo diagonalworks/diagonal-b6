@@ -24,7 +24,7 @@ func TestAllTags(t *testing.T) {
 		return
 	}
 
-	all, err := allTags(vermuteria, &api.Context{World: w})
+	all, err := allTags(&api.Context{World: w}, vermuteria)
 	if err != nil {
 		t.Errorf("Expected no error, found %s", err)
 		return
@@ -72,7 +72,7 @@ func TestFindAreasContainingPoints(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	found, err := findAreasContainingPoints(points, b6.Keyed{"#shop"}, &context)
+	found, err := findAreasContainingPoints(&context, points, b6.Keyed{"#shop"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	}
@@ -105,7 +105,7 @@ func TestPoints(t *testing.T) {
 		s2.PolygonFromLoops([]*s2.Loop{s2.LoopFromPoints(lighterman)}),
 	}
 	var c api.Context
-	ps, err := points(b6.AreaFromS2Polygons(polygons), &c)
+	ps, err := points(&c, b6.AreaFromS2Polygons(polygons))
 	if err != nil {
 		t.Errorf("Expected no error, found %s", err)
 		return
@@ -137,13 +137,13 @@ func TestSamplePointsAlongPaths(t *testing.T) {
 		World: granarySquare,
 	}
 
-	paths, err := FindPathFeatures(b6.Keyed{"#highway"}, context)
+	paths, err := findPathFeatures(context, b6.Keyed{"#highway"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
 	}
 
-	sampled, err := samplePointsAlongPaths(paths, 20.0, context)
+	sampled, err := samplePointsAlongPaths(context, paths, 20.0)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -175,7 +175,7 @@ func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
 		World: granarySquare,
 	}
 
-	paths, err := FindPathFeatures(b6.Keyed{"#highway"}, context)
+	paths, err := findPathFeatures(context, b6.Keyed{"#highway"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -183,7 +183,7 @@ func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
 
 	runs := make([][]s2.Point, 4)
 	for run := range runs {
-		points, err := samplePointsAlongPaths(paths, 20.0, context)
+		points, err := samplePointsAlongPaths(context, paths, 20.0)
 		if err != nil {
 			t.Errorf("Expected no error on run %d, found: %s", run, err)
 			return
@@ -233,7 +233,7 @@ func TestJoin(t *testing.T) {
 		return
 	}
 
-	joined, err := join(a, b, context)
+	joined, err := join(context, a, b)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -261,14 +261,14 @@ func TestOrderedJoin(t *testing.T) {
 	}
 	b := b6.PathFromS2Points(bPoints)
 
-	joined, err := orderedJoin(a, b, &api.Context{})
+	joined, err := orderedJoin(&api.Context{}, a, b)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
 	}
 
-	midpoint, _ := interpolate(joined, 0.5, &api.Context{})
-	expected, _ := interpolate(path, 0.5, &api.Context{})
+	midpoint, _ := interpolate(&api.Context{}, joined, 0.5)
+	expected, _ := interpolate(&api.Context{}, path, 0.5)
 
 	if midpoint.Point().Distance(expected.Point()) > 0.000001 {
 		t.Errorf("Midpoint of joined paths too far from expected point")
@@ -285,7 +285,7 @@ func TestInterpolate(t *testing.T) {
 		t.Errorf("Failed to find expected path")
 	}
 
-	interpolated, err := interpolate(path, 0.5, context)
+	interpolated, err := interpolate(context, path, 0.5)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -314,7 +314,7 @@ func TestOrderedJoinPathsWithNoSharedPoint(t *testing.T) {
 	}
 	b := b6.PathFromS2Points(bPoints)
 
-	_, err := orderedJoin(a, b, &api.Context{})
+	_, err := orderedJoin(&api.Context{}, a, b)
 	if err == nil {
 		t.Errorf("Expected an error, found nil")
 	}

@@ -14,7 +14,8 @@ class Connection:
     def __call__(self, e):
         request = api_pb2.EvaluateRequestProto()
         request.version = VERSION
-        request.request.CopyFrom(expression.to_node_proto(e))
+        node = expression.to_node(e)
+        request.request.CopyFrom(node.to_node_proto())
         return expression.from_node_proto(self.stub.Evaluate(request).result)
 
 def connect_insecure(address):

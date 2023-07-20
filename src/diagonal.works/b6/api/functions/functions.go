@@ -31,11 +31,11 @@ var functions = api.FunctionSymbols{
 	"find-path":        findPathFeature,
 	"find-area":        findAreaFeature,
 	"find-relation":    findRelationFeature,
-	"find":             Find,
-	"find-points":      FindPointFeatures,
-	"find-paths":       FindPathFeatures,
-	"find-areas":       FindAreaFeatures,
-	"find-relations":   FindRelationFeatures,
+	"find":             find,
+	"find-points":      findPointFeatures,
+	"find-paths":       findPathFeatures,
+	"find-areas":       findAreaFeatures,
+	"find-relations":   findRelationFeatures,
 	"containing-areas": findAreasContainingPoints,
 	"intersecting":     intersecting,
 	"intersecting-cap": intersectingCap,
@@ -80,17 +80,18 @@ var functions = api.FunctionSymbols{
 	"gt":          gt,
 	"divide":      divide,
 	"divide-int":  divideInt,
+	"add":         add,
 	"add-ints":    addInts,
 	"clamp":       clamp,
 	"percentiles": percentiles,
 	"count":       count,
 	// graph
-	"reachable-area":     ReachableArea,
-	"reachable-points":   ReachablePoints,
-	"reachable":          ReachableFeatures,
-	"closest":            ClosestFeature,
-	"closest-distance":   ClosestFeatureDistance,
-	"paths-to-reach":     PathsToReachFeatures,
+	"reachable-area":     reachableArea,
+	"reachable-points":   reachablePoints,
+	"reachable":          reachableFeatures,
+	"closest":            closestFeature,
+	"closest-distance":   closestFeatureDistance,
+	"paths-to-reach":     pathsToReachFeatures,
 	"connect":            connect,
 	"connect-to-network": connectToNetwork,
 	// access
@@ -124,7 +125,7 @@ var functions = api.FunctionSymbols{
 	"apply-to-point":        applyToPoint,
 	"apply-to-path":         applyToPath,
 	"apply-to-area":         applyToArea,
-	"map-geometries":        MapGeometries,
+	"map-geometries":        mapGeometries,
 	// change
 	"add-tag":     addTag,
 	"add-tags":    addTags,
@@ -143,118 +144,118 @@ func Functions() api.FunctionSymbols {
 }
 
 var wrappers = []interface{}{
-	func(c api.Callable) func(interface{}, *api.Context) (interface{}, error) {
-		return func(v interface{}, context *api.Context) (interface{}, error) {
-			return api.Call1(v, c, context)
+	func(c api.Callable) func(*api.Context, interface{}) (interface{}, error) {
+		return func(context *api.Context, v interface{}) (interface{}, error) {
+			return api.Call1(context, v, c)
 		}
 	},
-	func(c api.Callable) func(api.Pair, *api.Context) (interface{}, error) {
-		return func(pair api.Pair, context *api.Context) (interface{}, error) {
-			return api.Call1(pair, c, context)
+	func(c api.Callable) func(*api.Context, api.Pair) (interface{}, error) {
+		return func(context *api.Context, pair api.Pair) (interface{}, error) {
+			return api.Call1(context, pair, c)
 		}
 	},
-	func(c api.Callable) func(interface{}, *api.Context) (bool, error) {
-		return func(v interface{}, context *api.Context) (bool, error) {
-			r, err := api.Call1(v, c, context)
+	func(c api.Callable) func(*api.Context, interface{}) (bool, error) {
+		return func(context *api.Context, v interface{}) (bool, error) {
+			r, err := api.Call1(context, v, c)
 			if err != nil {
 				return false, err
 			}
 			return api.IsTrue(r), nil
 		}
 	},
-	func(c api.Callable) func(b6.Geometry, *api.Context) (b6.Geometry, error) {
-		return func(g b6.Geometry, context *api.Context) (b6.Geometry, error) {
-			if result, err := api.Call1(g, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
+		return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
+			if result, err := api.Call1(context, g, c); result != nil {
 				return result.(b6.Geometry), err
 			} else {
 				return nil, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.Point, *api.Context) (b6.Geometry, error) {
-		return func(p b6.Point, context *api.Context) (b6.Geometry, error) {
-			if result, err := api.Call1(p, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.Point) (b6.Geometry, error) {
+		return func(context *api.Context, p b6.Point) (b6.Geometry, error) {
+			if result, err := api.Call1(context, p, c); result != nil {
 				return result.(b6.Geometry), err
 			} else {
 				return nil, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.Path, *api.Context) (b6.Geometry, error) {
-		return func(p b6.Path, context *api.Context) (b6.Geometry, error) {
-			if result, err := api.Call1(p, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.Path) (b6.Geometry, error) {
+		return func(context *api.Context, p b6.Path) (b6.Geometry, error) {
+			if result, err := api.Call1(context, p, c); result != nil {
 				return result.(b6.Geometry), err
 			} else {
 				return nil, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.Area, *api.Context) (b6.Geometry, error) {
-		return func(a b6.Area, context *api.Context) (b6.Geometry, error) {
-			if result, err := api.Call1(a, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.Area) (b6.Geometry, error) {
+		return func(context *api.Context, a b6.Area) (b6.Geometry, error) {
+			if result, err := api.Call1(context, a, c); result != nil {
 				return result.(b6.Geometry), err
 			} else {
 				return nil, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.Geometry, *api.Context) (bool, error) {
-		return func(g b6.Geometry, context *api.Context) (bool, error) {
-			if result, err := api.Call1(g, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.Geometry) (bool, error) {
+		return func(context *api.Context, g b6.Geometry) (bool, error) {
+			if result, err := api.Call1(context, g, c); result != nil {
 				return result.(bool), err
 			} else {
 				return false, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.Feature, *api.Context) (bool, error) {
-		return func(f b6.Feature, context *api.Context) (bool, error) {
-			if result, err := api.Call1(f, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.Feature) (bool, error) {
+		return func(context *api.Context, f b6.Feature) (bool, error) {
+			if result, err := api.Call1(context, f, c); result != nil {
 				return api.IsTrue(result), err
 			} else {
 				return false, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.PointFeature, *api.Context) (bool, error) {
-		return func(f b6.PointFeature, context *api.Context) (bool, error) {
-			if result, err := api.Call1(f, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.PointFeature) (bool, error) {
+		return func(context *api.Context, f b6.PointFeature) (bool, error) {
+			if result, err := api.Call1(context, f, c); result != nil {
 				return api.IsTrue(result), err
 			} else {
 				return false, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.PathFeature, *api.Context) (bool, error) {
-		return func(f b6.PathFeature, context *api.Context) (bool, error) {
-			if result, err := api.Call1(f, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.PathFeature) (bool, error) {
+		return func(context *api.Context, f b6.PathFeature) (bool, error) {
+			if result, err := api.Call1(context, f, c); result != nil {
 				return api.IsTrue(result), err
 			} else {
 				return false, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.AreaFeature, *api.Context) (bool, error) {
-		return func(f b6.AreaFeature, context *api.Context) (bool, error) {
-			if result, err := api.Call1(f, c, context); result != nil {
+	func(c api.Callable) func(*api.Context, b6.AreaFeature) (bool, error) {
+		return func(context *api.Context, f b6.AreaFeature) (bool, error) {
+			if result, err := api.Call1(context, f, c); result != nil {
 				return api.IsTrue(result), err
 			} else {
 				return false, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.RelationFeature, *api.Context) (bool, error) {
-		return func(f b6.RelationFeature, context *api.Context) (bool, error) {
-			if result, err := api.Call1(f, c, context); err == nil && result != nil {
+	func(c api.Callable) func(*api.Context, b6.RelationFeature) (bool, error) {
+		return func(context *api.Context, f b6.RelationFeature) (bool, error) {
+			if result, err := api.Call1(context, f, c); err == nil && result != nil {
 				return api.IsTrue(result), err
 			} else {
 				return false, err
 			}
 		}
 	},
-	func(c api.Callable) func(b6.Feature, *api.Context) (api.Collection, error) {
-		return func(f b6.Feature, context *api.Context) (api.Collection, error) {
-			result, err := api.Call1(f, c, context)
+	func(c api.Callable) func(*api.Context, b6.Feature) (api.Collection, error) {
+		return func(context *api.Context, f b6.Feature) (api.Collection, error) {
+			result, err := api.Call1(context, f, c)
 			if err == nil {
 				if collection, ok := result.(api.Collection); ok {
 					return collection, nil
@@ -264,9 +265,9 @@ var wrappers = []interface{}{
 			return nil, err
 		}
 	},
-	func(c api.Callable) func(b6.Feature, *api.Context) (api.Pair, error) {
-		return func(f b6.Feature, context *api.Context) (api.Pair, error) {
-			result, err := api.Call1(f, c, context)
+	func(c api.Callable) func(*api.Context, b6.Feature) (api.Pair, error) {
+		return func(context *api.Context, f b6.Feature) (api.Pair, error) {
+			result, err := api.Call1(context, f, c)
 			if err == nil {
 				if p, ok := result.(api.Pair); ok {
 					return p, nil
@@ -276,9 +277,9 @@ var wrappers = []interface{}{
 			return nil, err
 		}
 	},
-	func(c api.Callable) func(b6.Feature, *api.Context) (b6.Tag, error) {
-		return func(f b6.Feature, context *api.Context) (b6.Tag, error) {
-			result, err := api.Call1(f, c, context)
+	func(c api.Callable) func(*api.Context, b6.Feature) (b6.Tag, error) {
+		return func(context *api.Context, f b6.Feature) (b6.Tag, error) {
+			result, err := api.Call1(context, f, c)
 			if err == nil {
 				if tag, ok := result.(b6.Tag); ok {
 					return tag, nil
@@ -290,7 +291,7 @@ var wrappers = []interface{}{
 	},
 	func(c api.Callable) func(*api.Context) (interface{}, error) {
 		return func(context *api.Context) (interface{}, error) {
-			return api.Call0(c, context)
+			return api.Call0(context, c)
 		}
 	},
 }
@@ -315,6 +316,9 @@ func Validate(f interface{}, name string) error {
 	}
 	if t.NumIn() > api.MaxArgs {
 		return fmt.Errorf("%s: has %d args, maximum allowed is %d", name, t.NumIn(), api.MaxArgs)
+	}
+	if t.NumIn() < 1 || t.In(0) != reflect.TypeOf(&api.Context{}) {
+		return fmt.Errorf("%s: expected *Context as first argument", name)
 	}
 	for i := 0; i < t.NumIn(); i++ {
 		if t.In(i).Kind() == reflect.Func {

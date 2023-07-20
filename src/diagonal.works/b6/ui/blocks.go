@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -537,6 +536,10 @@ func (f FeatureIDSetJSON) Add(id b6.FeatureID) {
 	f[key] = append(f[key], strconv.FormatUint(id.Value, 16))
 }
 
+// TODO: this use of a Block interface is fine when generating the response,
+// but means we can't read it back in the tests without a relatively complex
+// UnmarshalJSON implementation. Once we've standardised the design language,
+// we could consider using protos with protojson or another approach.
 type BlocksJSON []Block
 
 type BlockRequestJSON struct {
@@ -569,18 +572,15 @@ func (b *BlockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == "POST" {
 		d := json.NewDecoder(r.Body)
 		if err := d.Decode(&request); err != nil {
-			log.Printf("err: %s", err)
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 		r.Body.Close()
 	} else {
-		log.Printf("Bad method")
 		http.Error(w, "Bad method", http.StatusMethodNotAllowed)
 		return
 	}
 	if request.Expression == "" && request.Node == nil {
-		log.Printf("No node or expression")
 		http.Error(w, "No expression or node", http.StatusBadRequest)
 		return
 	}
@@ -750,8 +750,8 @@ func fillMatchingFunctionSymbols(symbols []string, result interface{}, functions
 	t := reflect.TypeOf(result)
 	for symbol, f := range functions {
 		tt := reflect.TypeOf(f)
-		if tt.Kind() == reflect.Func && tt.NumIn() > 0 {
-			if api.CanUseAsArg(t, tt.In(0)) {
+		if tt.Kind() == reflect.Func && tt.NumIn() > 1 {
+			if api.CanUseAsArg(t, tt.In(1)) {
 				symbols = append(symbols, symbol)
 			}
 		}

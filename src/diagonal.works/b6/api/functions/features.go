@@ -11,32 +11,32 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func findFeature(id b6.FeatureID, context *api.Context) (b6.Feature, error) {
+func findFeature(context *api.Context, id b6.FeatureID) (b6.Feature, error) {
 	return context.World.FindFeatureByID(id), nil
 }
 
-func findPointFeature(id b6.FeatureID, context *api.Context) (b6.PointFeature, error) {
+func findPointFeature(context *api.Context, id b6.FeatureID) (b6.PointFeature, error) {
 	if id.Type == b6.FeatureTypePoint {
 		return b6.FindPointByID(id.ToPointID(), context.World), nil
 	}
 	return nil, fmt.Errorf("%s isn't a point", id)
 }
 
-func findPathFeature(id b6.FeatureID, context *api.Context) (b6.PathFeature, error) {
+func findPathFeature(context *api.Context, id b6.FeatureID) (b6.PathFeature, error) {
 	if id.Type == b6.FeatureTypePath {
 		return b6.FindPathByID(id.ToPathID(), context.World), nil
 	}
 	return nil, fmt.Errorf("%s isn't a path", id)
 }
 
-func findAreaFeature(id b6.FeatureID, context *api.Context) (b6.AreaFeature, error) {
+func findAreaFeature(context *api.Context, id b6.FeatureID) (b6.AreaFeature, error) {
 	if id.Type == b6.FeatureTypeArea {
 		return b6.FindAreaByID(id.ToAreaID(), context.World), nil
 	}
 	return nil, fmt.Errorf("%s isn't a area", id)
 }
 
-func findRelationFeature(id b6.FeatureID, context *api.Context) (b6.RelationFeature, error) {
+func findRelationFeature(context *api.Context, id b6.FeatureID) (b6.RelationFeature, error) {
 	if id.Type == b6.FeatureTypeRelation {
 		return b6.FindRelationByID(id.ToRelationID(), context.World), nil
 	}
@@ -92,7 +92,7 @@ func (a *arrayAreaFeatureCollection) Next() (bool, error) {
 var _ api.Collection = &arrayAreaFeatureCollection{}
 var _ api.Countable = &arrayAreaFeatureCollection{}
 
-func findAreasContainingPoints(points api.PointFeatureCollection, q b6.Query, context *api.Context) (api.AreaFeatureCollection, error) {
+func findAreasContainingPoints(context *api.Context, points api.PointFeatureCollection, q b6.Query) (api.AreaFeatureCollection, error) {
 	cells := make(map[s2.CellID][]s2.Point)
 	i := points.Begin()
 	for {
@@ -115,7 +115,7 @@ func findAreasContainingPoints(points api.PointFeatureCollection, q b6.Query, co
 	matched := make(map[b6.AreaID]b6.AreaFeature)
 	for cell, points := range cells {
 		region := s2.CellUnion{cell}
-		areas := b6.FindAreas(b6.Intersection{q, b6.MightIntersect{&region}}, context.World)
+		areas := b6.FindAreas(b6.Intersection{q, b6.MightIntersect{Region: &region}}, context.World)
 		for areas.Next() {
 			id := areas.Feature().AreaID()
 			if _, ok := matched[id]; !ok {
@@ -134,39 +134,39 @@ func findAreasContainingPoints(points api.PointFeatureCollection, q b6.Query, co
 	return collection, nil
 }
 
-func tag(key string, value string, context *api.Context) (b6.Tag, error) {
+func tag(context *api.Context, key string, value string) (b6.Tag, error) {
 	return b6.Tag{Key: key, Value: value}, nil
 }
 
-func value(tag b6.Tag, context *api.Context) (string, error) {
+func value(context *api.Context, tag b6.Tag) (string, error) {
 	return tag.Value, nil
 }
 
-func intValue(tag b6.Tag, context *api.Context) (int, error) {
+func intValue(context *api.Context, tag b6.Tag) (int, error) {
 	i, _ := tag.IntValue()
 	return i, nil
 }
 
-func floatValue(tag b6.Tag, context *api.Context) (float64, error) {
+func floatValue(context *api.Context, tag b6.Tag) (float64, error) {
 	f, _ := tag.FloatValue()
 	return f, nil
 }
 
-func get(id b6.Identifiable, key string, context *api.Context) (b6.Tag, error) {
+func get(context *api.Context, id b6.Identifiable, key string) (b6.Tag, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		return feature.Get(key), nil
 	}
 	return b6.InvalidTag(), nil
 }
 
-func getString(id b6.Identifiable, key string, context *api.Context) (string, error) {
+func getString(context *api.Context, id b6.Identifiable, key string) (string, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		return feature.Get(key).Value, nil
 	}
 	return "", nil
 }
 
-func getInt(id b6.Identifiable, key string, context *api.Context) (int, error) {
+func getInt(context *api.Context, id b6.Identifiable, key string) (int, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		if i, ok := feature.Get(key).IntValue(); ok {
 			return i, nil
@@ -175,7 +175,7 @@ func getInt(id b6.Identifiable, key string, context *api.Context) (int, error) {
 	return 0, nil
 }
 
-func getFloat(id b6.Identifiable, key string, context *api.Context) (float64, error) {
+func getFloat(context *api.Context, id b6.Identifiable, key string) (float64, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		if f, ok := feature.Get(key).FloatValue(); ok {
 			return f, nil
@@ -184,14 +184,14 @@ func getFloat(id b6.Identifiable, key string, context *api.Context) (float64, er
 	return 0.0, nil
 }
 
-func hasKey(id b6.Feature, key string, context *api.Context) (bool, error) {
+func hasKey(context *api.Context, id b6.Feature, key string) (bool, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		return feature.Get(key).IsValid(), nil
 	}
 	return false, nil
 }
 
-func countTagValue(id b6.Identifiable, key string, context *api.Context) (api.Collection, error) {
+func countTagValue(context *api.Context, id b6.Identifiable, key string) (api.Collection, error) {
 	c := &api.ArrayAnyIntCollection{
 		Keys:   make([]interface{}, 0, 1),
 		Values: make([]int, 0, 1),
@@ -205,7 +205,7 @@ func countTagValue(id b6.Identifiable, key string, context *api.Context) (api.Co
 	return c, nil
 }
 
-func allTags(id b6.Identifiable, c *api.Context) (api.IntTagCollection, error) {
+func allTags(c *api.Context, id b6.Identifiable) (api.IntTagCollection, error) {
 	var tags []b6.Tag
 	if f := api.Resolve(id, c.World); f != nil {
 		tags = f.AllTags()
@@ -213,7 +213,7 @@ func allTags(id b6.Identifiable, c *api.Context) (api.IntTagCollection, error) {
 	return &api.ArrayTagCollection{Tags: tags}, nil
 }
 
-func pointDegree(point b6.PointFeature, context *api.Context) (int, error) {
+func pointDegree(context *api.Context, point b6.PointFeature) (int, error) {
 	segments := context.World.Traverse(point.PointID())
 	n := 0
 	for segments.Next() {
@@ -222,7 +222,7 @@ func pointDegree(point b6.PointFeature, context *api.Context) (int, error) {
 	return n, nil
 }
 
-func pathLengthMeters(path b6.PathFeature, context *api.Context) (float64, error) {
+func pathLengthMeters(context *api.Context, path b6.PathFeature) (float64, error) {
 	return b6.AngleToMeters(path.Polyline().Length()), nil
 }
 
@@ -326,7 +326,7 @@ func (a *areaPointCollection) Value() interface{} {
 
 var _ api.Collection = &areaPointCollection{}
 
-func points(g b6.Geometry, context *api.Context) (api.PointCollection, error) {
+func points(context *api.Context, g b6.Geometry) (api.PointCollection, error) {
 	switch g := g.(type) {
 	case b6.Point:
 		return &singletonCollection{k: 0, v: g}, nil
@@ -338,7 +338,7 @@ func points(g b6.Geometry, context *api.Context) (api.PointCollection, error) {
 	return &api.ArrayPointCollection{}, nil
 }
 
-func pointFeatures(f b6.Feature, context *api.Context) (api.PointFeatureCollection, error) {
+func pointFeatures(context *api.Context, f b6.Feature) (api.PointFeatureCollection, error) {
 	points := &api.ArrayPointFeatureCollection{Features: make([]b6.PointFeature, 0)}
 	switch f := f.(type) {
 	case b6.PointFeature:
@@ -363,7 +363,7 @@ func pointFeatures(f b6.Feature, context *api.Context) (api.PointFeatureCollecti
 	return points, nil
 }
 
-func pointPaths(id b6.IdentifiablePoint, context *api.Context) (api.PathFeatureCollection, error) {
+func pointPaths(context *api.Context, id b6.IdentifiablePoint) (api.PathFeatureCollection, error) {
 	p := api.ResolvePoint(id, context.World)
 	if p == nil {
 		return nil, fmt.Errorf("No point with id %s", id)
@@ -376,7 +376,7 @@ func pointPaths(id b6.IdentifiablePoint, context *api.Context) (api.PathFeatureC
 	return collection, nil
 }
 
-func samplePointsAlongPaths(paths api.PathCollection, distanceMeters float64, context *api.Context) (api.PointCollection, error) {
+func samplePointsAlongPaths(context *api.Context, paths api.PathCollection, distanceMeters float64) (api.PointCollection, error) {
 	// TODO: We shouldn't need to special case this: we should be able to flattern the results of sample_points
 	// on a collection of paths.
 	seen := make(map[s2.Point]struct{})
@@ -395,7 +395,7 @@ func samplePointsAlongPaths(paths api.PathCollection, distanceMeters float64, co
 	return pointsToCollection(points), nil
 }
 
-func samplePoints(path b6.Path, distanceMeters float64, context *api.Context) (api.StringPointCollection, error) {
+func samplePoints(context *api.Context, path b6.Path, distanceMeters float64) (api.StringPointCollection, error) {
 	points := appendUnseenSampledPoints(path, distanceMeters, make(map[s2.Point]struct{}), make([]s2.Point, 0, 16))
 	return pointsToCollection(points), nil
 }
@@ -437,7 +437,7 @@ func pointsToCollection(points []s2.Point) api.StringPointCollection {
 	return &api.ArrayPointCollection{Keys: keys, Values: points}
 }
 
-func join(a b6.Path, b b6.Path, context *api.Context) (b6.Path, error) {
+func join(context *api.Context, a b6.Path, b b6.Path) (b6.Path, error) {
 	points := make([]s2.Point, 0, a.Len()+b.Len())
 	i := 0
 	for i < a.Len() {
@@ -458,7 +458,7 @@ func join(a b6.Path, b b6.Path, context *api.Context) (b6.Path, error) {
 // orderedJoinPaths returns a new path formed by joining a and b, in that order, reversing
 // the order of the points to maintain a consistent order, determined by which points of
 // the paths are shared. Returns an error if the paths don't share an end point.
-func orderedJoin(a b6.Path, b b6.Path, context *api.Context) (b6.Path, error) {
+func orderedJoin(context *api.Context, a b6.Path, b b6.Path) (b6.Path, error) {
 	var reverseA, reverseB bool
 	if a.Point(a.Len()-1) == b.Point(0) {
 		reverseA, reverseB = false, false

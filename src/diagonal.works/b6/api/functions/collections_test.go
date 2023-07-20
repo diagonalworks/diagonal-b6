@@ -22,7 +22,7 @@ func TestTake(t *testing.T) {
 
 	n := 100
 	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
-	took, err := take(collection, n, &api.Context{})
+	took, err := take(&api.Context{}, collection, n)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -62,7 +62,7 @@ func TestTopFloat(t *testing.T) {
 
 	n := 100
 	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
-	selected, err := top(collection, n, &api.Context{})
+	selected, err := top(&api.Context{}, collection, n)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -103,7 +103,7 @@ func TestTopInt(t *testing.T) {
 
 	n := 100
 	collection := &api.ArrayAnyIntCollection{Keys: keys, Values: values}
-	selected, err := top(collection, n, &api.Context{})
+	selected, err := top(&api.Context{}, collection, n)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -133,7 +133,7 @@ func TestTopWithMixedValuesGivesAnError(t *testing.T) {
 		Values: []interface{}{0, 1.0},
 	}
 
-	_, err := top(&collection, 1, &api.Context{})
+	_, err := top(&api.Context{}, &collection, 1)
 	if err == nil {
 		t.Errorf("Expected an error, found none")
 	}
@@ -151,9 +151,9 @@ func TestFilter(t *testing.T) {
 	}
 
 	limit := 0.5
-	f := func(v interface{}, _ *api.Context) (bool, error) { return v.(float64) > limit, nil }
+	f := func(_ *api.Context, v interface{}) (bool, error) { return v.(float64) > limit, nil }
 	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
-	filtered, err := filter(collection, f, &api.Context{})
+	filtered, err := filter(&api.Context{}, collection, f)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	}
@@ -181,7 +181,7 @@ func TestSumByKey(t *testing.T) {
 		Values: []int{100, 50, 200},
 	}
 
-	byKey, err := sumByKey(collection, nil)
+	byKey, err := sumByKey(&api.Context{}, collection)
 	if err != nil {
 		t.Errorf("Expected no error, found %s", err)
 		return
@@ -206,7 +206,7 @@ func TestCountValues(t *testing.T) {
 		Values: []int{2, 3, 2},
 	}
 
-	counted, err := countValues(collection, nil)
+	counted, err := countValues(&api.Context{}, collection)
 	if err != nil {
 		t.Errorf("Expected no error, found %s", err)
 		return
@@ -239,7 +239,7 @@ func TestFlattern(t *testing.T) {
 		Values: []interface{}{&c1, &c2},
 	}
 
-	flatterned, err := flattern(&c, nil)
+	flatterned, err := flattern(&api.Context{}, &c)
 	if err != nil {
 		t.Errorf("Expected no error, found %q", err)
 		return

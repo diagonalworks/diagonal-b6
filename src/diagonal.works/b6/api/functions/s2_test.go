@@ -24,7 +24,7 @@ func TestS2Points(t *testing.T) {
 	}
 
 	center := s2.PointFromLatLng(s2.LatLngFromDegrees(51.53536, -0.12539))
-	points, err := s2Points(area, 21, 21, context)
+	points, err := s2Points(context, area, 21, 21)
 	if err != nil {
 		t.Errorf("Expected no error, found %s", err)
 		return
@@ -60,9 +60,9 @@ func TestS2Grid(t *testing.T) {
 	context := &api.Context{}
 	topLeft := b6.PointFromLatLngDegrees(51.5146, -0.1140)
 	bottomRight := b6.PointFromLatLngDegrees(51.5124, -0.0951)
-	rectangle, _ := rectanglePolygon(topLeft, bottomRight, context)
+	rectangle, _ := rectanglePolygon(context, topLeft, bottomRight)
 
-	grid, err := s2Grid(rectangle, 21, context)
+	grid, err := s2Grid(context, rectangle, 21)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -96,9 +96,9 @@ func TestS2Covering(t *testing.T) {
 	context := &api.Context{}
 	topLeft := b6.PointFromLatLngDegrees(51.5146, -0.1140)
 	bottomRight := b6.PointFromLatLngDegrees(51.5124, -0.0951)
-	rectangle, _ := rectanglePolygon(topLeft, bottomRight, context)
+	rectangle, _ := rectanglePolygon(context, topLeft, bottomRight)
 
-	covering, err := s2Covering(rectangle, 1, 21, context)
+	covering, err := s2Covering(context, rectangle, 1, 21)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

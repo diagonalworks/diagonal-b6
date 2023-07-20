@@ -9,7 +9,7 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func tileIDs(feature b6.Feature, c *api.Context) (api.FeatureIDIntCollection, error) {
+func tileIDs(c *api.Context, feature b6.Feature) (api.FeatureIDIntCollection, error) {
 	ids := &api.ArrayFeatureIDIntCollection{}
 	if a, ok := feature.(b6.AreaFeature); ok {
 		ids.Keys = make([]b6.FeatureID, a.Len())
@@ -27,7 +27,7 @@ func tileIDs(feature b6.Feature, c *api.Context) (api.FeatureIDIntCollection, er
 	return ids, nil
 }
 
-func tileIDsHex(feature b6.Feature, c *api.Context) (api.FeatureIDStringCollection, error) {
+func tileIDsHex(c *api.Context, feature b6.Feature) (api.FeatureIDStringCollection, error) {
 	ids := &api.ArrayFeatureIDStringCollection{}
 	if a, ok := feature.(b6.AreaFeature); ok {
 		ids.Keys = make([]b6.FeatureID, a.Len())
@@ -45,7 +45,7 @@ func tileIDsHex(feature b6.Feature, c *api.Context) (api.FeatureIDStringCollecti
 	return ids, nil
 }
 
-func tilePaths(g b6.Geometry, zoom int, c *api.Context) (api.IntStringCollection, error) {
+func tilePaths(c *api.Context, g b6.Geometry, zoom int) (api.IntStringCollection, error) {
 	coverer := s2.RegionCoverer{MaxLevel: 20, MinLevel: 0}
 	paths := make([]string, 0)
 	for _, t := range b6.CoverCellUnionWithTiles(g.Covering(coverer), uint(zoom)) {

@@ -8,13 +8,13 @@ import (
 	"diagonal.works/b6/ingest"
 )
 
-func addTag(id b6.Identifiable, tag b6.Tag, c *api.Context) (ingest.Change, error) {
+func addTag(c *api.Context, id b6.Identifiable, tag b6.Tag) (ingest.Change, error) {
 	tags := make(ingest.AddTags, 1)
 	tags[0] = ingest.AddTag{ID: id.FeatureID(), Tag: tag}
 	return tags, nil
 }
 
-func addTags(collection api.FeatureIDTagCollection, c *api.Context) (ingest.Change, error) {
+func addTags(c *api.Context, collection api.FeatureIDTagCollection) (ingest.Change, error) {
 	i := collection.Begin()
 	tags := make(ingest.AddTags, 0)
 	for {
@@ -33,13 +33,13 @@ func addTags(collection api.FeatureIDTagCollection, c *api.Context) (ingest.Chan
 	return tags, nil
 }
 
-func removeTag(id b6.Identifiable, key string, c *api.Context) (ingest.Change, error) {
+func removeTag(c *api.Context, id b6.Identifiable, key string) (ingest.Change, error) {
 	tags := make(ingest.RemoveTags, 1)
 	tags[0] = ingest.RemoveTag{ID: id.FeatureID(), Key: key}
 	return tags, nil
 }
 
-func removeTags(collection api.FeatureIDStringCollection, c *api.Context) (ingest.Change, error) {
+func removeTags(c *api.Context, collection api.FeatureIDStringCollection) (ingest.Change, error) {
 	i := collection.Begin()
 	tags := make(ingest.RemoveTags, 0)
 	for {
@@ -58,7 +58,7 @@ func removeTags(collection api.FeatureIDStringCollection, c *api.Context) (inges
 	return tags, nil
 }
 
-func withChange(change ingest.Change, f func(c *api.Context) (interface{}, error), c *api.Context) (interface{}, error) {
+func withChange(c *api.Context, change ingest.Change, f func(c *api.Context) (interface{}, error)) (interface{}, error) {
 	modified := *c
 	m := ingest.NewMutableOverlayWorld(c.World)
 	modified.World = m

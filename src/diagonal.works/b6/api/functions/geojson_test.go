@@ -18,13 +18,13 @@ func TestGeoJSON(t *testing.T) {
 	context := &api.Context{
 		World: granarySquare,
 	}
-	features, err := Find(b6.Keyed{"#building"}, context)
+	features, err := find(context, b6.Keyed{"#building"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
 	}
 
-	g, err := toGeoJSONCollection(features, context)
+	g, err := toGeoJSONCollection(context, features)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -55,7 +55,7 @@ func TestGeoJSONAreasInvertsLargePolygons(t *testing.T) {
 	}
 	g := geojson.NewFeatureWithGeometry(geojson.GeometryFromCoordinates(cs))
 	p1 := cs.ToS2Polygon()
-	areas, err := geojsonAreas(g, &api.Context{})
+	areas, err := geojsonAreas(&api.Context{}, g)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

@@ -71,39 +71,41 @@ func (o Op) String() string {
 }
 
 type Callable interface {
-	// The number of arguments expected by the function, excluding Context
+	// The number of arguments expected by the function, excluding Context. If
+	// the last argument is varadic, it's counted as a single argument with a
+	// list type (matching go's semantics)
 	NumArgs() int
 	// Call a function using arguments on the VM's stack. Assumes that n
 	// arguments have been pushed onto the stack in left-to-right order. These
 	// arguments are removed from the stack, leaving the function's
 	// result at the top of the stack.
 	// Scratch is a temporary buffer used to avoid allocations.
-	CallFromStack(n int, scratch []reflect.Value, context *Context) ([]reflect.Value, error)
+	CallFromStack(context *Context, n int, scratch []reflect.Value) ([]reflect.Value, error)
 	// Call a function using arguments passed to yhe method. Scratch is a temporary
 	// buffer used to avoid allocations. Execution happens in the VM specified by
 	// the context, and the stack is left unmodified.
-	CallWithArgs(args []interface{}, scratch []reflect.Value, context *Context) (interface{}, []reflect.Value, error)
+	CallWithArgs(context *Context, args []interface{}, scratch []reflect.Value) (interface{}, []reflect.Value, error)
 	ToFunctionValue(t reflect.Type, context *Context) reflect.Value
 	String() string
 }
 
 type FunctionWrappers map[reflect.Type]func(Callable) reflect.Value
 
-func Call0(c Callable, context *Context) (interface{}, error) {
+func Call0(context *Context, c Callable) (interface{}, error) {
 	var scratch [MaxArgs]reflect.Value
-	result, _, err := c.CallWithArgs([]interface{}{}, scratch[0:], context)
+	result, _, err := c.CallWithArgs(context, []interface{}{}, scratch[0:])
 	return result, err
 }
 
-func Call1(arg0 interface{}, c Callable, context *Context) (interface{}, error) {
+func Call1(context *Context, arg0 interface{}, c Callable) (interface{}, error) {
 	var scratch [MaxArgs]reflect.Value
-	result, _, err := c.CallWithArgs([]interface{}{arg0}, scratch[0:], context)
+	result, _, err := c.CallWithArgs(context, []interface{}{arg0}, scratch[0:])
 	return result, err
 }
 
-func Call2(arg0 interface{}, arg1 interface{}, c Callable, context *Context) (interface{}, error) {
+func Call2(context *Context, arg0 interface{}, arg1 interface{}, c Callable) (interface{}, error) {
 	var scratch [MaxArgs]reflect.Value
-	result, _, err := c.CallWithArgs([]interface{}{arg0, arg1}, scratch[0:], context)
+	result, _, err := c.CallWithArgs(context, []interface{}{arg0, arg1}, scratch[0:])
 	return result, err
 }
 
@@ -373,14 +375,14 @@ func (v *VM) execute(context *Context) error {
 			v.Stack = append(v.Stack, v.Args[v.Instructions[v.PC].Args[0]])
 		case OpCallValue:
 			n := int(v.Instructions[v.PC].Args[ArgsNumArgs])
-			if args, err = v.Instructions[v.PC].Callable.CallFromStack(n, args, context); err != nil {
+			if args, err = v.Instructions[v.PC].Callable.CallFromStack(context, n, args); err != nil {
 				return err
 			}
 		case OpCallStack:
 			n := int(v.Instructions[v.PC].Args[ArgsNumArgs])
 			f := v.Stack[len(v.Stack)-1].Interface().(Callable)
 			v.Stack = v.Stack[0 : len(v.Stack)-1]
-			if args, err = f.CallFromStack(n, args, context); err != nil {
+			if args, err = f.CallFromStack(context, n, args); err != nil {
 				return err
 			}
 		case OpReturn:
@@ -406,25 +408,41 @@ func (g goCall) String() string {
 	return "go: " + g.name
 }
 
-func (g goCall) CallFromStack(n int, scratch []reflect.Value, context *Context) ([]reflect.Value, error) {
+func (g goCall) CallFromStack(context *Context, n int, scratch []reflect.Value) ([]reflect.Value, error) {
 	vm := context.VM
 	t := g.f.Type()
 	scratch = scratch[0:0]
 	expected := g.NumArgs()
-	if n == expected {
-		for i := 0; i < n; i++ {
+	if t.IsVariadic() {
+		expected-- // handle the last argument separately
+	} else if n > expected {
+		return nil, fmt.Errorf("%s: expected %d arguments, found %d", g.name, expected, n)
+	}
+	if n >= expected {
+		scratch = append(scratch, reflect.ValueOf(context))
+		for i := 0; i < expected; i++ {
 			arg := len(vm.Stack) - n + i
-			if v, err := ConvertWithContext(vm.Stack[arg], t.In(i), context); err == nil {
+			if v, err := ConvertWithContext(vm.Stack[arg], t.In(i+1), context); err == nil {
 				scratch = append(scratch, v)
 			} else {
-				return scratch, fmt.Errorf("%s: %s", g.name, err.Error())
+				return nil, fmt.Errorf("%s: %s", g.name, err.Error())
 			}
 		}
-		scratch = append(scratch, reflect.ValueOf(context))
+		if t.IsVariadic() {
+			for i := expected; i < n; i++ {
+				arg := len(vm.Stack) - n + i
+				if v, err := ConvertWithContext(vm.Stack[arg], t.In(expected+1).Elem(), context); err == nil {
+					scratch = append(scratch, v)
+				} else {
+					return scratch, fmt.Errorf("%s: %s", g.name, err.Error())
+				}
+			}
+		}
 		result := g.f.Call(scratch)
 		vm.Stack = vm.Stack[0 : len(vm.Stack)-n]
 		if len(result) < 1 {
-			// TODO: Check return type during compilation
+			// Checked during init() in functions, but not guaranteed if
+			// unvalidated local functions have been registered.
 			panic(fmt.Sprintf("expected 2 results from %s", g.f.Type()))
 		}
 		if len(result) > 1 {
@@ -438,7 +456,7 @@ func (g goCall) CallFromStack(n int, scratch []reflect.Value, context *Context) 
 		} else {
 			vm.Stack = append(vm.Stack, result[0])
 		}
-	} else if n < expected {
+	} else {
 		p := &partialCall{c: g, vmArgs: vm.Args}
 		p.n = n
 		for i := 0; i < n; i++ {
@@ -446,38 +464,49 @@ func (g goCall) CallFromStack(n int, scratch []reflect.Value, context *Context) 
 		}
 		vm.Stack = vm.Stack[0 : len(vm.Stack)-n]
 		vm.Stack = append(vm.Stack, reflect.ValueOf(p))
-	} else {
-		return scratch, fmt.Errorf("%s: expected at most %d args, found %d", g.name, expected, n)
 	}
 	return scratch, nil
 }
 
-func (g goCall) CallWithArgs(args []interface{}, scratch []reflect.Value, context *Context) (interface{}, []reflect.Value, error) {
+func (g goCall) CallWithArgs(context *Context, args []interface{}, scratch []reflect.Value) (interface{}, []reflect.Value, error) {
 	t := g.f.Type()
-	if len(args) == t.NumIn()-1 { // Don't count context
+	expected := g.NumArgs()
+	if t.IsVariadic() {
+		expected-- // handle the last argument separately
+	} else if len(args) > expected {
+		return nil, scratch, fmt.Errorf("%s: expected %d arguments, found %d", g.name, expected, len(args))
+	}
+	if len(args) >= expected {
 		scratch = scratch[0:0]
-		for i, arg := range args {
-			if v, err := ConvertWithContext(reflect.ValueOf(arg), t.In(i), context); err == nil {
+		scratch = append(scratch, reflect.ValueOf(context))
+		for i := 0; i < expected; i++ {
+			if v, err := ConvertWithContext(reflect.ValueOf(args[i]), t.In(i+1), context); err == nil {
 				scratch = append(scratch, v)
 			} else {
 				return nil, scratch, fmt.Errorf("%s: %s", g.name, err.Error())
 			}
 		}
-		scratch = append(scratch, reflect.ValueOf(context))
+		if t.IsVariadic() {
+			for i := expected; i < len(args); i++ {
+				if v, err := ConvertWithContext(reflect.ValueOf(args[i]), t.In(expected+1).Elem(), context); err == nil {
+					scratch = append(scratch, v)
+				} else {
+					return nil, scratch, fmt.Errorf("%s: %s", g.name, err.Error())
+				}
+			}
+		}
 		result := g.f.Call(scratch)
 		if err, ok := result[1].Interface().(error); ok && err != nil {
 			return nil, scratch, err
 		}
 		return result[0].Interface(), scratch, nil
-	} else if len(args) < t.NumIn()-1 {
+	} else {
 		p := &partialCall{c: g, vmArgs: context.VM.Args}
 		p.n = len(args)
 		for i, arg := range args {
 			p.args[i] = reflect.ValueOf(arg)
 		}
 		return p.ToFunction(), scratch, nil
-	} else {
-		return nil, scratch, fmt.Errorf("%s: expected at most %d args, found %d", g.name, t.NumIn()-1, len(args))
 	}
 }
 
@@ -510,10 +539,10 @@ func (l *lambdaCall) String() string {
 	return fmt.Sprintf("lambda: pc: %d args: %d", l.pc, l.args)
 }
 
-func (l *lambdaCall) CallFromStack(n int, scratch []reflect.Value, context *Context) ([]reflect.Value, error) {
+func (l *lambdaCall) CallFromStack(context *Context, n int, scratch []reflect.Value) ([]reflect.Value, error) {
 	var err error
 	vm := context.VM
-	if n == l.args {
+	if n >= l.args {
 		opc := vm.PC
 		vm.PC = l.pc
 		err = vm.execute(context)
@@ -532,12 +561,12 @@ func (l *lambdaCall) CallFromStack(n int, scratch []reflect.Value, context *Cont
 	return scratch, err
 }
 
-func (l *lambdaCall) CallWithArgs(args []interface{}, scratch []reflect.Value, context *Context) (interface{}, []reflect.Value, error) {
+func (l *lambdaCall) CallWithArgs(context *Context, args []interface{}, scratch []reflect.Value) (interface{}, []reflect.Value, error) {
 	vm := context.VM
 	for _, arg := range args {
 		vm.Stack = append(vm.Stack, reflect.ValueOf(arg))
 	}
-	scratch, err := l.CallFromStack(len(args), scratch, context)
+	scratch, err := l.CallFromStack(context, len(args), scratch)
 	var result interface{}
 	if err == nil {
 		result = vm.Stack[len(vm.Stack)-1].Interface()
@@ -564,13 +593,13 @@ func (p *partialCall) NumArgs() int {
 	return p.c.NumArgs() - p.n
 }
 
-func (p *partialCall) CallFromStack(n int, scratch []reflect.Value, context *Context) ([]reflect.Value, error) {
+func (p *partialCall) CallFromStack(context *Context, n int, scratch []reflect.Value) ([]reflect.Value, error) {
 	vm := context.VM
 	if n+p.n == p.c.NumArgs() {
 		vm.Stack = append(vm.Stack, p.args[0:p.n]...)
 		oargs := vm.Args
 		vm.Args = p.vmArgs
-		scratch, err := p.c.CallFromStack(n+p.n, scratch, context)
+		scratch, err := p.c.CallFromStack(context, n+p.n, scratch)
 		vm.Args = oargs
 		return scratch, err
 	} else if n+p.n < p.c.NumArgs() {
@@ -587,7 +616,7 @@ func (p *partialCall) CallFromStack(n int, scratch []reflect.Value, context *Con
 	return scratch, nil
 }
 
-func (p *partialCall) CallWithArgs(args []interface{}, scratch []reflect.Value, context *Context) (interface{}, []reflect.Value, error) {
+func (p *partialCall) CallWithArgs(context *Context, args []interface{}, scratch []reflect.Value) (interface{}, []reflect.Value, error) {
 	if len(args)+p.n == p.c.NumArgs() {
 		added := make([]interface{}, len(args)+p.n)
 		for i, arg := range args {
@@ -596,7 +625,7 @@ func (p *partialCall) CallWithArgs(args []interface{}, scratch []reflect.Value, 
 		for i := 0; i < p.n; i++ {
 			added[i+len(args)] = p.args[i].Interface()
 		}
-		return p.c.CallWithArgs(added, scratch, context)
+		return p.c.CallWithArgs(context, added, scratch)
 	} else if len(args)+p.n < p.c.NumArgs() {
 		pp := &partialCall{c: p.c, vmArgs: context.VM.Args}
 		pp.n = len(args)
@@ -620,15 +649,15 @@ func (p *partialCall) ToFunction() interface{} {
 	switch p.c.NumArgs() - p.n {
 	case 0:
 		return func(context *Context) (interface{}, error) {
-			return Call0(p.c, context)
+			return Call0(context, p.c)
 		}
 	case 1:
 		return func(arg0 interface{}, context *Context) (interface{}, error) {
-			return Call1(arg0, p.c, context)
+			return Call1(context, arg0, p.c)
 		}
 	case 2:
 		return func(arg0 interface{}, arg1 interface{}, context *Context) (interface{}, error) {
-			return Call2(arg0, arg1, p.c, context)
+			return Call2(context, arg0, arg1, p.c)
 		}
 	default:
 		panic(fmt.Sprintf("can't wrap partial with %d args", p.c.NumArgs()-p.n))

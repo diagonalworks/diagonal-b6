@@ -27,7 +27,7 @@ func TestBuildingAccessibility(t *testing.T) {
 	}
 
 	c := api.Context{World: m}
-	accessible, err := buildingAccess(origins, 1000, "walking", &c)
+	accessible, err := buildingAccess(&c, origins, 1000, "walking")
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return

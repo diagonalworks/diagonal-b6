@@ -13,7 +13,7 @@ func emptyPointCollection(context *api.Context) (api.StringPointCollection, erro
 	return &api.ArrayPointCollection{Keys: []string{}, Values: []s2.Point{}}, nil
 }
 
-func addPoint(p b6.Point, c api.StringPointCollection, context *api.Context) (api.StringPointCollection, error) {
+func addPoint(context *api.Context, p b6.Point, c api.StringPointCollection) (api.StringPointCollection, error) {
 	// TODO: We can potentially fast-path this if c is an arrayPointCollection by
 	// modifying the underlying slices, and if not, then add a wrapper that
 	// returns the new point when Next() returns false.
@@ -69,8 +69,20 @@ func (s *singletonCollection) Next() (bool, error) {
 var _ api.Collection = &singletonCollection{}
 var _ api.Countable = &singletonCollection{}
 
-func collection(k interface{}, v interface{}, _ *api.Context) (api.Collection, error) {
-	return &singletonCollection{k: k, v: v}, nil
+func collection(_ *api.Context, pairs ...interface{}) (api.Collection, error) {
+	c := &api.ArrayAnyCollection{
+		Keys:   make([]interface{}, len(pairs)),
+		Values: make([]interface{}, len(pairs)),
+	}
+	for i, arg := range pairs {
+		if pair, ok := arg.(api.Pair); ok {
+			c.Keys[i] = pair.First()
+			c.Values[i] = pair.Second()
+		} else {
+			return nil, fmt.Errorf("Expected a pair, found %T", arg)
+		}
+	}
+	return c, nil
 }
 
 type takeCollection struct {
@@ -102,7 +114,7 @@ func (t *takeCollection) Value() interface{} {
 
 var _ api.Collection = &takeCollection{}
 
-func take(c api.Collection, n int, _ *api.Context) (api.Collection, error) {
+func take(_ *api.Context, c api.Collection, n int) (api.Collection, error) {
 	return &takeCollection{c: c, n: n}, nil
 }
 
@@ -139,7 +151,7 @@ func (h *topIntHeap) Pop() any {
 	return x
 }
 
-func top(c api.Collection, n int, _ *api.Context) (api.Collection, error) {
+func top(_ *api.Context, c api.Collection, n int) (api.Collection, error) {
 	i := c.Begin()
 	var err error
 	first := true
@@ -198,7 +210,7 @@ func top(c api.Collection, n int, _ *api.Context) (api.Collection, error) {
 type filterCollection struct {
 	c       api.Collection
 	i       api.CollectionIterator
-	f       func(interface{}, *api.Context) (bool, error)
+	f       func(*api.Context, interface{}) (bool, error)
 	context *api.Context
 }
 
@@ -212,7 +224,7 @@ func (f *filterCollection) Next() (bool, error) {
 		if !ok || err != nil {
 			return ok, err
 		}
-		ok, err = f.f(f.i.Value(), f.context)
+		ok, err = f.f(f.context, f.i.Value())
 		if ok || err != nil {
 			return ok, err
 		}
@@ -229,11 +241,11 @@ func (f *filterCollection) Value() interface{} {
 
 var _ api.Collection = &filterCollection{}
 
-func filter(c api.Collection, f func(interface{}, *api.Context) (bool, error), context *api.Context) (api.Collection, error) {
+func filter(context *api.Context, c api.Collection, f func(*api.Context, interface{}) (bool, error)) (api.Collection, error) {
 	return &filterCollection{c: c, f: f, context: context}, nil
 }
 
-func sumByKey(c api.Collection, _ *api.Context) (api.Collection, error) {
+func sumByKey(_ *api.Context, c api.Collection) (api.Collection, error) {
 	counts := make(map[interface{}]int)
 	i := c.Begin()
 	for {
@@ -259,7 +271,7 @@ func sumByKey(c api.Collection, _ *api.Context) (api.Collection, error) {
 	return r, nil
 }
 
-func countValues(c api.Collection, _ *api.Context) (api.Collection, error) {
+func countValues(_ *api.Context, c api.Collection) (api.Collection, error) {
 	counts := make(map[interface{}]int)
 	i := c.Begin()
 	for {
@@ -326,6 +338,6 @@ func (f *flatternCollection) Next() (bool, error) {
 
 var _ api.Collection = &flatternCollection{}
 
-func flattern(c api.Collection, _ *api.Context) (api.Collection, error) {
+func flattern(_ *api.Context, c api.Collection) (api.Collection, error) {
 	return &flatternCollection{c: c}, nil
 }

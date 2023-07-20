@@ -214,10 +214,18 @@ def main():
         if f["Name"] in SPECIAL_FUNCTIONS:
             print("%s = diagonal_b6.expression._%s" % (f["Name"], f["Name"]))
         else:
-            signature = ", ".join(["a%d: %s" % (i, hints[a]) for (i, a) in enumerate(f["Args"])])
+            signature_args = ["a%d: %s" % (i, hints[a]) for (i, a) in enumerate(f["Args"])]
+            if f["IsVariadic"]:
+                signature_args[-1] = "*" + signature_args[-1]
+            signature = ", ".join(signature_args)
             print("def %s(%s) -> %s:" % (name_for_function(f["Name"]), signature, hints[f["Result"]]))
-            args = "[" + ", ".join(["a%d" % i for i in range(0, len(f["Args"]))])+ "]"
-            print("    return %s(Call(Symbol(%s), %s))" % (name_for_result(f["Result"]), repr(f["Name"]), args))
+            n = len(f["Args"])
+            if f["IsVariadic"]:
+                n -= 1
+            print("    args = [%s]" % ", ".join(["a%d" % i for i in range(0, n)]))
+            if f["IsVariadic"]:
+                print("    args.extend(a%d)" % (len(f["Args"]) - 1))
+            print("    return %s(Call(Symbol(%s), args))" % (name_for_result(f["Result"]), repr(f["Name"])))
         print("")
 
 if __name__ == "__main__":

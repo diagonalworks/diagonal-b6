@@ -474,20 +474,41 @@ class B6Test(unittest.TestCase):
         self.assertGreater(before, after)
 
     def test_get_tags_from_list_of_ids(self):
-        names = b6.feature_ids([b6.osm_way_area_id(id) for id in (LIGHTERMAN_WAY_ID, GRANARY_SQUARE_WAY_ID)]).map(lambda f: f.get_string("name"))
+        names = b6.map([b6.osm_way_area_id(id) for id in (LIGHTERMAN_WAY_ID, GRANARY_SQUARE_WAY_ID)], lambda f: b6.get_string(f, "name"))
         expected = [(0, "The Lighterman"), (1, "Granary Square")]
         self.assertEqual(expected, self.connection(names))
 
     def test_make_tags_from_list_of_strings(self):
-        tags = b6.strings(["primary", "secondary"]).map(lambda v: b6.tag("#highway", v))
+        tags = b6.map(["primary", "secondary"], lambda v: b6.tag("#highway", v))
         expected = [(0, ("#highway", "primary")), (1, ("#highway", "secondary"))]
         self.assertEqual(expected, self.connection(tags))
 
     def test_convex_hull_from_list_of_lat_lngs(self):
-        caps = b6.lls([(51.535387, -0.125277), (51.537088, -0.125781)]).map(lambda c: b6.cap_polygon(c, 20.0))
+        caps = b6.map([b6.ll(51.535387, -0.125277), b6.ll(51.537088, -0.125781)], lambda c: b6.cap_polygon(c, 20.0))
         areas = self.connection(caps.map(b6.area))
         hull_area = self.connection(b6.convex_hull(caps).area())
         self.assertGreater(hull_area, sum([a for _, a in areas]))
+
+    def test_collection(self):
+        ids = b6.collection(b6.pair(0, b6.osm_way_area_id(GRANARY_SQUARE_WAY_ID)), b6.pair(1, b6.osm_way_area_id(LIGHTERMAN_WAY_ID)))
+        areas = self.connection(ids.map(lambda id: b6.area(b6.find_area(id))))
+        for (i, (j, area)) in enumerate(areas):
+            self.assertEqual(i, j)
+            self.assertGreater(area, 0.0)
+            self.assertLess(area, 6000.0)
+
+    def test_map_literal_collection_from_dict(self):
+        collection = {
+            b6.tag("highway", "motorway"): 3,
+            b6.tag("highway", "primary"): 7,
+        }
+        result = self.connection(b6.map(collection, lambda count: b6.add(count, 1)))
+        self.assertEqual([4, 8], sorted([count for ((key, value), count) in result]))
+
+    def test_map_literal_collection_from_list(self):
+        collection = [36, 42]
+        result = self.connection(b6.map(collection, lambda count: b6.add(count, 1)))
+        self.assertEqual([37, 43], sorted([count for (key, count) in result]))
 
 def main():
     parser = argparse.ArgumentParser()

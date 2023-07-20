@@ -134,7 +134,7 @@ type Number interface {
 
 type IntNumber int
 
-func (_ IntNumber) isNumber() {}
+func (i IntNumber) isNumber() {}
 
 type FloatNumber float64
 
@@ -314,7 +314,7 @@ func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {
 	ok = ok && t.Out(0).Kind() == reflect.Bool
 	if ok {
 		q := v.Interface().(b6.Query)
-		f := func(feature interface{}, c *Context) (bool, error) {
+		f := func(c *Context, feature interface{}) (bool, error) {
 			if feature, ok := feature.(b6.Feature); ok {
 				return q.Matches(feature, c.World), nil
 			}

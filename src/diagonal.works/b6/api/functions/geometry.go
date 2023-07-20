@@ -8,15 +8,15 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func ll(lat float64, lng float64, context *api.Context) (b6.Point, error) {
+func ll(context *api.Context, lat float64, lng float64) (b6.Point, error) {
 	return b6.PointFromLatLng(s2.LatLngFromDegrees(lat, lng)), nil
 }
 
-func distanceMeters(a b6.Point, b b6.Point, context *api.Context) (float64, error) {
+func distanceMeters(context *api.Context, a b6.Point, b b6.Point) (float64, error) {
 	return b6.AngleToMeters(a.Point().Distance(b.Point())), nil
 }
 
-func distanceToPointMeters(path b6.Path, point b6.Point, context *api.Context) (float64, error) {
+func distanceToPointMeters(context *api.Context, path b6.Path, point b6.Point) (float64, error) {
 	polyline := *path.Polyline()
 	projection, vertex := polyline.Project(point.Point())
 	distance := polyline[vertex-1].Distance(projection)
@@ -27,7 +27,7 @@ func distanceToPointMeters(path b6.Path, point b6.Point, context *api.Context) (
 	return b6.AngleToMeters(distance), nil
 }
 
-func centroid(geometry b6.Geometry, context *api.Context) (b6.Point, error) {
+func centroid(context *api.Context, geometry b6.Geometry) (b6.Point, error) {
 	switch g := geometry.(type) {
 	case b6.Point:
 		return g, nil
@@ -44,7 +44,7 @@ func centroid(geometry b6.Geometry, context *api.Context) (b6.Point, error) {
 	return b6.PointFromS2Point(s2.Point{}), nil
 }
 
-func interpolate(p b6.Path, fraction float64, context *api.Context) (b6.Point, error) {
+func interpolate(context *api.Context, p b6.Path, fraction float64) (b6.Point, error) {
 	polyline := p.Polyline()
 	point, _ := polyline.Interpolate(fraction)
 	return b6.PointFromS2Point(point), nil
@@ -62,7 +62,7 @@ func validatePolygon(polygon *s2.Polygon) bool {
 	return true
 }
 
-func areaArea(area b6.Area, context *api.Context) (float64, error) {
+func areaArea(context *api.Context, area b6.Area) (float64, error) {
 	m2 := 0.0
 	for i := 0; i < area.Len(); i++ {
 		polygon := area.Polygon(i)
@@ -73,7 +73,7 @@ func areaArea(area b6.Area, context *api.Context) (float64, error) {
 	return m2, nil
 }
 
-func rectanglePolygon(p0 b6.Point, p1 b6.Point, context *api.Context) (b6.Area, error) {
+func rectanglePolygon(context *api.Context, p0 b6.Point, p1 b6.Point) (b6.Area, error) {
 	r := s2.EmptyRect().AddPoint(s2.LatLngFromPoint(p0.Point()))
 	r = r.AddPoint(s2.LatLngFromPoint(p1.Point()))
 	points := make([]s2.Point, 4)
@@ -83,7 +83,7 @@ func rectanglePolygon(p0 b6.Point, p1 b6.Point, context *api.Context) (b6.Area, 
 	return b6.AreaFromS2Loop(s2.LoopFromPoints(points)), nil
 }
 
-func capPolygon(center b6.Point, radius float64, context *api.Context) (b6.Area, error) {
+func capPolygon(context *api.Context, center b6.Point, radius float64) (b6.Area, error) {
 	return b6.AreaFromS2Loop(s2.RegularLoop(center.Point(), b6.MetersToAngle(radius), 128)), nil
 }
 
@@ -121,7 +121,7 @@ func projectEdgesOntoPolylines(loop *s2.Loop, polylines []*s2.Polyline, threshol
 	return edges
 }
 
-func snapAreaEdges(g b6.Area, query b6.Query, threshold float64, context *api.Context) (b6.Area, error) {
+func snapAreaEdges(context *api.Context, g b6.Area, query b6.Query, threshold float64) (b6.Area, error) {
 	thresholdAngle := b6.MetersToAngle(threshold)
 	snapped := make([]*s2.Polygon, 0, g.Len())
 	for i := 0; i < g.Len(); i++ {
@@ -166,7 +166,7 @@ func snapAreaEdges(g b6.Area, query b6.Query, threshold float64, context *api.Co
 	return b6.AreaFromS2Polygons(snapped), nil
 }
 
-func convexHull(c api.AnyGeometryCollection, context *api.Context) (b6.Area, error) {
+func convexHull(context *api.Context, c api.AnyGeometryCollection) (b6.Area, error) {
 	query := s2.NewConvexHullQuery()
 	i := c.Begin()
 	for {

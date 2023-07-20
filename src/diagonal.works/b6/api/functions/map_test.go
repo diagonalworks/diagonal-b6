@@ -18,14 +18,14 @@ func TestMapWithDeadline(t *testing.T) {
 		input.Values[i] = r.Intn(max)
 	}
 
-	f := func(v interface{}, c *api.Context) (interface{}, error) {
+	f := func(c *api.Context, v interface{}) (interface{}, error) {
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Microsecond)
 		return v.(int) + 1, nil
 	}
 
 	seen := 0
 	deadline, _ := context.WithTimeout(context.Background(), 2000*time.Microsecond)
-	c, err := map_(input, f, &api.Context{Context: deadline})
+	c, err := map_(&api.Context{Context: deadline}, input, f)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	} else {
@@ -57,14 +57,14 @@ func TestMapParallelHappyPath(t *testing.T) {
 		input.Values[i] = r.Intn(100000)
 	}
 
-	f := func(v interface{}, c *api.Context) (interface{}, error) {
+	f := func(c *api.Context, v interface{}) (interface{}, error) {
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Microsecond)
 		return v.(int) + 1, nil
 	}
 
 	seen := 0
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
-	c, err := mapParallel(input, f, context)
+	c, err := mapParallel(context, input, f)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	} else {
@@ -99,7 +99,7 @@ func TestMapParallelWithFunctionReturningError(t *testing.T) {
 	input.Values[479] = max // Choose to fail at an arbitrary point
 
 	broken := errors.New("Broken")
-	f := func(v interface{}, c *api.Context) (interface{}, error) {
+	f := func(c *api.Context, v interface{}) (interface{}, error) {
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Microsecond)
 		if v.(int) == max {
 			return 0, broken
@@ -109,7 +109,7 @@ func TestMapParallelWithFunctionReturningError(t *testing.T) {
 
 	seen := 0
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
-	c, err := mapParallel(input, f, context)
+	c, err := mapParallel(context, input, f)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	} else {
@@ -167,7 +167,7 @@ func TestMapParallelWithIteratorReturningError(t *testing.T) {
 		values.Values[i] = r.Intn(100000)
 	}
 
-	f := func(v interface{}, c *api.Context) (interface{}, error) {
+	f := func(c *api.Context, v interface{}) (interface{}, error) {
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Microsecond)
 		return v.(int) + 1, nil
 	}
@@ -178,7 +178,7 @@ func TestMapParallelWithIteratorReturningError(t *testing.T) {
 
 	seen := 0
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
-	c, err := mapParallel(input, f, context)
+	c, err := mapParallel(context, input, f)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	} else {
@@ -209,7 +209,7 @@ func TestMapParallelWithDeadline(t *testing.T) {
 		input.Values[i] = r.Intn(max)
 	}
 
-	f := func(v interface{}, c *api.Context) (interface{}, error) {
+	f := func(c *api.Context, v interface{}) (interface{}, error) {
 		time.Sleep(time.Duration(rand.Intn(100)) * time.Microsecond)
 		return v.(int) + 1, nil
 	}
@@ -217,7 +217,8 @@ func TestMapParallelWithDeadline(t *testing.T) {
 	seen := 0
 	cores := 8
 	deadline, _ := context.WithTimeout(context.Background(), 200*time.Microsecond)
-	c, err := mapParallel(input, f, &api.Context{Cores: cores, Context: deadline, VM: &api.VM{}})
+	ctx := &api.Context{Cores: cores, Context: deadline, VM: &api.VM{}}
+	c, err := mapParallel(ctx, input, f)
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	} else {

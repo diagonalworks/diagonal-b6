@@ -22,7 +22,7 @@ func TestSightlineFunction(t *testing.T) {
 	}
 
 	from := b6.PointFromLatLngDegrees(51.53545, -0.12561)
-	area, err := sightline(from, 250.0, context)
+	area, err := sightline(context, from, 250.0)
 	if err != nil {
 		t.Errorf("Expected no error, found %s", err)
 		return

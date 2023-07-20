@@ -19,6 +19,7 @@ import (
 
 type SymbolArgCounts interface {
 	ArgCount(symbol string) (int, bool)
+	IsVariadic(symbol string) (bool, bool)
 }
 
 type Symbols interface {
@@ -43,11 +44,12 @@ func (fs FunctionSymbols) ArgCount(symbol string) (int, bool) {
 	return 0, false
 }
 
-type FunctionArgCounts map[string]int
-
-func (fs FunctionArgCounts) ArgCount(symbol string) (int, bool) {
-	n, ok := fs[symbol]
-	return n, ok
+func (fs FunctionSymbols) IsVariadic(symbol string) (bool, bool) {
+	if f, ok := fs[symbol]; ok {
+		t := reflect.TypeOf(f)
+		return t.IsVariadic(), true
+	}
+	return false, false
 }
 
 type NamespaceAlias struct {
@@ -231,7 +233,7 @@ func (l *lexer) Lex(yylval *yySymType) int {
 		return eof
 	}
 	switch c := l.Expression[l.Index]; c {
-	case ',', '(', ')', '|', '>', '{', '}', '[', ']', '=', '&':
+	case ',', '(', ')', '|', '>', '{', '}', '[', ']', '=', '&', ':':
 		l.Index++
 		return int(c)
 	case '"':
@@ -564,6 +566,79 @@ func reduceSymbolsSymbols(ss []*pb.NodeProto, s *pb.NodeProto) []*pb.NodeProto {
 	}
 	reduced[len(reduced)-1] = s
 	return reduced
+}
+
+func reduceCollectionItems(collection *pb.NodeProto) *pb.NodeProto {
+	if call, ok := collection.Node.(*pb.NodeProto_Call); ok {
+		for i, a := range call.Call.Args {
+			if pair, ok := a.Node.(*pb.NodeProto_Call); ok {
+				if len(pair.Call.Args) > 0 && pair.Call.Args[0] == nil {
+					pair.Call.Args[0] = &pb.NodeProto{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_IntValue{
+									IntValue: int64(i),
+								},
+							},
+						},
+					}
+				}
+			}
+		}
+	}
+	return collection
+}
+
+func reduceCollectionItemsKeyValue(kv *pb.NodeProto) *pb.NodeProto {
+	return &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "collection",
+					},
+				},
+				Args: []*pb.NodeProto{kv},
+			},
+		},
+	}
+}
+
+func reduceCollectionItemsItemsKeyValue(items *pb.NodeProto, kv *pb.NodeProto) *pb.NodeProto {
+	if call, ok := items.Node.(*pb.NodeProto_Call); ok {
+		call.Call.Args = append(call.Call.Args, kv)
+	}
+	return items
+}
+
+func reduceCollectionKeyValue(key *pb.NodeProto, value *pb.NodeProto) *pb.NodeProto {
+	return &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "pair",
+					},
+				},
+				Args: []*pb.NodeProto{key, value},
+			},
+		},
+	}
+}
+
+func reduceCollectionValueWithImplictKey(value *pb.NodeProto) *pb.NodeProto {
+	return &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "pair",
+					},
+				},
+				Args: []*pb.NodeProto{nil, value},
+			},
+		},
+	}
 }
 
 func reduceTagKey(key *pb.NodeProto) *pb.NodeProto {

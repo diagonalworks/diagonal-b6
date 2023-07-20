@@ -8,7 +8,7 @@ import (
 )
 
 type mapCollection struct {
-	f       func(interface{}, *api.Context) (interface{}, error)
+	f       func(*api.Context, interface{}) (interface{}, error)
 	v       interface{}
 	i       api.CollectionIterator
 	c       api.Collection
@@ -29,7 +29,7 @@ func (v *mapCollection) Next() (bool, error) {
 	if err = v.context.Context.Err(); err == nil {
 		ok, err = v.i.Next()
 		if ok && err == nil {
-			v.v, err = v.f(v.i.Value(), v.context)
+			v.v, err = v.f(v.context, v.i.Value())
 		}
 	}
 	return ok, err
@@ -43,12 +43,12 @@ func (v *mapCollection) Value() interface{} {
 	return v.v
 }
 
-func map_(collection api.Collection, f func(interface{}, *api.Context) (interface{}, error), context *api.Context) (api.Collection, error) {
+func map_(context *api.Context, collection api.Collection, f func(*api.Context, interface{}) (interface{}, error)) (api.Collection, error) {
 	return &mapCollection{c: collection, f: f, context: context}, nil
 }
 
 type mapItemsCollection struct {
-	f       func(api.Pair, *api.Context) (interface{}, error)
+	f       func(*api.Context, api.Pair) (interface{}, error)
 	k       interface{}
 	v       interface{}
 	i       api.CollectionIterator
@@ -69,7 +69,7 @@ func (v *mapItemsCollection) Next() (bool, error) {
 	if ok && err == nil {
 		pair := api.AnyAnyPair{v.i.Key(), v.i.Value()}
 		var r interface{}
-		r, err = v.f(pair, v.context)
+		r, err = v.f(v.context, pair)
 		if err == nil {
 			if pair, ok := r.(api.Pair); ok {
 				v.k = pair.First()
@@ -90,24 +90,24 @@ func (v *mapItemsCollection) Value() interface{} {
 	return v.v
 }
 
-func mapItems(collection api.Collection, f func(api.Pair, *api.Context) (interface{}, error), context *api.Context) (api.Collection, error) {
+func mapItems(context *api.Context, collection api.Collection, f func(*api.Context, api.Pair) (interface{}, error)) (api.Collection, error) {
 	return &mapItemsCollection{c: collection, f: f, context: context}, nil
 }
 
-func pair(first interface{}, second interface{}, c *api.Context) (api.Pair, error) {
+func pair(c *api.Context, first interface{}, second interface{}) (api.Pair, error) {
 	return api.AnyAnyPair{first, second}, nil
 }
 
-func first(pair api.Pair, c *api.Context) (interface{}, error) {
+func first(c *api.Context, pair api.Pair) (interface{}, error) {
 	return pair.First(), nil
 }
 
-func second(pair api.Pair, c *api.Context) (interface{}, error) {
+func second(c *api.Context, pair api.Pair) (interface{}, error) {
 	return pair.Second(), nil
 }
 
 type mapParallelCollection struct {
-	f       func(interface{}, *api.Context) (interface{}, error)
+	f       func(*api.Context, interface{}) (interface{}, error)
 	v       interface{}
 	i       api.CollectionIterator
 	c       api.Collection
@@ -173,7 +173,7 @@ func (m *mapParallelCollection) run() {
 		in, out, context := m.in[i], m.out[i], &contexts[i]
 		g.Go(func() error {
 			for pair := range in {
-				v, err := m.f(pair.Second(), context)
+				v, err := m.f(context, pair.Second())
 				if err == nil {
 					select {
 					case out <- api.AnyAnyPair{pair.First(), v}:
@@ -215,9 +215,9 @@ func (m *mapParallelCollection) run() {
 	}
 }
 
-func mapParallel(collection api.Collection, f func(interface{}, *api.Context) (interface{}, error), context *api.Context) (api.Collection, error) {
+func mapParallel(context *api.Context, collection api.Collection, f func(*api.Context, interface{}) (interface{}, error)) (api.Collection, error) {
 	if context.Cores < 2 {
-		return map_(collection, f, context)
+		return map_(context, collection, f)
 	}
 	return &mapParallelCollection{c: collection, f: f, context: context}, nil
 }

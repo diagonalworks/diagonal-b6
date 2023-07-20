@@ -272,7 +272,7 @@ func (c *showChange) Apply(r *ShellResponseJSON) error {
 
 const ShowCollectionLimit = 200
 
-func show(v interface{}, c *api.Context) (UIChange, error) {
+func show(c *api.Context, v interface{}) (UIChange, error) {
 	change := &showChange{Lines: fillLines(v, []LineJSON{})}
 	switch v := v.(type) {
 	case b6.Query:
@@ -298,7 +298,7 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 	case b6.FeatureID:
 		f := c.World.FindFeatureByID(v)
 		if f != nil {
-			return show(f, c)
+			return show(c, f)
 		}
 	case api.Collection:
 		i := v.Begin()
@@ -331,7 +331,7 @@ func show(v interface{}, c *api.Context) (UIChange, error) {
 	return change, nil
 }
 
-func showColours(collection api.FeatureIDAnyCollection, c *api.Context) (UIChange, error) {
+func showColours(c *api.Context, collection api.FeatureIDAnyCollection) (UIChange, error) {
 	min := math.Inf(1)
 	max := math.Inf(-1)
 	ids := make([]b6.FeatureID, 0)

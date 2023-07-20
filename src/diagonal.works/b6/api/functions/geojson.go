@@ -15,14 +15,14 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func toGeoJSON(renderable b6.Renderable, c *api.Context) (geojson.GeoJSON, error) {
+func toGeoJSON(c *api.Context, renderable b6.Renderable) (geojson.GeoJSON, error) {
 	if renderable != nil {
 		return renderable.ToGeoJSON(), nil
 	}
 	return geojson.NewFeatureCollection(), nil
 }
 
-func toGeoJSONCollection(renderables api.AnyRenderableCollection, c *api.Context) (geojson.GeoJSON, error) {
+func toGeoJSONCollection(c *api.Context, renderables api.AnyRenderableCollection) (geojson.GeoJSON, error) {
 	collection := geojson.NewFeatureCollection()
 	var err error
 	if renderables != nil {
@@ -61,7 +61,7 @@ func (s *sequentialIDFactory) AllocateForPoint(t b6.FeatureType, p s2.Point) b6.
 	return b6.FeatureID{Type: t, Namespace: b6.NamespacePrivate, Value: value}
 }
 
-func parseGeoJSON(s string, c *api.Context) (geojson.GeoJSON, error) {
+func parseGeoJSON(c *api.Context, s string) (geojson.GeoJSON, error) {
 	var collection geojson.FeatureCollection
 	if err := json.Unmarshal([]byte(s), &collection); err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func parseGeoJSON(s string, c *api.Context) (geojson.GeoJSON, error) {
 	return &collection, nil
 }
 
-func importGeoJSON(g geojson.GeoJSON, namespace string, c *api.Context) (ingest.Change, error) {
+func importGeoJSON(c *api.Context, g geojson.GeoJSON, namespace string) (ingest.Change, error) {
 	add := &ingest.AddFeatures{
 		IDsToReplace: map[b6.Namespace]b6.Namespace{
 			b6.NamespacePrivate: b6.Namespace(namespace),
@@ -79,7 +79,7 @@ func importGeoJSON(g geojson.GeoJSON, namespace string, c *api.Context) (ingest.
 	return add, nil
 }
 
-func importGeoJSONFile(filename string, namespace string, c *api.Context) (ingest.Change, error) {
+func importGeoJSONFile(c *api.Context, filename string, namespace string) (ingest.Change, error) {
 	fs, err := filesystem.New(context.Background(), filename) // TODO: Pass the actual context
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func importGeoJSONFile(filename string, namespace string, c *api.Context) (inges
 	return add, nil
 }
 
-func geojsonAreas(g geojson.GeoJSON, c *api.Context) (api.StringAreaCollection, error) {
+func geojsonAreas(c *api.Context, g geojson.GeoJSON) (api.StringAreaCollection, error) {
 	polygons := g.ToS2Polygons()
 	areas := &api.ArrayAreaCollection{
 		Keys:   make([]string, len(polygons)),
@@ -124,36 +124,36 @@ func geojsonAreas(g geojson.GeoJSON, c *api.Context) (api.StringAreaCollection, 
 	return areas, nil
 }
 
-func applyToPoint(f func(b6.Point, *api.Context) (b6.Geometry, error), context *api.Context) func(b6.Geometry, *api.Context) (b6.Geometry, error) {
-	return func(g b6.Geometry, context *api.Context) (b6.Geometry, error) {
+func applyToPoint(context *api.Context, f func(*api.Context, b6.Point) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
+	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if point, ok := g.(b6.Point); ok {
-			return f(point, context)
+			return f(context, point)
 		}
 		return g, nil
 	}
 }
 
-func applyToPath(f func(b6.Path, *api.Context) (b6.Geometry, error), context *api.Context) func(b6.Geometry, *api.Context) (b6.Geometry, error) {
-	return func(g b6.Geometry, context *api.Context) (b6.Geometry, error) {
+func applyToPath(context *api.Context, f func(*api.Context, b6.Path) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
+	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if path, ok := g.(b6.Path); ok {
-			return f(path, context)
+			return f(context, path)
 		}
 		return g, nil
 	}
 }
 
-func applyToArea(f func(b6.Area, *api.Context) (b6.Geometry, error), context *api.Context) func(b6.Geometry, *api.Context) (b6.Geometry, error) {
-	return func(g b6.Geometry, context *api.Context) (b6.Geometry, error) {
+func applyToArea(context *api.Context, f func(*api.Context, b6.Area) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
+	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if area, ok := g.(b6.Area); ok {
-			return f(area, context)
+			return f(context, area)
 		}
 		return g, nil
 	}
 }
 
-func mapGeometry(g b6.Geometry, f func(b6.Geometry, *api.Context) (b6.Geometry, error), c *api.Context) (geojson.Coordinates, error) {
+func mapGeometry(g b6.Geometry, f func(*api.Context, b6.Geometry) (b6.Geometry, error), c *api.Context) (geojson.Coordinates, error) {
 	var err error
-	g, err = f(g, c)
+	g, err = f(c, g)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func mapGeometry(g b6.Geometry, f func(b6.Geometry, *api.Context) (b6.Geometry, 
 	return nil, fmt.Errorf("Can't map geometry of type %T", g)
 }
 
-func MapGeometries(g geojson.GeoJSON, f func(b6.Geometry, *api.Context) (b6.Geometry, error), c *api.Context) (geojson.GeoJSON, error) {
+func mapGeometries(c *api.Context, g geojson.GeoJSON, f func(*api.Context, b6.Geometry) (b6.Geometry, error)) (geojson.GeoJSON, error) {
 	m := func(cs geojson.Coordinates) (geojson.Coordinates, error) {
 		switch cs := cs.(type) {
 		case geojson.Point:
