@@ -54,7 +54,7 @@ func reachablePoints(context *api.Context, origin b6.Feature, mode string, dista
 	return points, nil
 }
 
-func findReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (api.FeatureCollection, error) {
+func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (api.FeatureCollection, error) {
 	features := &api.ArrayFeatureCollection{Features: make([]b6.Feature, 0)}
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
@@ -100,7 +100,7 @@ func findReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature
 }
 
 func reachableFeatures(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.FeatureCollection, error) {
-	return findReachableFeaturesWithPathStates(context, origin, mode, distance, query, nil)
+	return FindReachableFeaturesWithPathStates(context, origin, mode, distance, query, nil)
 }
 
 func closestFeature(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Feature, error) {
