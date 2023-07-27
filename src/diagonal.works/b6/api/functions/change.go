@@ -58,6 +58,25 @@ func removeTags(c *api.Context, collection api.FeatureIDStringCollection) (inges
 	return tags, nil
 }
 
+func mergeChanges(c *api.Context, collection api.AnyChangeCollection) (ingest.Change, error) {
+	i := collection.Begin()
+	merged := make(ingest.MergedChange, 0)
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		if c, ok := i.Value().(ingest.Change); ok {
+			merged = append(merged, c)
+		} else {
+			return nil, fmt.Errorf("Expected Change, found %T", i.Value())
+		}
+	}
+	return merged, nil
+}
+
 func withChange(c *api.Context, change ingest.Change, f func(c *api.Context) (interface{}, error)) (interface{}, error) {
 	modified := *c
 	m := ingest.NewMutableOverlayWorld(c.World)

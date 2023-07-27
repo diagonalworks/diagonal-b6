@@ -35,7 +35,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var filter func(g b6.Feature, c *api.Context) (bool, error)
+	var filter func(c *api.Context, g b6.Feature) (bool, error)
 	apiContext := functions.NewContext(b6.EmptyWorld{})
 	if *filterFlag != "" {
 		expression, err := api.ParseExpression(*filterFlag)
@@ -47,7 +47,7 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		filter = func(f b6.Feature, c *api.Context) (bool, error) {
+		filter = func(c *api.Context, f b6.Feature) (bool, error) {
 			if p, ok := f.(b6.PointFeature); ok {
 				return crop.ContainsPoint(p.Point()), nil
 			}

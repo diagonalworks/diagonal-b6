@@ -277,7 +277,7 @@ func ToProto(v interface{}) (*pb.NodeProto, error) {
 			},
 		}, nil
 	default:
-		panic(fmt.Sprintf("can't convert %T to proto", v))
+		return nil, fmt.Errorf("can't return values of type %T", v)
 	}
 }
 

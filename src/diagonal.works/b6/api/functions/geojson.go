@@ -1,9 +1,9 @@
 package functions
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 
 	"diagonal.works/b6"
@@ -62,11 +62,35 @@ func (s *sequentialIDFactory) AllocateForPoint(t b6.FeatureType, p s2.Point) b6.
 }
 
 func parseGeoJSON(c *api.Context, s string) (geojson.GeoJSON, error) {
-	var collection geojson.FeatureCollection
-	if err := json.Unmarshal([]byte(s), &collection); err != nil {
+	g, err := geojson.Unmarshal([]byte(s))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse geojson: %s", err)
+	}
+	return g, nil
+}
+
+func parseGeoJSONFile(c *api.Context, filename string) (geojson.GeoJSON, error) {
+	fs, err := filesystem.New(c.Context, filename)
+	if err != nil {
 		return nil, err
 	}
-	return &collection, nil
+
+	f, err := fs.OpenRead(c.Context, filename)
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	f.Close()
+
+	g, err := geojson.Unmarshal(bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse geojson: %s", err)
+	}
+	return g, nil
 }
 
 func importGeoJSON(c *api.Context, g geojson.GeoJSON, namespace string) (ingest.Change, error) {
@@ -80,12 +104,12 @@ func importGeoJSON(c *api.Context, g geojson.GeoJSON, namespace string) (ingest.
 }
 
 func importGeoJSONFile(c *api.Context, filename string, namespace string) (ingest.Change, error) {
-	fs, err := filesystem.New(context.Background(), filename) // TODO: Pass the actual context
+	fs, err := filesystem.New(c.Context, filename)
 	if err != nil {
 		return nil, err
 	}
 
-	f, err := fs.OpenRead(context.Background(), filename) // TODO: Pass the actual context
+	f, err := fs.OpenRead(c.Context, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -108,20 +132,16 @@ func importGeoJSONFile(c *api.Context, filename string, namespace string) (inges
 
 func geojsonAreas(c *api.Context, g geojson.GeoJSON) (api.StringAreaCollection, error) {
 	polygons := g.ToS2Polygons()
-	areas := &api.ArrayAreaCollection{
-		Keys:   make([]string, len(polygons)),
-		Values: make([]b6.Area, len(polygons)),
+	collection := &api.ArrayAreaCollection{
+		Areas: make([]b6.Area, len(polygons)),
 	}
 	for i, p := range polygons {
-		areas.Keys[i] = fmt.Sprintf("%d", i)
-		for _, l := range p.Loops() {
-			if l.Area() > 2.0*math.Pi {
-				l.Invert()
-			}
+		if p.NumLoops() > 0 && p.Loop(0).Area() > 2.0*math.Pi {
+			p.Invert()
 		}
-		areas.Values[i] = b6.AreaFromS2Polygon(p)
+		collection.Areas[i] = b6.AreaFromS2Polygon(p)
 	}
-	return areas, nil
+	return collection, nil
 }
 
 func applyToPoint(context *api.Context, f func(*api.Context, b6.Point) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {

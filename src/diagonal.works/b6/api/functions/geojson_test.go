@@ -18,7 +18,7 @@ func TestGeoJSON(t *testing.T) {
 	context := &api.Context{
 		World: granarySquare,
 	}
-	features, err := find(context, b6.Keyed{"#building"})
+	features, err := find(context, b6.Keyed{Key: "#building"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
