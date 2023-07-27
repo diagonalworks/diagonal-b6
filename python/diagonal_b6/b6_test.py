@@ -472,12 +472,20 @@ class B6Test(unittest.TestCase):
         self.assertGreater(area, 2400.0)
         self.assertLess(area, 2500.0)
 
-    def test_evaluate_with_changed_world(self):
+    def test_reachable_with_changed_world(self):
         close_road = b6.remove_tag(b6.osm_way_id(STABLE_STREET_BRIDGE_ID), "#highway")
         reachable = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).get_string("name")
         before = len(self.connection(reachable))
         after = len(self.connection(b6.with_change(close_road, lambda: reachable)))
         self.assertGreater(before, after)
+
+    def test_remove_tags(self):
+        roads = b6.find(b6.keyed("#highway"))
+        before = self.connection(roads.count())
+        close_roads = b6.remove_tags(roads.map(lambda road: "#highway"))
+        after = self.connection(b6.with_change(close_roads, lambda: roads.count()))
+        self.assertGreater(before, 0)
+        self.assertEqual(after, 0)
 
     def test_merge_changes(self):
         roads = b6.find(b6.keyed("#highway"))

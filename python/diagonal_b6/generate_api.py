@@ -6,6 +6,14 @@ import json
 from copy import copy
 from datetime import datetime
 
+SPECIAL_FUNCTIONS = ("map", "filter")
+
+COLLECTION_PARENTS = {
+    "PointFeatureCollection": "PointCollection",
+    "PathFeatureCollection": "PathCollection",
+    "AreaFeatureCollection": "AreaCollection",
+}
+
 def name_for_function(name):
     if name in ["or", "and"]:
         return name + "_"
@@ -47,6 +55,13 @@ def name_for_collection_of_result(t, collections):
         if key == "any" and value == t:
             return name_for_result(name)
     return "CollectionResult"
+
+BUILTIN_RESULTS = {
+    str: name_for_result("string"),
+    int: name_for_result("int"),
+    float: name_for_result("float64"),
+    bool: name_for_result("bool"),
+}
 
 def output_traits(t, functions, collections, hints, parents):
     if len(parents.get(t, [])) > 0:
@@ -114,14 +129,6 @@ def output_function_arg_result(t, hints):
     print("        raise NotImplementedError()")
     print("")
 
-SPECIAL_FUNCTIONS = ("map", "filter")
-
-COLLECTION_PARENTS = {
-    "PointFeatureCollection": "PointCollection",
-    "PathFeatureCollection": "PathCollection",
-    "AreaFeatureCollection": "AreaCollection",
-}
-
 def ancestors(t, parents):
     queue = copy(parents.get(t, []))
     ancestors = []
@@ -140,7 +147,7 @@ def main():
     print("from typing import Callable")
     print("")
     print("import diagonal_b6.expression")
-    print("from diagonal_b6.expression import Call, Symbol, Lambda, Result")
+    print("from diagonal_b6.expression import Call, Symbol, Lambda, Result, register_builtin_result")
     print("")
     print("VERSION = %s" % repr(api["Version"]))
     print("")
@@ -227,6 +234,9 @@ def main():
                 print("    args.extend(a%d)" % (len(f["Args"]) - 1))
             print("    return %s(Call(Symbol(%s), args))" % (name_for_result(f["Result"]), repr(f["Name"])))
         print("")
+
+    for type, result in BUILTIN_RESULTS.items():
+        print("register_builtin_result(%s,%s)" % (type.__name__, result))
 
 if __name__ == "__main__":
     main()
