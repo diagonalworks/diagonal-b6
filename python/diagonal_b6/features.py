@@ -172,7 +172,7 @@ class RelationMember:
 def from_id_proto(p):
     return FeatureID(p.type, p.namespace, p.value)
 
-expression.register_literal("featureIDValue", from_id_proto)
+expression.register_literal_from_proto("featureIDValue", from_id_proto)
 
 def from_applied_change_proto(change):
     applied = {}
@@ -180,7 +180,7 @@ def from_applied_change_proto(change):
         applied[from_id_proto(change.original[i])] = from_id_proto(change.modified[i])
     return applied
 
-expression.register_literal("appliedChangeValue", from_applied_change_proto)
+expression.register_literal_from_proto("appliedChangeValue", from_applied_change_proto)
 
 def id_to_proto(id):
     pb = features_pb2.FeatureIDProto()
@@ -218,7 +218,7 @@ def from_proto(p):
         return None
     raise Exception("Unexpected feature %s" % (p,))
 
-expression.register_literal("featureValue", from_proto)
+expression.register_literal_from_proto("featureValue", from_proto)
 
 def osm_node_id(id):
     return FeatureID(FEATURE_TYPE_POINT, NAMESPACE_OSM_NODE, id)

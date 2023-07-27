@@ -6,7 +6,7 @@ from diagonal_b6 import geometry_pb2
 def from_point_proto(p):
     return (float(p.lat_e7) / 1e7, float(p.lng_e7) / 1e7)
 
-expression.register_literal("pointValue", from_point_proto)
+expression.register_literal_from_proto("pointValue", from_point_proto)
 
 def to_point_proto(ll):
     p = geometry_pb2.PointProto()
@@ -17,12 +17,12 @@ def to_point_proto(ll):
 def from_polyline_proto(p):
     return Polyline(p)
 
-expression.register_literal("pathValue", from_polyline_proto)
+expression.register_literal_from_proto("pathValue", from_polyline_proto)
 
 def from_multipolygon_proto(p):
     return MultiPolygon(p)
 
-expression.register_literal("areaValue", from_multipolygon_proto)
+expression.register_literal_from_proto("areaValue", from_multipolygon_proto)
 
 class Polyline(expression.Node):
 

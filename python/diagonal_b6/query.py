@@ -44,7 +44,7 @@ class Query(expression.Literal):
 def from_proto(pb):
     return Query(pb)
 
-expression.register_literal("queryValue", from_proto)
+expression.register_literal_from_proto("queryValue", from_proto)
 
 def union(*queries):
     q = api_pb2.QueryProto()

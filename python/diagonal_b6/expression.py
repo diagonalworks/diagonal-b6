@@ -155,21 +155,21 @@ def from_node_proto(n):
         raise Exception("Can't convert node type %s to a value" % (n.WhichOneof("node"),))
     return from_literal_node_proto(n.literal)
 
-_literals = {}
+_literal_from_proto = {}
 
-def register_literal(oneof, from_proto):
-    _literals[oneof] = from_proto
+def register_literal_from_proto(oneof, from_proto):
+    _literal_from_proto[oneof] = from_proto
 
-register_literal("nilValue", lambda v: None)
-register_literal("intValue", lambda v: v)
-register_literal("floatValue", lambda v: v)
-register_literal("stringValue", lambda v: v)
-register_literal("tagValue", lambda v: (v.key, v.value))
-register_literal("geoJSONValue", lambda v: json.loads(gzip.decompress(v)))
+register_literal_from_proto("nilValue", lambda v: None)
+register_literal_from_proto("intValue", lambda v: v)
+register_literal_from_proto("floatValue", lambda v: v)
+register_literal_from_proto("stringValue", lambda v: v)
+register_literal_from_proto("tagValue", lambda v: (v.key, v.value))
+register_literal_from_proto("geoJSONValue", lambda v: json.loads(gzip.decompress(v)))
 
 def from_literal_node_proto(literal):
     oneof = literal.WhichOneof("value")
-    from_proto = _literals.get(oneof, None)
+    from_proto = _literal_from_proto.get(oneof, None)
     if from_proto is not None:
         return from_proto(getattr(literal, oneof))
     else:
@@ -179,12 +179,22 @@ def from_collection_proto(collection):
     return [(from_literal_node_proto(collection.keys[i]), from_literal_node_proto(collection.values[i]))
             for i in range(0, len(collection.keys))]
 
-register_literal("collectionValue", from_collection_proto)
+register_literal_from_proto("collectionValue", from_collection_proto)
+
+_builtin_results = {}
+
+def register_builtin_result(type, result):
+    _builtin_results[type] = result
+
+def collection_result(result):
+    if type(result) in _builtin_results:
+        return _builtin_results[type(result)]._collection()
+    return result._collection()
 
 def _map(collection, f):
     collection = to_node(collection)
     result = f(collection._values()(Placeholder()))
-    return result._collection()(Call(Symbol("map"), [collection, to_lambda(f).with_arg_types((collection._values(),))]))
+    return collection_result(result)(Call(Symbol("map"), [collection, to_lambda(f).with_arg_types((collection._values(),))]))
 
 def _filter(collection, f):
     collection = to_node(collection)
