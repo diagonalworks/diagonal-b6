@@ -117,6 +117,7 @@ var functions = api.FunctionSymbols{
 	"add-point":    addPoint,
 	// geojson
 	"parse-geojson":         parseGeoJSON,
+	"parse-geojson-file":    parseGeoJSONFile,
 	"to-geojson":            toGeoJSON,
 	"to-geojson-collection": toGeoJSONCollection,
 	"import-geojson":        importGeoJSON,
@@ -127,11 +128,12 @@ var functions = api.FunctionSymbols{
 	"apply-to-area":         applyToArea,
 	"map-geometries":        mapGeometries,
 	// change
-	"add-tag":     addTag,
-	"add-tags":    addTags,
-	"remove-tag":  removeTag,
-	"remove-tags": removeTags,
-	"with-change": withChange,
+	"add-tag":       addTag,
+	"add-tags":      addTags,
+	"remove-tag":    removeTag,
+	"remove-tags":   removeTags,
+	"merge-changes": mergeChanges,
+	"with-change":   withChange,
 	// debug
 	"debug-tokens":    debugTokens,
 	"debug-all-query": debugAllQuery,

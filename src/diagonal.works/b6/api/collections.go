@@ -73,6 +73,7 @@ type FeatureIDStringStringPairCollection Collection
 type AnyFloatCollection Collection
 type AnyGeometryCollection Collection
 type AnyRenderableCollection Collection
+type AnyChangeCollection Collection
 
 type ArrayAnyCollection struct {
 	Keys   []interface{}
@@ -369,39 +370,37 @@ var _ Collection = &ArrayPathFeatureCollection{}
 var _ Countable = &ArrayPathFeatureCollection{}
 
 type ArrayAreaCollection struct {
-	Keys   []string
-	Values []b6.Area
-	i      int
+	Areas []b6.Area
+	i     int
 }
 
-func (a *ArrayAreaCollection) Count() int { return len(a.Keys) }
+func (a *ArrayAreaCollection) Count() int { return len(a.Areas) }
 
 func (a *ArrayAreaCollection) Begin() CollectionIterator {
 	return &ArrayAreaCollection{
-		Keys:   a.Keys,
-		Values: a.Values,
+		Areas: a.Areas,
 	}
 }
 
 func (a *ArrayAreaCollection) Key() interface{} {
-	return a.StringKey()
+	return a.IntKey()
 }
 
 func (a *ArrayAreaCollection) Value() interface{} {
 	return a.AreaValue()
 }
 
-func (a *ArrayAreaCollection) StringKey() string {
-	return a.Keys[a.i-1]
+func (a *ArrayAreaCollection) IntKey() int {
+	return a.i - 1
 }
 
 func (a *ArrayAreaCollection) AreaValue() b6.Area {
-	return a.Values[a.i-1]
+	return a.Areas[a.i-1]
 }
 
 func (a *ArrayAreaCollection) Next() (bool, error) {
 	a.i++
-	return a.i <= len(a.Keys), nil
+	return a.i <= len(a.Areas), nil
 }
 
 var _ Collection = &ArrayAreaCollection{}

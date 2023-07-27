@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"math"
 	"testing"
 
 	"diagonal.works/b6"
@@ -178,5 +179,73 @@ func TestAddRelations(t *testing.T) {
 		if added.Member(1).ID != ids[p2.FeatureID()] {
 			t.Errorf("Expected relation member to reference newly generated ID")
 		}
+	}
+}
+
+func TestMergeChanges(t *testing.T) {
+	ns := b6.Namespace("diagonal.works/test")
+	p1 := NewPointFeature(b6.MakePointID(ns, 1), s2.LatLngFromDegrees(51.5366467, -0.1263796))
+	p2 := NewPointFeature(b6.MakePointID(ns, 2), s2.LatLngFromDegrees(51.5351906, -0.1245464))
+	add1 := AddFeatures{
+		Points: []*PointFeature{p1, p2},
+	}
+
+	path := NewPathFeature(2)
+	path.PathID = b6.MakePathID(ns, 3)
+	path.SetPointID(0, p1.PointID)
+	path.SetPointID(1, p2.PointID)
+	add2 := AddFeatures{
+		Paths: []*PathFeature{path},
+	}
+
+	merged := MergedChange{&add1, &add2}
+	w := NewBasicMutableWorld()
+	_, err := merged.Apply(w)
+	if err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+		return
+	}
+
+	found := b6.FindPathByID(path.PathID, w)
+	if found == nil {
+		t.Error("Expected to find added path")
+		return
+	}
+
+	expected := 200.0
+	actual := b6.AngleToMeters(found.Polyline().Length())
+	delta := math.Abs((actual - expected) / expected)
+	if delta > 0.1 {
+		t.Errorf("Length of added path outside expected bounds")
+	}
+}
+
+func TestMergeChangesLeavesWorldUnmodfiedFollowingError(t *testing.T) {
+	ns := b6.Namespace("diagonal.works/test")
+	point := NewPointFeature(b6.MakePointID(ns, 1), s2.LatLngFromDegrees(51.5366467, -0.1263796))
+	add1 := AddFeatures{
+		Points: []*PointFeature{point},
+	}
+
+	path := NewPathFeature(2)
+	path.PathID = b6.MakePathID(ns, 3)
+	path.SetPointID(0, b6.MakePointID(b6.Namespace("nonexistant"), 0))
+	path.SetPointID(1, b6.MakePointID(b6.Namespace("nonexistant"), 1))
+	add2 := AddFeatures{
+		Paths: []*PathFeature{path},
+	}
+
+	merged := MergedChange{&add1, &add2}
+	w := NewBasicMutableWorld()
+	_, err := merged.Apply(w)
+	if err == nil {
+		t.Error("Expected an error, found none")
+		return
+	}
+
+	found := b6.FindPointByID(point.PointID, w)
+	if found != nil {
+		t.Error("Expected world to be unchanged following failure")
+		return
 	}
 }

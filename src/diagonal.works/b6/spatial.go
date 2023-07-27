@@ -336,7 +336,7 @@ func (i IntersectsFeature) toGeometryQuery(w World) Query {
 		case Path:
 			return IntersectsPolyline{f.Polyline()}
 		case Area:
-			return IntersectsMultiPolygon{f.MultiPolygon()}
+			return IntersectsMultiPolygon{MultiPolygon: f.MultiPolygon()}
 		}
 	}
 	return Empty{}
@@ -650,7 +650,7 @@ func NewQueryFromProto(p *pb.QueryProto) (Query, error) {
 	case *pb.QueryProto_IntersectsPolyline:
 		return IntersectsPolyline{PolylineProtoToS2Polyline(q.IntersectsPolyline)}, nil
 	case *pb.QueryProto_IntersectsMultiPolygon:
-		return IntersectsMultiPolygon{MultiPolygonProtoToS2MultiPolygon(q.IntersectsMultiPolygon)}, nil
+		return IntersectsMultiPolygon{MultiPolygon: MultiPolygonProtoToS2MultiPolygon(q.IntersectsMultiPolygon)}, nil
 	case *pb.QueryProto_Typed:
 		if q.Typed.Query != nil {
 			child, err := NewQueryFromProto(q.Typed.Query)

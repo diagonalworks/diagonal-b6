@@ -21,11 +21,11 @@ import (
 	"github.com/apache/beam/sdks/go/pkg/beam/io/filesystem"
 )
 
-type Filter func(f b6.Feature, c *api.Context) (bool, error)
+type Filter func(c *api.Context, f b6.Feature) (bool, error)
 
 type Source struct {
 	Filename string
-	Filter   func(f b6.Feature, c *api.Context) (bool, error)
+	Filter   Filter
 	Context  *api.Context
 	JoinTags ingest.JoinTags
 }
@@ -159,7 +159,7 @@ func filter(filter Filter, emit ingest.Emit, options ingest.ReadOptions, ctx *ap
 		var err error
 		keep := true
 		if p, ok := f.(*ingest.PointFeature); ok {
-			if keep, err = filter(point{p}, ctxs[goroutine]); err != nil {
+			if keep, err = filter(ctxs[goroutine], point{p}); err != nil {
 				return err
 			}
 		}

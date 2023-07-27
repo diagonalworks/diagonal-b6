@@ -466,12 +466,26 @@ class B6Test(unittest.TestCase):
         id = list(ids.values())[0]
         self.assertGreater(self.connection(b6.find_area(id).area()), 100.0)
 
+    def test_parse_geojson_file(self):
+        areas = b6.parse_geojson_file("data/tests/granary-square.geojson").geojson_areas()
+        area = self.connection(b6.convex_hull(areas).area())
+        self.assertGreater(area, 2400.0)
+        self.assertLess(area, 2500.0)
+
     def test_evaluate_with_changed_world(self):
         close_road = b6.remove_tag(b6.osm_way_id(STABLE_STREET_BRIDGE_ID), "#highway")
         reachable = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).get_string("name")
         before = len(self.connection(reachable))
         after = len(self.connection(b6.with_change(close_road, lambda: reachable)))
         self.assertGreater(before, after)
+
+    def test_merge_changes(self):
+        roads = b6.find(b6.keyed("#highway"))
+        before = self.connection(roads.count())
+        close_roads = b6.merge_changes(roads.map(lambda h: b6.remove_tag(h, "#highway")))
+        after = self.connection(b6.with_change(close_roads, lambda: roads.count()))
+        self.assertGreater(before, 0)
+        self.assertEqual(after, 0)
 
     def test_get_tags_from_list_of_ids(self):
         names = b6.map([b6.osm_way_area_id(id) for id in (LIGHTERMAN_WAY_ID, GRANARY_SQUARE_WAY_ID)], lambda f: b6.get_string(f, "name"))

@@ -243,3 +243,28 @@ func (r RemoveTags) Apply(w MutableWorld) (AppliedChange, error) {
 	}
 	return modified, nil
 }
+
+type MergedChange []Change
+
+func (m MergedChange) Apply(w MutableWorld) (AppliedChange, error) {
+	// To ensure the world is unmodified following failure, we first
+	// apply the changes to a fresh overlay, and only change the
+	// underlying world if there's no error
+	canary := NewMutableOverlayWorld(w)
+	for _, c := range m {
+		if _, err := c.Apply(canary); err != nil {
+			return nil, err
+		}
+	}
+	applied := make(AppliedChange)
+	for _, c := range m {
+		a, err := c.Apply(w)
+		if err != nil {
+			return applied, fmt.Errorf("change partially applied: %s", err)
+		}
+		for before, after := range a {
+			applied[before] = after
+		}
+	}
+	return applied, nil
+}

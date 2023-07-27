@@ -729,6 +729,12 @@ func fillResponseFromResult(response *BlockResponseJSON, result interface{}, rul
 				GeoJSON: r,
 			}
 			response.Blocks = append(response.Blocks, block)
+		case *geojson.Geometry:
+			block := GeometryBlockJSON{
+				Type:    "geojson-feature",
+				GeoJSON: geojson.NewFeatureWithGeometry(*r),
+			}
+			response.Blocks = append(response.Blocks, block)
 		case string:
 			response.Blocks = append(response.Blocks, StringBlockJSON{Type: "string-result", Value: r})
 		case b6.Point:
