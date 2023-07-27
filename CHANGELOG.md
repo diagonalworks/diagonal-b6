@@ -1,3 +1,12 @@
+## v0.0.4: July 2023
+
+* Added merge-changes, parse-geojson-file.
+* Added support for collection literals in Python and the b6 shell.
+* Batch transformations in b6-ingest-gdal to support large files.
+* Support underscores in tag keys.
+
+Released from Pula, Croatia.
+
 ## v0.0.3: June 2023
 
 * Redesigned the web interface, adding the ability to show
