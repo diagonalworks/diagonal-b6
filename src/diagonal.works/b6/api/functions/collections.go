@@ -296,25 +296,25 @@ func countValues(_ *api.Context, c api.Collection) (api.Collection, error) {
 	return r, nil
 }
 
-type flatternCollection struct {
+type flattenCollection struct {
 	c  api.Collection
 	i  api.CollectionIterator
 	ii api.CollectionIterator
 }
 
-func (f *flatternCollection) Begin() api.CollectionIterator {
-	return &flatternCollection{c: f.c, i: f.c.Begin()}
+func (f *flattenCollection) Begin() api.CollectionIterator {
+	return &flattenCollection{c: f.c, i: f.c.Begin()}
 }
 
-func (f *flatternCollection) Key() interface{} {
+func (f *flattenCollection) Key() interface{} {
 	return f.ii.Key()
 }
 
-func (f *flatternCollection) Value() interface{} {
+func (f *flattenCollection) Value() interface{} {
 	return f.ii.Value()
 }
 
-func (f *flatternCollection) Next() (bool, error) {
+func (f *flattenCollection) Next() (bool, error) {
 	for {
 		if f.ii == nil {
 			ok, err := f.i.Next()
@@ -324,7 +324,7 @@ func (f *flatternCollection) Next() (bool, error) {
 			if c, ok := f.i.Value().(api.Collection); ok {
 				f.ii = c.Begin()
 			} else {
-				return false, fmt.Errorf("flattern: expected a collection, found %T", f.i.Value())
+				return false, fmt.Errorf("flatten: expected a collection, found %T", f.i.Value())
 			}
 		}
 		ok, err := f.ii.Next()
@@ -336,8 +336,8 @@ func (f *flatternCollection) Next() (bool, error) {
 	}
 }
 
-var _ api.Collection = &flatternCollection{}
+var _ api.Collection = &flattenCollection{}
 
-func flattern(_ *api.Context, c api.Collection) (api.Collection, error) {
-	return &flatternCollection{c: c}, nil
+func flatten(_ *api.Context, c api.Collection) (api.Collection, error) {
+	return &flattenCollection{c: c}, nil
 }

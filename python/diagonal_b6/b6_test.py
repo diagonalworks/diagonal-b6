@@ -532,6 +532,16 @@ class B6Test(unittest.TestCase):
         result = self.connection(b6.map(collection, lambda count: b6.add(count, 1)))
         self.assertEqual([37, 43], sorted([count for (key, count) in result]))
 
+    def test_flatten(self):
+        parks = b6.tagged("#leisure", "park")
+        grass = b6.tagged("#landuse", "grass")
+        parks_count = self.connection(b6.find(parks).count())
+        grass_count = self.connection(b6.find(grass).count())
+        self.assertGreater(parks_count, 0)
+        self.assertGreater(grass_count, 0)
+        parks_and_grass = b6.map([parks, grass], lambda q: b6.find(q)).flatten()
+        self.assertEqual(parks_count + grass_count, self.connection(parks_and_grass.count()))
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")

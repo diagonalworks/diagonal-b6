@@ -377,7 +377,7 @@ func pointPaths(context *api.Context, id b6.IdentifiablePoint) (api.PathFeatureC
 }
 
 func samplePointsAlongPaths(context *api.Context, paths api.PathCollection, distanceMeters float64) (api.PointCollection, error) {
-	// TODO: We shouldn't need to special case this: we should be able to flattern the results of sample_points
+	// TODO: We shouldn't need to special case this: we should be able to flatten the results of sample_points
 	// on a collection of paths.
 	seen := make(map[s2.Point]struct{})
 	points := make([]s2.Point, 0, 16)
