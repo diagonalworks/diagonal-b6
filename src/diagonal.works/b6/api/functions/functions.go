@@ -21,7 +21,7 @@ var functions = api.FunctionSymbols{
 	"collection":   collection,
 	"count-values": countValues,
 	"filter":       filter,
-	"flattern":     flattern,
+	"flatten":      flatten,
 	"sum-by-key":   sumByKey,
 	"take":         take,
 	"top":          top,

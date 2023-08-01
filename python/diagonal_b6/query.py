@@ -49,13 +49,13 @@ expression.register_literal_from_proto("queryValue", from_proto)
 def union(*queries):
     q = api_pb2.QueryProto()
     for query in queries:
-        _flattern_union(q, query.query)
+        _flatten_union(q, query.query)
     return Query(q)
 
-def _flattern_union(dest, source):
+def _flatten_union(dest, source):
     if source.WhichOneof("query") == "union":
         for q in source.union.queries:
-            _flattern_union(dest, q)
+            _flatten_union(dest, q)
     else:
         dest.union.queries.add().CopyFrom(source)
 

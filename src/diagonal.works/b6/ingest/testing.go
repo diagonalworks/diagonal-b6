@@ -1400,7 +1400,7 @@ func ValidateThinBuilding(buildWorld BuildOSMWorld, t *testing.T) {
 	// This (likely incorrectly modelled) part of a building in Barcelona
 	// is so thin that the order of it's nodes flips when they're naievely
 	// snapped to an S2 cell grid. Check that this case is handled without
-	// error - currently be silently dropping the feature during flatterning.
+	// error - currently be silently dropping the feature during flattening.
 	nodes := []osm.Node{
 		// Way 940281419
 		{ID: 7080511338, Location: osm.LatLng{Lat: 41.4389541, Lng: 2.2160516}},

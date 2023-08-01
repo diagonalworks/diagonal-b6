@@ -225,7 +225,7 @@ func TestCountValues(t *testing.T) {
 	}
 }
 
-func TestFlattern(t *testing.T) {
+func TestFlatten(t *testing.T) {
 	c1 := api.ArrayStringStringCollection{
 		Keys:   []string{"ka", "kb", "kc"},
 		Values: []string{"va", "vb", "vc"},
@@ -239,14 +239,14 @@ func TestFlattern(t *testing.T) {
 		Values: []interface{}{&c1, &c2},
 	}
 
-	flatterned, err := flattern(&api.Context{}, &c)
+	flattened, err := flatten(&api.Context{}, &c)
 	if err != nil {
 		t.Errorf("Expected no error, found %q", err)
 		return
 	}
 
 	filled := make(map[string]string)
-	if err := api.FillMap(flatterned, filled); err != nil {
+	if err := api.FillMap(flattened, filled); err != nil {
 		t.Errorf("Expected no error, found %q", err)
 		return
 	}
