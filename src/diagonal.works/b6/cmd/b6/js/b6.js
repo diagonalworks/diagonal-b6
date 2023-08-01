@@ -1245,4 +1245,4 @@ function main() {
     d3.json("/bootstrap").then(response => setup(response));
 }
 
-main();
+export default main;

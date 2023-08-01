@@ -4,6 +4,9 @@
         "build": "rollup -c",
         "start": "rollup -c --watch"
     },
+    "files": ["b6.js"],
+    "main": "b6.js",
+    "module": "b6.js",
     "dependencies": {
         "@rollup/plugin-commonjs": "^21.1.0",
         "@rollup/plugin-node-resolve": "^13.3.0",
