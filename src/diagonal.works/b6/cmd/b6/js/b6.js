@@ -5,7 +5,6 @@ import {fromLonLat, toLonLat} from "ol/proj";
 import Circle from "ol/style/Circle";
 import Fill from "ol/style/Fill";
 import GeoJSONFormat from "ol/format/GeoJSON";
-import Icon from "ol/style/Icon.js";
 import Map from "ol/Map";
 import MVT from "ol/format/MVT";
 import Stroke from "ol/style/Stroke";
@@ -388,69 +387,28 @@ function lonLatToLiteral(ll) {
     return `${ll[1].toPrecision(8)}, ${ll[0].toPrecision(8)}`
 }
 
-function showFeature(feature, blocks) {
+function showFeature(feature, ui) {
     const ns = feature.get("ns");
     const id = feature.get("id");
     const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
     if (ns && id && types[feature.getType()]) {
         const request = {
             method: "POST",
-            body: JSON.stringify({Expression: `find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`}),
+            body: JSON.stringify({expression: `find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`}),
             headers: {
                 "Content-type": "application/json; charset=UTF-8"
             }
         }
-        d3.json("/block", request).then(response => {
-            blocks.renderBlocks(response);
+        d3.json("/ui", request).then(response => {
+            ui.renderUIResponse(response);
         });
     }
 }
 
-const BlockRenderers = {
-    "pipeline-stage": renderPipelineStageBlock,
-    "feature": renderFeatureBlock,
-    "int": renderIntBlock,
-    "float": renderFloatBlock,
-    "string": renderStringBlock,
-    "int-result": renderIntResultBlock,
-    "float-result": renderFloatResultBlock,
-    "string-result": renderStringResultBlock,
-    "area": renderAreaBlock,
-    "path": renderPathBlock,
-    "histogram": renderHistogram,
-    "geojson-feature-collection": renderGeoJSONFeatureCollectionBlock,
-    "geojson-feature": renderGeoJSONFeatureBlock,
-    "title-count": renderTitleCountBlock,
-    "collection": renderCollectionBlock,
-    "collection-feature": renderCollectionFeatureBlock,
-    "collection-key-value": renderCollectionKeyValueBlock,
-    "collection-feature-key": renderCollectionFeatureKeyBlock,
-    "collection-key-or-value": renderCollectionKeyOrValueBlock,
-    "shell": renderShellBlock,
-    "error": renderStringBlock,
-    "placeholder": renderPlaceholderBlock,
-}
-
-const BlocksOrigin = [10, 100];
+const StackOrigin = [10, 100];
 
 function elementPosition(element) {
     return [+element.style("left").replace("px", ""), +element.style("top").replace("px", "")];
-}
-
-function lookupGeoJSONStyles() {
-    const palette = d3.select("body").selectAll(".geojson-palette").data([1]).join(
-        enter => {
-            const palette = enter.append("svg").classed("geojson-palette", true);
-            palette.append("g").classed("geojson-palette-point", true);
-            palette.append("g").classed("geojson-palette-path", true);
-            palette.append("g").classed("geojson-palette-area", true);
-            return palette;
-        },
-    );
-    const pointStyle = getComputedStyle(palette.select(".geojson-palette-point").node());
-    const pathStyle = getComputedStyle(palette.select(".geojson-palette-path").node());
-    const areaStyle = getComputedStyle(palette.select(".geojson-palette-area").node());
-    return [pointStyle, pathStyle, areaStyle];
 }
 
 function lookupStyles(names) {
@@ -466,22 +424,62 @@ function lookupStyles(names) {
 }
 
 class RenderedResponse {
-    constructor(response, blocks) {
-        if (response.Highlighted) {
-            this.highlighted = response.Highlighted;
-            for (const i in this.highlighted) {
-                const values = this.highlighted[i];
+    constructor(response, target, ui) {
+        this.expressionContext = response.proto.node;
+        this.target = target;
+        this.layers = []
+        if (response.proto.highlighted) {
+            this.highlighted = response.proto.highlighted;
+            for (const i in this.highlighted.namespaces) {
+                const namespace = this.highlighted.namespaces[i];
+                const values = this.highlighted.ids[i].ids;
                 for (const j in values) {
-                    blocks.addHighlight(i + "/" + values[j])
+                    ui.addHighlight(namespace + "/" + values[j])
                 }
             }
         }
-        this.layers = []
-        if (response.QueryLayers) {
-            for (const i in response.QueryLayers) {
-                this.layers.push(blocks.addQueryLayer(response.QueryLayers[i]));
+        if (response.geojson) {
+            this.addGeoJSON(response.geojson, ui);
+        }
+        if (response.proto.queryLayers) {
+            for (const i in response.proto.queryLayers) {
+                this.layers.push(ui.addQueryLayer(response.proto.queryLayers[i]));
             }
         }
+    }
+
+    getTarget() {
+        return this.target;
+    }
+
+    getExpressionContext() {
+        return this.expressionContext;
+    }
+
+    getBlobURL() {
+        return this.blobURL;
+    }
+
+    addGeoJSON(geojson, ui) {
+        const source = new VectorSource({
+            features: [],
+         })
+         const layer = new VectorLayer({
+             source: source,
+             style: ui.getGeoJSONStyle(),
+         })
+        const features = new GeoJSONFormat().readFeatures(geojson, {
+            dataProjection: "EPSG:4326",
+            featureProjection: ui.getProjection(),
+        });
+        source.addFeatures(features);
+        this.layers.push(layer);
+        ui.addLayer(layer);
+
+        const blob = new Blob([JSON.stringify(geojson, null, 2)], {
+            type: "application/json",
+        });
+        this.blobURL = URL.createObjectURL(blob);
     }
 
     redrawHighlights() {
@@ -490,60 +488,311 @@ class RenderedResponse {
         }
     }
 
-    remove(blocks) {        
+    remove(ui) {        
         for (const i in this.layers) {
-            blocks.removeLayer(this.layers[i]);
+            ui.removeLayer(this.layers[i]);
         }
         if (this.highlighted) {
-            for (const i in this.highlighted) {
-                const values = this.highlighted[i];
+            for (const i in this.highlighted.namespaces) {
+                const namespace = this.highlighted.namespaces[i];
+                const values = this.highlighted.ids[i].ids;
                 for (const j in values) {
-                    blocks.removeHighlight(i + "/" + values[j])
+                    ui.removeHighlight(namespace + "/" + values[j])
                 }
             }
         }
         for (const i in this.layers) {
-            blocks.removeLayer(this.layers[i]);
+            ui.removeLayer(this.layers[i]);
         }
     }
 }
 
-class RenderedBlock {
-    constructor(block, map, geojsonStyle) {
-        if (block.GeoJSON) {
-            const source = new VectorSource({
-                features: [],
-             })
-             const layer = new VectorLayer({
-                 source: source,
-                 style: geojsonStyle,
-             })
-            const features = new GeoJSONFormat().readFeatures(block.GeoJSON, {
-                dataProjection: "EPSG:4326",
-                featureProjection: map.getView().getProjection(),
-            });
-            source.addFeatures(features);
-            this.layer = layer;
-            map.addLayer(this.layer);
-
-            const blob = new Blob([JSON.stringify(block.GeoJSON, null, 2)], {
-                type: "application/json",
-            });
-            this.blobURL = URL.createObjectURL(blob);
-        }
+class ValueAtomRenderer {
+    getCSSClass() {
+        return "atom-value";
     }
 
-    remove(map) {
-        if (this.layer) {
-            map.removeLayer(this.layer);
-        }
-        if (this.blobURL) {
-            URL.revokeObjectURL(this.blobURL);
-        }
+    enter() {}
+
+    update(atom) {        
+        atom.text(d => d.value);
+    }    
+}
+
+class LabelledIconAtomRenderer {
+    getCSSClass() {
+        return "atom-labelled-icon";
+    }
+
+    enter(atom) {
+        atom.append("img");
+        atom.append("span");
+    }
+
+    update(atom) {
+        atom.select("img").attr("src", d => `/images/${d.labelledIcon.icon}.svg`);
+        atom.select("img").attr("class", d => `icon-${d.labelledIcon.icon}`);
+        atom.select("span").text(d => d.labelledIcon.label);
+    }    
+}
+
+class DownloadAtomRenderer {
+    getCSSClass() {
+        return "atom-download";
+    }
+
+    enter(atom) {
+        atom.append("a");
+    }
+
+    update(atom, renderedResponse, ui) {
+        const a = atom.select("a");
+        a.node().href = renderedResponse.getBlobURL();
+        a.node().download = "b6-result.geojson";
+        a.text(d => d.download);
+    }    
+}
+
+class ValueLineRenderer {
+    getCSSClass() {
+        return "line-value";
+    }
+
+    enter(line) {}
+
+    update(line, renderedResponse, ui) {
+        const atoms = line.selectAll("span").data(d => [d.value.atom]).join("span");
+        renderFromProto(atoms, "atom", renderedResponse, ui)
+        const clickable = line.filter(d => d.value.clickExpression);
+        clickable.classed("clickable", true);
+        clickable.on("click", (e, d) => {
+            e.preventDefault();
+            ui.evaluateNode(d.value.clickExpression);
+        })
+    }    
+}
+
+class ValuePairLineRenderer {
+    getCSSClass() {
+        return "line-value-pair";
+    }
+
+    enter(line) {}
+
+    update(line, renderedResponse, ui) {
+        const values = [line.datum().valuePair.first, line.datum().valuePair.second];
+
+        const atoms = line.selectAll("span").data(values.map(d => d.atom)).join("span");
+        renderFromProto(atoms, "atom", renderedResponse, ui)
+
+        const clickables = line.selectAll("span").data(values.map(d => d.clickExpression)).filter(d => d);
+        clickables.classed("clickable", true);
+        clickables.on("click", (e, d) => {
+            if (d) {
+                e.preventDefault();
+                ui.evaluateNode(d);
+            }
+        })
     }
 }
 
-class Blocks {
+class ExpressionLineRenderer {
+    getCSSClass() {
+        return "line-expression";
+    }
+
+    enter(line) {}
+
+    update(line, renderedResponse, ui) {
+        line.text(d => d.expression.expression);
+        line.on("mousedown", e => {
+            ui.handleDragStart(e, renderedResponse.getTarget());
+        })
+    }    
+}
+
+class TagsLineRenderer {
+    getCSSClass() {
+        return "line-tags";
+    }
+
+    enter(line) {
+        line.append("ul");
+    }
+
+    update(line, renderedResponse, ui) {
+        const formatTags = t => [
+            {class: "prefix", text: t.prefix},
+            {class: "key", text: t.key},
+            {class: "value", text: t.value, clickExpression: t.clickExpression},
+        ];
+        const li = line.select("ul").selectAll("li").data(d => d.tags.tags.map(formatTags)).join("li");
+        li.selectAll("span").data(d => d).join("span").attr("class", d => d.class).text(d => d.text);
+        const clickable = li.selectAll(".value").filter(d => d.clickExpression);
+        clickable.classed("clickable", true);
+        clickable.on("click", (e, d) => {
+            e.preventDefault();
+            ui.evaluateNode(d.clickExpression);
+        });
+    }
+}
+
+class HistogramBarLineRenderer {
+    getCSSClass() {
+        return "line-histogram-bar";
+    }
+
+    enter(line) {
+        line.append("div").attr("class", "range-icon");
+        line.append("span").attr("class", "range");
+        line.append("span").attr("class", "value");
+        line.append("span").attr("class", "total");
+        const bar = line.append("div").attr("class", "value-bar");
+        bar.append("div").attr("class", "fill");
+    }
+
+    update(line) {
+        line.select(".range-icon").attr("class", d => `range-icon index-${d.histogramBar.index ? d.histogramBar.index : 0}`);
+        line.select(".range").text(d => d.histogramBar.range);
+        line.select(".value").text(d => d.histogramBar.value);
+        line.select(".total").text(d => `/ ${d.histogramBar.total}`);
+        line.select(".fill").attr("style", d => `width: ${d.histogramBar.value/d.histogramBar.total*100.00}%;`);
+    }
+}
+
+class ShellLineRenderer {
+    getCSSClass() {
+        return "line-shell";
+    }
+
+    enter(line) {
+        const form = line.append("form");
+        form.append("div").attr("class", "prompt").text("b6");
+        form.append("input").attr("type", "text");
+        return form
+    }
+
+    update(line, renderedResponse, ui) {
+        const state = {suggestions: line.datum().shell.functions ? line.datum().shell.functions.toSorted() : [], highlighted: 0};
+        const form = line.select("form");
+        form.select("input").on("focusin", e => {
+            form.select("ul").classed("focussed", true);
+        });
+        form.select("input").on("focusout", e => {
+            form.select("ul").classed("focussed", false);
+        });
+        form.on("keydown", e => {
+            switch (e.key) {
+                case "Tab":
+                    const node = form.select("input").node();
+                    if (state.highlighted >= 0 && state.filtered[state.highlighted].length > node.value.length) {
+                        node.value = state.filtered[state.highlighted] + " ";
+                    }
+                    e.preventDefault();
+                    break;
+            }
+        });
+        form.on("keyup", e => {
+            switch (e.key) {
+                case "ArrowUp":
+                    state.highlighted--;
+                    e.preventDefault();
+                    break;
+                case "ArrowDown":
+                    state.highlighted++;
+                    e.preventDefault();
+                    break;
+                default:
+                    state.highlighted = 0;
+                    break;
+            }
+            this.updateShellSuggestions(line, state);
+        });
+        form.on("submit", e => {
+            e.preventDefault();
+            acceptShellSuggestion(line, state, renderedResponse, ui);
+            return;
+        });    
+    }
+
+    updateShellSuggestions(line, state) {
+        const entered = line.select("input").node().value;
+        const filtered = state.suggestions.filter(s => s.startsWith(entered));
+        state.filtered = filtered;
+
+        const suggestions = filtered.slice(0, ShellMaxSuggestions).map(s => {return {text: s, highlighted: false}});
+        if (state.highlighted < 0) {
+            state.highlighted = 0
+        } else if (state.highlighted >= filtered.length) {
+            state.highlighted = filtered.length - 1;
+        }
+        if (state.highlighted >= 0) {
+            suggestions[state.highlighted].highlighted = true;
+        }
+    
+        const substack = d3.select(line.node().parentNode);
+        const lines = substack.selectAll(".line-suggestion").data(suggestions).join("div");
+        lines.attr("class", "line line-suggestion");
+        lines.text(d => d.text).classed("highlighted", d => d.highlighted);
+    }
+}
+
+class ErrorLineRenderer {
+    getCSSClass() {
+        return "line-error";
+    }
+
+    enter(line) {}
+
+    update(line) {
+        line.text(d => d.error.error);
+    }    
+}
+
+const Renderers = {
+    "atom": {
+        "value": new ValueAtomRenderer(),
+        "labelledIcon": new LabelledIconAtomRenderer(),
+        "download": new DownloadAtomRenderer(),
+    },
+    "line": {
+        "value": new ValueLineRenderer(),
+        "valuePair": new ValuePairLineRenderer(),
+        "expression": new ExpressionLineRenderer(),
+        "tags": new TagsLineRenderer(),
+        "histogramBar": new HistogramBarLineRenderer(),
+        "shell": new ShellLineRenderer(),
+        "error": new ErrorLineRenderer(),
+    }
+}
+
+function renderFromProto(targets, uiElement, renderedResponse, ui) {
+    const f = function(d) {
+        // If the CSS class of the line's div matches the data bound to it, update() it,
+        // otherwise remove all child nodes and enter() the line beforehand.
+        const renderers = Renderers[uiElement];
+        if (!renderers) {
+            throw new Error(`Can't render uiElement ${uiElement}`);
+        }
+        const uiElementType = Object.getOwnPropertyNames(d)[0];
+        const renderer = renderers[uiElementType];
+        if (!renderer) {
+            throw new Error(`Can't render ${uiElement} of type ${uiElementType}`);
+        }
+        const class_ = this.getAttribute("class");
+        if (!class_ || class_.indexOf(renderer.getCSSClass()) < 0) {
+            while (this.firstChild) {
+                this.removeChild(this.firstChild);
+            }
+            this.setAttribute("class", uiElement + " " + renderer.getCSSClass());
+            renderer.enter(d3.select(this));
+        }
+        renderer.update(d3.select(this), renderedResponse, ui);
+    }
+    targets.each(f);
+}
+
+class UI {
     constructor(map, state, queryStyle, geojsonStyle, highlightChanged) {
         this.map = map;
         this.state = state;
@@ -567,7 +816,7 @@ class Blocks {
     }
 
     evaluateExpressionInContext(node, expression) {
-        const body = JSON.stringify({Node: node, Expression: expression});
+        const body = JSON.stringify({node: node, expression: expression});
         const request = {
             method: "POST",
             body: body,
@@ -575,8 +824,8 @@ class Blocks {
                 "Content-type": "application/json; charset=UTF-8"
             }
         }
-        d3.json("/block", request).then(response => {
-            this.renderBlocks(response);
+        d3.json("/ui", request).then(response => {
+            this.renderUIResponse(response);
         });
     }
 
@@ -618,81 +867,64 @@ class Blocks {
         return layer;
     }
 
+    getGeoJSONStyle() {
+        return this.geojsonStyle
+    }
+
+    getProjection() {
+        return this.map.getView().getProjection();
+    }
+
+    addLayer(layer) {
+        this.map.addLayer(layer);
+    }
+
     removeLayer(layer) {
         this.map.removeLayer(layer);
     }
 
-    renderBlocks(response) {
-        response.Blocks.push({Type: "shell"});
-        const root = d3.select("body").selectAll(".featured-blocks").data([1]).join("div");        
-        root.attr("class", "featured-blocks blocks");
-        root.style("left",  `${BlocksOrigin[0]}px`);
-        root.style("top", `${BlocksOrigin[1]}px`);
-        const blocks = this;
-        const f = function(d) {
-            if (this.__rendered__) {
-                this.__rendered__.remove(blocks);
-                blocks.rendered = blocks.rendered.filter(r => r != this.__rendered__);
+    renderUIResponse(response) {
+        const root = d3.select("body").selectAll(".stack-featured").data([1]).join("div");
+        root.attr("class", "stack stack-featured");
+        root.style("left",  `${StackOrigin[0]}px`);
+        root.style("top", `${StackOrigin[1]}px`);
+        const substacks = root.selectAll(".substack").data(response.proto.stack.substacks).join(
+            enter => {
+                const div = enter.append("div").attr("class", "substack");
+                div.append("div").attr("class", "scrollable");
+                return div;
             }
-            this.__rendered__ = new RenderedResponse(response, blocks);
-            blocks.rendered.push(this.__rendered__);
+        );
+        substacks.classed("collapsable", d => d.collapsable);
+        root.selectAll(".collapsable").on("click", function(e) {
+            e.preventDefault();
+            const substack = d3.select(this);
+            substack.classed("collapsable-open", !substack.classed("collapsable-open"));
+        });
+        const scrollables = substacks.select(".scrollable");
+        const lines = scrollables.selectAll(".line").data(d => d.lines).join("div");
+        lines.attr("class", "line");
+        const ui = this;
+        const f = function() {
+            if (this.__rendered__) {
+                this.__rendered__.remove(ui);
+                ui.rendered = ui.rendered.filter(r => r != this.__rendered__);
+            }
+            this.__rendered__ = new RenderedResponse(response, d3.select(this), ui);
+            ui.rendered.push(this.__rendered__);
+            renderFromProto(lines, "line", this.__rendered__, ui);
         }
         root.each(f);
-        const divs = root.selectAll(".block").data(response.Blocks).join("div");
-        divs.attr("class", "block");
-        this.renderBlock(divs, root, response);
         if (this.needHighlightRedraw) {
             this.redrawHighlights();
             this.needHighlightRedraw = false;            
         }
     }
 
-    renderBlock(target, root, response) {
-        const blocks = this;
-        const divs = target.selectAll(".block-container").data(d => [d], d => d.Type).join(
-            enter => {
-                const div = enter.append("div");
-                div.attr("class", d => `block-container ${d.Type}`);
-                return div;
-            },
-            update => {
-                return update;
-            },
-            exit => {
-                exit.each(function() {
-                    if (this.__rendered__) {
-                        this.__rendered__.remove(blocks.map);
-                        delete this.__rendered__;
-                    }
-                });
-                exit.remove();
-            }
-        )
-        const f = function(d) {
-            if (this.__rendered__) {
-                this.__rendered__.remove(blocks.map);
-            }
-            const rendered = new RenderedBlock(d, blocks.map, blocks.geojsonStyle);
-            this.__rendered__ = rendered;
-            if (d.MapCenter) {
-                blocks.map.getView().animate({
-                    center: fromLonLat([parseFloat(d.MapCenter[0]), parseFloat(d.MapCenter[1])]),
-                    duration: 500,
-                });
-            }
-            if (BlockRenderers[d.Type]) {
-                BlockRenderers[d.Type].apply(null, [d3.select(this), root, response, blocks, rendered]);
-            } else {
-                throw new Error(`No renderer for block ${d.Type}`);
-            }
-        }
-        divs.each(f);
-    }
-
     handleDragStart(event, root) {
         event.preventDefault();
-        if (root.classed("featured-blocks")) {
-            root.attr("class", "blocks");
+        if (root.classed("stack-featured")) {
+            root.attr("class", "stack");
         }
         this.dragging = root;
         this.dragging.classed("dragging", true);
@@ -721,314 +953,17 @@ class Blocks {
     }
 }
 
-function renderPipelineStageBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    block.text(d => `${d.Expression}`);
-    block.on("mousedown", e => {
-        blocks.handleDragStart(e, root);
-    });
-}
+const ShellMaxSuggestions = 6;
 
-function renderPlaceholderBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    block.text(d => `${d.RawValue}`);
-}
-
-function renderFeatureBlock(block, root, response, blocks) {
-    const ul = block.selectAll(".tags").data(d => [d]).join("ul").attr("class", "tags top");
-    const formatTags = t => [
-        {class: "prefix", text: t.Prefix},
-        {class: "key", text: t.Key, prefix: t.Prefix, key: t.Key, value: t.Value},
-        {class: "value", text: t.Value},
-    ];
-    const li = ul.selectAll("li").data(d => d.Tags.map(formatTags)).join("li");
-    li.selectAll("span").data(d => d).join("span").attr("class", d => d.class).text(d => d.text);
-    const clickableKeys = ul.selectAll(".key").data(d => d.Tags).filter(d => d.KeyExpression);
-    clickableKeys.classed("clickable", true).on("click", (e, d) => {
-        e.preventDefault();
-        blocks.evaluateNode(d.KeyExpression);
-    });
-    const clickableValues = ul.selectAll(".value").data(d => d.Tags).filter(d => d.ValueExpression);
-    clickableValues.classed("clickable", true).on("click", (e, d) => {
-        e.preventDefault();
-        blocks.evaluateNode(d.ValueExpression);
-    });
-
-    const lastPoint = renderFeatureBlockPoints(block, root, response, blocks);
-    if (!lastPoint.empty()) {
-        block.select(".points").classed("points-last", true);
-        lastPoint.classed("top-last", true);
-    } else {
-        ul.classed("top-last", true);
-    }
-}
-
-function renderFeatureBlockPoints(block, root, response, blocks) {
-    const points = block.selectAll(".points").data(d => d.Points && d.Points.length > 0 ? [d] : []).join(
-        enter => {
-            const div = enter.append("div");
-            div.attr("class", "points");
-            div.append("div").classed("title", true);
-            div.append("ul");
-            return div
-        }
-    );
-    const title = points.select(".title").datum(d => {return {Type: "title-count", Title: "Points", Count: d.Points.length};});
-    blocks.renderBlock(title, root, response);
-    title.on("click", e => {
-        e.preventDefault();
-        points.classed("open", !points.classed("open"));
-    });
-    const li = points.select("ul").selectAll("li").data(d => d.Points).join("li");
-    blocks.renderBlock(li, root, response);
-    return li.filter((d, i, l) => i == l.length - 1).select(".top");
-}
-
-function renderIntBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    block.text(d => `${d.Value}`);
-}
-
-function renderIntResultBlock(block, root, response, blocks) {
-    renderIntBlock(block, root, response, blocks)
-    block.classed("top-last", true);
-}
-
-function renderFloatBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    block.text(d => `${d3.format(".2f")(d.Value)}`);
-}
-
-function renderFloatResultBlock(block, root, response, blocks) {
-    renderFloatBlock(block, root, response, blocks)
-    block.classed("top-last", true);
-}
-
-function renderStringBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    block.classed("top-last", true);
-    block.text(d => `${d.Value}`);
-}
-
-function renderStringResultBlock(block, root, response, blocks) {
-    renderStringBlock(block, root, response, blocks)
-    block.classed("top-last", true);
-    block.on("mousedown", e => {
-        blocks.handleDragStart(e, root);
-    });
-}
-
-function renderAreaBlock(block, root, response, blocks) {
-    renderGeometryBlock("area", "m²", block, root, response, blocks);
-}
-
-function renderPathBlock(block, root, response, blocks) {
-    renderGeometryBlock("path", "m", block, root, response, blocks);
-}
-
-function renderGeometryBlock(geometry, units, block, root, response, blocks) {
-    block.classed("top", true);
-    block.classed("top-last", true);
-    block.classed("geometry", true);
-    const spans = block.selectAll("span").data(d => [
-        {class: `icon icon-${geometry}`, text: ""},
-        {class: "", text: `${d3.format(".2f")(d.Dimension)}${units}`},
-    ]);
-    spans.join("span").attr("class", d => d.class).text(d => d.text);
-}
-
-function renderHistogram(block, root, response, blocks) {
-    block.classed("top", true);
-    block.classed("top-last", true);
-    const spans = block.selectAll("span").data(d => [
-        {class: "range-icon " + "index-" + d.Index, text: ""},
-        {class: "range", text: d.Range},
-        {class: "value", text: d.Value},
-        {class: "total", text: "/ " + d.Total},
-        {class: "value-bar", width: d.Value/d.Total*100.00 + "%"},
-    ]).join("span");
-    spans.attr("class", d => d.class).text(d => d.text);
-    spans.attr("class", d => d.class).filter(function(d){ return d.class == "value-bar"; }).append("div").attr("class", "filled").attr("style", d => `width: ${d.width}`);
-}
-
-function renderGeoJSONFeatureCollectionBlock(block, root, response, blocks, rendered) {
-    block.classed("top", true);
-    block.classed("top-last", true);
-    block.classed("geometry", true);
-    const spans = block.selectAll("span").data(d => [
-        {class: `icon icon-area`},
-        {class: "link"},
-    ]);
-    spans.join("span").attr("class", d => d.class);
-    const a = renderGeoJSONBlobLink(block.select(".link"), rendered);
-    a.text(d => `${d3.format("i")(d.Dimension)} GeoJSON ${d.Dimension == 1 ? "feature" : "features"}`);
-}
-
-function renderGeoJSONFeatureBlock(block, root, response, blocks, rendered) {
-    block.classed("top", true);
-    block.classed("top-last", true);
-    block.classed("geometry", true);
-    const spans = block.selectAll("span").data(d => [
-        {class: `icon icon-area`},
-        {class: "link"},
-    ]);
-    spans.join("span").attr("class", d => d.class).text(d => d.text);
-    const a = renderGeoJSONBlobLink(block.select(".link"), rendered);
-    a.text("GeoJSON feature");
-}
-
-function renderGeoJSONBlobLink(target, rendered) {
-    const a = target.selectAll("a").data(d => [d]).join("a");
-    a.node().href = rendered.blobURL;
-    a.node().download = "b6-result.geojson";
-    return a;
-}
-
-function renderTitleCountBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    const spans = block.selectAll("span").data(d => [
-        {class: "title", text: d.Title},
-        {class: "count", text: d.Count >= 0 ? `${d.Count}` : ""},
-    ]);
-    spans.join("span").attr("class", d => d.class).text(d => d.text);
-}
-
-function renderCollectionBlock(block, root, response, blocks) {
-    const title = block.selectAll(".title").data(d => [d.Title]).join("div").classed("title", true);
-    blocks.renderBlock(title, root, response);
-    const ul = block.selectAll("ul").data(d => [d]).join("ul");
-    const li = ul.selectAll("li").data(d => d.Items).join("li");
-    blocks.renderBlock(li, root, response);
-    li.filter((d, i, l) => i == l.length - 1).select(".top").classed("top-last", true);
-}
-
-function renderCollectionFeatureBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    const spans = block.selectAll("span").data(d => [
-        {class: `icon icon-${d.Icon}`, text: ""},
-        {class: "label", text: d.Label},
-        {class: "namespace", text: d.Namespace},
-        {class: "id", text: d.ID},
-    ]);
-    spans.join("span").attr("class", d => d.class).text(d => d.text);
-    block.filter(d => d.Expression).classed("clickable", true).on("click", (e, d) => {
-        e.preventDefault();
-        blocks.evaluateNode(d.Expression);
-    });
-}
-
-function renderCollectionKeyValueBlock(block, root, response, blocks) {
-    const spans = block.selectAll("span").data(d => [d.Key, d.Value]).join("span");
-    spans.attr("class", (d, i) => ["key", "value"][i]);
-    blocks.renderBlock(spans);
-}
-
-function renderCollectionFeatureKeyBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    const spans = block.selectAll("span").data(d => [
-        {class: `icon icon-${d.Icon}`, text: ""},
-        {class: "namespace", text: d.Namespace},
-        {class: "id", text: d.ID},
-    ]);
-    spans.join("span").attr("class", d => d.class).text(d => d.text);
-    block.filter(d => d.Expression).classed("clickable", true).on("click", (e, d) => {
-        e.preventDefault();
-        blocks.evaluateNode(d.Expression);
-    });
-}
-
-function renderCollectionKeyOrValueBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    block.text(d => d.Value);
-    block.filter(d => d.Expression).classed("clickable", true).on("click", (e, d) => {
-        e.preventDefault();
-        blocks.evaluateNode(d.Expression);
-    });
-}
-
-const TerminalMaxSuggestions = 6;
-
-function renderShellBlock(block, root, response, blocks) {
-    block.classed("top", true);
-    const input = block.selectAll(".shell").data([1]).join(
-        enter => {
-            const form = enter.append("form").attr("class", "shell");
-            form.append("div").attr("class", "prompt").text("b6");
-            form.append("input").attr("type", "text");
-            return form
-        },
-        update => update,
-        exit => exit.remove(),
-    );
-    const state = {suggestions: response.Functions ? response.Functions.toSorted() : [], highlighted: 0};
-    input.select("input").on("focusin", e => {
-        block.select("ul").classed("focussed", true);
-    });
-    input.select("input").on("focusout", e => {
-        block.select("ul").classed("focussed", false);
-    });
-    input.on("keydown", e => {
-        switch (e.key) {
-            case "Tab":
-                const node = input.select("input").node();
-                if (state.highlighted >= 0 && state.filtered[state.highlighted].length > node.value.length) {
-                    node.value = state.filtered[state.highlighted] + " ";
-                }
-                e.preventDefault();
-                break;
-        }
-    });
-    input.on("keyup", e => {
-        switch (e.key) {
-            case "ArrowUp":
-                state.highlighted--;
-                e.preventDefault();
-                break;
-            case "ArrowDown":
-                state.highlighted++;
-                e.preventDefault();
-                break;
-            default:
-                state.highlighted = 0;
-                break;
-        }
-        renderShellSuggestions(block, state);
-    });
-    input.on("submit", e => {
-        e.preventDefault();
-        acceptTerminalSuggestion(block, state, response, blocks);
-        return;
-    });
-    renderShellSuggestions(block, state);
-}
-
-function renderShellSuggestions(block, state) {
-    const entered = block.select("input").node().value;
-    const filtered = state.suggestions.filter(s => s.startsWith(entered));
-    state.filtered = filtered;
-    const suggestions = filtered.slice(0, TerminalMaxSuggestions).map(s => {return {text: s, highlighted: false}});
-    if (state.highlighted < 0) {
-        state.highlighted = 0
-    } else if (state.highlighted >= filtered.length) {
-        state.highlighted = filtered.length - 1;
-    }
-    if (state.highlighted >= 0) {
-        suggestions[state.highlighted].highlighted = true;
-    }
-    const ul = block.selectAll("ul").data([1]).join("ul");
-    const li = ul.selectAll("li").data(suggestions).join("li");
-    li.text(d => d.text).classed("highlighted", d => d.highlighted);
-}
-
-function acceptTerminalSuggestion(block, state, response, blocks) {
+function acceptShellSuggestion(block, state, renderedResponse, ui) {
     var expression = block.select("input").node().value;
     if (state.highlighted >= 0 && state.filtered[state.highlighted].length > expression.length) {
         expression = state.filtered[state.highlighted];
     }
-    blocks.evaluateExpressionInContext(response.Node, expression);
+    ui.evaluateExpressionInContext(renderedResponse.getExpressionContext(), expression);
 }
 
-function showFeatureAtPixel(pixel, layers, blocks) {
+function showFeatureAtPixel(pixel, layers, ui) {
     const search = (i, found) => {
         if (i < layers.length) {
             if (layers[i].getVisible()) {
@@ -1045,7 +980,7 @@ function showFeatureAtPixel(pixel, layers, blocks) {
             }
         }
     };
-    search(0, f => showFeature(f, blocks));
+    search(0, f => showFeature(f, ui));
 }
 
 function idKey(id) {
@@ -1061,7 +996,7 @@ const idGeometryTypes = {
 
 function idKeyFromFeature(feature) {
     const type = idGeometryTypes[feature.getGeometry().getType()] || "invalid";
-    return `/${type}/${feature.get("ns")}/${feature.get("id")}`
+    return `/${type}/${feature.get("ns")}/${parseInt(feature.get("id"), 16)}`
 }
 
 function setupShell(target, blocks) {
@@ -1232,23 +1167,23 @@ function setup(bootstrapResponse) {
     const [map, searchableLayers, highlightChanged] = setupMap(state, styles);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
-    const blocks = new Blocks(map, state, queryStyle, geojsonStyle, highlightChanged);
+    const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged);
     const html = d3.select("html");
     html.on("pointermove", e => {
-        blocks.handlePointerMove(e);
+        ui.handlePointerMove(e);
     });
     html.on("mouseup", e => {
-        blocks.handleDragEnd(e);
+        ui.handleDragEnd(e);
     });
 
-    setupShell(d3.select("#shell"), blocks);
+    setupShell(d3.select("#shell"), ui);
 
     map.on("singleclick", e => {
         if (e.originalEvent.shiftKey) {
-            showFeatureAtPixel(e.pixel, searchableLayers, blocks);
+            showFeatureAtPixel(e.pixel, searchableLayers, ui);
             e.stopPropagation();
         } else {
-            blocks.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))));
+            ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))));
             e.stopPropagation();
         }
     });

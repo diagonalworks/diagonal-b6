@@ -18,7 +18,7 @@ func TestMatchingFunctions(t *testing.T) {
 	base := camden.BuildGranarySquareForTests(t)
 	w := ingest.NewMutableOverlayWorld(base)
 
-	handler := BlockHandler{
+	handler := UIHandler{
 		World:            w,
 		RenderRules:      renderer.BasemapRenderRules,
 		Cores:            1,
@@ -36,21 +36,25 @@ func TestMatchingFunctions(t *testing.T) {
 		t.Fatalf("Expected status %d, found %d", http.StatusOK, result.StatusCode)
 	}
 
-	// TODO: Use typing - see the comment for the BlocksJSON definition
-	var blocks map[string]interface{}
+	var uiResponse UIResponseJSON
 	d := json.NewDecoder(result.Body)
-	if err := d.Decode(&blocks); err != nil {
+	if err := d.Decode(&uiResponse); err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
-	functions := blocks["Functions"].([]interface{})
-	var functionNames []string
-	for _, f := range functions {
-		functionNames = append(functionNames, f.(string))
+	functions := make([]string, 0)
+	for _, s := range uiResponse.Proto.Stack.Substacks {
+		for _, l := range s.Lines {
+			if shell := l.GetShell(); shell != nil {
+				for _, f := range shell.Functions {
+					functions = append(functions, f)
+				}
+			}
+		}
 	}
 
 	for _, e := range []string{"to-geojson", "closest", "get-string", "reachable"} {
-		if !contains(e, functionNames) {
-			t.Errorf("Function %q not included in area features: %v", e, functionNames)
+		if !contains(e, functions) {
+			t.Errorf("Function %q not included in area features: %v", e, functions)
 		}
 	}
 }

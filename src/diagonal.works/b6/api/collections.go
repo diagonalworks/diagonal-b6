@@ -613,7 +613,7 @@ func (a *ArrayTagCollection) Begin() CollectionIterator {
 }
 
 func (a *ArrayTagCollection) Key() interface{} {
-	return a.i
+	return a.i - 1
 }
 
 func (a *ArrayTagCollection) Value() interface{} {

@@ -42,9 +42,11 @@ b6-api:
 
 proto: proto-go proto-python
 
-proto-go: src/diagonal.works/b6/proto/tiles.pb.go src/diagonal.works/b6/proto/geometry.pb.go src/diagonal.works/b6/proto/features.pb.go src/diagonal.works/b6/proto/compact.pb.go src/diagonal.works/b6/proto/api.pb.go src/diagonal.works/b6/proto/api_grpc.pb.go src/diagonal.works/b6/osm/proto/pbf.pb.go
+proto-go: src/diagonal.works/b6/proto/tiles.pb.go src/diagonal.works/b6/proto/geometry.pb.go src/diagonal.works/b6/proto/features.pb.go src/diagonal.works/b6/proto/compact.pb.go src/diagonal.works/b6/proto/ui.pb.go src/diagonal.works/b6/proto/api.pb.go src/diagonal.works/b6/proto/api_grpc.pb.go src/diagonal.works/b6/osm/proto/pbf.pb.go
 
 src/diagonal.works/b6/proto/features.pb.go: proto/features.proto proto/geometry.proto
+
+src/diagonal.works/b6/proto/ui.pb.go: proto/ui.proto proto/api.proto proto/features.proto
 
 src/diagonal.works/b6/proto/api.pb.go: proto/api.proto proto/features.proto proto/geometry.proto
 
