@@ -1,7 +1,5 @@
 import * as d3 from "d3";
 
-import Shell from "./shell.js";
-
 import {defaults as InteractionDefaults} from "ol/interaction";
 import {fromLonLat, toLonLat} from "ol/proj";
 import Circle from "ol/style/Circle";

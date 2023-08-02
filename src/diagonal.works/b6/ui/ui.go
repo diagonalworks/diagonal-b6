@@ -42,12 +42,6 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 
 	root.Handle("/bootstrap", http.HandlerFunc(serveBootstrap))
 
-	shell, err := NewShellHandler(options.World, options.Cores)
-	if err != nil {
-		return err
-	}
-	root.Handle("/shell", shell)
-
 	blocks := NewBlockHandler(options.World, options.Cores)
 	root.Handle("/block", blocks)
 
