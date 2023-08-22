@@ -36,9 +36,9 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 	}
 
 	if !semver.IsValid("v" + request.Version) {
-		return nil, fmt.Errorf("client isn't compatiable with b6 version %s", b6.ApiVersion)
+		return nil, fmt.Errorf("client version %q is not a valid version", request.Version)
 	} else if semver.Major("v"+request.Version) != semver.Major("v"+b6.ApiVersion) {
-		return nil, fmt.Errorf("client version %s isn't compatiable with b6 version %s", request.Version, b6.ApiVersion)
+		return nil, fmt.Errorf("client version %s is not compatible with b6 version %s", request.Version, b6.ApiVersion)
 	}
 
 	context := api.Context{
