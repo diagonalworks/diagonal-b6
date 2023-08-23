@@ -6,11 +6,11 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 )
 
 func TestBuildStreetNetwork(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -283,7 +283,7 @@ func TestConnectGranarySquare(t *testing.T) {
 		{"ConnectUsingExistingPoints", ValidateConnectUsingExistingPoints},
 	}
 
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}

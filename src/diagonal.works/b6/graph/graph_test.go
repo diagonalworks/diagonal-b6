@@ -7,11 +7,11 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 )
 
 func TestShortestPath(t *testing.T) {
-	camden := camden.BuildCamdenForTests(t)
+	camden := testcamden.BuildCamden(t)
 	if camden == nil {
 		return
 	}
@@ -172,7 +172,7 @@ func TestShortestPathTakesIntoAccountOneWayStreets(t *testing.T) {
 	// Tests that shortest path routing doesn't take you down one way streets. The
 	// test case is the road junction here: 51.5452312, -0.1415558, where the West
 	// hand fork is shorter when heading South, but oneway in the wrong direction.
-	camden := camden.BuildCamdenForTests(t)
+	camden := testcamden.BuildCamden(t)
 	if camden == nil {
 		return
 	}
@@ -264,7 +264,7 @@ func TestInterpolateShortestPathDistances(t *testing.T) {
 }
 
 func TestAccessibility(t *testing.T) {
-	camden := camden.BuildCamdenForTests(t)
+	camden := testcamden.BuildCamden(t)
 	if camden == nil {
 		return
 	}
@@ -310,7 +310,7 @@ func TestAccessibility(t *testing.T) {
 }
 
 func TestBusWeights(t *testing.T) {
-	camden := camden.BuildCamdenForTests(t)
+	camden := testcamden.BuildCamden(t)
 	if camden == nil {
 		return
 	}
@@ -338,12 +338,12 @@ func TestBusWeights(t *testing.T) {
 }
 
 func TestShortestPathFromConnectedBuildingWithNoEntrance(t *testing.T) {
-	w := camden.BuildCamdenForTests(t)
+	w := testcamden.BuildCamden(t)
 	if w == nil {
 		return
 	}
 
-	lighterman := b6.FindAreaByID(ingest.AreaIDFromOSMWayID(camden.LightermanWay), w)
+	lighterman := b6.FindAreaByID(ingest.AreaIDFromOSMWayID(testcamden.LightermanWay), w)
 	if lighterman == nil {
 		t.Error("Expected to find The Lighterman")
 		return
@@ -370,13 +370,13 @@ func TestShortestPathFromConnectedBuildingWithNoEntrance(t *testing.T) {
 	search.ExpandSearch(100.0, weights, Points, w)
 	distances := search.PointDistances()
 
-	if _, ok := distances[camden.StableStreetBridgeNorthEndID]; !ok {
+	if _, ok := distances[testcamden.StableStreetBridgeNorthEndID]; !ok {
 		t.Errorf("Expected to find a route to Stable Street bridge")
 	}
 }
 
 func TestShortestPathFromBuildingWithMoreThanOneEntrance(t *testing.T) {
-	camden := camden.BuildCamdenForTests(t)
+	camden := testcamden.BuildCamden(t)
 	if camden == nil {
 		return
 	}
@@ -425,7 +425,7 @@ func TestShortestPathFromBuildingWithMoreThanOneEntrance(t *testing.T) {
 }
 
 func TestShortestPathReturnsBuildings(t *testing.T) {
-	w := camden.BuildCamdenForTests(t)
+	w := testcamden.BuildCamden(t)
 	if w == nil {
 		return
 	}
@@ -439,7 +439,7 @@ func TestShortestPathReturnsBuildings(t *testing.T) {
 	s := NewShortestPathSearchFromPoint(from.PointID())
 	s.ExpandSearch(500.0, SimpleWeights{}, PointsAndAreas, w)
 
-	expected := ingest.AreaIDFromOSMWayID(camden.CoalDropsYardWestBuildingWay)
+	expected := ingest.AreaIDFromOSMWayID(testcamden.CoalDropsYardWestBuildingWay)
 	if _, ok := s.AreaDistances()[expected]; !ok {
 		t.Errorf("Expected to find building when searching from a point")
 	}
@@ -452,14 +452,14 @@ func TestShortestPathReturnsBuildings(t *testing.T) {
 	s = NewShortestPathSearchFromBuilding(theGranary, weights, w)
 	s.ExpandSearch(500.0, weights, PointsAndAreas, w)
 
-	expected = ingest.AreaIDFromOSMWayID(camden.LightermanWay)
+	expected = ingest.AreaIDFromOSMWayID(testcamden.LightermanWay)
 	if _, ok := s.AreaDistances()[expected]; !ok {
 		t.Errorf("Expected to find building when searching from a building")
 	}
 }
 
 func TestElevationWeights(t *testing.T) {
-	camden := camden.BuildCamdenForTests(t)
+	camden := testcamden.BuildCamden(t)
 	if camden == nil {
 		return
 	}

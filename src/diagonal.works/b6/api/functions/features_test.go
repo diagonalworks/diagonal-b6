@@ -7,18 +7,18 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 
 	"github.com/golang/geo/s2"
 )
 
 func TestAllTags(t *testing.T) {
-	w := camden.BuildCamdenForTests(t)
+	w := testcamden.BuildCamden(t)
 	if w == nil {
 		return
 	}
 
-	vermuteria := b6.FindPointByID(camden.VermuteriaID, w)
+	vermuteria := b6.FindPointByID(testcamden.VermuteriaID, w)
 	if vermuteria == nil {
 		t.Errorf("Failed to find expected test point")
 		return
@@ -56,13 +56,13 @@ func TestAllTags(t *testing.T) {
 }
 
 func TestFindAreasContainingPoints(t *testing.T) {
-	w := camden.BuildCamdenForTests(t)
+	w := testcamden.BuildCamden(t)
 	if w == nil {
 		return
 	}
 	m := ingest.NewMutableOverlayWorld(w)
 
-	vermuteria := b6.FindPointByID(camden.VermuteriaID, m)
+	vermuteria := b6.FindPointByID(testcamden.VermuteriaID, m)
 	if vermuteria == nil {
 		t.Errorf("Failed to find expected test point")
 		return
@@ -72,7 +72,7 @@ func TestFindAreasContainingPoints(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	found, err := findAreasContainingPoints(&context, points, b6.Keyed{"#shop"})
+	found, err := findAreasContainingPoints(&context, points, b6.Keyed{Key: "#shop"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	}
@@ -83,8 +83,8 @@ func TestFindAreasContainingPoints(t *testing.T) {
 		return
 	}
 
-	if _, ok := areas[camden.CoalDropsYardEnclosureID]; !ok {
-		t.Errorf("Expected points to be contained within %s", camden.CoalDropsYardEnclosureID.FeatureID())
+	if _, ok := areas[testcamden.CoalDropsYardEnclosureID]; !ok {
+		t.Errorf("Expected points to be contained within %s", testcamden.CoalDropsYardEnclosureID.FeatureID())
 	}
 }
 
@@ -131,13 +131,13 @@ func TestPoints(t *testing.T) {
 }
 
 func TestSamplePointsAlongPaths(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 
 	context := &api.Context{
 		World: granarySquare,
 	}
 
-	paths, err := findPathFeatures(context, b6.Keyed{"#highway"})
+	paths, err := findPathFeatures(context, b6.Keyed{Key: "#highway"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -169,13 +169,13 @@ func TestSamplePointsAlongPaths(t *testing.T) {
 }
 
 func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 
 	context := &api.Context{
 		World: granarySquare,
 	}
 
-	paths, err := findPathFeatures(context, b6.Keyed{"#highway"})
+	paths, err := findPathFeatures(context, b6.Keyed{Key: "#highway"})
 	if err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 		return
@@ -218,7 +218,7 @@ func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 
 	context := &api.Context{
 		World: granarySquare,
@@ -245,7 +245,7 @@ func TestJoin(t *testing.T) {
 }
 
 func TestOrderedJoin(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	path := b6.FindPathByID(ingest.FromOSMWayID(377974549), granarySquare)
 	midVertex := path.Len() / 2
 
@@ -276,7 +276,7 @@ func TestOrderedJoin(t *testing.T) {
 }
 
 func TestInterpolate(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	context := &api.Context{
 		World: granarySquare,
 	}
@@ -298,7 +298,7 @@ func TestInterpolate(t *testing.T) {
 }
 
 func TestOrderedJoinPathsWithNoSharedPoint(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	path := b6.FindPathByID(ingest.FromOSMWayID(377974549), granarySquare)
 	midVertex := path.Len() / 2
 

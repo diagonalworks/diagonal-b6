@@ -9,13 +9,13 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 
 	"github.com/golang/geo/s2"
 )
 
 func TestEvaluate(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -27,7 +27,7 @@ func TestEvaluate(t *testing.T) {
 }
 
 func TestMapWithVM(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -52,7 +52,7 @@ func TestMapWithVM(t *testing.T) {
 }
 
 func TestMapParallelWithVM(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -77,7 +77,7 @@ func TestMapParallelWithVM(t *testing.T) {
 }
 
 func TestMapWithVMAndPartialFunction(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -102,7 +102,7 @@ func TestMapWithVMAndPartialFunction(t *testing.T) {
 }
 
 func TestMapItems(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -131,7 +131,7 @@ func TestMapItems(t *testing.T) {
 }
 
 func TestWithVMAndPipelineInLamba(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -157,14 +157,14 @@ func TestWithVMAndPipelineInLamba(t *testing.T) {
 		for _, n := range filled {
 			total += n
 		}
-		if total != camden.BuildingsInGranarySquare {
-			t.Errorf("Expected values for %d buildings, found %d", camden.BuildingsInGranarySquare, total)
+		if total != testcamden.BuildingsInGranarySquare {
+			t.Errorf("Expected values for %d buildings, found %d", testcamden.BuildingsInGranarySquare, total)
 		}
 	}
 }
 
 func TestReturnFunctions(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -192,7 +192,7 @@ func TestReturnFunctions(t *testing.T) {
 }
 
 func TestPassSpecificFunctionWhereGenericNeeded(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -204,7 +204,7 @@ func TestPassSpecificFunctionWhereGenericNeeded(t *testing.T) {
 }
 
 func TestInterfaceConversionForArguments(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -226,7 +226,7 @@ func TestInterfaceConversionForArguments(t *testing.T) {
 }
 
 func TestConvertQueryToFunctionReturningBool(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -257,12 +257,12 @@ func TestConvertQueryToFunctionReturningBool(t *testing.T) {
 }
 
 func TestConvertQueryToFunctionReturningBoolWithSpecificFeature(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
 	apply := func(c *api.Context, f func(*api.Context, b6.PointFeature) (bool, error)) (bool, error) {
-		return f(c, b6.FindPointByID(ingest.FromOSMNodeID(camden.VermuteriaNode), c.World))
+		return f(c, b6.FindPointByID(ingest.FromOSMNodeID(testcamden.VermuteriaNode), c.World))
 	}
 	c := &api.Context{
 		World: granarySquare,

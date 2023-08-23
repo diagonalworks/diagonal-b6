@@ -4,12 +4,12 @@ import (
 	"testing"
 
 	"diagonal.works/b6"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 	"github.com/golang/geo/s2"
 )
 
 func TestQueryRenderer(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}

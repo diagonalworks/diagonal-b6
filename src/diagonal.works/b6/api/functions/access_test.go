@@ -6,20 +6,16 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 )
 
 func TestBuildingAccessibility(t *testing.T) {
-	w := camden.BuildGranarySquareForTests(t)
-	if w == nil {
-		return
-	}
+	w := testcamden.BuildGranarySquare(t)
 	m := ingest.NewMutableOverlayWorld(w)
 
-	origin := b6.FindAreaByID(camden.LightermanID, m)
+	origin := b6.FindAreaByID(testcamden.LightermanID, m)
 	if origin == nil {
-		t.Errorf("Failed to find origin")
-		return
+		t.Fatalf("FindAreaByID(LightermanID) failed to find origin")
 	}
 
 	origins := &api.ArrayFeatureCollection{
@@ -29,21 +25,19 @@ func TestBuildingAccessibility(t *testing.T) {
 	c := api.Context{World: m}
 	accessible, err := buildingAccess(&c, origins, 1000, "walking")
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("buildingAccess() failed with: %v", err)
 	}
 
 	count := 0
 	i := accessible.Begin()
 	for {
 		if ok, err := i.Next(); err != nil {
-			t.Errorf("Expected no error, found: %s", err)
-			return
+			t.Fatalf("i.Next() failed with: %v", err)
 		} else if !ok {
 			break
 		}
 		if k := i.Key().(b6.FeatureID); k != origin.FeatureID() {
-			t.Errorf("Expected origin %s, found %s", origin.FeatureID(), k)
+			t.Errorf("i.Key() got %s, want %s", k, origin.FeatureID())
 		}
 		f := m.FindFeatureByID(i.Value().(b6.FeatureID))
 		if b := f.Get("#building"); !b.IsValid() {
@@ -52,6 +46,6 @@ func TestBuildingAccessibility(t *testing.T) {
 		count++
 	}
 	if count < 2 {
-		t.Errorf("Expected at least two accessible buildings")
+		t.Errorf("got at %d accessible buildings, want at least two", count)
 	}
 }

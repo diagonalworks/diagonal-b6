@@ -5,19 +5,19 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 
 	"github.com/golang/geo/s2"
 )
 
 func TestS2Points(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 
 	context := &api.Context{
 		World: granarySquare,
 	}
 
-	area := b6.FindAreaByID(camden.GranarySquareID, granarySquare)
+	area := b6.FindAreaByID(testcamden.GranarySquareID, granarySquare)
 	if area == nil {
 		t.Errorf("Failed to find Granary Square")
 		return

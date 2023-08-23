@@ -8,14 +8,14 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/geojson"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
 )
 
 func TestSightlineFunction(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 
 	context := &api.Context{
 		World: granarySquare,
@@ -51,7 +51,7 @@ func TestSightline(t *testing.T) {
 }
 
 func ValidateSightline(computeSightline func(from s2.Point, radius s1.Angle, w b6.World) *s2.Polygon, name string, t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -97,7 +97,7 @@ func ValidateSightline(computeSightline func(from s2.Point, radius s1.Angle, w b
 }
 
 func ValidateSightlineInsideBuilding(computeSightline func(from s2.Point, radius s1.Angle, w b6.World) *s2.Polygon, name string, t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -111,7 +111,7 @@ func TestSightlineDoesntHaveSpikes(t *testing.T) {
 	// 'spikes' occur in the sighline polygon when numerical accuracy issues
 	// lead to a very thin field of visibility incorrectly appearing in the
 	// join between two edges of a building. We filter these out.
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}

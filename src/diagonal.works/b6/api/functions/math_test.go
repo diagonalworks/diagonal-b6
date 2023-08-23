@@ -9,7 +9,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 )
 
 func TestPercentiles(t *testing.T) {
@@ -53,7 +53,7 @@ func TestPercentiles(t *testing.T) {
 }
 
 func TestCount(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -72,7 +72,7 @@ func TestCount(t *testing.T) {
 		t.Errorf("Expected no error, found: %s", err)
 		return
 	}
-	expected := camden.BuildingsInGranarySquare
+	expected := testcamden.BuildingsInGranarySquare
 	if count != expected {
 		t.Errorf("Expected count to return %d, found %d", expected, count)
 	}

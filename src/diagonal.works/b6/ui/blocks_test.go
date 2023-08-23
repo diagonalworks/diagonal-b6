@@ -11,11 +11,11 @@ import (
 	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/renderer"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 )
 
 func TestMatchingFunctions(t *testing.T) {
-	base := camden.BuildGranarySquareForTests(t)
+	base := testcamden.BuildGranarySquare(t)
 	w := ingest.NewMutableOverlayWorld(base)
 
 	handler := BlockHandler{

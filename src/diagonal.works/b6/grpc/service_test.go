@@ -10,7 +10,7 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 )
 
 func findInTagsProto(tags []*pb.TagProto, key string) (string, bool) {
@@ -32,7 +32,7 @@ func TestGRPC(t *testing.T) {
 		{"RejectRequestsWithDifferentMajorVersion", ValidateRejectRequestsWithDifferentMajorVersion},
 	}
 
-	base := camden.BuildGranarySquareForTests(t)
+	base := testcamden.BuildGranarySquare(t)
 	if base == nil {
 		return
 	}
@@ -60,7 +60,7 @@ func ValidateEvaluate(service pb.B6Server, w b6.World, t *testing.T) {
 		if node := response.GetResult(); node != nil {
 			if literal := node.GetLiteral(); literal != nil {
 				if collection := literal.GetCollectionValue(); collection != nil {
-					expected := camden.BuildingsInGranarySquare
+					expected := testcamden.BuildingsInGranarySquare
 					if len(collection.Values) != expected {
 						t.Errorf("Expected %d values, found %d", expected, len(collection.Values))
 					}

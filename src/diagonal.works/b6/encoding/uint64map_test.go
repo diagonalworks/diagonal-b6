@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 )
 
 const (
@@ -78,7 +78,7 @@ func TestUint64Map(t *testing.T) {
 
 func ValidateFillTagged(m *Uint64Map, ids map[uint64]struct{}, t *testing.T) {
 	tagged := make([]Tagged, 0, 1)
-	tagged = m.FillTagged(uint64(camden.VermuteriaNode), tagged)
+	tagged = m.FillTagged(uint64(testcamden.VermuteriaNode), tagged)
 	if len(tagged) != 2 {
 		t.Errorf("Expected 2 entries, found %d", len(tagged))
 	} else {
@@ -133,7 +133,7 @@ func ValidateEachItem(m *Uint64Map, ids map[uint64]struct{}, t *testing.T) {
 			t.Errorf("Expected to see id %d", id)
 		}
 	}
-	if name, ok := found[uint64(camden.VermuteriaNode)]; !ok || name != "Vermuteria" {
+	if name, ok := found[uint64(testcamden.VermuteriaNode)]; !ok || name != "Vermuteria" {
 		t.Errorf("Expected to iterate past Vermuteria")
 	}
 }
@@ -160,18 +160,18 @@ func ValidateIterator(m *Uint64Map, ids map[uint64]struct{}, t *testing.T) {
 		found[i.ID()] = string(i.Data(0))
 	}
 
-	if name, ok := found[uint64(camden.VermuteriaNode)]; !ok || name != "Vermuteria" {
+	if name, ok := found[uint64(testcamden.VermuteriaNode)]; !ok || name != "Vermuteria" {
 		t.Errorf("Expected to iterate past Vermuteria")
 	}
 }
 
 func ValidateFindFirst(m *Uint64Map, ids map[uint64]struct{}, t *testing.T) {
-	v := m.FindFirstWithTag(uint64(camden.VermuteriaNode), TestNameTag)
+	v := m.FindFirstWithTag(uint64(testcamden.VermuteriaNode), TestNameTag)
 	if v == nil || string(v) != "Vermuteria" {
 		t.Errorf("Expected to lookup name for Vermuteria, found %s", v)
 	}
 
-	tag, ok := m.FindFirst(uint64(camden.VermuteriaNode))
+	tag, ok := m.FindFirst(uint64(testcamden.VermuteriaNode))
 	if !ok {
 		t.Errorf("Expected to find name or amenity for Vermuteria")
 	} else if (tag.Tag == TestNameTag && string(tag.Data) != "Vermuteria") || (tag.Tag == TestAmenityTag && string(tag.Data) != "cafe") {

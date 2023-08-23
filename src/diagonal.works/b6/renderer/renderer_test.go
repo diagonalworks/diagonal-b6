@@ -8,7 +8,7 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 	"github.com/golang/geo/s2"
 )
 
@@ -40,7 +40,7 @@ func TestFillColourFromFeature(t *testing.T) {
 }
 
 func TestFeaturesHaveTagsForNamespaceAndID(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
@@ -53,7 +53,7 @@ func TestFeaturesHaveTagsForNamespaceAndID(t *testing.T) {
 	}
 
 	expected := "19813dd2"
-	if id, _ := strconv.ParseUint(expected, 16, 64); osm.WayID(id) != camden.LightermanWay {
+	if id, _ := strconv.ParseUint(expected, 16, 64); osm.WayID(id) != testcamden.LightermanWay {
 		t.Errorf("Unexpected hex ID for LightermanWay. Test data changed?")
 		return
 	}
@@ -77,14 +77,14 @@ func TestFeaturesHaveTagsForNamespaceAndID(t *testing.T) {
 }
 
 func TestFeaturesAreOrderedByLayerTag(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	granarySquare := testcamden.BuildGranarySquare(t)
 	if granarySquare == nil {
 		return
 	}
 	mutable := ingest.NewMutableOverlayWorld(granarySquare)
 
 	// Add a roof terrace and second floor to the Lighterman
-	lighterman := b6.FindAreaByID(camden.LightermanID, mutable)
+	lighterman := b6.FindAreaByID(testcamden.LightermanID, mutable)
 	roof := ingest.NewAreaFeatureFromWorld(lighterman)
 	roof.AreaID = b6.MakeAreaID(b6.NamespacePrivate, 1)
 	roof.AddTag(b6.Tag{Key: "layer", Value: "2"})

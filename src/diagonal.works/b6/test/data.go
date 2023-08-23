@@ -4,9 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testing"
-
-	"diagonal.works/b6"
 )
 
 const (
@@ -26,12 +23,4 @@ func testDataDirectory() string {
 
 func Data(filename string) string {
 	return filepath.Join(testDataDirectory(), filename)
-}
-
-func FindFeatureByID(id b6.FeatureID, w b6.World, t *testing.T) b6.Feature {
-	feature := w.FindFeatureByID(id)
-	if feature == nil {
-		t.Errorf("Failed to find feature expected to be present in test data: %s", id)
-	}
-	return feature
 }

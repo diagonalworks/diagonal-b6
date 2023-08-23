@@ -8,7 +8,7 @@ import (
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/osm"
 	"diagonal.works/b6/test"
-	"diagonal.works/b6/test/camden"
+	"diagonal.works/b6/test/testcamden"
 )
 
 func TestOverlayPathOnExistingWorld(t *testing.T) {
@@ -30,8 +30,8 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 	path := ingest.NewPathFeature(2)
 	path.PathID = b6.MakePathID(b6.NamespaceDiagonalAccessPoints, 42)
 	path.Tags.AddTag(b6.Tag{Key: "#highway", Value: "cycleway"})
-	path.SetPointID(0, ingest.FromOSMNodeID(camden.LightermanEntranceNode))
-	path.SetPointID(1, ingest.FromOSMNodeID(camden.StableStreetBridgeNorthEndNode))
+	path.SetPointID(0, ingest.FromOSMNodeID(testcamden.LightermanEntranceNode))
+	path.SetPointID(1, ingest.FromOSMNodeID(testcamden.StableStreetBridgeNorthEndNode))
 
 	w, err := NewWorldFromData(index)
 	if err != nil {
@@ -59,7 +59,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 		t.Errorf("Expected to find overlaid path via FindFeatures")
 	}
 
-	ps := w.FindPathsByPoint(ingest.FromOSMNodeID(camden.LightermanEntranceNode))
+	ps := w.FindPathsByPoint(ingest.FromOSMNodeID(testcamden.LightermanEntranceNode))
 	found = false
 	for ps.Next() {
 		if ps.FeatureID() == path.FeatureID() {

@@ -1,7 +1,6 @@
-package camden
+package testcamden
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 
@@ -50,33 +49,29 @@ var (
 	camdenLock sync.Mutex
 )
 
-func BuildGranarySquareForTests(t *testing.T) b6.World {
+func BuildGranarySquare(t *testing.T) b6.World {
 	granarySquareLock.Lock()
 	defer granarySquareLock.Unlock()
 	if granarySquare == nil {
-		granarySquare = build(test.Data(test.GranarySquarePBF), t)
+		granarySquare = build(t, test.Data(test.GranarySquarePBF))
 	}
 	return granarySquare
 }
 
-func BuildCamdenForTests(t *testing.T) b6.World {
+func BuildCamden(t *testing.T) b6.World {
 	camdenLock.Lock()
 	defer camdenLock.Unlock()
 	if camden == nil {
-		camden = build(test.Data(test.CamdenPBF), t)
+		camden = build(t, test.Data(test.CamdenPBF))
 	}
 	return camden
 }
 
-func build(filename string, t *testing.T) b6.World {
+func build(t *testing.T, filename string) b6.World {
 	o := &ingest.BuildOptions{Cores: 2}
 	w, err := ingest.NewWorldFromPBFFile(filename, o)
 	if err != nil {
-		if t != nil {
-			t.Errorf("Failed to build world: %s", err)
-		} else {
-			panic(fmt.Sprintf("Failed to build world: %s", err))
-		}
+		t.Fatalf("Failed to build world: %v", err)
 	}
 	return w
 }
