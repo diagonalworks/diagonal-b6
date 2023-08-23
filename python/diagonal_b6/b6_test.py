@@ -559,22 +559,9 @@ def main():
         "--world=osm:data/tests/granary-square.osm.pbf"
     ])
 
-    ready = False
-    for _ in range(20):
-        if p.poll() is not None:
-            print("Server exited with status %d" % p.poll())
-            return
-        try:
-            r = urllib.request.urlopen("http://%s/healthy" % http_address)
-            if r.status == 200:
-                if r.read().strip() == b"ok":
-                    ready = True
-                break
-        except urllib.error.URLError:
-            pass
-        time.sleep(0.5)
+    ready, response = wait_until_ready(p, http_address)
     if not ready:
-        print("Server was never healthy")
+        print("Server is not ready: %s" % response)
         return
     connection = b6.connect_insecure(grpc_address)
     suite = unittest.TestSuite()
@@ -589,6 +576,23 @@ def main():
     runner.run(suite)
     p.terminate()
     p.wait()
+
+def wait_until_ready(p, http_address):
+    max_attempts = 20
+    for i in range(max_attempts):
+        if p.poll() is not None:
+            return False, "Server exited with status %d" % p.poll()
+        try:
+            r = urllib.request.urlopen("http://%s/healthy" % http_address)
+            if r.status == 200:
+                response = r.read().strip()
+                ok = b"ok"
+                return response == ok, "Server got response: %s, expected %s" % (response, ok)
+        except urllib.error.URLError:
+            pass
+        print("Waiting for server (attempt %d/%d)..." % (i+1, max_attempts))
+        time.sleep(0.5)
+    return False, "Timeout while waiting for server to start"
 
 if __name__ == "__main__":
     main()
