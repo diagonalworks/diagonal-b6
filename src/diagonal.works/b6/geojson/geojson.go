@@ -323,43 +323,44 @@ func (g *Geometry) UnmarshalJSON(buffer []byte) error {
 	t := struct{ Type string }{}
 	json.Unmarshal(buffer, &t)
 	g.Type = t.Type
-	if g.Type == "Point" {
+	switch g.Type {
+	case "Point":
 		point := struct{ Coordinates Point }{}
 		if err := json.Unmarshal(buffer, &point); err != nil {
 			return err
 		}
 		g.Coordinates = point.Coordinates
-	} else if g.Type == "LineString" {
+	case "LineString":
 		lineString := struct{ Coordinates LineString }{}
 		if err := json.Unmarshal(buffer, &lineString); err != nil {
 			return err
 		}
 		g.Coordinates = lineString.Coordinates
-	} else if g.Type == "Polygon" {
+	case "Polygon":
 		polygon := struct{ Coordinates Polygon }{}
 		if err := json.Unmarshal(buffer, &polygon); err != nil {
 			return err
 		}
 		g.Coordinates = polygon.Coordinates
-	} else if g.Type == "MultiPoint" {
+	case "MultiPoint":
 		multiPoint := struct{ Coordinates MultiPoint }{}
 		if err := json.Unmarshal(buffer, &multiPoint); err != nil {
 			return err
 		}
 		g.Coordinates = multiPoint.Coordinates
-	} else if g.Type == "MultiLineString" {
+	case "MultiLineString":
 		multiLineString := struct{ Coordinates MultiLineString }{}
 		if err := json.Unmarshal(buffer, &multiLineString); err != nil {
 			return err
 		}
 		g.Coordinates = multiLineString.Coordinates
-	} else if g.Type == "MultiPolygon" {
+	case "MultiPolygon":
 		multiPolygon := struct{ Coordinates MultiPolygon }{}
 		if err := json.Unmarshal(buffer, &multiPolygon); err != nil {
 			return err
 		}
 		g.Coordinates = multiPolygon.Coordinates
-	} else {
+	default:
 		return fmt.Errorf("Can't unmarshal geometry with type %q", g.Type)
 	}
 	return nil
@@ -642,15 +643,7 @@ func Unmarshal(buffer []byte) (GeoJSON, error) {
 			return nil, err
 		}
 		return &feature, nil
-	case "Point":
-		fallthrough
-	case "MultiPoint":
-		fallthrough
-	case "LineString":
-		fallthrough
-	case "Polygon":
-		fallthrough
-	case "MultiPolygon":
+	case "Point", "MultiPoint", "LineString", "Polygon", "MultiPolygon":
 		var geometry Geometry
 		if err := json.Unmarshal(buffer, &geometry); err != nil {
 			return nil, err
@@ -673,7 +666,7 @@ func PolygonProtoToGeoJSON(polygon *pb.PolygonProto) *Feature {
 
 func LoopProtoToGeoJSON(loop *pb.LoopProto) []Coordinate {
 	coordinates := make([]Coordinate, len(loop.Points)+1, len(loop.Points)+1)
-	for i, _ := range coordinates {
+	for i := range coordinates {
 		coordinates[i] = PointProtoToGeoJSON(loop.Points[i%len(loop.Points)])
 	}
 	return coordinates

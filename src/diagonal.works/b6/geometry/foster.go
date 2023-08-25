@@ -112,9 +112,8 @@ func intersects2(p1 s2.Point, p2 s2.Point, q1 s2.Point, q2 s2.Point) intersectio
 			return tOverlapOnQ
 		} else if alpha > ratioEpsilon && alpha < 1.0-ratioEpsilon && (beta < -ratioEpsilon || beta > 1.0+ratioEpsilon) {
 			return tOverlapOnP
-		} else {
-			return noIntersection
 		}
+		return noIntersection
 	} else if x := s2.Project(p1, q1, q2); x.Distance(p1) < distanceEpsilon {
 		if p1.Distance(q1) < q1.Distance(q2)-distanceEpsilon {
 			return tIntersectionOnQ
