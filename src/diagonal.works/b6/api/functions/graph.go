@@ -51,7 +51,7 @@ func reachablePoints(context *api.Context, origin b6.Feature, mode string, dista
 			}
 		}
 	}
-	return points, nil
+	return points, err
 }
 
 func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (api.FeatureCollection, error) {
