@@ -15,9 +15,6 @@ const (
 
 func TestUint64Map(t *testing.T) {
 	names, amenities := loadGranarySquareForTests(t)
-	if names == nil || amenities == nil {
-		return
-	}
 
 	const NameTag = 0
 	const AmenityTag = 1
@@ -38,22 +35,19 @@ func TestUint64Map(t *testing.T) {
 	builder.WriteHeader(&output, offset)
 	for id, name := range names {
 		if err := builder.WriteItem(uint64(id), NameTag, []byte(name), &output); err != nil {
-			t.Errorf("Expected no error from WriteItem(), found: %s", err)
-			return
+			t.Fatalf("Expected no error from WriteItem(), found: %s", err)
 		}
 	}
 	for id, amenity := range amenities {
 		if err := builder.WriteItem(uint64(id), AmenityTag, []byte(amenity), &output); err != nil {
-			t.Errorf("Expected no error from WriteItem(), found: %s", err)
-			return
+			t.Fatalf("Expected no error from WriteItem(), found: %s", err)
 		}
 	}
 
 	// Ensure the end offset really is beyond the map data by writing over it
 	var zeros [1024]byte
 	if _, err := output.WriteAt(zeros[0:], int64(offset+Offset(builder.Length()))); err != nil {
-		t.Errorf("Failed to pad output")
-		return
+		t.Fatal("Failed to pad output")
 	}
 
 	tests := []struct {
@@ -134,7 +128,7 @@ func ValidateEachItem(m *Uint64Map, ids map[uint64]struct{}, t *testing.T) {
 		}
 	}
 	if name, ok := found[uint64(camden.VermuteriaNode)]; !ok || name != "Vermuteria" {
-		t.Errorf("Expected to iterate past Vermuteria")
+		t.Error("Expected to iterate past Vermuteria")
 	}
 }
 
@@ -161,7 +155,7 @@ func ValidateIterator(m *Uint64Map, ids map[uint64]struct{}, t *testing.T) {
 	}
 
 	if name, ok := found[uint64(camden.VermuteriaNode)]; !ok || name != "Vermuteria" {
-		t.Errorf("Expected to iterate past Vermuteria")
+		t.Error("Expected to iterate past Vermuteria")
 	}
 }
 
@@ -173,7 +167,7 @@ func ValidateFindFirst(m *Uint64Map, ids map[uint64]struct{}, t *testing.T) {
 
 	tag, ok := m.FindFirst(uint64(camden.VermuteriaNode))
 	if !ok {
-		t.Errorf("Expected to find name or amenity for Vermuteria")
+		t.Error("Expected to find name or amenity for Vermuteria")
 	} else if (tag.Tag == TestNameTag && string(tag.Data) != "Vermuteria") || (tag.Tag == TestAmenityTag && string(tag.Data) != "cafe") {
 		t.Errorf("Expected to find name or amenity for Vermuteria, found %s", v)
 	}

@@ -12,30 +12,23 @@ import (
 
 func TestShortestPath(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
-	if camden == nil {
-		return
-	}
 
 	fromPath := b6.FindPathByID(ingest.FromOSMWayID(687471322), camden)
 	if fromPath == nil {
-		t.Errorf("Failed to find way")
-		return
+		t.Fatal("Failed to find way")
 	}
 	from := fromPath.Feature(0)
 	if from == nil {
-		t.Errorf("Expected a PointFeature")
-		return
+		t.Fatal("Expected a PointFeature")
 	}
 
 	toPath := b6.FindPathByID(ingest.FromOSMWayID(367808662), camden)
 	if toPath == nil {
-		t.Errorf("Failed to find way")
-		return
+		t.Fatal("Failed to find way")
 	}
 	to := toPath.Feature(0)
 	if to == nil {
-		t.Errorf("Expected a PointFeature")
-		return
+		t.Fatal("Expected a PointFeature")
 	}
 
 	path := ComputeShortestPath(from.PointID(), to.PointID(), 1000.0, BusWeights{}, camden)
@@ -81,27 +74,25 @@ func TestShortestPathWithOverriddenWeight(t *testing.T) {
 
 	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	from := ingest.FromOSMNodeID(7799663850)
 	to := ingest.FromOSMNodeID(5336117979)
 	path := ComputeShortestPath(from, to, 500.0, SimpleWeights{}, w)
 	if len(path) != 1 || path[0].Feature.PathID().Value != uint64(ways[0].ID) {
-		t.Errorf("Expected shortest path to use road")
+		t.Error("Expected shortest path to use road")
 	}
 
 	// Override the weight of the cyclepath, and ensure we're routed down it
 	ways[1].Tags = []osm.Tag{{Key: "diagonal:weight", Value: "0.1"}}
 	w, err = ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	path = ComputeShortestPath(from, to, 500.0, SimpleWeights{}, w)
 	if len(path) != 1 || path[0].Feature.PathID().Value != uint64(ways[1].ID) {
-		t.Errorf("Expected shortest path to use cycleway")
+		t.Error("Expected shortest path to use cycleway")
 	}
 }
 
@@ -120,8 +111,7 @@ func TestShortestPathWithTwoJoinedPaths(t *testing.T) {
 
 	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	from := ingest.FromOSMNodeID(5384190494)
 	to := ingest.FromOSMNodeID(5384190463)
@@ -152,8 +142,7 @@ func TestAccessibilityWithTwoJoinedPaths(t *testing.T) {
 
 	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	from := ingest.FromOSMNodeID(5384190494)
 
@@ -173,20 +162,15 @@ func TestShortestPathTakesIntoAccountOneWayStreets(t *testing.T) {
 	// test case is the road junction here: 51.5452312, -0.1415558, where the West
 	// hand fork is shorter when heading South, but oneway in the wrong direction.
 	camden := camden.BuildCamdenForTests(t)
-	if camden == nil {
-		return
-	}
 
 	from := b6.FindPointByID(ingest.FromOSMNodeID(33000703), camden)
 	if from == nil {
-		t.Errorf("Failed to find from node")
-		return
+		t.Fatal("Failed to find from node")
 	}
 
 	to := b6.FindPointByID(ingest.FromOSMNodeID(970237231), camden)
 	if to == nil {
-		t.Errorf("Failed to find to node")
-		return
+		t.Fatal("Failed to find to node")
 	}
 
 	path := ComputeShortestPath(from.PointID(), to.PointID(), 500.0, BusWeights{}, camden)
@@ -229,8 +213,7 @@ func TestInterpolateShortestPathDistances(t *testing.T) {
 
 	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	path := b6.FindPathByID(ingest.FromOSMWayID(558345071), w)
 
@@ -265,15 +248,11 @@ func TestInterpolateShortestPathDistances(t *testing.T) {
 
 func TestAccessibility(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
-	if camden == nil {
-		return
-	}
 
 	// Generate routes from the South end of Coal Drops Yard
 	from := b6.FindPointByID(ingest.FromOSMNodeID(6083735356), camden)
 	if from == nil {
-		t.Errorf("Failed to find from node")
-		return
+		t.Fatal("Failed to find from node")
 	}
 	distances, counts := ComputeAccessibility(from.PointID(), 500.0, SimpleWeights{}, camden)
 
@@ -305,15 +284,12 @@ func TestAccessibility(t *testing.T) {
 		}
 	}
 	if !foundNonIntersectionWithDistance {
-		t.Errorf("Expected non-intersection points to also have a distances")
+		t.Error("Expected non-intersection points to also have a distances")
 	}
 }
 
 func TestBusWeights(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
-	if camden == nil {
-		return
-	}
 
 	tests := []struct {
 		id      osm.WayID
@@ -339,14 +315,10 @@ func TestBusWeights(t *testing.T) {
 
 func TestShortestPathFromConnectedBuildingWithNoEntrance(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
-	if w == nil {
-		return
-	}
 
 	lighterman := b6.FindAreaByID(ingest.AreaIDFromOSMWayID(camden.LightermanWay), w)
 	if lighterman == nil {
-		t.Error("Expected to find The Lighterman")
-		return
+		t.Fatal("Expected to find The Lighterman")
 	}
 
 	entrances := 0
@@ -361,8 +333,7 @@ func TestShortestPathFromConnectedBuildingWithNoEntrance(t *testing.T) {
 	}
 
 	if entrances > 0 {
-		t.Errorf("Expected The Lightman to have no entrances, found %d", entrances)
-		return
+		t.Fatalf("Expected The Lightman to have no entrances, found %d", entrances)
 	}
 
 	weights := SimpleHighwayWeights{}
@@ -371,20 +342,16 @@ func TestShortestPathFromConnectedBuildingWithNoEntrance(t *testing.T) {
 	distances := search.PointDistances()
 
 	if _, ok := distances[camden.StableStreetBridgeNorthEndID]; !ok {
-		t.Errorf("Expected to find a route to Stable Street bridge")
+		t.Error("Expected to find a route to Stable Street bridge")
 	}
 }
 
 func TestShortestPathFromBuildingWithMoreThanOneEntrance(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
-	if camden == nil {
-		return
-	}
 
 	stPancras := b6.FindAreaByID(ingest.AreaIDFromOSMWayID(4256246), camden)
 	if stPancras == nil {
-		t.Error("Expected to find St Pancras")
-		return
+		t.Fatal("Expected to find St Pancras")
 	}
 
 	entrances := 0
@@ -399,8 +366,7 @@ func TestShortestPathFromBuildingWithMoreThanOneEntrance(t *testing.T) {
 	}
 
 	if entrances < 2 {
-		t.Errorf("Expected St Pancras to have many entrances, found %d", entrances)
-		return
+		t.Fatalf("Expected St Pancras to have many entrances, found %d", entrances)
 	}
 
 	weights := SimpleHighwayWeights{}
@@ -426,15 +392,11 @@ func TestShortestPathFromBuildingWithMoreThanOneEntrance(t *testing.T) {
 
 func TestShortestPathReturnsBuildings(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
-	if w == nil {
-		return
-	}
 
 	// Generate routes from the South end of Coal Drops Yard
 	from := b6.FindPointByID(ingest.FromOSMNodeID(6083735356), w)
 	if from == nil {
-		t.Errorf("Failed to find from node")
-		return
+		t.Fatal("Failed to find from node")
 	}
 	s := NewShortestPathSearchFromPoint(from.PointID())
 	s.ExpandSearch(500.0, SimpleWeights{}, PointsAndAreas, w)
@@ -460,9 +422,6 @@ func TestShortestPathReturnsBuildings(t *testing.T) {
 
 func TestElevationWeights(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
-	if camden == nil {
-		return
-	}
 
 	camdenWithHill := ingest.NewMutableTagsOverlayWorld(camden)
 	camdenWithHill.AddTag(ingest.FromOSMNodeID(4931754283).FeatureID(), b6.Tag{Key: "ele", Value: "100"})

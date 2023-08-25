@@ -6,9 +6,6 @@ import (
 
 func TestBuildStringTable(t *testing.T) {
 	names, amenities := loadGranarySquareForTests(t)
-	if names == nil || amenities == nil {
-		return
-	}
 
 	start := Offset(42)
 	builder := NewStringTableBuilder()
@@ -26,13 +23,13 @@ func TestBuildStringTable(t *testing.T) {
 	}
 
 	if builder.Lookup("bench") > builder.Lookup("cafe") || builder.Lookup("cafe") > builder.Lookup("Vermuteria") {
-		t.Errorf("Expected the most frequent strings to have the smallest IDs")
+		t.Error("Expected the most frequent strings to have the smallest IDs")
 	}
 
 	// Ensure the end offset really is beyond the string data by writing over it
 	var zeros [1024]byte
 	if _, err := output.WriteAt(zeros[0:], int64(offset+Offset(builder.Length()))); err != nil {
-		t.Errorf("Failed to pad output")
+		t.Error("Failed to pad output")
 	}
 
 	strings := NewStringTable(output.Bytes()[start:])

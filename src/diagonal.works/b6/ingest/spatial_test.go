@@ -31,8 +31,7 @@ func TestIntersectsWithCap(t *testing.T) {
 	o := BuildOptions{Cores: 2}
 	w, err := BuildWorldFromOSM(nodes, ways, relations, &o)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53617, -0.12582)), b6.MetersToAngle(100))
@@ -40,16 +39,16 @@ func TestIntersectsWithCap(t *testing.T) {
 	exactAreas := makeAreaMap(b6.FindAreas(b6.NewIntersectsCap(cap), w))
 
 	if len(roughAreas) <= len(exactAreas) || len(exactAreas) == 0 {
-		t.Errorf("Expected there to be less areas by exact match than rough match")
+		t.Error("Expected there to be less areas by exact match than rough match")
 	}
 
 	lighterman := osm.WayID(427900370)
 	if _, ok := roughAreas[b6.MakeAreaID(b6.NamespaceOSMWay, uint64(lighterman))]; !ok {
-		t.Errorf("Expected rough areas to contain the Lighterman")
+		t.Error("Expected rough areas to contain the Lighterman")
 	}
 
 	if _, ok := exactAreas[b6.MakeAreaID(b6.NamespaceOSMWay, uint64(lighterman))]; ok {
-		t.Errorf("Expected exact areas to not contain the Lighterman")
+		t.Error("Expected exact areas to not contain the Lighterman")
 	}
 }
 
@@ -58,22 +57,20 @@ func TestIntersectsWithAreaFeature(t *testing.T) {
 	o := BuildOptions{Cores: 2}
 	w, err := BuildWorldFromOSM(nodes, ways, relations, &o)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	coalDropsYard := b6.FindAreaByID(b6.MakeAreaID(b6.NamespaceOSMWay, 222021572), w)
 	if coalDropsYard == nil {
-		t.Errorf("Failed to find Coal Drops Yard")
-		return
+		t.Fatal("Failed to find Coal Drops Yard")
 	}
 
 	points := makePointMap(b6.FindPoints(b6.IntersectsFeature{coalDropsYard.FeatureID()}, w))
 	if _, ok := points[b6.MakePointID(b6.NamespaceOSMNode, 6082053669)]; !ok {
-		t.Errorf("Expected to find Outsiders Store")
+		t.Error("Expected to find Outsiders Store")
 	}
 
 	if _, ok := points[b6.MakePointID(b6.NamespaceOSMNode, 6082053666)]; ok {
-		t.Errorf("Didn't expect to find Vermuteria")
+		t.Error("Didn't expect to find Vermuteria")
 	}
 }

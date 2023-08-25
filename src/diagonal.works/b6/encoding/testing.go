@@ -8,6 +8,7 @@ import (
 )
 
 func loadGranarySquareForTests(t *testing.T) (map[osm.NodeID]string, map[osm.NodeID]string) {
+	t.Helper()
 	names := make(map[osm.NodeID]string)
 	amenities := make(map[osm.NodeID]string)
 	var maxNodeID osm.NodeID
@@ -27,13 +28,11 @@ func loadGranarySquareForTests(t *testing.T) (map[osm.NodeID]string, map[osm.Nod
 	}
 	input, err := os.Open("../../../../data/tests/granary-square.osm.pbf")
 	if err != nil {
-		t.Errorf("Failed to open test data: %s", err)
-		return nil, nil
+		t.Fatalf("Failed to open test data: %s", err)
 	}
 	defer input.Close()
 	if err = osm.ReadPBF(input, emit); err != nil {
-		t.Errorf("Failed to read test data: %s", err)
-		return nil, nil
+		t.Fatalf("Failed to read test data: %s", err)
 	}
 	return names, amenities
 }

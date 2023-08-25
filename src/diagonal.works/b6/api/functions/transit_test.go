@@ -11,14 +11,11 @@ import (
 
 func TestFindReachablePoints(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
-	if w == nil {
-		return
-	}
 	m := ingest.NewMutableOverlayWorld(w)
 
 	origin := b6.FindPointByID(camden.StableStreetBridgeSouthEndID, m)
 	if origin == nil {
-		t.Errorf("Failed to find origin")
+		t.Error("Failed to find origin")
 	}
 
 	context := api.Context{
@@ -28,8 +25,7 @@ func TestFindReachablePoints(t *testing.T) {
 	query := b6.Tagged{Key: "#barrier", Value: "gate"}
 	collection, err := reachablePoints(&context, origin, "walk", 1000.0, query)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	barriers := make(map[b6.PointID]bool)
@@ -37,7 +33,7 @@ func TestFindReachablePoints(t *testing.T) {
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			t.Errorf("Expected no error, found: %s", err)
+			t.Fatalf("Expected no error, found: %s", err)
 		}
 		if !ok {
 			break
@@ -52,24 +48,19 @@ func TestFindReachablePoints(t *testing.T) {
 
 func TestFindReachableFeatures(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
-	if w == nil {
-		return
-	}
 	m := ingest.NewMutableOverlayWorld(w)
 
 	origin := b6.FindPointByID(camden.StableStreetBridgeSouthEndID, m)
 	if origin == nil {
-		t.Errorf("Failed to find origin")
-		return
+		t.Fatal("Failed to find origin")
 	}
 
 	context := api.Context{
 		World: m,
 	}
-	collection, err := reachableFeatures(&context, origin, "walk", 1000.0, b6.Keyed{"#amenity"})
+	collection, err := reachableFeatures(&context, origin, "walk", 1000.0, b6.Keyed{Key: "#amenity"})
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	amenities := make(map[b6.FeatureID]bool)
@@ -77,7 +68,7 @@ func TestFindReachableFeatures(t *testing.T) {
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			t.Errorf("Expected no error, found: %s", err)
+			t.Fatalf("Expected no error, found: %s", err)
 		}
 		if !ok {
 			break
@@ -92,9 +83,6 @@ func TestFindReachableFeatures(t *testing.T) {
 
 func TestPathsToReachFeatures(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
-	if w == nil {
-		return
-	}
 	m := ingest.NewMutableOverlayWorld(w)
 
 	origin := b6.FindPointByID(camden.StableStreetBridgeSouthEndID, m)
@@ -107,14 +95,12 @@ func TestPathsToReachFeatures(t *testing.T) {
 	}
 	collection, err := pathsToReachFeatures(&context, origin, "walk", 1000.0, b6.Keyed{"#amenity"})
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	paths := make(map[b6.FeatureID]int)
 	if err := api.FillMap(collection, paths); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	if len(paths) < 60 {

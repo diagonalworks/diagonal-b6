@@ -13,8 +13,7 @@ func TestMarshalPointFeature(t *testing.T) {
 	feature := NewFeatureFromS2LatLng(s2.LatLngFromDegrees(51.5353602, -0.1260527))
 	actual, err := json.Marshal(feature)
 	if err != nil {
-		t.Errorf("json.Marshal failed: %s", err)
-		return
+		t.Fatalf("json.Marshal failed: %s", err)
 	}
 
 	expected := `{"type":"Feature","geometry":{"type":"Point","coordinates":[-0.1260527,51.5353602]},"properties":{}}`
@@ -35,7 +34,7 @@ func TestUnmarshalPointFeature(t *testing.T) {
 			t.Errorf("Point not within expected bounds")
 		}
 	} else {
-		t.Errorf("Unexpected geometry type")
+		t.Error("Unexpected geometry type")
 	}
 }
 
@@ -52,8 +51,7 @@ func TestMarshalPolygon(t *testing.T) {
 	j := NewFeatureFromS2Polygon(polygon)
 	coordinates, ok := j.Geometry.Coordinates.(Polygon)
 	if !ok {
-		t.Errorf("Wrong geometry type")
-		return
+		t.Fatal("Wrong geometry type")
 	}
 	if len(coordinates[0]) != polygon.Loop(0).NumVertices()+1 {
 		t.Errorf("Expected GeoJSON linear ring to be explicitly closed")
@@ -88,12 +86,10 @@ func TestMarshalPolygonWithHole(t *testing.T) {
 	j := NewFeatureFromS2Polygon(polygon)
 	coordinates, ok := j.Geometry.Coordinates.(Polygon)
 	if !ok {
-		t.Errorf("Wrong geometry type")
-		return
+		t.Fatal("Wrong geometry type")
 	}
 	if len(coordinates) != 2 {
-		t.Errorf("Expected GeoJSON polygon to have two linear rings")
-		return
+		t.Fatal("Expected GeoJSON polygon to have two linear rings")
 	}
 
 	points := make([]s2.Point, 3)
@@ -102,24 +98,24 @@ func TestMarshalPolygonWithHole(t *testing.T) {
 	}
 	center := s2.PointFromLatLng(s2.LatLngFromDegrees(2.5, 1.5))
 	if !s2.OrderedCCW(points[0], points[1], points[2], center) {
-		t.Errorf("Expected exterior loop to be ordered counterclockwise, per RFC7946")
+		t.Error("Expected exterior loop to be ordered counterclockwise, per RFC7946")
 	}
 	for i := range points {
 		points[i] = coordinates[1][i].ToS2Point()
 	}
 	if s2.OrderedCCW(points[0], points[1], points[2], center) {
-		t.Errorf("Expected interor loop to be ordered clockwise, per RFC7946")
+		t.Error("Expected interor loop to be ordered clockwise, per RFC7946")
 	}
 }
 
 func TestMarshalPolygonProto(t *testing.T) {
 	polygon := &pb.PolygonProto{
 		Loops: []*pb.LoopProto{
-			&pb.LoopProto{
+			{
 				Points: []*pb.PointProto{
-					&pb.PointProto{LatE7: 515356929, LngE7: -1276359},
-					&pb.PointProto{LatE7: 515353710, LngE7: -1273698},
-					&pb.PointProto{LatE7: 515350393, LngE7: -1270861},
+					{LatE7: 515356929, LngE7: -1276359},
+					{LatE7: 515353710, LngE7: -1273698},
+					{LatE7: 515350393, LngE7: -1270861},
 				},
 			},
 		},
@@ -127,8 +123,7 @@ func TestMarshalPolygonProto(t *testing.T) {
 	j := PolygonProtoToGeoJSON(polygon)
 	coordinates, ok := j.Geometry.Coordinates.(Polygon)
 	if !ok {
-		t.Errorf("Wrong geometry type")
-		return
+		t.Fatal("Wrong geometry type")
 	}
 	if len(coordinates[0]) != len(polygon.Loops[0].Points)+1 {
 		t.Errorf("Expected GeoJSON linear ring to be explicitly closed")
@@ -136,8 +131,7 @@ func TestMarshalPolygonProto(t *testing.T) {
 
 	actual, err := json.Marshal(j)
 	if err != nil {
-		t.Errorf("json.Marshal failed: %s", err)
-		return
+		t.Fatalf("json.Marshal failed: %s", err)
 	}
 	expected := `{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-0.1276359,51.5356929],[-0.1273698,51.535371],[-0.1270861,51.5350393],[-0.1276359,51.5356929]]]},"properties":{}}`
 	if string(actual) != expected {

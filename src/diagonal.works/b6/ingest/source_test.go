@@ -32,8 +32,7 @@ func TestParalliseEmit(t *testing.T) {
 		}
 	}
 	if err := wait(); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	expected := make(map[b6.FeatureID]struct{})
@@ -46,7 +45,7 @@ func TestParalliseEmit(t *testing.T) {
 		}
 	}
 	if len(expected) != 0 {
-		t.Errorf("Expected all ids to be emitted")
+		t.Error("Expected all ids to be emitted")
 	}
 }
 
@@ -74,6 +73,5 @@ func TestParalliseEmitWithError(t *testing.T) {
 	}
 	if err := wait(); err != broken {
 		t.Errorf("Expected %s, found %s", broken, err)
-		return
 	}
 }

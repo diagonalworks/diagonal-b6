@@ -708,8 +708,7 @@ func TestTokenMapEncoding(t *testing.T) {
 	var output encoding.Buffer
 	start := encoding.Offset(42)
 	if _, err := e.Write(&output, start); err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	buffer := output.Bytes()
@@ -732,8 +731,7 @@ func TestTokenMapEncoding(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Errorf("Expected to find %s", token)
-			return
+			t.Fatalf("Expected to find %s", token)
 		}
 	}
 
@@ -752,7 +750,7 @@ func TestNamespaceTableEncoding(t *testing.T) {
 	nt.FillProto(&m)
 	_, err := WriteProto(&output, &m, start)
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	var mm pb.CompactHeaderProto
@@ -869,8 +867,7 @@ func ValidatePostingListIteratorNext(item []byte, expected *FeatureIDs, nt *Name
 	seen := make(map[b6.FeatureID]struct{})
 	for i.Next() {
 		if _, ok := seen[i.FeatureID()]; ok {
-			t.Errorf("Duplicate ID %s", i.FeatureID())
-			return
+			t.Fatalf("Duplicate ID %s", i.FeatureID())
 		} else {
 			seen[i.FeatureID()] = struct{}{}
 		}
@@ -880,7 +877,7 @@ func ValidatePostingListIteratorNext(item []byte, expected *FeatureIDs, nt *Name
 	var header PostingListHeader
 	header.Unmarshal(item)
 	if len(found) != header.Features {
-		t.Errorf("Expected number of features in list to match count in header")
+		t.Error("Expected number of features in list to match count in header")
 	}
 
 	if len(found) != expected.Len() {
@@ -890,8 +887,7 @@ func ValidatePostingListIteratorNext(item []byte, expected *FeatureIDs, nt *Name
 	for i := 0; i < expected.Len() && i < len(found); i++ {
 		expected := nt.DecodeID(expected.At(i))
 		if found[i] != expected {
-			t.Errorf("Difference at index %d: found %s, expected %s", i, found[i], expected)
-			return
+			t.Fatalf("Difference at index %d: found %s, expected %s", i, found[i], expected)
 		}
 	}
 }
@@ -928,32 +924,30 @@ func ValidatePostingListIteratorAdvanceBeyondEnd(item []byte, expected *FeatureI
 	i := NewIterator(item, nt)
 	for j := 0; j < 42; j++ {
 		if !i.Next() {
-			t.Errorf("Expected iterator to advance")
-			return
+			t.Fatal("Expected iterator to advance")
 		}
 	}
 	v := i.FeatureID()
 	if i.Advance(nt.DecodeID(expected.At(expected.Len() - 1).AddValue(1))) {
-		t.Errorf("Expected Advance() to return false when advancing beyond end")
+		t.Error("Expected Advance() to return false when advancing beyond end")
 	}
 	if i.FeatureID() != v {
-		t.Errorf("Expected iterator to not move following a failed Advance()")
+		t.Error("Expected iterator to not move following a failed Advance()")
 	}
 }
 
 func ValidatePostingListIteratorAdvanceBeforeCurrent(item []byte, expected *FeatureIDs, nt *NamespaceTable, t *testing.T) {
 	i := NewIterator(item, nt)
 	if !i.Advance(nt.DecodeID(expected.At(2500))) {
-		t.Errorf("Expected Advance() to return true")
-		return
+		t.Fatal("Expected Advance() to return true")
 	}
 
 	if !i.Advance(nt.DecodeID(expected.At(500))) {
-		t.Errorf("Expected Advance() to a previoud id to return true")
+		t.Error("Expected Advance() to a previoud id to return true")
 	}
 
 	if i.FeatureID() != nt.DecodeID(expected.At(2500)) {
-		t.Errorf("Expected iterator to not move following Advance() to previous id")
+		t.Error("Expected iterator to not move following Advance() to previous id")
 	}
 }
 
@@ -991,8 +985,7 @@ func TestPostingListIteratorAdvanceToCurrentAtEndOfBlock(t *testing.T) {
 	i := NewIterator(buffer[0:n], nt)
 	for {
 		if !i.Next() {
-			t.Errorf("Expected next to return true")
-			return
+			t.Error("Expected next to return true")
 		}
 		if i.FeatureID() == nt.DecodeID(ids.At(blockStart-1)) {
 			break
@@ -1000,10 +993,10 @@ func TestPostingListIteratorAdvanceToCurrentAtEndOfBlock(t *testing.T) {
 	}
 
 	if !i.Advance(nt.DecodeID(ids.At(blockStart - 1))) {
-		t.Errorf("Expected advance to return true")
+		t.Error("Expected advance to return true")
 	}
 	if i.FeatureID() != nt.DecodeID(ids.At(blockStart-1)) {
-		t.Errorf("Expected iterator position to be unchanged")
+		t.Error("Expected iterator position to be unchanged")
 	}
 }
 
@@ -1038,8 +1031,7 @@ func TestPostingListIteratorAdvanceWithinLastBlockExactMultiple(t *testing.T) {
 	target := nt.DecodeID(ids.At(blocks[len(blocks)-2]))
 	for {
 		if !i.Next() {
-			t.Errorf("Expected next to return true")
-			return
+			t.Fatal("Expected next to return true")
 		}
 		if i.FeatureID() == target {
 			break
@@ -1048,7 +1040,7 @@ func TestPostingListIteratorAdvanceWithinLastBlockExactMultiple(t *testing.T) {
 
 	target = nt.DecodeID(ids.At(blocks[len(blocks)-1]))
 	if !i.Advance(target) {
-		t.Errorf("Expected advance to return true")
+		t.Error("Expected advance to return true")
 	}
 	if i.FeatureID() != target {
 		t.Errorf("Expected %s, found %s", target, i.FeatureID())
@@ -1086,8 +1078,7 @@ func TestPostingListIteratorAdvanceWithinLastBlock(t *testing.T) {
 	target := nt.DecodeID(ids.At(blocks[len(blocks)-2]))
 	for {
 		if !i.Next() {
-			t.Errorf("Expected next to return true")
-			return
+			t.Fatal("Expected next to return true")
 		}
 		if i.FeatureID() == target {
 			break
@@ -1096,7 +1087,7 @@ func TestPostingListIteratorAdvanceWithinLastBlock(t *testing.T) {
 
 	target = nt.DecodeID(ids.At(ids.Len() - 2))
 	if !i.Advance(target) {
-		t.Errorf("Expected advance to return true")
+		t.Error("Expected advance to return true")
 	}
 	if i.FeatureID() != target {
 		t.Errorf("Expected %s, found %s", target, i.FeatureID())
@@ -1138,13 +1129,12 @@ func TestEncodePostingListWithShortBlock(t *testing.T) {
 		for i := 0; i < len(ids) && i < len(found); i++ {
 			expected := b6.FeatureID{Type: ids[i].Type, Namespace: nt.Decode(ids[i].Namespace), Value: ids[i].Value}
 			if found[i] != expected {
-				t.Errorf("Difference at index %d: found %v, expected %v (length %d)", i, found[i], expected, l)
-				return
+				t.Fatalf("Difference at index %d: found %v, expected %v (length %d)", i, found[i], expected, l)
 			}
 		}
 
 		if i.Advance(ingest.FromOSMWayID(140633010).FeatureID()) {
-			t.Errorf("Didn't expect to be able to advance iterator")
+			t.Error("Didn't expect to be able to advance iterator")
 		}
 	}
 }

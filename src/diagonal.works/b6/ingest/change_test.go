@@ -22,25 +22,22 @@ func TestAddPoints(t *testing.T) {
 	w := NewBasicMutableWorld()
 	ids, err := add.Apply(w)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	added := b6.FindPointByID(p1.PointID, w)
 	if added == nil || added.Point().Distance(s2.PointFromLatLng(p1.Location)) > b6.MetersToAngle(1.0) {
-		t.Errorf("Expected to find p2 under its given ID")
+		t.Error("Expected to find p2 under its given ID")
 	}
 
-	if allocated, ok := ids[p2.FeatureID()]; ok {
-		added := b6.FindPointByID(allocated.ToPointID(), w)
-		if added == nil || added.Point().Distance(s2.PointFromLatLng(p2.Location)) > b6.MetersToAngle(1.0) {
-			t.Errorf("Expected to find p2 under a new ID")
-		}
-	} else {
-		t.Errorf("Expected a new ID for %s", p2.FeatureID())
-		return
+	allocated, ok := ids[p2.FeatureID()]
+	if !ok {
+		t.Fatalf("Expected a new ID for %s", p2.FeatureID())
 	}
-
+	added = b6.FindPointByID(allocated.ToPointID(), w)
+	if added == nil || added.Point().Distance(s2.PointFromLatLng(p2.Location)) > b6.MetersToAngle(1.0) {
+		t.Error("Expected to find p2 under a new ID")
+	}
 }
 
 func TestAddPaths(t *testing.T) {
@@ -66,32 +63,28 @@ func TestAddPaths(t *testing.T) {
 
 	ids, err := add.Apply(w)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	if allocated, ok := ids[p2.FeatureID()]; ok {
-		added := b6.FindPointByID(allocated.ToPointID(), w)
-		if added == nil || added.Point().Distance(s2.PointFromLatLng(p2.Location)) > b6.MetersToAngle(1.0) {
-			t.Errorf("Expected to find p2 under a new ID")
-		}
-	} else {
-		t.Errorf("Expected a new ID for %s", p2.FeatureID())
-		return
+	allocated, ok := ids[p2.FeatureID()]
+	if !ok {
+		t.Fatalf("Expected a new ID for %s", p2.FeatureID())
+	}
+	addedPoint := b6.FindPointByID(allocated.ToPointID(), w)
+	if addedPoint == nil || addedPoint.Point().Distance(s2.PointFromLatLng(p2.Location)) > b6.MetersToAngle(1.0) {
+		t.Error("Expected to find p2 under a new ID")
 	}
 
-	if allocated, ok := ids[path.FeatureID()]; ok {
-		added := b6.FindPathByID(allocated.ToPathID(), w)
-		if added == nil {
-			t.Errorf("Expected to find path under a new ID")
-		} else {
-			if p := added.Feature(1); p == nil || p.FeatureID() != ids[p2.FeatureID()] {
-				t.Errorf("Expected path to reference newly generated ID")
-			}
-		}
-	} else {
-		t.Errorf("Expected a new ID for %s", path.FeatureID())
-		return
+	allocated, ok = ids[path.FeatureID()]
+	if !ok {
+		t.Fatalf("Expected a new ID for %s", path.FeatureID())
+	}
+	addedPath := b6.FindPathByID(allocated.ToPathID(), w)
+	if addedPath == nil {
+		t.Fatal("Expected to find path under a new ID")
+	}
+	if p := addedPath.Feature(1); p == nil || p.FeatureID() != ids[p2.FeatureID()] {
+		t.Error("Expected path to reference newly generated ID")
 	}
 }
 
@@ -127,22 +120,19 @@ func TestAddAreas(t *testing.T) {
 
 	ids, err := add.Apply(w)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	if allocated, ok := ids[area.FeatureID()]; ok {
-		added := b6.FindAreaByID(allocated.ToAreaID(), w)
-		if added == nil {
-			t.Errorf("Expected to find area under a new ID")
-		} else {
-			if added.Feature(0)[0].PathID().FeatureID() != ids[path.FeatureID()] {
-				t.Errorf("Expected path to reference newly generated ID")
-			}
-		}
-	} else {
-		t.Errorf("Expected a new ID for %s", area.FeatureID())
-		return
+	allocated, ok := ids[area.FeatureID()]
+	if !ok {
+		t.Fatalf("Expected a new ID for %s", area.FeatureID())
+	}
+	added := b6.FindAreaByID(allocated.ToAreaID(), w)
+	if added == nil {
+		t.Fatal("Expected to find area under a new ID")
+	}
+	if added.Feature(0)[0].PathID().FeatureID() != ids[path.FeatureID()] {
+		t.Error("Expected path to reference newly generated ID")
 	}
 }
 
@@ -168,17 +158,15 @@ func TestAddRelations(t *testing.T) {
 
 	ids, err := add.Apply(w)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	added := b6.FindRelationByID(relation.RelationID, w)
 	if added == nil {
-		t.Errorf("Expected to find relation under a new ID")
-	} else {
-		if added.Member(1).ID != ids[p2.FeatureID()] {
-			t.Errorf("Expected relation member to reference newly generated ID")
-		}
+		t.Fatal("Expected to find relation under a new ID")
+	}
+	if added.Member(1).ID != ids[p2.FeatureID()] {
+		t.Error("Expected relation member to reference newly generated ID")
 	}
 }
 
@@ -202,14 +190,12 @@ func TestMergeChanges(t *testing.T) {
 	w := NewBasicMutableWorld()
 	_, err := merged.Apply(w)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	found := b6.FindPathByID(path.PathID, w)
 	if found == nil {
-		t.Error("Expected to find added path")
-		return
+		t.Fatal("Expected to find added path")
 	}
 
 	expected := 200.0
@@ -239,13 +225,11 @@ func TestMergeChangesLeavesWorldUnmodfiedFollowingError(t *testing.T) {
 	w := NewBasicMutableWorld()
 	_, err := merged.Apply(w)
 	if err == nil {
-		t.Error("Expected an error, found none")
-		return
+		t.Fatal("Expected an error, found none")
 	}
 
 	found := b6.FindPointByID(point.PointID, w)
 	if found != nil {
 		t.Error("Expected world to be unchanged following failure")
-		return
 	}
 }

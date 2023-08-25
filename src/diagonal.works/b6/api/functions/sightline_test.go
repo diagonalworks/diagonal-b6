@@ -2,7 +2,6 @@ package functions
 
 import (
 	"fmt"
-	"log"
 	"testing"
 
 	"diagonal.works/b6"
@@ -24,8 +23,7 @@ func TestSightlineFunction(t *testing.T) {
 	from := b6.PointFromLatLngDegrees(51.53545, -0.12561)
 	area, err := sightline(context, from, 250.0)
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	if area.Len() != 1 {
@@ -52,9 +50,6 @@ func TestSightline(t *testing.T) {
 
 func ValidateSightline(computeSightline func(from s2.Point, radius s1.Angle, w b6.World) *s2.Polygon, name string, t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	if granarySquare == nil {
-		return
-	}
 
 	radius := 250.0
 	from := s2.PointFromLatLng(s2.LatLngFromDegrees(51.53545, -0.12561))
@@ -98,9 +93,6 @@ func ValidateSightline(computeSightline func(from s2.Point, radius s1.Angle, w b
 
 func ValidateSightlineInsideBuilding(computeSightline func(from s2.Point, radius s1.Angle, w b6.World) *s2.Polygon, name string, t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	if granarySquare == nil {
-		return
-	}
 
 	radius := 250.0
 	from := s2.PointFromLatLng(s2.LatLngFromDegrees(51.535280, -0.124357))
@@ -112,9 +104,6 @@ func TestSightlineDoesntHaveSpikes(t *testing.T) {
 	// lead to a very thin field of visibility incorrectly appearing in the
 	// join between two edges of a building. We filter these out.
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	if granarySquare == nil {
-		return
-	}
 
 	// This location exhibits a spike - detmined visually though Atlas, and
 	// the original implementation of the algorithm
@@ -126,7 +115,7 @@ func TestSightlineDoesntHaveSpikes(t *testing.T) {
 	intersections := countIntersections(sightline.Loop(0), boundary)
 	expected := 2 // There were 6 intersections before spike removal.
 	if intersections != expected {
-		log.Printf("Expected %d intersections, found %d", expected, intersections)
+		t.Errorf("Expected %d intersections, found %d", expected, intersections)
 	}
 }
 
@@ -150,11 +139,9 @@ func TestOccludeWithCenterCloseToEdge(t *testing.T) {
 	center := s2.PointFromLatLng(s2.LatLngFromDegrees(51.51891, -0.09657))
 	o := Occlude(a, b, center, b6.MetersToAngle(250.0))
 	if o == nil {
-		t.Errorf("Expected an occlusion, found nil")
-	} else {
-		if !o.ContainsPoint(s2.PointFromLatLng(s2.LatLngFromDegrees(51.51957, -0.09439))) {
-			t.Errorf("Occlusion didn't contain expected point")
-		}
+		t.Error("Expected an occlusion, found nil")
+	} else if !o.ContainsPoint(s2.PointFromLatLng(s2.LatLngFromDegrees(51.51957, -0.09439))) {
+		t.Error("Occlusion didn't contain expected point")
 	}
 }
 

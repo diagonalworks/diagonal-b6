@@ -7,6 +7,8 @@ import (
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
 	"github.com/golang/geo/s2"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -56,8 +58,7 @@ func TestEncodeTile(t *testing.T) {
 
 	expectedLayers := []string{"background", "landuse", "poi_label"}
 	if len(encoded.Layers) != len(expectedLayers) {
-		t.Errorf("Expected %d layers, found %d", len(expectedLayers), len(encoded.Layers))
-		return
+		t.Fatalf("Expected %d layers, found %d", len(expectedLayers), len(encoded.Layers))
 	}
 	for i, layer := range encoded.Layers {
 		if layer.GetName() != expectedLayers[i] {
@@ -65,11 +66,10 @@ func TestEncodeTile(t *testing.T) {
 		}
 	}
 
-	expectedCommands := [][]int{[]int{11}, []int{11}, []int{3, 3}}
+	expectedCommands := [][]int{{11}, {11}, {3, 3}}
 	for i, layer := range encoded.Layers {
 		if len(layer.Features) != len(expectedCommands[i]) {
-			t.Errorf("Expected %d features, found %d", len(expectedCommands[i]), len(layer.Features))
-			return
+			t.Fatalf("Expected %d features, found %d", len(expectedCommands[i]), len(layer.Features))
 		}
 		for j, feature := range layer.Features {
 			if len(feature.Geometry) != expectedCommands[i][j] {
@@ -155,8 +155,8 @@ func TestEncodeVectorTileGeometryRelativeToOrigin(t *testing.T) {
 
 	expected := []uint32{17, 7464, 1164, 970, 2661}
 	for i := 0; i < 2; i++ {
-		if !reflect.DeepEqual(e.Layer().Features[i].Geometry, expected) {
-			t.Errorf("Unexpected geometry encoding: %+v", e.Layer().Features[i].Geometry)
+		if diff := cmp.Diff(expected, e.Layer().Features[i].Geometry); diff != "" {
+			t.Errorf("[%d]Unexpected geometry encoding (-want, +got):\n%s", i, diff)
 		}
 	}
 }
@@ -169,20 +169,21 @@ func TestEncodeVectorTileTags(t *testing.T) {
 	e.Tag("amenity", "bicycle_parking")
 	e.Tag("capacity", 16)
 
-	if !reflect.DeepEqual(e.Layer().Keys, []string{"amenity", "capacity"}) {
-		t.Errorf("Unexpected layer keys: %+v", e.Layer().Keys)
+	if diff := cmp.Diff([]string{"amenity", "capacity"}, e.Layer().Keys); diff != "" {
+		t.Errorf("Unexpected layer keys (-want, +got):\n%s", diff)
 	}
 
-	values := []*pb.TileProto_Value{
-		&pb.TileProto_Value{StringValue: proto.String("bicycle_parking")},
-		&pb.TileProto_Value{IntValue: proto.Int64(12)},
-		&pb.TileProto_Value{IntValue: proto.Int64(16)},
-	}
-	if !reflect.DeepEqual(e.Layer().Values, values) {
-		t.Errorf("Unexpected layer values: %+v", e.Layer().Values)
+	wantValues := []*pb.TileProto_Value{
+		{StringValue: proto.String("bicycle_parking")},
+		{IntValue: proto.Int64(12)},
+		{IntValue: proto.Int64(16)},
 	}
 
-	if !reflect.DeepEqual(feature.Tags, []uint32{0, 0, 1, 1, 0, 0, 1, 2}) {
-		t.Errorf("Unexpected feature tags: %+v", feature.Tags)
+	if diff := cmp.Diff(wantValues, e.Layer().Values, cmpopts.IgnoreUnexported(pb.TileProto_Value{})); diff != "" {
+		t.Errorf("Unexpected layer values (-want, +got):\n%s", diff)
+	}
+
+	if diff := cmp.Diff([]uint32{0, 0, 1, 1, 0, 0, 1, 2}, feature.Tags); diff != "" {
+		t.Errorf("Unexpected feature tags (-want, +got):\n%s", diff)
 	}
 }

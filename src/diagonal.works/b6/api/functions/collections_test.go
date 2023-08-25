@@ -3,10 +3,10 @@ package functions
 import (
 	"fmt"
 	"math/rand"
-	"reflect"
 	"testing"
 
 	"diagonal.works/b6/api"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestTake(t *testing.T) {
@@ -24,14 +24,12 @@ func TestTake(t *testing.T) {
 	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
 	took, err := take(&api.Context{}, collection, n)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	filled := make(map[interface{}]float64)
 	if err := api.FillMap(took, filled); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	if n != len(filled) {
@@ -64,14 +62,12 @@ func TestTopFloat(t *testing.T) {
 	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
 	selected, err := top(&api.Context{}, collection, n)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	filled := make([]float64, 0, n)
 	if err := api.FillSliceFromValues(selected, &filled); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	if n != len(filled) {
@@ -105,14 +101,12 @@ func TestTopInt(t *testing.T) {
 	collection := &api.ArrayAnyIntCollection{Keys: keys, Values: values}
 	selected, err := top(&api.Context{}, collection, n)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	filled := make([]int, 0, n)
 	if err := api.FillSliceFromValues(selected, &filled); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	if n != len(filled) {
@@ -155,17 +149,16 @@ func TestFilter(t *testing.T) {
 	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
 	filtered, err := filter(&api.Context{}, collection, f)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	filled := make(map[interface{}]float64)
 	if err := api.FillMap(filtered, filled); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	if len(filled) == 0 {
-		t.Errorf("Expected at least 1 value")
+		t.Fatalf("Expected at least 1 value")
 	} else {
 		for _, f := range filled {
 			if f <= limit {
@@ -183,20 +176,18 @@ func TestSumByKey(t *testing.T) {
 
 	byKey, err := sumByKey(&api.Context{}, collection)
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 	filled := make(map[string]int)
 	if err := api.FillMap(byKey, filled); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 	expected := map[string]int{
 		"population:total":    300,
 		"population:children": 50,
 	}
-	if !reflect.DeepEqual(expected, filled) {
-		t.Errorf("Expected %+v, found %+v", expected, filled)
+	if diff := cmp.Diff(expected, filled); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -208,20 +199,18 @@ func TestCountValues(t *testing.T) {
 
 	counted, err := countValues(&api.Context{}, collection)
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 	filled := make(map[int]int)
 	if err := api.FillMap(counted, filled); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 	expected := map[int]int{
 		2: 2,
 		3: 1,
 	}
-	if !reflect.DeepEqual(expected, filled) {
-		t.Errorf("Expected %+v, found %+v", expected, filled)
+	if diff := cmp.Diff(expected, filled); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -241,14 +230,12 @@ func TestFlatten(t *testing.T) {
 
 	flattened, err := flatten(&api.Context{}, &c)
 	if err != nil {
-		t.Errorf("Expected no error, found %q", err)
-		return
+		t.Fatalf("Expected no error, found %q", err)
 	}
 
 	filled := make(map[string]string)
 	if err := api.FillMap(flattened, filled); err != nil {
-		t.Errorf("Expected no error, found %q", err)
-		return
+		t.Fatalf("Expected no error, found %q", err)
 	}
 
 	expected := map[string]string{
@@ -259,7 +246,7 @@ func TestFlatten(t *testing.T) {
 		"ke": "ve",
 		"kf": "vf",
 	}
-	if !reflect.DeepEqual(expected, filled) {
-		t.Errorf("Expected %+v, found %+v", expected, filled)
+	if diff := cmp.Diff(expected, filled); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
 	}
 }

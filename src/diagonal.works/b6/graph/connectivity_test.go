@@ -11,9 +11,7 @@ import (
 
 func TestBuildStreetNetwork(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	if granarySquare == nil {
-		return
-	}
+
 	highways := b6.FindPaths(b6.Keyed{"#highway"}, granarySquare)
 	network := BuildStreetNetwork(highways, b6.MetersToAngle(100.0), SimpleHighwayWeights{}, nil, granarySquare)
 
@@ -44,8 +42,7 @@ func TestMergeInsertions(t *testing.T) {
 
 	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	ids := []b6.PointID{
@@ -61,12 +58,10 @@ func TestMergeInsertions(t *testing.T) {
 
 	applied := c.ApplyToPath(b6.FindPathByID(ingest.FromOSMWayID(ways[0].ID), w))
 	if applied == nil {
-		t.Errorf("Expected a path, found nil")
-		return
+		t.Fatal("Expected a path, found nil")
 	}
 	if applied.Len() != 5 {
-		t.Errorf("Expected 5 points, found %d", applied.Len())
-		return
+		t.Fatalf("Expected 5 points, found %d", applied.Len())
 	}
 	expected := []b6.PointID{
 		ingest.FromOSMNodeID(nodes[0].ID), ids[0], ingest.FromOSMNodeID(nodes[1].ID), ids[1], ingest.FromOSMNodeID(nodes[2].ID),
@@ -95,8 +90,7 @@ func TestClusterCloseInsertions(t *testing.T) {
 
 	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	ids := []b6.PointID{
@@ -115,12 +109,10 @@ func TestClusterCloseInsertions(t *testing.T) {
 
 	applied := c.ApplyToPath(b6.FindPathByID(ingest.FromOSMWayID(ways[0].ID), w))
 	if applied == nil {
-		t.Errorf("Expected a path, found nil")
-		return
+		t.Fatal("Expected a path, found nil")
 	}
 	if applied.Len() != 5 {
-		t.Errorf("Expected 5 points, found %d", applied.Len())
-		return
+		t.Fatalf("Expected 5 points, found %d", applied.Len())
 	}
 	// ids[1] should have been been clusters with ids[0]
 	expected := []b6.PointID{
@@ -169,8 +161,7 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 
 	w, err := ingest.BuildWorldFromOSM(nodes, ways, []osm.Relation{}, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	ids := []b6.PointID{
@@ -198,12 +189,10 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 
 	applied := c.ApplyToPath(b6.FindPathByID(ingest.FromOSMWayID(ways[1].ID), w))
 	if applied == nil {
-		t.Errorf("Expected a path, found nil")
-		return
+		t.Fatal("Expected a path, found nil")
 	}
 	if applied.Len() != 4 {
-		t.Errorf("Expected 4 points, found %d", applied.Len())
-		return
+		t.Fatalf("Expected 4 points, found %d", applied.Len())
 	}
 	// ids[1] and ids[2] should have been been clustered onto point[1]
 	expected := []b6.PointID{
@@ -218,22 +207,19 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 	source := c.ModifyWorld(w)
 	connected, err := ingest.NewWorldFromSource(source, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	// The access path from ids[2] should start from point[1] of ways[1], as
 	// ids[1] and ids[2] have been clustered onto it
 	paths := b6.AllPaths(connected.FindPathsByPoint(ingest.FromOSMNodeID(nodes[len(nodes)-1].ID)))
 	if len(paths) != 1 {
-		t.Errorf("Expected 1 path, found %d", len(paths))
-		return
+		t.Fatalf("Expected 1 path, found %d", len(paths))
 	}
 
 	access := paths[0]
 	if access.Len() != 2 {
-		t.Errorf("Expected 2 points, found %d", access.Len())
-		return
+		t.Fatalf("Expected 2 points, found %d", access.Len())
 	}
 	expected = []b6.PointID{
 		ingest.FromOSMNodeID(ways[1].Nodes[1]),
@@ -268,7 +254,6 @@ func countAccessibleAmenities(from b6.PointID, maxDistance float64, w b6.World) 
 		point := b6.FindPointByID(id, w)
 		if point.Get("#amenity").IsValid() {
 			amenities[id] = struct{}{}
-
 		}
 	}
 	return len(amenities)
@@ -284,16 +269,13 @@ func TestConnectGranarySquare(t *testing.T) {
 	}
 
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	if granarySquare == nil {
-		return
-	}
 
-	highways := b6.FindPaths(b6.Keyed{"#highway"}, granarySquare)
+	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, granarySquare)
 	weights := SimpleHighwayWeights{}
 	network := BuildStreetNetwork(highways, b6.MetersToAngle(100), weights, nil, granarySquare)
 
 	for _, test := range tests {
-		features := granarySquare.FindFeatures(b6.Union{b6.Keyed{"#building"}, b6.Keyed{"#amenity"}})
+		features := granarySquare.FindFeatures(b6.Union{b6.Keyed{Key: "#building"}, b6.Keyed{Key: "#amenity"}})
 		t.Run(test.name, func(t *testing.T) {
 			connected := test.f(features, network, granarySquare, t)
 			if connected != nil {
@@ -327,8 +309,7 @@ func ValidateConnectInsertingNewPoints(features b6.Features, network PathIDSet, 
 	source := s.Output()
 	connected, err := ingest.NewWorldFromSource(source, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return nil
+		t.Fatalf("Expected no error, found %s", err)
 	}
 	return connected
 }
@@ -343,8 +324,7 @@ func ValidateConnectUsingExistingPoints(features b6.Features, network PathIDSet,
 	s.Finish()
 	connected := ingest.NewMutableOverlayWorld(w)
 	if err := connected.MergeSource(s.Output()); err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return nil
+		t.Fatalf("Expected no error, found %s", err)
 	}
 	return connected
 }

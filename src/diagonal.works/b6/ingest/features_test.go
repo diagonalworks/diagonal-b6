@@ -82,13 +82,13 @@ func TestMergePoint(t *testing.T) {
 	m := caravan.Clone()
 	m.MergeFrom(lighterman)
 	if !reflect.DeepEqual(lighterman, m) {
-		t.Errorf("Expected features to be equal after merge")
+		t.Error("Expected features to be equal after merge")
 	}
 
 	m = lighterman.Clone()
 	m.MergeFrom(caravan)
 	if !reflect.DeepEqual(caravan, m) {
-		t.Errorf("Expected features to be equal after merge")
+		t.Error("Expected features to be equal after merge")
 	}
 }
 
@@ -112,13 +112,13 @@ func TestMergePath(t *testing.T) {
 	m := ab.Clone()
 	m.MergeFrom(cde)
 	if !reflect.DeepEqual(cde, m) {
-		t.Errorf("Expected features to be equal after merge")
+		t.Error("Expected features to be equal after merge")
 	}
 
 	m = cde.Clone()
 	m.MergeFrom(ab)
 	if !reflect.DeepEqual(ab, m) {
-		t.Errorf("Expected features to be equal after merge")
+		t.Error("Expected features to be equal after merge")
 	}
 }
 
@@ -179,12 +179,12 @@ func TestMergeRelation(t *testing.T) {
 	m := c6.Clone()
 	m.MergeFrom(cs3)
 	if !reflect.DeepEqual(cs3, m) {
-		t.Errorf("Expected features to be equal after merge")
+		t.Error("Expected features to be equal after merge")
 	}
 
 	m = cs3.Clone()
 	m.MergeFrom(c6)
 	if !reflect.DeepEqual(c6, m) {
-		t.Errorf("Expected features to be equal after merge")
+		t.Error("Expected features to be equal after merge")
 	}
 }

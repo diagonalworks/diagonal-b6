@@ -11,23 +11,18 @@ import (
 
 func TestGeoJSON(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	if granarySquare == nil {
-		return
-	}
 
 	context := &api.Context{
 		World: granarySquare,
 	}
 	features, err := find(context, b6.Keyed{Key: "#building"})
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	g, err := toGeoJSONCollection(context, features)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	if collection, ok := g.(*geojson.FeatureCollection); ok {
@@ -57,16 +52,18 @@ func TestGeoJSONAreasInvertsLargePolygons(t *testing.T) {
 	p1 := cs.ToS2Polygon()
 	areas, err := geojsonAreas(&api.Context{}, g)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 	i := areas.Begin()
-	if ok, err := i.Next(); !ok || err != nil {
-		t.Errorf("Expected at least one area")
-		return
+	ok, err := i.Next()
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	if !ok {
+		t.Fatal("Expected at least one area")
 	}
 	p2 := i.Value().(b6.Area).Polygon(0)
 	if p2.Area() >= p1.Area() {
-		t.Errorf("Expected clockwise GeoJSON polygons to be inverted")
+		t.Error("Expected clockwise GeoJSON polygons to be inverted")
 	}
 }
