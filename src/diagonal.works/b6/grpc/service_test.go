@@ -33,9 +33,7 @@ func TestGRPC(t *testing.T) {
 	}
 
 	base := camden.BuildGranarySquareForTests(t)
-	if base == nil {
-		return
-	}
+
 	w := ingest.NewMutableOverlayWorld(base)
 
 	for _, test := range tests {
@@ -49,32 +47,31 @@ func ValidateEvaluate(service pb.B6Server, w b6.World, t *testing.T) {
 	e := `find [#building] | map {b -> get b "building:levels"}`
 	root, err := api.ParseExpression(e)
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 	request := &pb.EvaluateRequestProto{
 		Request: root,
 		Version: b6.ApiVersion,
 	}
-	if response, err := service.Evaluate(context.Background(), request); err == nil {
-		if node := response.GetResult(); node != nil {
-			if literal := node.GetLiteral(); literal != nil {
-				if collection := literal.GetCollectionValue(); collection != nil {
-					expected := camden.BuildingsInGranarySquare
-					if len(collection.Values) != expected {
-						t.Errorf("Expected %d values, found %d", expected, len(collection.Values))
-					}
-				} else {
-					t.Error("Expected a CollectionValue")
-				}
-			} else {
-				t.Error("Expected a Literal")
-			}
-		} else {
-			t.Error("Expected a node")
-		}
-	} else {
-		t.Error(err)
+	response, err := service.Evaluate(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := response.GetResult()
+	if node == nil {
+		t.Fatal("Expected a node")
+	}
+	literal := node.GetLiteral()
+	if literal == nil {
+		t.Fatal("Expected a literal")
+	}
+	collection := literal.GetCollectionValue()
+	if collection == nil {
+		t.Fatal("Expected a CollectionValue")
+	}
+	expected := camden.BuildingsInGranarySquare
+	if len(collection.Values) != expected {
+		t.Errorf("Expected %d values, found %d", expected, len(collection.Values))
 	}
 }
 
@@ -90,15 +87,13 @@ func ValidateConcurrentReadAndWrite(service pb.B6Server, w b6.World, t *testing.
 	e := `find [#building] | map {b -> tag "diagonal-fill-colour" (get b "building:levels")}`
 	write, err := api.ParseExpression(e)
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	e = `find [#building] | map {b -> get b "building:levels"}`
 	read, err := api.ParseExpression(e)
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
 	// Writer

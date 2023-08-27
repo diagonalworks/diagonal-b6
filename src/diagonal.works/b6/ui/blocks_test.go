@@ -33,28 +33,33 @@ func TestMatchingFunctions(t *testing.T) {
 	handler.ServeHTTP(response, request)
 	result := response.Result()
 	if result.StatusCode != http.StatusOK {
-		t.Errorf("Expected status %d, found %d", http.StatusOK, result.StatusCode)
-		return
+		t.Fatalf("Expected status %d, found %d", http.StatusOK, result.StatusCode)
 	}
 
 	// TODO: Use typing - see the comment for the BlocksJSON definition
 	var blocks map[string]interface{}
 	d := json.NewDecoder(result.Body)
 	if err := d.Decode(&blocks); err != nil {
-		t.Errorf("Expected no error, found %s", err)
+		t.Fatalf("Expected no error, found %s", err)
 	}
 	functions := blocks["Functions"].([]interface{})
-	expected := []string{"to-geojson", "closest", "get-string", "reachable"}
-	for _, e := range expected {
-		found := false
-		for _, f := range functions {
-			if e == f.(string) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Expected function %q as a suggestion for area features", e)
+	var functionNames []string
+	for _, f := range functions {
+		functionNames = append(functionNames, f.(string))
+	}
+
+	for _, e := range []string{"to-geojson", "closest", "get-string", "reachable"} {
+		if !contains(e, functionNames) {
+			t.Errorf("Function %q not included in area features: %v", e, functionNames)
 		}
 	}
+}
+
+func contains(item string, items []string) bool {
+	for _, i := range items {
+		if i == item {
+			return true
+		}
+	}
+	return false
 }

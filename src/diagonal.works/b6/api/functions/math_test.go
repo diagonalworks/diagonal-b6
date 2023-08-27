@@ -25,8 +25,7 @@ func TestPercentiles(t *testing.T) {
 
 	collection, err := percentiles(&api.Context{}, &api.ArrayAnyFloatCollection{Keys: keys, Values: values})
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 
 	i := 0
@@ -34,16 +33,14 @@ func TestPercentiles(t *testing.T) {
 	for {
 		ok, err := j.Next()
 		if err != nil {
-			t.Error(err)
-			return
+			t.Fatal(err)
 		}
 		if !ok {
 			break
 		}
 		expected := values[i] / 5.0
 		if math.Abs(j.Value().(float64)-expected) > 0.05 {
-			t.Errorf("Expected a value close to %f, found %f", expected, j.Value().(float64))
-			return
+			t.Fatalf("Expected a value close to %f, found %f", expected, j.Value().(float64))
 		}
 		i++
 	}
@@ -54,23 +51,18 @@ func TestPercentiles(t *testing.T) {
 
 func TestCount(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	if granarySquare == nil {
-		return
-	}
 
 	context := &api.Context{
 		World: granarySquare,
 	}
 	collection, err := find(context, b6.Keyed{"#building"})
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	count, err := count(context, collection)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 	expected := camden.BuildingsInGranarySquare
 	if count != expected {

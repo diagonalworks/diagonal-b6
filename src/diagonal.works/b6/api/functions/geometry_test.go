@@ -16,13 +16,13 @@ func TestDistanceToPointMeters(t *testing.T) {
 	}
 	path := b6.FindPathByID(ingest.FromOSMWayID(377974549), granarySquare)
 	if path == nil {
-		t.Errorf("Failed to find expected path")
+		t.Fatal("Failed to find expected path")
 	}
 
 	point := b6.PointFromLatLngDegrees(51.53586, -0.12564)
 	distance, err := distanceToPointMeters(context, path, point)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	baseline := b6.AngleToMeters(path.Point(0).Distance(point.Point()))

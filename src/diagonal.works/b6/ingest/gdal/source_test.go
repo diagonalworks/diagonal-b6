@@ -29,19 +29,17 @@ func TestReadFeaturesFromLSOABoundaries(t *testing.T) {
 	}
 	err := source.Read(ingest.ReadOptions{}, emit, context.Background())
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
 
-	if found != nil {
-		expected := []b6.Tag{{Key: "#boundary", Value: "lsoa"}, {Key: "name", Value: "Camden 018B"}}
-		for _, tag := range expected {
-			if found.Get(tag.Key) != tag {
-				t.Errorf("Expected to find %s", tag)
-			}
+	if found == nil {
+		t.Fatal("Expected to find boundary")
+	}
+	expected := []b6.Tag{{Key: "#boundary", Value: "lsoa"}, {Key: "name", Value: "Camden 018B"}}
+	for _, tag := range expected {
+		if found.Get(tag.Key) != tag {
+			t.Errorf("Expected to find %s", tag)
 		}
-	} else {
-		t.Errorf("Expected to find boundary")
 	}
 }
 
@@ -65,17 +63,15 @@ func TestReadFeaturesFromLSOABoundariesCopyingAllFields(t *testing.T) {
 	}
 	err := source.Read(ingest.ReadOptions{}, emit, context.Background())
 	if err != nil {
-		t.Errorf("Expected no error, found %s", err)
-		return
+		t.Fatalf("Expected no error, found %s", err)
 	}
-	if found != nil {
-		expected := []b6.Tag{{Key: "code", Value: "E01000858"}, {Key: "LSOA11NM", Value: "Camden 018B"}}
-		for _, tag := range expected {
-			if found.Get(tag.Key) != tag {
-				t.Errorf("Expected to find %s", tag)
-			}
+	if found == nil {
+		t.Fatal("Expected to find boundary")
+	}
+	expected := []b6.Tag{{Key: "code", Value: "E01000858"}, {Key: "LSOA11NM", Value: "Camden 018B"}}
+	for _, tag := range expected {
+		if found.Get(tag.Key) != tag {
+			t.Errorf("Expected to find %s", tag)
 		}
-	} else {
-		t.Errorf("Expected to find boundary")
 	}
 }

@@ -35,10 +35,8 @@ func (fs testFunctionArgCounts) ArgCount(symbol string) (int, bool) {
 }
 
 func (fs testFunctionArgCounts) IsVariadic(symbol string) (bool, bool) {
-	if _, ok := fs[symbol]; ok {
-		return false, true
-	}
-	return false, false
+	_, ok := fs[symbol]
+	return false, ok
 }
 
 func TestParseExpression(t *testing.T) {
@@ -863,7 +861,7 @@ func TestOrderTokens(t *testing.T) {
 	e := `show-accessibility [#building=school] 900 "walking" {b -> pair "#building" (building-category b)}`
 	top, err := ParseExpression(e)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 	tokens := OrderTokens(top)
 	expected := []*pb.NodeProto{

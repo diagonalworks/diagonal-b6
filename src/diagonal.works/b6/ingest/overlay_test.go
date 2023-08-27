@@ -37,8 +37,7 @@ func TestOverlayWorldReturnsPathsFromAllIndices(t *testing.T) {
 	for i, w := range ways {
 		var err error
 		if worlds[i], err = BuildWorldFromOSM(nodes, w, []osm.Relation{}, &BuildOptions{Cores: 2}); err != nil {
-			t.Errorf("Failed to build world: %s", err)
-			return
+			t.Fatalf("Failed to build world: %s", err)
 		}
 	}
 	overlay := NewOverlayWorld(worlds[0], worlds[1])
@@ -48,8 +47,7 @@ func TestOverlayWorldReturnsPathsFromAllIndices(t *testing.T) {
 
 	expected := []osm.WayID{140633010, 557698825, 642639444, 807925586}
 	if len(found) != len(expected) {
-		t.Errorf("Expected length %d, found %d", len(expected), len(found))
-		return
+		t.Fatalf("Expected length %d, found %d", len(expected), len(found))
 	}
 
 	for i, id := range expected {
@@ -95,8 +93,7 @@ func TestOverlayWorldReplacesPathsFromOneIndexWithAnother(t *testing.T) {
 	for i, w := range ways {
 		var err error
 		if worlds[i], err = BuildWorldFromOSM(nodes, w, []osm.Relation{}, &BuildOptions{Cores: 2}); err != nil {
-			t.Errorf("Failed to build world: %s", err)
-			return
+			t.Fatalf("Failed to build world: %s", err)
 		}
 	}
 	overlay := NewOverlayWorld(worlds[1], worlds[0])

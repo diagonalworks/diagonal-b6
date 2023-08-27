@@ -113,44 +113,44 @@ func ValidateNext(build iteratorBuilder, t *testing.T) {
 
 func ValidateAdvance(build iteratorBuilder, t *testing.T) {
 	cases := []struct {
+		name     string
 		add      []int
 		advance  int
 		ok       bool
 		expected []int
 	}{
-		{[]int{7, 1, 3, 5, 2, 4, 6}, 4, true, []int{4, 5, 6, 7}},                     // Happy path
-		{[]int{7, 3, 5, 4, 6}, 2, true, []int{3, 4, 5, 6, 7}},                        // Advance before start
-		{[]int{7, 1, 3, 5, 2, 4, 6}, 8, false, []int{}},                              // Advance beyond end
-		{[]int{1, 2, 3, 4, 5, 6, 7, 8, 10}, 2, true, []int{2, 3, 4, 5, 6, 7, 8, 10}}, // Sequence member missing
-		{[]int{}, 8, false, []int{}},                                                 // Empty
-		{[]int{5, 2, 6, 1, 4}, 3, true, []int{4, 5, 6}},                              // Non-trival binary search tree ordering
+		{"HappyPath", []int{7, 1, 3, 5, 2, 4, 6}, 4, true, []int{4, 5, 6, 7}},
+		{"AdvanceBeforeStart", []int{7, 3, 5, 4, 6}, 2, true, []int{3, 4, 5, 6, 7}},
+		{"AdvanceBeyondEnd", []int{7, 1, 3, 5, 2, 4, 6}, 8, false, []int{}},
+		{"SequenceMemberMissing", []int{1, 2, 3, 4, 5, 6, 7, 8, 10}, 2, true, []int{2, 3, 4, 5, 6, 7, 8, 10}},
+		{"Empty", []int{}, 8, false, []int{}},
+		{"NonTrivalBinarySearchTreeOrdering", []int{5, 2, 6, 1, 4}, 3, true, []int{4, 5, 6}},
 	}
 
 	for _, next := range []bool{false, true} {
 		for _, c := range cases {
-			i := build(c.add)
-			result := make([]int, 0)
-			if next {
-				i.Next() // Calling Next() before Advance() should make no difference
-			}
-			var ok bool
-			if ok = i.Advance(c.advance); ok != c.ok {
-				t.Errorf("Expected Advance() to return %v, found %v  with add: %v advance: %d", c.ok, ok, c.add, c.advance)
-				return
-			}
-			if ok {
-				result = append(result, i.Value().(int))
-				for i.Next() {
+			t.Run(c.name, func(t *testing.T) {
+				i := build(c.add)
+				result := make([]int, 0)
+				if next {
+					i.Next() // Calling Next() before Advance() should make no difference
+				}
+				ok := i.Advance(c.advance)
+				if ok != c.ok {
+					t.Fatalf("[ok=%v,add=%v,advance=%v,next=%v] Expected Advance() to return %v, found %v ", c.ok, c.add, c.advance, next, c.ok, ok)
+				}
+				if ok {
 					result = append(result, i.Value().(int))
+					for i.Next() {
+						result = append(result, i.Value().(int))
+					}
+				} else if i.Next() {
+					t.Errorf("[ok=%v,add=%v,advance=%v,next=%v] Expected Next() to return false if Advance() returned false", c.ok, c.add, c.advance, next)
 				}
-			} else {
-				if i.Next() {
-					t.Errorf("Expected Next() to return false if Advance() returned false with add: %v advance: %d", c.add, c.advance)
+				if !equals(result, c.expected) {
+					t.Errorf("[ok=%v,add=%v,advance=%v,next=%v] Expected %v, found %v ", c.ok, c.add, c.advance, next, c.expected, result)
 				}
-			}
-			if !equals(result, c.expected) {
-				t.Errorf("Expected %v, found %v with add: %v advance: %d, next: %v", c.expected, result, c.add, c.advance, next)
-			}
+			})
 		}
 	}
 }
@@ -165,7 +165,7 @@ func ValidateAdvanceToPreviousItem(build iteratorBuilder, t *testing.T) {
 	}
 
 	if !i.Advance(1) {
-		t.Errorf("Expected Advance() to return true")
+		t.Error("Expected Advance() to return true")
 	}
 	if i.Value() != expected {
 		t.Errorf("Expected unchanged value of %d, found %d", expected, i.Value())
@@ -178,27 +178,25 @@ func ValidateNextAtEndOfValues(build iteratorBuilder, t *testing.T) {
 
 	for j := 0; j < len(input); j++ {
 		if !i.Next() {
-			t.Errorf("Expected Next() to return true")
-			return
+			t.Fatal("Expected Next() to return true")
 		}
 	}
 
 	if i.Next() {
-		t.Errorf("Expected Next() to return false")
-		return
+		t.Fatal("Expected Next() to return false")
 	}
 
 	lastValue := 7
 	if i.Value() != lastValue {
-		t.Errorf("Expected Value() to be unchanged after Next() returns false")
+		t.Error("Expected Value() to be unchanged after Next() returns false")
 	}
 
 	if i.Next() {
-		t.Errorf("Expected repeated calls to Next() to return false")
+		t.Error("Expected repeated calls to Next() to return false")
 	}
 
 	if i.Value() != lastValue {
-		t.Errorf("Expected Value() to unchanged after multiple Next() calling returning false")
+		t.Error("Expected Value() to unchanged after multiple Next() calling returning false")
 	}
 }
 
@@ -245,7 +243,7 @@ func TestIndices(t *testing.T) {
 		{"UnionsAreDeduplicatedWithSingleElementLists", ValidateUnionsAreDeduplicatedWithSingleElementLists},
 		{"Prefix", ValidatePrefix},
 		{"Intersection", ValidateIntersection},
-		{"IntersectionNumberOfComparisions", ValidateIntersectionNumberOfComparisions},
+		{"IntersectionNumberOfComparisions", ValidateIntersectionNumberOfComparisons},
 		{"AdvanceOnIntersectionToPositionThatIsntAnIntersection", ValidateAdvanceOnIntersectionToPositionThatIsntAnIntersection},
 		{"IntersectionOnEmptyUnion", ValidateIntersectionOnEmptyUnion},
 		{"KeyRange", ValidateKeyRange},
@@ -403,11 +401,11 @@ func ValidateIntersection(build indexBuilder, t *testing.T) {
 
 	expected := []int{2, 5, 7}
 	if !equals(result, expected) {
-		t.Errorf("Expected insection %v, found %v", expected, result)
+		t.Errorf("Expected intersection %v, found %v", expected, result)
 	}
 }
 
-func ValidateIntersectionNumberOfComparisions(build indexBuilder, t *testing.T) {
+func ValidateIntersectionNumberOfComparisons(build indexBuilder, t *testing.T) {
 	indexed := make([]indexedInt, 1024)
 	for i := 0; i < 1023; i++ {
 		indexed[i] = indexedInt{value: i, tokens: []string{"0"}}
@@ -425,11 +423,11 @@ func ValidateIntersectionNumberOfComparisions(build indexBuilder, t *testing.T) 
 
 	expectedResult := []int{1023}
 	if !equals(result, expectedResult) {
-		t.Errorf("Expected insection %v, found %v", expectedResult, result)
+		t.Errorf("Expected intersection %v, found %v", expectedResult, result)
 	}
 
 	if values.Comparisons > 100 {
-		t.Errorf("Unexpectedly high number of comparisions: %d", values.Comparisons)
+		t.Errorf("Unexpectedly high number of comparisons: %d", values.Comparisons)
 	}
 }
 
@@ -470,7 +468,7 @@ func ValidateAdvanceOnIntersectionToPositionThatIsntAnIntersection(build indexBu
 	result := make([]int, 0)
 	// Advance to a position that isn't an intersection between the lists
 	if !i.Advance(7) {
-		t.Errorf("Expected to be able to advance")
+		t.Error("Expected to be able to advance")
 	} else {
 		for {
 			result = append(result, i.Value().(int))

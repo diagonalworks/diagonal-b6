@@ -18,12 +18,11 @@ func TestTreeListAdvanceFromIteratorAtRoot(t *testing.T) {
 	for i.Next() && i.Value() != 10 {
 	}
 	if i.Value() != 10 {
-		t.Errorf("Expected to find 10")
-		return
+		t.Fatal("Expected to find 10")
 	}
 
 	if !i.Advance(17) || i.Value() != 17 {
-		t.Errorf("Expected to be able to advance to 17")
+		t.Error("Expected to be able to advance to 17")
 	}
 }
 
@@ -140,18 +139,15 @@ func TestTreeListNextOnDeletedIterator(t *testing.T) {
 	delete := 6
 	i := tree.Begin()
 	if !i.Next() || !i.Next() || !i.Next() || i.Value() != delete {
-		t.Errorf("Expected to use Next() to reach %d, found %d", delete, i.Value())
-		return
+		t.Fatalf("Expected to use Next() to reach %d, found %d", delete, i.Value())
 	}
 	tree.Delete(delete)
 	if i.Value() != delete {
-		t.Errorf("Expected value on deleted iterator to be %d, found %d", delete, i.Value())
-		return
+		t.Fatalf("Expected value on deleted iterator to be %d, found %d", delete, i.Value())
 	}
 
 	if !i.Next() {
-		t.Errorf("Expected to be able to call Next() on a deleted iterator")
-		return
+		t.Fatalf("Expected to be able to call Next() on a deleted iterator")
 	}
 	expected := 10
 	if i.Value() != expected {
@@ -163,58 +159,57 @@ func TestTreeListAdvanceOnDeletedIterator(t *testing.T) {
 	//4, 5, 6, 10, 12, 13, 15, 16
 	input := []int{10, 5, 15, 4, 6, 13, 16, 12}
 	cases := []struct {
+		name     string
 		delete   int
 		advance  int
 		ok       bool
 		expected []int
 	}{
-		//		{6, 10, true, []int{10, 12, 13, 15, 16}}, // Happy path
-		//		{6, 6, true, []int{10, 12, 13, 15, 16}},  // Advance to deleted
-		{6, 5, true, []int{10, 12, 13, 15, 16}}, // Advance to previous
-		//		{6, 17, true, []int{}},                   // Advance beyond end
+		{"HappyPath", 6, 10, true, []int{10, 12, 13, 15, 16}},
+		{"AdvanceToDeleted", 6, 6, true, []int{10, 12, 13, 15, 16}},
+		{"AdvanceToPrevious", 6, 5, true, []int{10, 12, 13, 15, 16}},
+		// TODO: Make this test case pass.
+		// {"AdvanceBeyondEnd", 6, 17, true, []int{}},
 	}
 
 	for _, c := range cases {
-		tree := newTreeList(&intValues{})
-		for _, v := range input {
-			tree.Insert(v)
-		}
-
-		i := tree.Begin()
-		found := false
-		for i.Next() {
-			if i.Value() == c.delete {
-				found = true
-				break
+		t.Run(c.name, func(t *testing.T) {
+			tree := newTreeList(&intValues{})
+			for _, v := range input {
+				tree.Insert(v)
 			}
-		}
 
-		if !found {
-			t.Errorf("Failed to find %d", c.delete)
-			continue
-		}
-		tree.Delete(c.delete)
-		var ok bool
-		if ok = i.Advance(c.advance); ok != c.ok {
-			t.Errorf("Expected Advance() to return %v, found %v", c.ok, ok)
-			continue
-		}
-		if ok {
-			result := make([]int, 0)
-			result = append(result, i.Value().(int))
+			i := tree.Begin()
+			found := false
 			for i.Next() {
+				if i.Value() == c.delete {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				t.Fatalf("Failed to find %d", c.delete)
+			}
+			tree.Delete(c.delete)
+			var ok bool
+			if ok = i.Advance(c.advance); ok != c.ok {
+				t.Fatalf("Expected Advance() to return %v, found %v", c.ok, ok)
+			}
+			if ok {
+				result := make([]int, 0)
 				result = append(result, i.Value().(int))
-			}
-			if !equals(result, c.expected) {
-				t.Errorf("Expected %v, found %v with delete: %d advance: %d", c.expected, result, c.delete, c.advance)
-			}
+				for i.Next() {
+					result = append(result, i.Value().(int))
+				}
+				if !equals(result, c.expected) {
+					t.Errorf("Expected %v, found %v with delete: %d advance: %d", c.expected, result, c.delete, c.advance)
+				}
 
-		} else {
-			if i.Next() {
-				t.Errorf("Expected Next() to return false if Advance() returned false")
+			} else if i.Next() {
+				t.Error("Expected Next() to return false if Advance() returned false")
 			}
-		}
-
+		})
 	}
 }
 
@@ -337,7 +332,6 @@ func TestTreeIndexDeleteWhileIterating(t *testing.T) {
 	if !equals(result, expected) {
 		t.Errorf("Expected %v, found %v", expected, result)
 	}
-
 }
 
 func TestTreeIndexDeleteAndInsertWhileIterating(t *testing.T) {

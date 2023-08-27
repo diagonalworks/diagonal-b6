@@ -7,9 +7,6 @@ import (
 
 func TestByteArrays(t *testing.T) {
 	namesByID, _ := loadGranarySquareForTests(t)
-	if namesByID == nil {
-		return
-	}
 
 	names := make([]string, 0, len(namesByID))
 	for _, name := range namesByID {
@@ -26,16 +23,14 @@ func TestByteArrays(t *testing.T) {
 	builder.WriteHeader(&output, offset)
 	for i, name := range names {
 		if err := builder.WriteItem(&output, i, []byte(name)); err != nil {
-			t.Errorf("Expected no error from WriteItem(), found: %s", err)
-			return
+			t.Fatalf("Expected no error from WriteItem(), found: %s", err)
 		}
 	}
 
 	// Ensure the end offset really is beyond the map data by writing over it
 	var zeros [1024]byte
 	if _, err := output.WriteAt(zeros[0:], int64(offset+Offset(builder.Length()))); err != nil {
-		t.Errorf("Failed to pad output")
-		return
+		t.Fatal("Failed to pad output")
 	}
 
 	b := NewByteArrays(output.Bytes()[offset:])
@@ -48,9 +43,6 @@ func TestByteArrays(t *testing.T) {
 
 func TestByteArrayReservesAreCumulative(t *testing.T) {
 	namesByID, _ := loadGranarySquareForTests(t)
-	if namesByID == nil {
-		return
-	}
 
 	names := make([]string, 0, len(namesByID))
 	ids := make([]string, 0, len(namesByID))
@@ -70,8 +62,7 @@ func TestByteArrayReservesAreCumulative(t *testing.T) {
 	builder.WriteHeader(&output, offset)
 	for i := 0; i < len(namesByID); i++ {
 		if err := builder.WriteItem(&output, i, []byte(names[i]), []byte(ids[i])); err != nil {
-			t.Errorf("Expected no error from WriteItem(), found: %s", err)
-			return
+			t.Fatalf("Expected no error from WriteItem(), found: %s", err)
 		}
 	}
 

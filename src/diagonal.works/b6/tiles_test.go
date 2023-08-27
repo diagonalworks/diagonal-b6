@@ -134,8 +134,7 @@ func TestTileChildren(t *testing.T) {
 
 	expected := 4
 	if len(children) != expected {
-		t.Errorf("Expected %d children, found %d", expected, len(children))
-		return
+		t.Fatalf("Expected %d children, found %d", expected, len(children))
 	}
 
 	expectedTiles := []Tile{

@@ -13,8 +13,7 @@ const GranarySquarePBF = "../../../../data/tests/granary-square.osm.pbf"
 func TestParsePBF(t *testing.T) {
 	f, err := os.Open(GranarySquarePBF)
 	if err != nil {
-		t.Errorf("Failed to open test data: %s", err)
-		return
+		t.Fatalf("Open(GranarySquarePBF) failed with: %v", err)
 	}
 	nodes := make(map[NodeID]Node, 0)
 	ways := make(map[WayID]Way, 0)
@@ -31,7 +30,7 @@ func TestParsePBF(t *testing.T) {
 		return nil
 	}
 	if err := ReadPBF(f, emit); err != nil {
-		t.Errorf("Expected no error from ParsePBF, found: %s", err)
+		t.Fatalf("ReadPBF() failed with: %v", err)
 	}
 	// TODO: Find some interesting statistics about node, way and relation
 	// densities that can be used for aggregate testing, and are relatively
@@ -67,30 +66,29 @@ func TestParsePBF(t *testing.T) {
 	}
 
 	granarySquareID := RelationID(5735955)
-	if relation, ok := relations[granarySquareID]; ok {
-		found := false
-		fountainWayID := WayID(167318943)
-		for _, member := range relation.Members {
-			if member.ID == AnyID(fountainWayID) {
-				found = true
-				if member.Role != "inner" {
-					t.Errorf("Expected role inner, found %q", member.Role)
-				}
+	relation, ok := relations[granarySquareID]
+	if !ok {
+		t.Fatalf("Expected to find relation %d", granarySquareID)
+	}
+	found := false
+	fountainWayID := WayID(167318943)
+	for _, member := range relation.Members {
+		if member.ID == AnyID(fountainWayID) {
+			found = true
+			if member.Role != "inner" {
+				t.Errorf("Expected role inner, found %q", member.Role)
 			}
 		}
-		if !found {
-			t.Errorf("Expected to find way %d as member", fountainWayID)
-		}
-	} else {
-		t.Errorf("Expected to find relation %d", granarySquareID)
+	}
+	if !found {
+		t.Errorf("Expected to find way %d as member", fountainWayID)
 	}
 }
 
 func TestParsePBFSkippingTags(t *testing.T) {
 	f, err := os.Open(GranarySquarePBF)
 	if err != nil {
-		t.Errorf("Failed to open test data: %s", err)
-		return
+		t.Fatalf("Failed to open test data: %s", err)
 	}
 	emit := func(e Element, g int) error {
 		switch e := e.(type) {
@@ -110,15 +108,14 @@ func TestParsePBFSkippingTags(t *testing.T) {
 		return nil
 	}
 	if err := ReadPBFWithOptions(f, emit, ReadOptions{SkipTags: true}); err != nil {
-		t.Errorf("Expected no error from ParsePBF, found: %s", err)
+		t.Fatalf("ReadPBFWithOptions(ReadOptions{SkipTags: true}) failed with: %v", err)
 	}
 }
 
 func TestWritePBF(t *testing.T) {
 	f, err := os.Open(GranarySquarePBF)
 	if err != nil {
-		t.Errorf("Failed to open test data: %s", err)
-		return
+		t.Fatalf("Failed to open test data: %s", err)
 	}
 	defer f.Close()
 
@@ -129,8 +126,7 @@ func TestWritePBF(t *testing.T) {
 	var buffer bytes.Buffer
 	writer, err := NewWriter(&buffer)
 	if err != nil {
-		t.Errorf("Unexpected error creating Writer: %s", err)
-		return
+		t.Fatalf("NewWriter() failed with: %v", err)
 	}
 	rect := s2.EmptyRect()
 	emit := func(e Element) error {
@@ -149,12 +145,10 @@ func TestWritePBF(t *testing.T) {
 		return nil
 	}
 	if err := ReadPBF(f, emit); err != nil {
-		t.Errorf("Failed to write PBF: %s", err)
-		return
+		t.Fatalf("ReadPBF() failed with: %v", err)
 	}
 	if err := writer.Flush(); err != nil {
-		t.Errorf("writer.Flush() failed: %s", err)
-		return
+		t.Fatalf("writer.Flush() failed with: %v", err)
 	}
 
 	nodes := 0
@@ -185,8 +179,7 @@ func TestWritePBF(t *testing.T) {
 		return nil
 	}
 	if err := ReadPBF(&buffer, emit); err != nil {
-		t.Errorf("Failed to read back PBF: %s", err)
-		return
+		t.Fatalf("ReadPBF() failed with: %v", err)
 	}
 
 	if nodes != expectedNodes {
@@ -208,8 +201,7 @@ func TestWritePBFWithManyBlocks(t *testing.T) {
 	var buffer bytes.Buffer
 	writer, err := NewWriter(&buffer)
 	if err != nil {
-		t.Errorf("NewWriter(): %s", err)
-		return
+		t.Fatalf("NewWriter() failed with: %v", err)
 	}
 
 	node := &Node{
@@ -219,7 +211,7 @@ func TestWritePBFWithManyBlocks(t *testing.T) {
 			Lng: -0.1258180,
 		},
 		Tags: []Tag{
-			Tag{
+			{
 				Key:   "natural",
 				Value: "tree",
 			},
@@ -229,7 +221,7 @@ func TestWritePBFWithManyBlocks(t *testing.T) {
 		ID:    WayID(42),
 		Nodes: []NodeID{1},
 		Tags: []Tag{
-			Tag{
+			{
 				Key:   "highway",
 				Value: "service",
 			},
@@ -238,14 +230,14 @@ func TestWritePBFWithManyBlocks(t *testing.T) {
 	relation := &Relation{
 		ID: RelationID(42),
 		Members: []Member{
-			Member{
+			{
 				ID:   1,
 				Type: ElementTypeNode,
 				Role: "forward",
 			},
 		},
 		Tags: []Tag{
-			Tag{
+			{
 				Key:   "type",
 				Value: "route",
 			},
@@ -255,20 +247,17 @@ func TestWritePBFWithManyBlocks(t *testing.T) {
 	for run := 0; run < runs; run++ {
 		for i := 0; i < elementsPerRun; i++ {
 			if err := writer.WriteNode(node); err != nil {
-				t.Errorf("WriteNode(): %s", err)
-				return
+				t.Fatalf("WriteNode() failed with: %v", err)
 			}
 		}
 		for i := 0; i < elementsPerRun; i++ {
 			if err := writer.WriteWay(way); err != nil {
-				t.Errorf("WriteWay(): %s", err)
-				return
+				t.Fatalf("WriteWay() failed with: %v", err)
 			}
 		}
 		for i := 0; i < elementsPerRun; i++ {
 			if err := writer.WriteRelation(relation); err != nil {
-				t.Errorf("WriteRelation(): %s", err)
-				return
+				t.Fatalf("WriteRelation() failed with: %v", err)
 			}
 		}
 	}
@@ -304,8 +293,7 @@ func TestWritePBFWithManyBlocks(t *testing.T) {
 		return nil
 	}
 	if err := ReadPBF(&buffer, emit); err != nil {
-		t.Errorf("ReadPBF(): %s", err)
-		return
+		t.Fatalf("ReadPBF() failed with: %v", err)
 	}
 
 	if nodes != expectedElements {

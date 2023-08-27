@@ -79,13 +79,11 @@ func TestPathSegmentsWithSameNamespaceInMultipleBlocks(t *testing.T) {
 
 	w := NewWorld()
 	if err := mergeOSM(nodes, ways[0], []osm.Relation{}, nil, w); err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	if err := mergeOSM([]osm.Node{}, ways[1], []osm.Relation{}, w, w); err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-		return
+		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	id := ingest.FromOSMNodeID(nodes[0].ID)

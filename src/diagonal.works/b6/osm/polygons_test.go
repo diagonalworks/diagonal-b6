@@ -50,25 +50,21 @@ func readPBF(filename string) (nodeMap, WayMap, relationMap, error) {
 func TestBoundaryRelationToPolygon(t *testing.T) {
 	nodes, ways, relations, err := readPBF("../../../../data/tests/london-boundaries.osm.pbf")
 	if err != nil {
-		t.Errorf("Failed to read test data: %s", err)
-		return
+		t.Fatalf("Failed to read test data: %s", err)
 	}
 
 	const londonID RelationID = 65606
 	london, ok := relations[londonID]
 	if !ok {
-		t.Errorf("Failed to find feature for London")
-		return
+		t.Fatal("Failed to find feature for London")
 	}
 
 	polygon, err := RelationToPolygon(&london, nodes, ways)
 	if err != nil {
-		t.Errorf("Expected no error, found %v", err)
-		return
+		t.Fatalf("Expected no error, found %v", err)
 	}
 	if polygon == nil || polygon.NumLoops() != 2 {
-		t.Errorf("Expected a polygon with 2 loops")
-		return
+		t.Fatal("Expected a polygon with 2 loops")
 	}
 	expectedArea := 1500.0 * 1000.0 * 1000.0
 	actualArea := units.AreaToMeters2(polygon.Area())
@@ -161,7 +157,7 @@ func TestRelationToPolygonWithMultipleWaysThatDoNotClose(t *testing.T) {
 
 	polygon, err := RelationToPolygon(&relation, ns, ws)
 	if polygon != nil || err == nil {
-		t.Errorf("Expected error, found none")
+		t.Error("Expected error, found none")
 	}
 }
 
@@ -286,30 +282,27 @@ func TestRelationToPolygonWithASingleClosedWay(t *testing.T) {
 func TestSimplifyBoundaryPolygon(t *testing.T) {
 	nodes, ways, relations, err := readPBF("../../../../data/tests/london-boundaries.osm.pbf")
 	if err != nil {
-		t.Errorf("Failed to read test data: %s", err)
-		return
+		t.Fatalf("Failed to read test data: %s", err)
 	}
 
 	const londonID RelationID = 65606
 	london, ok := relations[londonID]
 	if !ok {
-		t.Errorf("Failed to find feature for London")
-		return
+		t.Fatal("Failed to find feature for London")
 	}
 
 	polygon, err := RelationToPolygon(&london, nodes, ways)
 	if err != nil {
-		t.Errorf("Failed to convert London to polygon: %s", err)
-		return
+		t.Fatalf("Failed to convert London to polygon: %s", err)
 	}
 
 	simplified := SimplifyPolygon(polygon, units.Meters2ToArea(100))
 	if polygon == nil {
-		t.Errorf("Expected a polygon, found nil")
+		t.Error("Expected a polygon, found nil")
 	}
 
 	if math.Abs(simplified.Area()-polygon.Area())/polygon.Area() > 0.01 {
-		t.Errorf("Expected areas to be similar")
+		t.Error("Expected areas to be similar")
 	}
 
 	for i := 0; i < polygon.NumLoops(); i++ {

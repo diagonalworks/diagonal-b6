@@ -14,7 +14,7 @@ import (
 func TestOverlayPathOnExistingWorld(t *testing.T) {
 	nodes, ways, relations, err := osm.ReadWholePBF(test.Data(test.GranarySquarePBF))
 	if err != nil {
-		t.Errorf("Failed to build granary square: %s", err)
+		t.Fatalf("Failed to build granary square: %s", err)
 	}
 
 	osmSource := ingest.MemoryOSMSource{Nodes: nodes, Ways: ways, Relations: relations}
@@ -23,8 +23,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 	options := Options{Goroutines: 2, PointsWorkOutputType: OutputTypeMemory}
 	index, err := BuildInMemory(source, &options)
 	if err != nil {
-		t.Errorf("Failed to build base index: %s", err)
-		return
+		t.Fatalf("Failed to build base index: %s", err)
 	}
 
 	path := ingest.NewPathFeature(2)
@@ -35,16 +34,15 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 
 	w, err := NewWorldFromData(index)
 	if err != nil {
-		t.Errorf("Failed to create base world: %s", err)
+		t.Fatalf("Failed to create base world: %s", err)
 	}
 	source = ingest.MemoryFeatureSource([]ingest.Feature{path})
 	overlay, err := BuildOverlayInMemory(source, &options, w)
 	if err != nil {
-		t.Errorf("Failed to build overlay index: %s", err)
-		return
+		t.Fatalf("Failed to build overlay index: %s", err)
 	}
 	if err := w.Merge(overlay); err != nil {
-		t.Errorf("Failed to merge overlay index: %s", err)
+		t.Fatalf("Failed to merge overlay index: %s", err)
 	}
 
 	highways := w.FindFeatures(b6.Keyed{"#highway"})
@@ -56,7 +54,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("Expected to find overlaid path via FindFeatures")
+		t.Error("Expected to find overlaid path via FindFeatures")
 	}
 
 	ps := w.FindPathsByPoint(ingest.FromOSMNodeID(camden.LightermanEntranceNode))
@@ -68,6 +66,6 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("Expected to find overlaid path via FindPathsByPoint")
+		t.Error("Expected to find overlaid path via FindPathsByPoint")
 	}
 }

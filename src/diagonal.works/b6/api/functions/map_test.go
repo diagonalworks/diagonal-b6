@@ -27,21 +27,19 @@ func TestMapWithDeadline(t *testing.T) {
 	deadline, _ := context.WithTimeout(context.Background(), 2000*time.Microsecond)
 	c, err := map_(&api.Context{Context: deadline}, input, f)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-	} else {
-		i := c.Begin()
-		for {
-			var ok bool
-			ok, err = i.Next()
-			if !ok || err != nil {
-				break
-			}
-			if i.Value().(int) != input.Values[seen]+1 {
-				t.Errorf("Expected %d, found %d at position %d", input.Values[seen]+1, i.Value().(int), seen)
-				return
-			}
-			seen++
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	i := c.Begin()
+	for {
+		var ok bool
+		ok, err = i.Next()
+		if !ok || err != nil {
+			break
 		}
+		if i.Value().(int) != input.Values[seen]+1 {
+			t.Fatalf("Expected %d, found %d at position %d", input.Values[seen]+1, i.Value().(int), seen)
+		}
+		seen++
 	}
 	if err != context.DeadlineExceeded {
 		t.Errorf("Expected %s, found %s", context.DeadlineExceeded, err)
@@ -49,7 +47,7 @@ func TestMapWithDeadline(t *testing.T) {
 }
 
 func TestMapParallelHappyPath(t *testing.T) {
-	// Use a prime input length, to guarnatee it's not divisible by the
+	// Use a prime input length, to guarantee it's not divisible by the
 	// number of cores
 	input := &api.ArrayIntIntCollection{Values: make([]int, 1031)}
 	r := rand.New(rand.NewSource(42))
@@ -66,23 +64,21 @@ func TestMapParallelHappyPath(t *testing.T) {
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
 	c, err := mapParallel(context, input, f)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-	} else {
-		i := c.Begin()
-		for {
-			ok, err := i.Next()
-			if err != nil {
-				t.Errorf("Expected no error, found: %s", err)
-				break
-			} else if !ok {
-				break
-			}
-			if i.Value().(int) != input.Values[seen]+1 {
-				t.Errorf("Expected %d, found %d at position %d", input.Values[seen]+1, i.Value().(int), seen)
-				break
-			}
-			seen++
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	i := c.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			t.Fatalf("Expected no error, found: %s", err)
 		}
+		if !ok {
+			break
+		}
+		if i.Value().(int) != input.Values[seen]+1 {
+			t.Fatalf("Expected %d, found %d at position %d", input.Values[seen]+1, i.Value().(int), seen)
+		}
+		seen++
 	}
 	if seen != len(input.Values) {
 		t.Errorf("Expected %d values, found %d", len(input.Values), seen)
@@ -111,21 +107,19 @@ func TestMapParallelWithFunctionReturningError(t *testing.T) {
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
 	c, err := mapParallel(context, input, f)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-	} else {
-		i := c.Begin()
-		for {
-			var ok bool
-			ok, err = i.Next()
-			if !ok || err != nil {
-				break
-			}
-			if i.Value().(int) != input.Values[seen]+1 {
-				t.Errorf("Expected %d, found %d at position %d", input.Values[seen]+1, i.Value().(int), seen)
-				return
-			}
-			seen++
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	i := c.Begin()
+	for {
+		var ok bool
+		ok, err = i.Next()
+		if !ok || err != nil {
+			break
 		}
+		if i.Value().(int) != input.Values[seen]+1 {
+			t.Fatalf("Expected %d, found %d at position %d", input.Values[seen]+1, i.Value().(int), seen)
+		}
+		seen++
 	}
 	if err != broken {
 		t.Errorf("Expected error %s, found %s", broken, err)
@@ -180,21 +174,19 @@ func TestMapParallelWithIteratorReturningError(t *testing.T) {
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
 	c, err := mapParallel(context, input, f)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-	} else {
-		i := c.Begin()
-		for {
-			var ok bool
-			ok, err = i.Next()
-			if !ok || err != nil {
-				break
-			}
-			if i.Value().(int) != values.Values[seen]+1 {
-				t.Errorf("Expected %d, found %d at position %d", values.Values[seen]+1, i.Value().(int), seen)
-				return
-			}
-			seen++
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	i := c.Begin()
+	for {
+		var ok bool
+		ok, err = i.Next()
+		if !ok || err != nil {
+			break
 		}
+		if i.Value().(int) != values.Values[seen]+1 {
+			t.Fatalf("Expected %d, found %d at position %d", values.Values[seen]+1, i.Value().(int), seen)
+		}
+		seen++
 	}
 	if err != broken {
 		t.Errorf("Expected error %s, found %s", broken, err)
@@ -220,21 +212,19 @@ func TestMapParallelWithDeadline(t *testing.T) {
 	ctx := &api.Context{Cores: cores, Context: deadline, VM: &api.VM{}}
 	c, err := mapParallel(ctx, input, f)
 	if err != nil {
-		t.Errorf("Expected no error, found: %s", err)
-	} else {
-		i := c.Begin()
-		for {
-			var ok bool
-			ok, err = i.Next()
-			if !ok || err != nil {
-				break
-			}
-			if i.Value().(int) != input.Values[seen]+1 {
-				t.Errorf("Expected %d, found %d at position %d", input.Values[seen]+1, i.Value().(int), seen)
-				return
-			}
-			seen++
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	i := c.Begin()
+	for {
+		var ok bool
+		ok, err = i.Next()
+		if !ok || err != nil {
+			break
 		}
+		if i.Value().(int) != input.Values[seen]+1 {
+			t.Fatalf("Expected %d, found %d at position %d", input.Values[seen]+1, i.Value().(int), seen)
+		}
+		seen++
 	}
 	if err != context.DeadlineExceeded {
 		t.Errorf("Expected %s, found %s", context.DeadlineExceeded, err)
