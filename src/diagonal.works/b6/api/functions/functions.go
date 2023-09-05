@@ -25,6 +25,7 @@ var functions = api.FunctionSymbols{
 	"sum-by-key":   sumByKey,
 	"take":         take,
 	"top":          top,
+	"histogram":    histogram,
 	// search
 	"find-feature":     findFeature,
 	"find-point":       findPointFeature,
