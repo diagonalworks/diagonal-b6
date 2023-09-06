@@ -632,6 +632,11 @@ func (a *ArrayTagCollection) Next() (bool, error) {
 var _ Collection = &ArrayTagCollection{}
 var _ Countable = &ArrayTagCollection{}
 
+type CollectionData struct {
+	Keys   []interface{}
+	Values []interface{}
+}
+
 func FillMap(c Collection, toFill interface{}) error {
 	f := reflect.ValueOf(toFill)
 	if f.Kind() != reflect.Map {

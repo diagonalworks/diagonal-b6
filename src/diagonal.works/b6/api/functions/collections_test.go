@@ -3,10 +3,12 @@ package functions
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 
 	"diagonal.works/b6/api"
 	"github.com/google/go-cmp/cmp"
+	"gopkg.in/yaml.v2"
 )
 
 func TestTake(t *testing.T) {
@@ -287,6 +289,39 @@ func TestHistogram(t *testing.T) {
 	}
 
 	if diff := cmp.Diff(&expected, buckets, cmp.AllowUnexported(api.ArrayAnyIntCollection{})); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
+	}
+}
+
+func TestExport(t *testing.T) {
+	filename := t.TempDir() + "export.yml"
+
+	c := api.ArrayAnyCollection{
+		Keys:   []interface{}{"1st", "2nd"},
+		Values: []interface{}{"makkoli", "soju"},
+	}
+
+	if err := export(&api.Context{}, &c, filename); err != nil {
+		t.Errorf("expected no error, found %s", err)
+	}
+
+	expected := api.CollectionData{
+		Keys:   []interface{}{"1st", "2nd"},
+		Values: []interface{}{"makkoli", "soju"},
+	}
+
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		t.Errorf("expected no error, found %s", err)
+	}
+
+	var r api.CollectionData
+	err = yaml.Unmarshal(content, &r)
+	if err != nil {
+		t.Errorf("expected no error, found %s", err)
+	}
+
+	if diff := cmp.Diff(expected, r); diff != "" {
 		t.Errorf("Found diff (-want, +got):\n%s", diff)
 	}
 }

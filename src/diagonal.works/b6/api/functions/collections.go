@@ -3,11 +3,13 @@ package functions
 import (
 	"container/heap"
 	"fmt"
+	"os"
 	"sort"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"github.com/golang/geo/s2"
+	"gopkg.in/yaml.v2"
 )
 
 func emptyPointCollection(context *api.Context) (api.StringPointCollection, error) {
@@ -473,7 +475,7 @@ func numerical(any interface{}) bool {
 	}
 }
 
-func histogram(co *api.Context, c api.Collection) (api.Collection, error) {
+func histogram(_ *api.Context, c api.Collection) (api.Collection, error) {
 	values, err := countvalues(c)
 	if err != nil {
 		return nil, err
@@ -515,4 +517,31 @@ func histogram(co *api.Context, c api.Collection) (api.Collection, error) {
 	}
 
 	return &h, nil
+}
+
+func export(_ *api.Context, c api.Collection, filename string) error {
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	enc := yaml.NewEncoder(file)
+
+	var data api.CollectionData
+	i := c.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			break
+		}
+
+		data.Keys = append(data.Keys, i.Key())
+		data.Values = append(data.Values, i.Value())
+	}
+
+	return enc.Encode(data)
 }
