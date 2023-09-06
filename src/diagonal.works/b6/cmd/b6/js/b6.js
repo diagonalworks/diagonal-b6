@@ -417,6 +417,7 @@ const BlockRenderers = {
     "string-result": renderStringResultBlock,
     "area": renderAreaBlock,
     "path": renderPathBlock,
+    "histogram": renderHistogram,
     "geojson-feature-collection": renderGeoJSONFeatureCollectionBlock,
     "geojson-feature": renderGeoJSONFeatureBlock,
     "title-count": renderTitleCountBlock,
@@ -834,6 +835,20 @@ function renderGeometryBlock(geometry, units, block, root, response, blocks) {
         {class: "", text: `${d3.format(".2f")(d.Dimension)}${units}`},
     ]);
     spans.join("span").attr("class", d => d.class).text(d => d.text);
+}
+
+function renderHistogram(block, root, response, blocks) {
+    block.classed("top", true);
+    block.classed("top-last", true);
+    const spans = block.selectAll("span").data(d => [
+        {class: "range-icon " + "index-" + d.Index, text: ""},
+        {class: "range", text: d.Range},
+        {class: "value", text: d.Value},
+        {class: "total", text: "/ " + d.Total},
+        {class: "value-bar", width: d.Value/d.Total*100.00 + "%"},
+    ]).join("span");
+    spans.attr("class", d => d.class).text(d => d.text);
+    spans.attr("class", d => d.class).filter(function(d){ return d.class == "value-bar"; }).append("div").attr("class", "filled").attr("style", d => `width: ${d.width}`);
 }
 
 function renderGeoJSONFeatureCollectionBlock(block, root, response, blocks, rendered) {

@@ -253,6 +253,7 @@ func (b *CollectionBlockJSON) Fill(c api.Collection, r *BlockResponseJSON, w b6.
 	if err != nil {
 		return err
 	}
+
 	if isFeatureCollection(keys, values) || isArrayCollection(keys, values) {
 		for i := range values {
 			if f, ok := values[i].(b6.Feature); ok {
@@ -463,6 +464,62 @@ func (b *CollectionKeyOrValueBlockJSON) BlockType() string {
 	return b.Type
 }
 
+type HistogramBlockJSON struct {
+	Type  string
+	Range string
+	Value int
+	Total int
+	Index string
+}
+
+func (b HistogramBlockJSON) BlockType() string {
+	return b.Type
+}
+
+func histogramBlocks(c *api.HistogramCollection) (BlocksJSON, error) {
+	keys, values, err := fillKeyValues(c, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var blocks []HistogramBlockJSON
+	total := 0
+	for i, key := range keys {
+		// TODO: Factor out w/ collection-key-or-value fill when we rework blocks
+		var bucketRange string
+		switch v := key.(type) {
+		case int:
+			bucketRange = strconv.Itoa(v)
+		case float64:
+			bucketRange = fmt.Sprintf("%f", v)
+		case string:
+			bucketRange = v
+		case b6.Tag:
+			bucketRange = api.UnparseTag(v)
+		default:
+			bucketRange = fmt.Sprintf("%+v", v)
+		}
+
+		block := HistogramBlockJSON{
+			Type:  "histogram",
+			Range: bucketRange,
+			Value: values[i].(int),
+			Index: strconv.Itoa(i),
+		}
+
+		total += values[i].(int)
+		blocks = append(blocks, block)
+	}
+
+	var ret BlocksJSON
+	for i := range blocks {
+		blocks[i].Total = total
+		ret = append(ret, blocks[i])
+	}
+
+	return ret, nil
+}
+
 type FloatBlockJSON struct {
 	Type  string
 	Value float64
@@ -671,7 +728,7 @@ func fillBlocksFromExpression(blocks BlocksJSON, node *pb.NodeProto, root bool) 
 func fillResponseFromResult(response *BlockResponseJSON, result interface{}, rules renderer.RenderRules, w b6.World) {
 	if i, ok := api.ToInt(result); ok {
 		response.Blocks = append(response.Blocks, IntBlockJSON{Type: "int-result", Value: i})
-	} else if f, ok := api.ToFloat(result); ok {
+	} else if f, err := api.ToFloat64(result); err == nil {
 		response.Blocks = append(response.Blocks, FloatBlockJSON{Type: "float-result", Value: f})
 	} else {
 		switch r := result.(type) {
@@ -692,6 +749,13 @@ func fillResponseFromResult(response *BlockResponseJSON, result interface{}, rul
 				response.Blocks = append(response.Blocks, StringBlockJSON{Type: "string-result", Value: q})
 			} else {
 				response.Blocks = append(response.Blocks, StringBlockJSON{Type: "string-result", Value: "query"})
+			}
+		case *api.HistogramCollection:
+			blocks, err := histogramBlocks(r)
+			if err != nil {
+				response.Blocks = fillBlocksFromError(response.Blocks, err)
+			} else {
+				response.Blocks = append(response.Blocks, blocks...)
 			}
 		case api.Collection:
 			block := CollectionBlockJSON{Type: "collection"}

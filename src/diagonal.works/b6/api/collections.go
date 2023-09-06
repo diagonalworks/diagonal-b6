@@ -596,6 +596,8 @@ func (a *ArrayAnyIntCollection) Next() (bool, error) {
 var _ Collection = &ArrayAnyIntCollection{}
 var _ Countable = &ArrayAnyIntCollection{}
 
+type HistogramCollection = ArrayAnyIntCollection
+
 type ArrayTagCollection struct {
 	Tags []b6.Tag
 	i    int

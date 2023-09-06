@@ -458,6 +458,71 @@ li div.collection-feature {
     align-items: center;
 }
 
+.block .block-container.histogram {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.block .block-container.histogram .range-icon {
+    flex: 0.1 0 auto;
+    border-radius: 5px;
+    margin-right: 5px;
+    border: 1.5px solid white;
+}
+
+.block .block-container.histogram .index-0 {
+    background-color: #F4D4E1;
+}
+
+.block .block-container.histogram .index-1 {
+    background-color: #EAB5C8;
+}
+
+.block .block-container.histogram .index-2 {
+    background-color: #E09BB5;
+}
+
+.block .block-container.histogram .index-3 {
+    background-color: #CF7C9D;
+}
+
+.block .block-container.histogram .index-4 {
+    background-color: #AD5577;
+}
+
+.block .block-container.histogram .range {
+    flex: 1 0;
+}
+
+.block .block-container.histogram .value {
+    flex: 0 1 auto;
+    padding-right: 5px;
+    padding-left: 5px;
+    color: #528DFF;
+}
+
+.block .block-container.histogram .total {
+    flex: 0 1 auto;
+    color: #8990AC;
+}
+
+.block .block-container.histogram .value-bar {
+    display: flex;
+    flex: 1 1 100%;
+    margin-top: 5px;
+    height: 5px;
+    border-radius: 2px;
+    background-color: #ECEFF8;
+    background-repeat: no-repeat;
+}
+
+.block .block-container.histogram .value-bar > .filled {
+    background-color: #4F5A7D;
+    border-radius: 2px;
+    width: 100%;
+}
+
 .block .placeholder {
     background: #f8d7d0;
 }

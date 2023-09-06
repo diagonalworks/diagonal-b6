@@ -250,3 +250,43 @@ func TestFlatten(t *testing.T) {
 		t.Errorf("Found diff (-want, +got):\n%s", diff)
 	}
 }
+
+func TestHistogram(t *testing.T) {
+	any := api.ArrayAnyCollection{
+		Keys:   []interface{}{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"},
+		Values: []interface{}{"heath", "fold", "heath", "fold", "epping", "fold", "epping", "briki", "epping", "briki", "fold", "unfold", "heath", "fold", "epping", "home"},
+	}
+
+	buckets, err := histogram(&api.Context{}, &any)
+	if err != nil {
+		t.Errorf("Expected no error, found %q", err)
+	}
+
+	expected := api.ArrayAnyIntCollection{
+		Keys:   []interface{}{"fold", "epping", "heath", "briki", "other"},
+		Values: []int{5, 4, 3, 2, 2},
+	}
+
+	if diff := cmp.Diff(&expected, buckets, cmp.AllowUnexported(api.ArrayAnyIntCollection{})); diff != "" {
+		t.Errorf("Expected no error, found %q", err)
+	}
+
+	numbers := api.ArrayAnyCollection{
+		Keys:   []interface{}{"1", "2", "3", "4", "5", "6", "7"},
+		Values: []interface{}{"1", "1", "1", "1", "1", "1", "2"},
+	}
+
+	buckets, err = histogram(&api.Context{}, &numbers)
+	if err != nil {
+		t.Errorf("Expected an error, found none")
+	}
+
+	expected = api.ArrayAnyIntCollection{
+		Keys:   []interface{}{"1", "2"},
+		Values: []int{6, 1},
+	}
+
+	if diff := cmp.Diff(&expected, buckets, cmp.AllowUnexported(api.ArrayAnyIntCollection{})); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
+	}
+}
