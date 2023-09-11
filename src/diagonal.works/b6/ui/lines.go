@@ -101,12 +101,14 @@ func isArrayCollection(keys []interface{}, values []interface{}) bool {
 }
 
 func fillMatchingFunctionSymbols(symbols []string, result interface{}, functions api.FunctionSymbols) []string {
-	t := reflect.TypeOf(result)
-	for symbol, f := range functions {
-		tt := reflect.TypeOf(f)
-		if tt.Kind() == reflect.Func && tt.NumIn() > 1 {
-			if api.CanUseAsArg(t, tt.In(1)) {
-				symbols = append(symbols, symbol)
+	if result != nil {
+		t := reflect.TypeOf(result)
+		for symbol, f := range functions {
+			tt := reflect.TypeOf(f)
+			if tt.Kind() == reflect.Func && tt.NumIn() > 1 {
+				if api.CanUseAsArg(t, tt.In(1)) {
+					symbols = append(symbols, symbol)
+				}
 			}
 		}
 	}
@@ -696,6 +698,12 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 			}},
 		}
 		p.Stack.Substacks = append(p.Stack.Substacks, substack)
+	}
+	switch r := result.(type) {
+	case b6.Geometry:
+		response.Proto.MapCenter = b6.NewPointProtoFromS2Point(b6.Centroid(r))
+	case geojson.GeoJSON:
+		response.Proto.MapCenter = b6.NewPointProtoFromS2Point(r.Centroid().ToS2Point())
 	}
 	return nil
 }

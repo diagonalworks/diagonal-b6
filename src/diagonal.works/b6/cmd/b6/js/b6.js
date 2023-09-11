@@ -922,6 +922,13 @@ class UI {
             this.redrawHighlights();
             this.needHighlightRedraw = false;            
         }
+        const center = response.proto.mapCenter;
+        if (center) {
+            this.map.getView().animate({
+                center: fromLonLat([center.lngE7 / 1e7, center.latE7 / 1e7]),
+                duration: 500,
+            });
+        }
     }
 
     handleDragStart(event, root) {

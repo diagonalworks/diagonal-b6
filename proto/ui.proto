@@ -3,6 +3,7 @@ syntax = "proto3";
 package ui;
 
 import "api.proto";
+import "geometry.proto";
 
 option go_package = "diagonal.works/b6/proto";
 
@@ -16,6 +17,7 @@ message UIResponseProto {
     api.NodeProto node = 2;
     FeatureIDsProto highlighted = 3;
     repeated string queryLayers = 4;
+    geometry.PointProto mapCenter = 5;
 }
 
 message StackProto {

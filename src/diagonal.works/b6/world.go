@@ -404,20 +404,19 @@ type PhysicalFeature interface {
 	Geometry
 }
 
-func Center(feature PhysicalFeature) s2.Point {
-	// TODO: Cache the values in precomputed indicies?
-	switch feature := feature.(type) {
-	case PointFeature:
-		return feature.Point()
-	case PathFeature:
-		return s2.Point{Vector: feature.Polyline().Centroid().Normalize()}
-	case AreaFeature:
-		if feature.Len() == 1 {
-			return s2.Point{Vector: feature.Polygon(0).Loop(0).Centroid().Normalize()}
+func Centroid(geometry Geometry) s2.Point {
+	switch g := geometry.(type) {
+	case Point:
+		return g.Point()
+	case Path:
+		return s2.Point{Vector: g.Polyline().Centroid().Normalize()}
+	case Area:
+		if g.Len() == 1 {
+			return s2.Point{Vector: g.Polygon(0).Loop(0).Centroid().Normalize()}
 		} else {
 			query := s2.NewConvexHullQuery()
-			for i := 0; i < feature.Len(); i++ {
-				query.AddPolygon(feature.Polygon(i))
+			for i := 0; i < g.Len(); i++ {
+				query.AddPolygon(g.Polygon(i))
 			}
 			return s2.Point{Vector: query.ConvexHull().Centroid().Normalize()}
 		}
