@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
@@ -126,9 +127,42 @@ func ToFloat64(v interface{}) (float64, error) {
 		return float64(v), nil
 	case float32:
 		return float64(v), nil
+	case string:
+		return strconv.ParseFloat(v, 64)
 	}
 
 	return 0.0, fmt.Errorf("can't cast %T to float64", v)
+}
+
+func ToUint64(v interface{}) (uint64, error) {
+	switch v := v.(type) {
+	case uint64:
+		return v, nil
+	case int:
+		return uint64(v), nil
+	case int8:
+		return uint64(v), nil
+	case int16:
+		return uint64(v), nil
+	case int32:
+		return uint64(v), nil
+	case int64:
+		return uint64(v), nil
+	case uint8:
+		return uint64(v), nil
+	case uint16:
+		return uint64(v), nil
+	case uint32:
+		return uint64(v), nil
+	case float32:
+		return uint64(v), nil
+	case float64:
+		return uint64(v), nil
+	case string:
+		return strconv.ParseUint(v, 10, 64)
+	}
+
+	return 0.0, fmt.Errorf("can't cast %T to uint64", v)
 }
 
 type Number interface {
