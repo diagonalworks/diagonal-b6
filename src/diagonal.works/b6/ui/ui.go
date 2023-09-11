@@ -41,9 +41,7 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	}))
 
 	root.Handle("/bootstrap", http.HandlerFunc(serveBootstrap))
-
-	blocks := NewBlockHandler(options.World, options.Cores)
-	root.Handle("/block", blocks)
+	root.Handle("/ui", NewUIHandler(options.World, options.Cores))
 
 	return nil
 }

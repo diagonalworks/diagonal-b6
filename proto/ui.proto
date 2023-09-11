@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package ui;
+
+import "api.proto";
+
+option go_package = "diagonal.works/b6/proto";
+
+message UIRequestProto {
+    api.NodeProto node = 1;
+    string expression = 2;
+}
+
+message UIResponseProto {
+    StackProto stack = 1;
+    api.NodeProto node = 2;
+    FeatureIDsProto highlighted = 3;
+    repeated string queryLayers = 4;
+}
+
+message StackProto {
+    repeated SubstackProto substacks = 1;
+}
+
+message SubstackProto {
+    repeated LineProto lines = 1;
+    bool collapsable = 2;
+}
+
+message LineProto {
+    oneof line {
+        ValueLineProto value = 1;
+        ValuePairLineProto valuePair = 2;
+        ExpressionLineProto expression = 3;
+        TagsLineProto tags = 4;
+        HistogramBarLineProto histogramBar = 5;
+        ShellLineProto shell = 6;
+        ErrorLineProto error = 7;
+    }
+}
+
+message ValueLineProto {
+    AtomProto atom = 1;
+    api.NodeProto clickExpression = 2;
+}
+
+message ValuePairLineProto {
+    ClickableAtomProto first = 1;
+    ClickableAtomProto second = 2;
+}
+
+message ClickableAtomProto {
+    AtomProto atom = 1;
+    api.NodeProto clickExpression = 2;
+}
+
+message ExpressionLineProto {
+    string expression = 1;
+}
+
+message TagsLineProto {
+    repeated TagAtomProto tags = 1;
+}
+
+message TagAtomProto {
+    string prefix = 1;
+    string key = 2;
+    string value = 3;
+    api.NodeProto clickExpression = 4;
+}
+
+message HistogramBarLineProto {
+    string range = 1;
+    int32 value = 2;
+    int32 total = 3;
+    int32 index = 4;
+}
+
+message ShellLineProto {
+    repeated string functions = 1;
+}
+
+message ErrorLineProto {
+    string error = 1;
+}
+
+message AtomProto {
+    oneof atom {
+        string value = 1;
+        LabelledIconProto labelledIcon = 2;
+        string download = 3;
+    }
+}
+
+message LabelledIconProto {
+    string icon = 1;
+    string label = 2;    
+}
+
+message FeatureIDsProto {
+    repeated string namespaces = 1;
+    repeated IDsProto ids = 2;
+}
+
+message IDsProto {
+    repeated uint64 ids = 1;
+}
+
