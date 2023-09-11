@@ -34,15 +34,19 @@ func FindInputs(filename string, zipped bool, recurse bool, inputs []string) ([]
 			f.Close()
 		}
 	} else if s.IsDir() {
-		entries, err := os.ReadDir(filename)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %s", filename, err)
-		}
-		for _, entry := range entries {
-			var err error
-			inputs, err = FindInputs(path.Join(filename, entry.Name()), zipped, recurse, inputs)
+		if strings.HasSuffix(filename, ".gdb") {
+			inputs = append(inputs, filename)
+		} else {
+			entries, err := os.ReadDir(filename)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%s: %s", filename, err)
+			}
+			for _, entry := range entries {
+				var err error
+				inputs, err = FindInputs(path.Join(filename, entry.Name()), zipped, recurse, inputs)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 	} else if isIngestable(filename) {

@@ -54,7 +54,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("Expected to find overlaid path via FindFeatures")
+		t.Fatal("Expected to find overlaid path via FindFeatures")
 	}
 
 	ps := w.FindPathsByPoint(ingest.FromOSMNodeID(camden.LightermanEntranceNode))

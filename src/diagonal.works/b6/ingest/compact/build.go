@@ -44,6 +44,7 @@ type Output interface {
 	Read() (ReadCloserAt, error)
 	ReadWrite() (ReadWriteCloserAt, error)
 	Bytes() ([]byte, io.Closer, error)
+	Len() (int64, error)
 }
 
 type FileOutput string
@@ -78,6 +79,14 @@ func (f FileOutput) Bytes() ([]byte, io.Closer, error) {
 	return m.Data, m, err
 }
 
+func (f FileOutput) Len() (int64, error) {
+	info, err := os.Stat(string(f))
+	if err != nil {
+		return -1, err
+	}
+	return info.Size(), nil
+}
+
 type MemoryOutput struct {
 	encoding.Buffer
 }
@@ -96,6 +105,10 @@ func (o *MemoryOutput) ReadWrite() (ReadWriteCloserAt, error) {
 
 func (o *MemoryOutput) Bytes() ([]byte, io.Closer, error) {
 	return o.Buffer.Bytes(), &o.Buffer, nil
+}
+
+func (o *MemoryOutput) Len() (int64, error) {
+	return int64(o.Buffer.Len()), nil
 }
 
 type OutputType int
@@ -954,10 +967,21 @@ func writeIndex(w io.WriterAt, offset encoding.Offset, tokens *TokenMapEncoder, 
 	return offset, err
 }
 
-func buildIndex(byID *FeaturesByID, nt *NamespaceTable, offset encoding.Offset, output Output) error {
+func buildIndex(byID *FeaturesByID, output Output) error {
 	log.Printf("buildIndex: add")
+	size, err := output.Len()
+	if err != nil {
+		return err
+	}
+	log.Printf("offset: %d", size)
+	offset := encoding.Offset(size)
+
 	index := make(map[string]*FeatureIDs)
-	allTokens, err := fillIndex(byID, nt, index)
+	var nt NamespaceTable
+	if err := byID.FillNamespaceTable(&nt); err != nil {
+		return err
+	}
+	allTokens, err := fillIndex(byID, &nt, index)
 	if err != nil {
 		return err
 	}
@@ -1021,13 +1045,13 @@ func summarise(source ingest.FeatureSource, o *Options) (*Summary, *encoding.Str
 	return summary, sb, nil
 }
 
-func build(source ingest.FeatureSource, base b6.FeaturesByID, o *Options, output Output) error {
+func buildIndexWithFeaturesOnly(source ingest.FeatureSource, base b6.FeaturesByID, o *Options, output Output) (*FeaturesByID, io.Closer, error) {
 	var header Header
 	header.Magic = HeaderMagic
 
 	w, err := output.Write()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	var buffer [HeaderLength]byte
@@ -1036,12 +1060,12 @@ func build(source ingest.FeatureSource, base b6.FeaturesByID, o *Options, output
 	if n, err := w.WriteAt(buffer[0:n], int64(header.VersionOffset)); err == nil {
 		header.HeaderProtoOffset = header.VersionOffset.Add(n)
 	} else {
-		return err
+		return nil, nil, err
 	}
 
 	summary, sb, err := summarise(source, o)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	var nt NamespaceTable
@@ -1054,30 +1078,33 @@ func build(source ingest.FeatureSource, base b6.FeaturesByID, o *Options, output
 	log.Printf("build: write strings")
 	header.BlockOffset, err = sb.Write(w, header.StringsOffset)
 
-	indexOffset, err := buildFeatures(source, o, sb, &nt, summary, &header, base, w)
+	_, err = buildFeatures(source, o, sb, &nt, summary, &header, base, w)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	n = header.Marshal(buffer[0:])
 	if _, err := w.WriteAt(buffer[0:n], 0); err != nil {
-		return err
+		return nil, nil, err
 	}
 	w.Close()
 
 	data, closer, err := output.Bytes()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	defer closer.Close()
 	byID, err := NewFeaturesByIDFromData(data, base)
-	if err != nil {
-		return fmt.Errorf("Failed to create FeaturesByID: %s", err)
+	return byID, closer, err
+}
+
+func build(source ingest.FeatureSource, base b6.FeaturesByID, o *Options, output Output) error {
+	byID, closer, err := buildIndexWithFeaturesOnly(source, base, o, output)
+	if err == nil {
+		defer closer.Close()
+		runtime.GC()
+		err = buildIndex(byID, output)
 	}
-
-	byID.LogSummary()
-
-	return buildIndex(byID, &nt, indexOffset, output)
+	return err
 }
 
 func Build(source ingest.FeatureSource, o *Options) error {

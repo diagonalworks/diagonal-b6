@@ -184,12 +184,12 @@ type batchTransformer struct {
 	tags        [][]b6.Tag
 }
 
-func (b *batchTransformer) Transform(g gdal.Geometry, originalID string, b6ID b6.FeatureID, tags []b6.Tag, ctx context.Context) error {
+func (b *batchTransformer) TakeOwnershipAndTransform(g gdal.Geometry, originalID string, b6ID b6.FeatureID, tags []b6.Tag, ctx context.Context) error {
 	if b.geometries.IsNull() {
 		b.geometries = gdal.Create(gdal.GT_GeometryCollection)
 		b.geometries.SetSpatialReference(b.SpatialReference)
 	}
-	b.geometries.AddGeometry(g)
+	b.geometries.AddGeometryDirectly(g)
 	b.originalIDs = append(b.originalIDs, originalID)
 	b.b6IDs = append(b.b6IDs, b6ID)
 	b.tags = append(b.tags, tags)
@@ -249,6 +249,7 @@ type CopyTag struct {
 
 type Source struct {
 	Filename      string
+	Layer         string
 	Bounds        s2.Rect
 	Namespace     b6.Namespace
 	IDField       string
@@ -416,9 +417,26 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 	defer source.Destroy()
 	parallelised, wait := ingest.ParalleliseEmit(emit, options.Goroutines, ctx)
 
-	featureIndex := 0
+	names := make([]string, 0)
+	layers := make([]gdal.Layer, 0)
 	for i := 0; i < source.LayerCount(); i++ {
 		layer := source.LayerByIndex(i)
+		if s.Layer == "" || layer.Name() == s.Layer {
+			layers = append(layers, layer)
+		}
+		names = append(names, layer.Name())
+	}
+	if len(layers) == 0 {
+		if s.Layer != "" {
+			return fmt.Errorf("No layer named %s, found %s", s.Layer, strings.Join(names, ","))
+		} else {
+			return fmt.Errorf("Input contains no readable layers")
+		}
+	}
+
+	featureIndex := 0
+	for i, layer := range layers {
+		log.Printf("layer: %s", layer.Name())
 		b := batchTransformer{
 			Bounds:           s.Bounds,
 			AddTags:          s.AddTags,
@@ -428,6 +446,11 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 			SpatialReference: layer.SpatialReference(),
 			FeatureIndex:     featureIndex,
 		}
+
+		if shouldSkip(layer.Type(), &options) {
+			continue
+		}
+
 		definition := layer.Definition()
 		copyTags, copyID, err := s.makeCopyFields(definition)
 		if err != nil {
@@ -438,14 +461,15 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 			if feature == nil {
 				break
 			}
-			if shouldSkip(feature.Geometry().Type(), &options) {
+			geometry := feature.StealGeometry()
+			if shouldSkip(geometry.Type(), &options) {
 				continue
 			}
 			var originalID string
 			var b6ID b6.FeatureID
 			if originalID, err = copyID.Value(feature); err == nil {
 				var t b6.FeatureType
-				if t, err = geometryTypeToFeatureType(feature.Geometry().Type()); err == nil {
+				if t, err = geometryTypeToFeatureType(geometry.Type()); err == nil {
 					b6ID, err = s.IDStrategy(originalID, i, t, s.Namespace)
 				}
 			}
@@ -456,9 +480,10 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 			if err != nil {
 				return err
 			}
-			if err := b.Transform(feature.Geometry(), originalID, b6ID, tags, ctx); err != nil {
+			if err := b.TakeOwnershipAndTransform(geometry, originalID, b6ID, tags, ctx); err != nil {
 				return err
 			}
+			feature.Destroy()
 		}
 		b.Flush(ctx)
 		featureIndex = b.FeatureIndex

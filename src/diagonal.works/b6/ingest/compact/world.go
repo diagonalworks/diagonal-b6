@@ -192,6 +192,28 @@ func (f *FeaturesByID) Namespaces() []b6.Namespace {
 	return sorted
 }
 
+func (f *FeaturesByID) FillNamespaceTable(nt *NamespaceTable) error {
+	if nt.ToEncoded == nil {
+		nt.ToEncoded = make(map[b6.Namespace]Namespace)
+	}
+	for _, fbs := range f.features {
+		for _, fb := range fbs {
+			for i, ns := range fb.NamespaceTable.FromEncoded {
+				for len(nt.FromEncoded) < i+1 {
+					nt.FromEncoded = append(nt.FromEncoded, b6.NamespaceInvalid)
+				}
+				if nt.FromEncoded[i] == b6.NamespaceInvalid {
+					nt.FromEncoded[i] = ns
+					nt.ToEncoded[ns] = Namespace(i)
+				} else if nt.FromEncoded[i] != ns {
+					return fmt.Errorf("duplicate namespace for namespace %d: %s vs %s", i, nt.FromEncoded[i], ns)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 type marshalledPoint struct {
 	id      b6.PointID
 	point   MarshalledPoint
