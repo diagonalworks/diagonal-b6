@@ -582,10 +582,11 @@ class ValuePairLineRenderer {
     update(line, renderedResponse, ui) {
         const values = [line.datum().valuePair.first, line.datum().valuePair.second];
 
-        const atoms = line.selectAll("span").data(values.map(d => d.atom)).join("span");
-        renderFromProto(atoms, "atom", renderedResponse, ui)
+        let atoms = line.selectAll("span").data(values).join("span");
+        renderFromProto(atoms.datum(d => d.atom), "atom", renderedResponse, ui)
 
-        const clickables = line.selectAll("span").data(values.map(d => d.clickExpression)).filter(d => d);
+        atoms = line.selectAll("span").data(values);
+        const clickables = atoms.datum(d => d.clickExpression).filter(d => d);
         clickables.classed("clickable", true);
         clickables.on("click", (e, d) => {
             if (d) {
@@ -651,9 +652,9 @@ class HistogramBarLineRenderer {
         bar.append("div").attr("class", "fill");
     }
 
-    update(line) {
+    update(line, renderedResponse, ui) {
         line.select(".range-icon").attr("class", d => `range-icon index-${d.histogramBar.index ? d.histogramBar.index : 0}`);
-        line.select(".range").text(d => d.histogramBar.range);
+        renderFromProto(line.select(".range").datum(d => d.histogramBar.range), "atom", renderedResponse, ui);
         line.select(".value").text(d => d.histogramBar.value);
         line.select(".total").text(d => `/ ${d.histogramBar.total}`);
         line.select(".fill").attr("style", d => `width: ${d.histogramBar.value/d.histogramBar.total*100.00}%;`);
@@ -779,15 +780,17 @@ function renderFromProto(targets, uiElement, renderedResponse, ui) {
         if (!renderer) {
             throw new Error(`Can't render ${uiElement} of type ${uiElementType}`);
         }
-        const class_ = this.getAttribute("class");
-        if (!class_ || class_.indexOf(renderer.getCSSClass()) < 0) {
+
+        const target = d3.select(this);
+        if (!target.classed(renderer.getCSSClass)) {
             while (this.firstChild) {
                 this.removeChild(this.firstChild);
             }
-            this.setAttribute("class", uiElement + " " + renderer.getCSSClass());
-            renderer.enter(d3.select(this));
-        }
-        renderer.update(d3.select(this), renderedResponse, ui);
+            target.classed(uiElement, true);
+            target.classed(renderer.getCSSClass(), true);
+            renderer.enter(target);
+       }
+       renderer.update(target, renderedResponse, ui);
     }
     targets.each(f);
 }
