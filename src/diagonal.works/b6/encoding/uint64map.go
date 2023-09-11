@@ -137,6 +137,8 @@ func (b *Buffer) Close() error { return nil }
 
 func (b *Buffer) Bytes() []byte { return b.buffer }
 
+func (b *Buffer) Len() int { return len(b.buffer) }
+
 type Uint64MapBuilder struct {
 	Layout   Uint64MapLayout
 	buckets  *ByteArraysBuilder

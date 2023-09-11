@@ -38,7 +38,7 @@ func TestWorld(t *testing.T) {
 		w := NewWorld()
 		return w, mergeOSM(nodes, ways, relations, nil, w)
 	}
-	ingest.ValidateWorld("Region", build, t)
+	ingest.ValidateWorld("Compact", build, t)
 }
 
 func TestPathSegmentsWithSameNamespaceInMultipleBlocks(t *testing.T) {

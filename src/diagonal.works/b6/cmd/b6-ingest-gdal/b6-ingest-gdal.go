@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	_ "net/http/pprof"
 	"os"
 	"runtime"
@@ -31,6 +32,7 @@ var idStrategies = map[string]gdal.IDStrategy{
 func main() {
 	inputFlag := flag.String("input", "", "Input shapefile")
 	outputFlag := flag.String("output", "", "Output index")
+	layerFlag := flag.String("layer", "", "Name of layer to ingest, empty for all")
 	namespaceFlag := flag.String("namespace", "", "Namespace for features")
 	idFlag := flag.String("id", "", "Field to use for ID generation")
 	idStategyFlag := flag.String("id-strategy", "", "Strategy to use for ID generation")
@@ -109,8 +111,10 @@ func main() {
 
 	source := make(ingest.MergedFeatureSource, len(inputs))
 	for i, ii := range inputs {
+		log.Printf("input: %s", ii)
 		source[i] = &gdal.Source{
 			Filename:      ii,
+			Layer:         *layerFlag,
 			Namespace:     b6.Namespace(*namespaceFlag),
 			IDField:       *idFlag,
 			IDStrategy:    strategy,
