@@ -70,7 +70,7 @@ message TagAtomProto {
 }
 
 message HistogramBarLineProto {
-    string range = 1;
+    AtomProto range = 1;
     int32 value = 2;
     int32 total = 3;
     int32 index = 4;

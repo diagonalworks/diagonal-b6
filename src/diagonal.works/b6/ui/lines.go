@@ -369,24 +369,10 @@ func fillSubstackFromHistogram(substack *pb.SubstackProto, c *api.HistogramColle
 	total := 0
 	begin := len(substack.Lines)
 	for i, key := range keys {
-		// TODO: Factor out w/ collection-key-or-value fill when we rework blocks
-		var bucketRange string
-		switch v := key.(type) {
-		case int:
-			bucketRange = strconv.Itoa(v)
-		case float64:
-			bucketRange = fmt.Sprintf("%f", v)
-		case string:
-			bucketRange = v
-		case b6.Tag:
-			bucketRange = api.UnparseTag(v)
-		default:
-			bucketRange = fmt.Sprintf("%+v", v)
-		}
 		substack.Lines = append(substack.Lines, &pb.LineProto{
 			Line: &pb.LineProto_HistogramBar{
 				HistogramBar: &pb.HistogramBarLineProto{
-					Range: bucketRange,
+					Range: atomFromValue(key),
 					Value: int32(values[i].(int)),
 					Index: int32(i),
 				},
