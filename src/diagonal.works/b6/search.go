@@ -242,7 +242,7 @@ func (u Union) Compile(index FeatureIndex, w World) search.Iterator {
 
 func (u Union) Matches(f Feature, w World) bool {
 	for _, q := range u {
-		if !q.Matches(f, w) {
+		if q.Matches(f, w) {
 			return true
 		}
 	}
