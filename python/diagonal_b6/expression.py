@@ -164,6 +164,7 @@ register_literal_from_proto("nilValue", lambda v: None)
 register_literal_from_proto("intValue", lambda v: v)
 register_literal_from_proto("floatValue", lambda v: v)
 register_literal_from_proto("stringValue", lambda v: v)
+register_literal_from_proto("boolValue", lambda v: v)
 register_literal_from_proto("tagValue", lambda v: (v.key, v.value))
 register_literal_from_proto("geoJSONValue", lambda v: json.loads(gzip.decompress(v)))
 
