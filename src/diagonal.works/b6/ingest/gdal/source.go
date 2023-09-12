@@ -176,7 +176,6 @@ type batchTransformer struct {
 	Goroutines       int
 	Emit             ingest.Emit
 	SpatialReference gdal.SpatialReference
-	FeatureIndex     int
 
 	geometries  gdal.Geometry
 	originalIDs []string
@@ -225,8 +224,7 @@ func (b *batchTransformer) Flush(ctx context.Context) error {
 				f.AddTag(tag)
 			}
 			b.JoinTags.AddTags(b.originalIDs[i], f)
-			err = b.Emit(f, b.FeatureIndex%b.Goroutines)
-			b.FeatureIndex++
+			err = b.Emit(f, i%b.Goroutines)
 		}
 		if err != nil {
 			return err
@@ -435,7 +433,7 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 	}
 
 	featureIndex := 0
-	for i, layer := range layers {
+	for _, layer := range layers {
 		log.Printf("layer: %s", layer.Name())
 		b := batchTransformer{
 			Bounds:           s.Bounds,
@@ -444,7 +442,6 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 			Goroutines:       options.Goroutines,
 			Emit:             parallelised,
 			SpatialReference: layer.SpatialReference(),
-			FeatureIndex:     featureIndex,
 		}
 
 		if shouldSkip(layer.Type(), &options) {
@@ -470,7 +467,7 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 			if originalID, err = copyID.Value(feature); err == nil {
 				var t b6.FeatureType
 				if t, err = geometryTypeToFeatureType(geometry.Type()); err == nil {
-					b6ID, err = s.IDStrategy(originalID, i, t, s.Namespace)
+					b6ID, err = s.IDStrategy(originalID, featureIndex, t, s.Namespace)
 				}
 			}
 			if err != nil {
@@ -484,9 +481,9 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 				return err
 			}
 			feature.Destroy()
+			featureIndex++
 		}
 		b.Flush(ctx)
-		featureIndex = b.FeatureIndex
 	}
 	return wait()
 }
