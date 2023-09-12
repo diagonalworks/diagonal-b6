@@ -101,6 +101,8 @@ func collectionForType(t reflect.Type) Collection {
 		return Collection{Name: n, Key: "FeatureID", Value: "int"}
 	case "AnyFloatCollection":
 		return Collection{Name: n, Key: "any", Value: "float64"}
+	case "AnyAreaCollection":
+		return Collection{Name: n, Key: "any", Value: "Area"}
 	case "AnyGeometryCollection":
 		return Collection{Name: n, Key: "any", Value: "Geometry"}
 	case "AnyRenderableCollection":

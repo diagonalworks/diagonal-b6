@@ -12,6 +12,23 @@ func ll(context *api.Context, lat float64, lng float64) (b6.Point, error) {
 	return b6.PointFromLatLng(s2.LatLngFromDegrees(lat, lng)), nil
 }
 
+func collectAreas(context *api.Context, c api.AnyAreaCollection) (b6.Area, error) {
+	i := c.Begin()
+	ps := make([]*s2.Polygon, 0)
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		if area, ok := i.Value().(b6.Area); ok {
+			ps = append(ps, area.MultiPolygon()...)
+		}
+	}
+	return b6.AreaFromS2Polygons(ps), nil
+}
+
 func distanceMeters(context *api.Context, a b6.Point, b b6.Point) (float64, error) {
 	return b6.AngleToMeters(a.Point().Distance(b.Point())), nil
 }

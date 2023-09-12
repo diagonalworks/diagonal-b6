@@ -321,6 +321,13 @@ class B6Test(unittest.TestCase):
         _, snapped_area = self.connection(areas)[0]
         self.assertGreater(snapped_area, original_area)
 
+    def test_collect_areas(self):
+        collected_areas = self.connection(b6.collect_areas(b6.find_areas(b6.keyed("#building"))).area())
+        summed_areas = 0
+        for _, area in self.connection(b6.find_areas(b6.keyed("#building")).map(lambda b: b.area())):
+            summed_areas += area        
+        self.assertLess((collected_areas - summed_areas)/summed_areas, 0.0001)
+
     def test_distance_to_point_meters(self):
         distance = self.connection(b6.find_path(b6.osm_way_id(377974549)).distance_to_point_meters(b6.ll(51.53586, -0.12564)))
         self.assertGreater(distance, 24.0)
