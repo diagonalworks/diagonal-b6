@@ -70,6 +70,7 @@ type FeatureIDStringCollection Collection
 type FeatureIDTagCollection Collection
 type FeatureIDFeatureIDCollection Collection
 type FeatureIDStringStringPairCollection Collection
+type AnyAreaCollection Collection
 type AnyFloatCollection Collection
 type AnyGeometryCollection Collection
 type AnyRenderableCollection Collection

@@ -99,6 +99,7 @@ var functions = api.FunctionSymbols{
 	"building-access": buildingAccess,
 	// geometry
 	"ll":                       ll,
+	"collect-areas":            collectAreas,
 	"distance-meters":          distanceMeters,
 	"distance-to-point-meters": distanceToPointMeters,
 	"interpolate":              interpolate,
