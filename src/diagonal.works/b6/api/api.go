@@ -144,128 +144,44 @@ type FloatNumber float64
 func (FloatNumber) isNumber() {}
 
 func Less(a interface{}, b interface{}) (bool, error) {
-	switch a := a.(type) {
-	case int:
-		if b, ok := b.(int); ok {
-			return a < b, nil
+	if aa, ok := ToInt(a); ok {
+		if bb, ok := ToInt(b); ok {
+			return aa < bb, nil
 		}
-	case int8:
-		if b, ok := b.(int8); ok {
-			return a < b, nil
+	} else if aa, err := ToFloat64(a); err == nil {
+		if bb, err := ToFloat64(b); err == nil {
+			return aa < bb, nil
 		}
-	case int16:
-		if b, ok := b.(int16); ok {
-			return a < b, nil
+	} else if aa, ok := a.(string); ok {
+		if bb, ok := b.(string); ok {
+			return aa < bb, nil
 		}
-	case int32:
-		if b, ok := b.(int32); ok {
-			return a < b, nil
-		}
-	case int64:
-		if b, ok := b.(int64); ok {
-			return a < b, nil
-		}
-	case uint:
-		if b, ok := b.(uint); ok {
-			return a < b, nil
-		}
-	case uint8:
-		if b, ok := b.(uint8); ok {
-			return a < b, nil
-		}
-	case uint16:
-		if b, ok := b.(uint16); ok {
-			return a < b, nil
-		}
-	case uint32:
-		if b, ok := b.(uint32); ok {
-			return a < b, nil
-		}
-	case uint64:
-		if b, ok := b.(uint64); ok {
-			return a < b, nil
-		}
-	case float32:
-		if b, ok := b.(float32); ok {
-			return a < b, nil
-		}
-	case float64:
-		if b, ok := b.(float64); ok {
-			return a < b, nil
-		}
-	case string:
-		if b, ok := b.(string); ok {
-			return a < b, nil
-		}
-	case b6.FeatureID:
-		if b, ok := b.(b6.FeatureID); ok {
-			return a.Less(b), nil
+	} else if aa, ok := a.(b6.FeatureID); ok {
+		if bb, ok := b.(b6.FeatureID); ok {
+			return aa.Less(bb), nil
 		}
 	}
-
 	return false, fmt.Errorf("can't compare %T with %T", a, b)
 }
 
 func Equal(a interface{}, b interface{}) (bool, error) {
-	switch a := a.(type) {
-	case int:
-		if b, ok := b.(int); ok {
-			return a == b, nil
+	if aa, ok := ToInt(a); ok {
+		if bb, ok := ToInt(b); ok {
+			return aa == bb, nil
 		}
-	case int8:
-		if b, ok := b.(int8); ok {
-			return a == b, nil
+	} else if aa, err := ToFloat64(a); err == nil {
+		if bb, err := ToFloat64(b); err == nil {
+			return aa == bb, nil
 		}
-	case int16:
-		if b, ok := b.(int16); ok {
-			return a == b, nil
+	} else if aa, ok := a.(string); ok {
+		if bb, ok := b.(string); ok {
+			return aa == bb, nil
 		}
-	case int32:
-		if b, ok := b.(int32); ok {
-			return a == b, nil
-		}
-	case int64:
-		if b, ok := b.(int64); ok {
-			return a == b, nil
-		}
-	case uint:
-		if b, ok := b.(uint); ok {
-			return a == b, nil
-		}
-	case uint8:
-		if b, ok := b.(uint8); ok {
-			return a == b, nil
-		}
-	case uint16:
-		if b, ok := b.(uint16); ok {
-			return a == b, nil
-		}
-	case uint32:
-		if b, ok := b.(uint32); ok {
-			return a == b, nil
-		}
-	case uint64:
-		if b, ok := b.(uint64); ok {
-			return a == b, nil
-		}
-	case float32:
-		if b, ok := b.(float32); ok {
-			return a == b, nil
-		}
-	case float64:
-		if b, ok := b.(float64); ok {
-			return a == b, nil
-		}
-	case string:
-		if b, ok := b.(string); ok {
-			return a == b, nil
-		}
-	case b6.FeatureID:
-		if b, ok := b.(b6.FeatureID); ok {
-			return a == b, nil
+	} else if aa, ok := a.(b6.FeatureID); ok {
+		if bb, ok := b.(b6.FeatureID); ok {
+			return aa == bb, nil
 		}
 	}
-
 	return false, fmt.Errorf("can't compare %T with %T", a, b)
 }
 
