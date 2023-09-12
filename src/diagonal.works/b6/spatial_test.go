@@ -6,6 +6,9 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+// Additional tests that depend on real data are in
+// ingest/spatial_test.go
+
 func TestCapIntersectsPolygon(t *testing.T) {
 	f := func(cap s2.Cap, p *s2.Polygon) bool {
 		return CapIntersectsPolygon(cap, p)
