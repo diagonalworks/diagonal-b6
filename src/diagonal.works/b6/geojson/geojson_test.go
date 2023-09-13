@@ -65,6 +65,17 @@ func TestMarshalPolygon(t *testing.T) {
 	if !s2.OrderedCCW(points[0], points[1], points[2], center) {
 		t.Errorf("Expected exterior loop to be orderer counterclockwise, per RFC7946")
 	}
+
+	polygons := j.ToS2Polygons()
+	if len(polygons) == 1 || polygons[0].NumLoops() != 1 {
+		loop := polygons[0].Loop(0)
+		if loop.Vertex(0) == loop.Vertex(loop.NumVertices()-1) {
+			t.Errorf("Expected s2 loop to be implicity closed")
+		}
+	} else {
+		t.Errorf("Expected 1 polygon with 1 loop, found %d polygon", len(polygons))
+	}
+
 }
 
 func TestMarshalPolygonWithHole(t *testing.T) {

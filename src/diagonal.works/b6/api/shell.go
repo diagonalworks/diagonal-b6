@@ -950,6 +950,8 @@ func unparseNode(n *pb.NodeProto, top bool) (string, bool) {
 		}
 	case *pb.NodeProto_Literal:
 		return unparseLiteral(n.Literal)
+	case *pb.NodeProto_Lambda_:
+		return unparseLambda(n.Lambda_)
 	}
 	return "", false
 }
@@ -1022,5 +1024,18 @@ func unparseLiteral(l *pb.LiteralNodeProto) (string, bool) {
 		}
 	default:
 		return fmt.Sprintf("(broken-value \"%v\")", l), true
+	}
+}
+
+func unparseLambda(l *pb.LambdaNodeProto) (string, bool) {
+	body, ok := unparseNode(l.Node, true)
+	if !ok {
+		return "", false
+	}
+	if len(l.Args) > 0 {
+		args := strings.Join(l.Args, ", ")
+		return fmt.Sprintf("{%s -> %s}", args, body), true
+	} else {
+		return fmt.Sprintf("{-> %s}", body), true
 	}
 }

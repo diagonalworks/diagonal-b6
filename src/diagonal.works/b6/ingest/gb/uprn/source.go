@@ -96,13 +96,14 @@ func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines
 	}
 
 	uprns := 0
-	joins := 0
+	joined := 0
+	joined_tags := 0
 	var err error
 	for {
 		var row []string
 		row, err = r.Read()
 		if err == io.EOF {
-			log.Printf("uprns: %d joined: %d", uprns, joins)
+			log.Printf("uprns: %d joined: %d joined tags: %d", uprns, joined, joined_tags)
 			return nil
 		} else if err != nil {
 			return err
@@ -125,7 +126,8 @@ func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines
 		ps[slot].Tags = ps[slot].Tags[0:1] // Keep #place=uprn
 		s.JoinTags.AddTags(row[columns[0]], &ps[slot])
 		if len(ps[slot].Tags) > 1 {
-			joins++
+			joined++
+			joined_tags += len(ps[slot].Tags) - 1
 		}
 		if err := emit(&ps[slot], slot%goroutines); err != nil {
 			return err

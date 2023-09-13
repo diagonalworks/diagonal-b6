@@ -23,7 +23,8 @@ func NewJoinTagsFromPatterns(patterns []string, c context.Context) (JoinTags, er
 		fs, err := filesystem.New(c, pattern)
 		if err == nil {
 			defer fs.Close()
-			matches, err := fs.List(c, pattern)
+			var matches []string
+			matches, err = fs.List(c, pattern)
 			if err == nil {
 				for _, match := range matches {
 					if err = j.fillFromFile(match, fs, c); err != nil {
@@ -56,6 +57,7 @@ func (j JoinTags) fillFromFile(filename string, fs filesystem.Interface, c conte
 	defer f.Close()
 
 	r := csv.NewReader(f)
+	r.FieldsPerRecord = -1
 	header, err := r.Read()
 	if err != nil {
 		return err
@@ -71,10 +73,12 @@ func (j JoinTags) fillFromFile(filename string, fs filesystem.Interface, c conte
 		} else if err != nil {
 			return err
 		}
-		if len(row) == len(header) {
+		if len(row) <= len(header) {
 			tags := j[row[0]]
-			for i := 1; i < len(row); i++ {
-				tags = append(tags, b6.Tag{Key: header[i], Value: row[i]})
+			for i := 1; i < len(row) && i < len(header); i++ {
+				if len(row[i]) > 0 {
+					tags = append(tags, b6.Tag{Key: header[i], Value: row[i]})
+				}
 			}
 			j[row[0]] = tags
 		}

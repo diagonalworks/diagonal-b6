@@ -24,9 +24,10 @@ type Wait func() error
 // behaviour allows a caller to use a buffer of 2*goroutines features to avoid
 // dynamic allocation.
 func ParalleliseEmit(emit Emit, goroutines int, ctx context.Context) (Emit, Wait) {
-	if goroutines < 1 {
-		goroutines = 1
+	if goroutines <= 1 {
+		return emit, func() error { return nil }
 	}
+
 	c := make([]chan Feature, goroutines)
 	for i := range c {
 		c[i] = make(chan Feature, 0)

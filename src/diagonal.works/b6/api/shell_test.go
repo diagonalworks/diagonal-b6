@@ -978,6 +978,7 @@ func TestUnparseExpression(t *testing.T) {
 		"[#amenity=cafe | #amenity=restaurant]",
 		"area (find-feature /a/427900370)",
 		"find-feature /a/427900370 | area",
+		"find [#place=uprn] | filter {u -> gt (all-tags u | count) 1}",
 	}
 	for _, test := range tests {
 		if node, err := ParseExpression(test); err == nil {

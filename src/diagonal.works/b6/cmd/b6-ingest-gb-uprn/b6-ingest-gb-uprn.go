@@ -69,6 +69,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
+		log.Printf("join: %d rows", len(source.JoinTags))
 	}
 
 	var toIndex ingest.FeatureSource

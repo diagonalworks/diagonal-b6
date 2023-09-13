@@ -208,7 +208,11 @@ func (l LineString) ToS2Polyline() s2.Polyline {
 }
 
 func (l LineString) ToS2Loop() *s2.Loop {
-	return s2.LoopFromPoints(l.ToS2Polyline())
+	points := []s2.Point(l.ToS2Polyline())
+	if len(points) > 1 && points[0] == points[len(points)-1] {
+		points = points[0 : len(points)-1]
+	}
+	return s2.LoopFromPoints(points)
 }
 
 func (l LineString) Centroid() Point {
