@@ -133,13 +133,15 @@ func importGeoJSONFile(c *api.Context, filename string, namespace string) (inges
 func geojsonAreas(c *api.Context, g geojson.GeoJSON) (api.StringAreaCollection, error) {
 	polygons := g.ToS2Polygons()
 	collection := &api.ArrayAreaCollection{
-		Areas: make([]b6.Area, len(polygons)),
+		Areas: make([]b6.Area, 0),
 	}
-	for i, p := range polygons {
-		if p.NumLoops() > 0 && p.Loop(0).Area() > 2.0*math.Pi {
-			p.Invert()
+	for _, p := range polygons {
+		if err := p.Validate(); err == nil {
+			if p.NumLoops() > 0 && p.Loop(0).Area() > 2.0*math.Pi {
+				p.Invert()
+			}
+			collection.Areas = append(collection.Areas, b6.AreaFromS2Polygon(p))
 		}
-		collection.Areas[i] = b6.AreaFromS2Polygon(p)
 	}
 	return collection, nil
 }
