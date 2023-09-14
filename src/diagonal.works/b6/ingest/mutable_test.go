@@ -1256,7 +1256,7 @@ func TestWatchModifiedTags(t *testing.T) {
 	}
 	cancel()
 	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "no"})
-	expected := ModifiedTag{caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"}}
+	expected := ModifiedTag{ID: caravan.FeatureID(), Tag: b6.Tag{Key: "wheelchair", Value: "yes"}, Deleted: false}
 	if m != expected {
 		t.Errorf("Expected %v, found %v", expected, m)
 	}
@@ -1450,6 +1450,77 @@ func TestModifyingFeaturesWhileQueryingPanics(t *testing.T) {
 	i := overlay.FindFeatures(b6.All{})
 	for i.Next() {
 		overlay.AddPoint(caravan)
+	}
+}
+
+func TestEachFeatureWithAPathDependingOnTheBaseWorld(t *testing.T) {
+	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
+	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+
+	dishoom := osmPoint(3501612811, 51.536454, -0.126826)
+	dishoom.AddTag(b6.Tag{Key: "name", Value: "Dishoom"})
+
+	base := NewBasicMutableWorld()
+	if err := addFeatures(base, caravan, dishoom); err != nil {
+		t.Fatal(err)
+	}
+
+	footway := osmPath(558345071, []*PointFeature{caravan, dishoom})
+	footway.AddTag(b6.Tag{Key: "highway", Value: "footway"})
+	m := NewMutableOverlayWorld(base)
+	if err := m.AddPath(footway); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	found := false
+	each := func(f b6.Feature, goroutine int) error {
+		if f.FeatureID() == footway.FeatureID() {
+			found = true
+			path := f.(b6.PathFeature)
+			for i := 0; i < path.Len(); i++ {
+				// Ensure features are wrapped correctly to be able to
+				// lookup points in the base world.
+				path.Point(i)
+			}
+		}
+		return nil
+	}
+	m.EachFeature(each, &b6.EachFeatureOptions{})
+	if !found {
+		t.Errorf("Expected to find added path")
+	}
+}
+
+func TestEachFeatureWithModifiedTags(t *testing.T) {
+	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
+	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "cuisine", Value: "coffee_shop"})
+
+	base := NewBasicMutableWorld()
+	if err := addFeatures(base, caravan); err != nil {
+		t.Fatal(err)
+	}
+
+	m := NewMutableOverlayWorld(base)
+	m.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	m.RemoveTag(caravan.FeatureID(), "cuisine")
+
+	found := false
+	each := func(f b6.Feature, goroutine int) error {
+		if f.FeatureID() == caravan.FeatureID() {
+			found = true
+			if wheelchair := f.Get("wheelchair"); wheelchair.Value != "yes" {
+				t.Errorf("Expected to find wheelchair=yes, found %s", wheelchair)
+			}
+			if cuisine := f.Get("cuisine"); cuisine.IsValid() {
+				t.Errorf("Expected to cuisine to be removed, found %s", cuisine)
+			}
+		}
+		return nil
+	}
+	m.EachFeature(each, &b6.EachFeatureOptions{})
+	if !found {
+		t.Errorf("Expected to find caravan")
 	}
 }
 

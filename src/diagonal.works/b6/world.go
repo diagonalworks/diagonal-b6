@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/geometry"
@@ -38,6 +39,103 @@ func (t Tag) FloatValue() (float64, bool) {
 		return f, true
 	}
 	return 0.0, false
+}
+
+func (t Tag) String() string {
+	return escapeTagPart(t.Key) + "=" + escapeTagPart(t.Value)
+}
+
+func (t *Tag) FromString(s string) {
+	var rest string
+	t.Key, rest = consumeTagPart(s)
+	t.Value, _ = consumeTagPart(rest)
+}
+
+func (t Tag) MarshalYAML() (interface{}, error) {
+	return t.String(), nil
+}
+
+func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	t.FromString(s)
+	return nil
+}
+
+func escapeTagPart(s string) string {
+	if tagPartNeedsQuotes(s) {
+		escaped := "\""
+		for _, r := range s {
+			switch r {
+			case '\\':
+				escaped += "\\\\"
+			case '"':
+				escaped += "\\\""
+			default:
+				escaped += string(r)
+			}
+		}
+		return escaped + "\""
+	}
+	return s
+}
+
+func tagPartNeedsQuotes(s string) bool {
+	for _, r := range s {
+		if unicode.IsSpace(r) || r == '=' || r == '"' {
+			return true
+		}
+	}
+	return false
+}
+
+func consumeTagPart(s string) (string, string) {
+	quoted := false
+	backslashed := false
+	part := ""
+	done := false
+	for i, r := range s {
+		if i == 0 && r == '"' {
+			quoted = true
+		} else {
+			if quoted {
+				if backslashed {
+					switch r {
+					case '\\':
+						part += "\\"
+					case '"':
+						part += "\""
+					}
+					backslashed = false
+				} else {
+					switch r {
+					case '\\':
+						backslashed = true
+					case '"':
+						done = true
+						quoted = false
+					default:
+						part += string(r)
+					}
+				}
+			} else {
+				if r == '=' {
+					return part, s[i+len("="):]
+				} else if !done && !unicode.IsSpace(r) {
+					part += string(r)
+				}
+			}
+		}
+	}
+	return part, ""
+}
+
+func TagFromString(s string) Tag {
+	t := Tag{}
+	t.FromString(s)
+	return t
 }
 
 func InvalidTag() Tag {
@@ -750,6 +848,20 @@ type EachFeatureOptions struct {
 	SkipAreas     bool
 	SkipRelations bool
 	Goroutines    int
+}
+
+func (e *EachFeatureOptions) IsSkipped(t FeatureType) bool {
+	switch t {
+	case FeatureTypePoint:
+		return e.SkipPoints
+	case FeatureTypePath:
+		return e.SkipPaths
+	case FeatureTypeArea:
+		return e.SkipAreas
+	case FeatureTypeRelation:
+		return e.SkipRelations
+	}
+	return false
 }
 
 type World interface {

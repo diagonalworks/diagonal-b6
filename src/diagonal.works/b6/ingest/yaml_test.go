@@ -1,0 +1,138 @@
+package ingest
+
+import (
+	"bytes"
+	"fmt"
+	"testing"
+
+	"diagonal.works/b6"
+	"diagonal.works/b6/osm"
+	"diagonal.works/b6/test"
+	"github.com/golang/geo/s2"
+	"github.com/google/go-cmp/cmp"
+)
+
+func TestExportModificationsAsYAML(t *testing.T) {
+	nodes, ways, relations, err := osm.ReadWholePBF(test.Data(test.GranarySquarePBF))
+
+	caravan := osm.Node{
+		ID:       osm.NodeID(2300722786),
+		Location: osm.LatLng{Lat: 51.5357237, Lng: -0.1253052},
+		Tags:     []osm.Tag{{Key: "name", Value: "Caravan"}, {Key: "cuisine", Value: "coffee_shop"}},
+	}
+	nodes = append(nodes, caravan)
+
+	dishoom := osm.Node{
+		ID:       osm.NodeID(3501612811),
+		Location: osm.LatLng{Lat: 51.536454, Lng: -0.126826},
+		Tags:     []osm.Tag{{Key: "name", Value: "Dishoom"}},
+	}
+	nodes = append(nodes, caravan)
+
+	o := BuildOptions{Cores: 2}
+	base, err := BuildWorldFromOSM(nodes, ways, relations, &o)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	m := NewMutableOverlayWorld(base)
+	m.AddTag(FromOSMNodeID(caravan.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	m.RemoveTag(FromOSMNodeID(caravan.ID).FeatureID(), "cuisine")
+	m.AddTag(FromOSMNodeID(dishoom.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: "no"})
+
+	ifo := NewPointFeature(FromOSMNodeID(osm.NodeID(3868276529)), s2.LatLngFromDegrees(51.5321749, -0.1250181))
+	ifo.AddTag(b6.Tag{Key: "name", Value: "Identified Flying Object"})
+	ifo.AddTag(b6.Tag{Key: "tourism", Value: "attraction"})
+	if err := m.AddPoint(ifo); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	footway := NewPathFeature(3)
+	footway.PathID = b6.MakePathID(b6.Namespace("diagonal.works/test"), 1)
+	footway.SetPointID(0, FromOSMNodeID(caravan.ID))
+	footway.SetLatLng(1, s2.LatLngFromDegrees(51.535632, -0.126046))
+	footway.SetPointID(2, FromOSMNodeID(dishoom.ID))
+	footway.AddTag(b6.Tag{Key: "highway", Value: "footway"})
+	if err := m.AddPath(footway); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	boundary := NewPathFeature(4)
+	boundary.PathID = b6.MakePathID(b6.Namespace("diagonal.works/test"), 2)
+	boundary.SetPointID(0, FromOSMNodeID(caravan.ID))
+	boundary.SetPointID(1, FromOSMNodeID(dishoom.ID))
+	boundary.SetLatLng(2, s2.LatLngFromDegrees(51.535632, -0.126046))
+	boundary.SetPointID(3, FromOSMNodeID(caravan.ID))
+	boundary.AddTag(b6.Tag{Key: "highway", Value: "footway"})
+	if err := m.AddPath(boundary); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	square := NewAreaFeature(1)
+	square.AreaID = b6.MakeAreaID(b6.Namespace("diagonal.works/test"), 3)
+	square.SetPathIDs(0, []b6.PathID{boundary.PathID})
+	if err := m.AddArea(square); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	ranking := NewRelationFeature(2)
+	ranking.RelationID = b6.MakeRelationID(b6.Namespace("diagonal.works/test"), 4)
+	ranking.Members = []b6.RelationMember{
+		{ID: FromOSMNodeID(caravan.ID).FeatureID(), Role: "good"},
+		{ID: FromOSMNodeID(dishoom.ID).FeatureID(), Role: "best"},
+	}
+	ranking.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
+	if err := m.AddRelation(ranking); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	var buffer bytes.Buffer
+	if err := ExportChangesAsYAML(m, &buffer); err != nil {
+		t.Errorf("Expected no error, found: %s", err)
+	}
+
+	ingested := NewMutableOverlayWorld(base)
+	change := IngestChangesFromYAML(&buffer)
+	if _, err := change.Apply(ingested); err != nil {
+		t.Fatalf("Expected no error from ingest, found: %s", err)
+	}
+
+	compare := func(f b6.Feature, goroutine int) error {
+		if diff := DiffFeatures(f, ingested.FindFeatureByID(f.FeatureID())); diff != "" {
+			t.Error(diff)
+		}
+		return nil
+	}
+	if err := m.EachFeature(compare, &b6.EachFeatureOptions{}); err != nil {
+		t.Errorf("Expected no error in comparison, found: %s", err)
+	}
+}
+
+func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
+	if actual == nil {
+		return fmt.Sprintf("- %s\n+ nil", expected.FeatureID())
+	}
+	if expected.FeatureID().Type != actual.FeatureID().Type {
+		return fmt.Sprintf("-  %s\n+ %s", expected.FeatureID().Type, actual.FeatureID().Type)
+	}
+	diffs := ""
+	switch e := expected.(type) {
+	case b6.PhysicalFeature:
+		a := actual.(b6.PhysicalFeature)
+		coverer := s2.RegionCoverer{MaxLevel: 18, MaxCells: 10} // 18 implies 3cm accuracy
+		diffs += cmp.Diff(e.Covering(coverer), a.Covering(coverer))
+	case b6.RelationFeature:
+		a := actual.(b6.RelationFeature)
+		if e.Len() != a.Len() {
+			return fmt.Sprintf("- %d members\n+ %d members", e.Len(), a.Len())
+		}
+		diffs := ""
+		for i := 0; i < a.Len(); i++ {
+			if diff := cmp.Diff(e.Member(i), a.Member(i)); diff != "" {
+				diffs += diff
+			}
+		}
+	}
+	diffs += cmp.Diff(expected.AllTags(), actual.AllTags())
+	return diffs
+}
