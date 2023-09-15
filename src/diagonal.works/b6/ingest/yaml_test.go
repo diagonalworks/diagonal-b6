@@ -97,14 +97,29 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		t.Fatalf("Expected no error from ingest, found: %s", err)
 	}
 
+	compared := map[b6.FeatureID]bool{
+		ifo.FeatureID():      false,
+		footway.FeatureID():  false,
+		boundary.FeatureID(): false,
+		square.FeatureID():   false,
+		ranking.FeatureID():  false,
+	}
+
 	compare := func(f b6.Feature, goroutine int) error {
 		if diff := DiffFeatures(f, ingested.FindFeatureByID(f.FeatureID())); diff != "" {
 			t.Error(diff)
 		}
+		compared[f.FeatureID()] = true
 		return nil
 	}
 	if err := m.EachFeature(compare, &b6.EachFeatureOptions{}); err != nil {
 		t.Errorf("Expected no error in comparison, found: %s", err)
+	}
+
+	for id, seen := range compared {
+		if !seen {
+			t.Errorf("Expected to compared %s", id)
+		}
 	}
 }
 
@@ -116,22 +131,20 @@ func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
 		return fmt.Sprintf("-  %s\n+ %s", expected.FeatureID().Type, actual.FeatureID().Type)
 	}
 	diffs := ""
-	switch e := expected.(type) {
-	case b6.PhysicalFeature:
-		a := actual.(b6.PhysicalFeature)
-		coverer := s2.RegionCoverer{MaxLevel: 18, MaxCells: 10} // 18 implies 3cm accuracy
-		diffs += cmp.Diff(e.Covering(coverer), a.Covering(coverer))
-	case b6.RelationFeature:
+	if e, ok := expected.(b6.RelationFeature); ok {
 		a := actual.(b6.RelationFeature)
 		if e.Len() != a.Len() {
 			return fmt.Sprintf("- %d members\n+ %d members", e.Len(), a.Len())
 		}
-		diffs := ""
 		for i := 0; i < a.Len(); i++ {
 			if diff := cmp.Diff(e.Member(i), a.Member(i)); diff != "" {
 				diffs += diff
 			}
 		}
+	} else if e, ok := expected.(b6.PhysicalFeature); ok {
+		a := actual.(b6.PhysicalFeature)
+		coverer := s2.RegionCoverer{MaxLevel: 18, MaxCells: 10} // 18 implies 3cm accuracy
+		diffs += cmp.Diff(e.Covering(coverer), a.Covering(coverer))
 	}
 	diffs += cmp.Diff(expected.AllTags(), actual.AllTags())
 	return diffs
