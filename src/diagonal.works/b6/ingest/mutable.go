@@ -11,7 +11,21 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/search"
 	"github.com/golang/geo/s2"
+	"golang.org/x/sync/errgroup"
 )
+
+type MutableWorld interface {
+	b6.World
+	AddSimplePoint(id b6.PointID, ll s2.LatLng) error
+	AddPoint(p *PointFeature) error
+	AddPath(p *PathFeature) error
+	AddArea(a *AreaFeature) error
+	AddRelation(a *RelationFeature) error
+	AddTag(id b6.FeatureID, tag b6.Tag) error
+	RemoveTag(id b6.FeatureID, key string) error
+	EachModifiedFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error
+	EachModifiedTag(each func(f ModifiedTag, goroutine int) error, options *b6.EachFeatureOptions) error
+}
 
 func sortAndDiffTokens(before []string, after []string) ([]string, []string) {
 	added := make([]string, 0, len(after))
@@ -42,17 +56,6 @@ func sortAndDiffTokens(before []string, after []string) ([]string, []string) {
 		b++
 	}
 	return added, removed
-}
-
-type MutableWorld interface {
-	b6.World
-	AddSimplePoint(id b6.PointID, ll s2.LatLng) error
-	AddPoint(p *PointFeature) error
-	AddPath(p *PathFeature) error
-	AddArea(a *AreaFeature) error
-	AddRelation(a *RelationFeature) error
-	AddTag(id b6.FeatureID, tag b6.Tag) error
-	RemoveTag(id b6.FeatureID, key string) error
 }
 
 type ReadOnlyWorld struct {
@@ -93,6 +96,14 @@ func (r ReadOnlyWorld) Traverse(id b6.PointID) b6.Segments {
 
 func (r ReadOnlyWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
 	return r.World.EachFeature(each, options)
+}
+
+func (r ReadOnlyWorld) EachModifiedFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
+	return nil
+}
+
+func (r ReadOnlyWorld) EachModifiedTag(each func(f ModifiedTag, goroutine int) error, options *b6.EachFeatureOptions) error {
+	return nil
 }
 
 func (r ReadOnlyWorld) Tokens() []string {
@@ -217,6 +228,15 @@ func (m *BasicMutableWorld) Traverse(origin b6.PointID) b6.Segments {
 
 func (m *BasicMutableWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
 	return m.byID.EachFeature(each, options)
+}
+
+func (m *BasicMutableWorld) EachModifiedFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
+	return m.EachFeature(each, options)
+}
+
+func (m *BasicMutableWorld) EachModifiedTag(each func(f ModifiedTag, goroutine int) error, options *b6.EachFeatureOptions) error {
+	// there are no modified tags, are we store every feature
+	return nil
 }
 
 func (m *BasicMutableWorld) Tokens() []string {
@@ -469,8 +489,9 @@ func (m *modifiedTagsRelation) Get(key string) b6.Tag {
 }
 
 type ModifiedTag struct {
-	ID  b6.FeatureID
-	Tag b6.Tag
+	ID      b6.FeatureID
+	Tag     b6.Tag
+	Deleted bool
 }
 
 type ModifiedTags map[b6.FeatureID]map[string]modifiedTag
@@ -556,6 +577,41 @@ func (m ModifiedTags) WrapRelations(relations b6.RelationFeatures) b6.RelationFe
 
 func (m ModifiedTags) WrapSegments(segments b6.Segments) b6.Segments {
 	return &modifiedTagsSegments{segments: segments, m: m}
+}
+
+func (m ModifiedTags) EachModifiedTag(each func(f ModifiedTag, goroutine int) error, options *b6.EachFeatureOptions) error {
+	goroutines := options.Goroutines
+	if goroutines < 1 {
+		goroutines = 1
+	}
+
+	c := make(chan ModifiedTag, goroutines)
+	g, gc := errgroup.WithContext(context.Background())
+	for i := 0; i < goroutines; i++ {
+		g.Go(func() error {
+			for tag := range c {
+				if err := each(tag, i); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+
+done:
+	for id, tags := range m {
+		for key, value := range tags {
+			if !options.IsSkipped(id.Type) {
+				select {
+				case <-gc.Done():
+					break done
+				case c <- ModifiedTag{ID: id, Tag: b6.Tag{Key: key, Value: value.value}, Deleted: value.deleted}:
+				}
+			}
+		}
+	}
+	close(c)
+	return g.Wait()
 }
 
 type modifiedTagsFeatures struct {
@@ -799,16 +855,30 @@ func (m *MutableOverlayWorld) Traverse(id b6.PointID) b6.Segments {
 }
 
 func (m *MutableOverlayWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
-	if err := m.byID.EachFeature(each, options); err != nil {
+	wrap := func(feature Feature, goroutine int) error {
+		return each(WrapFeature(feature, m), goroutine)
+	}
+	if err := m.byID.eachIngestFeature(wrap, options); err != nil {
 		return err
 	}
 	filter := func(feature b6.Feature, goroutine int) error {
 		if !m.byID.HasFeatureWithID(feature.FeatureID()) {
-			return each(feature, goroutine)
+			return each(m.tags.WrapFeature(feature), goroutine)
 		}
 		return nil
 	}
 	return m.base.EachFeature(filter, options)
+}
+
+func (m *MutableOverlayWorld) EachModifiedFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
+	wrap := func(feature Feature, goroutine int) error {
+		return each(WrapFeature(feature, m), goroutine)
+	}
+	return m.byID.eachIngestFeature(wrap, options)
+}
+
+func (m *MutableOverlayWorld) EachModifiedTag(each func(f ModifiedTag, goroutine int) error, options *b6.EachFeatureOptions) error {
+	return m.tags.EachModifiedTag(each, options)
 }
 
 func (m *MutableOverlayWorld) Tokens() []string {

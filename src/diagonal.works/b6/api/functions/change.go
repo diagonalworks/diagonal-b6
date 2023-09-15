@@ -2,6 +2,7 @@ package functions
 
 import (
 	"fmt"
+	"os"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -85,4 +86,23 @@ func withChange(c *api.Context, change ingest.Change, f func(c *api.Context) (in
 		return nil, err
 	}
 	return f(&modified)
+}
+
+func changesToFile(c *api.Context, filename string) (string, error) {
+	w, err := os.OpenFile(filename, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to open %s for write: %w", filename, err)
+	}
+	if m, ok := c.World.(ingest.MutableWorld); ok {
+		err = ingest.ExportChangesAsYAML(m, w)
+	}
+	return filename, w.Close()
+}
+
+func changesFromFile(c *api.Context, filename string) (ingest.Change, error) {
+	r, err := os.OpenFile(filename, os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open %s for read: %w", filename, err)
+	}
+	return ingest.IngestChangesFromYAML(r), nil
 }

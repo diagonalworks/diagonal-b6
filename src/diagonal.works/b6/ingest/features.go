@@ -9,6 +9,7 @@ import (
 	"diagonal.works/b6/geometry"
 	"diagonal.works/b6/osm"
 	"github.com/golang/geo/s2"
+	"golang.org/x/sync/errgroup"
 )
 
 type Tags []b6.Tag
@@ -244,6 +245,17 @@ func (p *PointFeature) MergeFromPointFeature(other *PointFeature) {
 	p.Tags.MergeFrom(other.Tags)
 }
 
+func (p *PointFeature) MarshalYAML() (interface{}, error) {
+	y := map[string]interface{}{
+		"id":    FeatureIDYAML{FeatureID: p.PointID.FeatureID()},
+		"point": LatLngYAML{LatLng: p.Location},
+	}
+	if len(p.Tags) > 0 {
+		y["tags"] = p.Tags
+	}
+	return y, nil
+}
+
 type PathMembers struct {
 	ids []b6.PointID
 }
@@ -412,6 +424,26 @@ func (p *PathFeature) MergeFromPathFeature(other *PathFeature) {
 	p.PathID = other.PathID
 	p.Tags.MergeFrom(other.Tags)
 	p.PathMembers.MergeFrom(other.PathMembers)
+}
+
+func (p *PathFeature) MarshalYAML() (interface{}, error) {
+	pointsYAML := make([]interface{}, p.Len())
+	for i := 0; i < p.Len(); i++ {
+		if ll, ok := p.PathMembers.LatLng(i); ok {
+			pointsYAML[i] = LatLngYAML{LatLng: ll}
+		} else {
+			id, _ := p.PathMembers.PointID(i)
+			pointsYAML[i] = FeatureIDYAML{FeatureID: id.FeatureID()}
+		}
+	}
+	y := map[string]interface{}{
+		"id":   FeatureIDYAML{FeatureID: p.PathID.FeatureID()},
+		"path": pointsYAML,
+	}
+	if len(p.Tags) > 0 {
+		y["tags"] = p.Tags
+	}
+	return y, nil
 }
 
 type AreaMembers struct {
@@ -600,6 +632,39 @@ func (a *AreaFeature) MergeFromAreaFeature(other *AreaFeature) {
 	a.AreaMembers.MergeFrom(other.AreaMembers)
 }
 
+func (a *AreaFeature) MarshalYAML() (interface{}, error) {
+	polygonsYAML := make([]interface{}, a.Len())
+	for i := range polygonsYAML {
+		if p, ok := a.AreaMembers.Polygon(i); ok {
+			loopsYAML := make([]interface{}, p.NumLoops())
+			for j := range loopsYAML {
+				loop := p.Loop(j)
+				loopYAML := make([]interface{}, loop.NumVertices())
+				for k := range loopYAML {
+					loopYAML[k] = LatLngYAML{LatLng: s2.LatLngFromPoint(loop.Vertex(k))}
+				}
+				loopsYAML[j] = loopYAML
+			}
+			polygonsYAML[i] = loopsYAML
+		} else {
+			pathIDs, _ := a.AreaMembers.PathIDs(i)
+			loopsYAML := make([]interface{}, len(pathIDs))
+			for j := range loopsYAML {
+				loopsYAML[j] = FeatureIDYAML{FeatureID: pathIDs[j].FeatureID()}
+			}
+			polygonsYAML[i] = loopsYAML
+		}
+	}
+	y := map[string]interface{}{
+		"id":   FeatureIDYAML{FeatureID: a.AreaID.FeatureID()},
+		"area": polygonsYAML,
+	}
+	if len(a.Tags) > 0 {
+		y["tags"] = a.Tags
+	}
+	return y, nil
+}
+
 type RelationFeature struct {
 	b6.RelationID
 	Tags
@@ -665,6 +730,21 @@ func (r *RelationFeature) MergeFromRelationFeature(other *RelationFeature) {
 	} else {
 		r.Members = r.Members[0:len(other.Members)]
 	}
+}
+
+func (r *RelationFeature) MarshalYAML() (interface{}, error) {
+	relationYAML := make([]RelationMemberYAML, len(r.Members))
+	for i := range relationYAML {
+		relationYAML[i].RelationMember = r.Members[i]
+	}
+	y := map[string]interface{}{
+		"id":       FeatureIDYAML{FeatureID: r.RelationID.FeatureID()},
+		"relation": relationYAML,
+	}
+	if len(r.Tags) > 0 {
+		y["tags"] = r.Tags
+	}
+	return y, nil
 }
 
 type PathPosition struct {
@@ -814,62 +894,76 @@ func (f *FeaturesByID) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
 }
 
 func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
-	cores := options.Goroutines
-	if cores < 1 {
-		cores = 1
+	wrap := func(feature Feature, goroutine int) error {
+		return each(WrapFeature(feature, f), goroutine)
+	}
+	return f.eachIngestFeature(wrap, options)
+}
+
+func (f *FeaturesByID) eachIngestFeature(each func(f Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
+	goroutines := options.Goroutines
+	if goroutines < 1 {
+		goroutines = 1
 	}
 
-	var cause error
-	var wg sync.WaitGroup
-	features := make(chan b6.Feature, cores)
-	ctx, cancel := context.WithCancel(context.Background())
-	feed := func(goroutine int) {
-		defer wg.Done()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case feature, ok := <-features:
-				if ok {
-					if err := each(feature, goroutine); err != nil {
-						cause = err
-						cancel()
-					}
-				} else {
-					return
+	c := make(chan Feature, goroutines)
+	g, gc := errgroup.WithContext(context.Background())
+	for i := 0; i < goroutines; i++ {
+		g.Go(func() error {
+			for tag := range c {
+				if err := each(tag, i); err != nil {
+					return err
 				}
+			}
+			return nil
+		})
+	}
+
+	f.feedFeatures(c, gc.Done(), options)
+	close(c)
+	return g.Wait()
+}
+
+func (f *FeaturesByID) feedFeatures(c chan<- Feature, done <-chan struct{}, options *b6.EachFeatureOptions) {
+	if !options.SkipPoints {
+		for _, point := range f.Points {
+			select {
+			case <-done:
+				return
+			case c <- point:
 			}
 		}
 	}
 
-	wg.Add(cores)
-	for i := 0; i < cores; i++ {
-		go feed(i)
-	}
-
-	if !options.SkipPoints {
-		for _, point := range f.Points {
-			features <- newPointFeature(point)
-		}
-	}
 	if !options.SkipPaths {
 		for _, path := range f.Paths {
-			features <- newPathFeature(path, f)
+			select {
+			case <-done:
+				return
+			case c <- path:
+			}
 		}
 	}
+
 	if !options.SkipAreas {
 		for _, area := range f.Areas {
-			features <- newAreaFeature(area, f)
+			select {
+			case <-done:
+				return
+			case c <- area:
+			}
 		}
 	}
+
 	if !options.SkipRelations {
 		for _, relation := range f.Relations {
-			features <- newRelationFeature(relation, f)
+			select {
+			case <-done:
+				return
+			case c <- relation:
+			}
 		}
 	}
-	close(features)
-	wg.Wait()
-	return cause
 }
 
 type FeatureReferences struct {
