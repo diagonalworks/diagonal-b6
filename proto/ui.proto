@@ -37,6 +37,7 @@ message LineProto {
         TagsLineProto tags = 4;
         HistogramBarLineProto histogramBar = 5;
         ShellLineProto shell = 6;
+        QuestionLineProto question = 8;
         ErrorLineProto error = 7;
     }
 }
@@ -80,6 +81,10 @@ message HistogramBarLineProto {
 
 message ShellLineProto {
     repeated string functions = 1;
+}
+
+message QuestionLineProto {
+    string question = 1;
 }
 
 message ErrorLineProto {

@@ -43,8 +43,11 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 	w := ingest.NewMutableOverlayWorld(base)
 
 	handler := UIHandler{
-		World:            w,
-		RenderRules:      renderer.BasemapRenderRules,
+		World: w,
+		Renderer: &DefaultUIRenderer{
+			RenderRules: renderer.BasemapRenderRules,
+			World:       w,
+		},
 		Cores:            1,
 		FunctionSymbols:  functions.Functions(),
 		FunctionWrappers: functions.Wrappers(),

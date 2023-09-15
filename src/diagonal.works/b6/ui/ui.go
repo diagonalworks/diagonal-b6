@@ -14,6 +14,7 @@ import (
 type Options struct {
 	StaticPath     string
 	JavaScriptPath string
+	Renderer       UIRenderer
 	Cores          int
 	World          ingest.MutableWorld
 }
@@ -40,8 +41,17 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 		http.ServeFile(w, r, filepath.Join(options.StaticPath, "images", r.URL.Path[i+1:]))
 	}))
 
-	root.Handle("/bootstrap", http.HandlerFunc(serveBootstrap))
-	root.Handle("/ui", NewUIHandler(options.World, options.Cores))
+	var uiRenderer UIRenderer
+	if options.Renderer != nil {
+		uiRenderer = options.Renderer
+	} else {
+		uiRenderer = &DefaultUIRenderer{
+			World:       options.World,
+			RenderRules: renderer.BasemapRenderRules,
+		}
+	}
+	root.Handle("/startup", &StartupHandler{World: options.World, Renderer: uiRenderer})
+	root.Handle("/ui", NewUIHandler(uiRenderer, options.World, options.Cores))
 
 	return nil
 }
@@ -53,14 +63,29 @@ func RegisterTiles(root *http.ServeMux, w b6.World, cores int) {
 	root.Handle("/tiles/query/", query)
 }
 
-type BootstrapResponseJSON struct {
-	Version string
+type UIRenderer interface {
+	RenderValue(response *UIResponseJSON, value interface{}) error
 }
 
-func serveBootstrap(w http.ResponseWriter, r *http.Request) {
-	response := BootstrapResponseJSON{
+type StartupResponseJSON struct {
+	Version string            `json:"version,omitempty"`
+	Docked  []*UIResponseJSON `json:"docked,omitempty"`
+}
+
+type StartupHandler struct {
+	World    b6.World
+	Renderer UIRenderer
+}
+
+func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	response := &StartupResponseJSON{
 		Version: b6.BackendVersion,
 	}
+
+	if r := r.URL.Query().Get("r"); len(r) > 0 {
+		s.fillStartupResponseFromRootFeature(response, b6.FeatureIDFromString(r[1:]))
+	}
+
 	output, err := json.Marshal(response)
 	if err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
@@ -68,6 +93,21 @@ func serveBootstrap(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(output))
+}
+
+func (s *StartupHandler) fillStartupResponseFromRootFeature(response *StartupResponseJSON, id b6.FeatureID) {
+	if f := s.World.FindFeatureByID(id); f != nil {
+		if relation, ok := f.(b6.RelationFeature); ok {
+			for i := 0; i < relation.Len(); i++ {
+				if member := s.World.FindFeatureByID(relation.Member(i).ID); member != nil {
+					uiResponse := NewUIResponseJSON()
+					if err := s.Renderer.RenderValue(uiResponse, member); err == nil {
+						response.Docked = append(response.Docked, uiResponse)
+					}
+				}
+			}
+		}
+	}
 }
 
 type Label struct {

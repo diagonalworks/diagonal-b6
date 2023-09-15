@@ -21,6 +21,15 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+type DefaultUIRenderer struct {
+	RenderRules renderer.RenderRules
+	World       b6.World
+}
+
+func (d *DefaultUIRenderer) RenderValue(response *UIResponseJSON, value interface{}) error {
+	return fillResponseFromResult(response, value, d.RenderRules, d.World)
+}
+
 func getStringExpression(f b6.Feature, key string) *pb.NodeProto {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Call{
@@ -115,14 +124,14 @@ func fillMatchingFunctionSymbols(symbols []string, result interface{}, functions
 	return symbols
 }
 
-func NewUIHandler(w ingest.MutableWorld, cores int) *UIHandler {
+func NewUIHandler(renderer UIRenderer, w ingest.MutableWorld, cores int) *UIHandler {
 	local := make(api.FunctionSymbols)
 	for name, f := range functions.Functions() {
 		local[name] = f
 	}
 	return &UIHandler{
+		Renderer:         renderer,
 		World:            w,
-		RenderRules:      renderer.BasemapRenderRules,
 		Cores:            cores,
 		FunctionSymbols:  local,
 		FunctionWrappers: functions.Wrappers(),
@@ -144,9 +153,17 @@ type UIResponseJSON struct {
 	GeoJSON geojson.GeoJSON      `json:"geojson,omitempty"`
 }
 
+func NewUIResponseJSON() *UIResponseJSON {
+	return &UIResponseJSON{
+		Proto: &UIResponseProtoJSON{
+			Stack: &pb.StackProto{},
+		},
+	}
+}
+
 type UIHandler struct {
 	World            ingest.MutableWorld
-	RenderRules      renderer.RenderRules
+	Renderer         UIRenderer
 	Cores            int
 	FunctionSymbols  api.FunctionSymbols
 	FunctionWrappers api.FunctionWrappers
@@ -154,11 +171,7 @@ type UIHandler struct {
 
 func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	request := &pb.UIRequestProto{}
-	response := &UIResponseJSON{
-		Proto: &UIResponseProtoJSON{
-			Stack: &pb.StackProto{},
-		},
-	}
+	response := NewUIResponseJSON()
 
 	if r.Method == "GET" {
 		request.Expression = r.URL.Query().Get("e")
@@ -191,6 +204,7 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			response.Proto.Node, err = api.ParseExpressionWithLHS(request.Expression, request.Node)
 		}
 		if err != nil {
+			b.Renderer.RenderValue(response, err)
 			response.Proto.Stack.Substacks = fillSubstacksFromError(response.Proto.Stack.Substacks, err)
 			sendUIResponse(response, w)
 			return
@@ -215,7 +229,7 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := api.Evaluate(response.Proto.Node, &context)
 	if err == nil {
-		if err = fillResponseFromResult(response, result, b.RenderRules, b.World); err == nil {
+		if err = b.Renderer.RenderValue(response, result); err == nil {
 			shell := &pb.ShellLineProto{
 				Functions: make([]string, 0),
 			}
@@ -225,7 +239,7 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	} else {
-		response.Proto.Stack.Substacks = fillSubstacksFromError(response.Proto.Stack.Substacks, err)
+		b.Renderer.RenderValue(response, err)
 	}
 	sendUIResponse(response, w)
 }
@@ -620,6 +634,8 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules renderer.RenderRules, w b6.World) error {
 	p := (*pb.UIResponseProto)(response.Proto)
 	switch r := result.(type) {
+	case error:
+		p.Stack.Substacks = fillSubstacksFromError(p.Stack.Substacks, r)
 	case string:
 		p.Stack.Substacks = fillSubstacksFromString(p.Stack.Substacks, r)
 	case b6.Feature:
