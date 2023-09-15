@@ -32,27 +32,36 @@ func (s *pbfSource) Read(options osm.ReadOptions, emit osm.EmitWithGoroutine, ct
 	return osm.ReadPBFWithOptions(r, emit, options)
 }
 
+type readFormat int
+
+const (
+	readFormatCompact readFormat = iota
+	readFormatOSM
+	readFormatYAML
+)
+
 type toRead struct {
 	Filename   string
 	Filesystem filesystem.Interface
-	IsCompact  bool
+	Format     readFormat
 }
 
-func (t toRead) Read(w *World, status chan<- string, cores int, ctx context.Context) (b6.World, error) {
-	if t.IsCompact {
+func (t toRead) Read(w *World, status chan<- string, cores int, ctx context.Context) (b6.World, ingest.Change, error) {
+	switch t.Format {
+	case readFormatCompact:
 		m, err := encoding.Mmap(t.Filename)
 		if err == nil {
 			status <- fmt.Sprintf("Memory map %s", t.Filename)
-			return nil, w.Merge(m.Data)
+			return nil, nil, w.Merge(m.Data)
 		} else {
 			status <- fmt.Sprintf("Read %s", t.Filename)
 			m, err := encoding.ReadToMmappedBuffer(t.Filename, t.Filesystem, ctx, status)
 			if err == nil {
 				w.Merge(m.Data)
 			}
-			return nil, err
+			return nil, nil, err
 		}
-	} else {
+	case readFormatOSM:
 		status <- fmt.Sprintf("Index PBF %s", t.Filename)
 		pbf := pbfSource{
 			Filename: t.Filename,
@@ -60,8 +69,14 @@ func (t toRead) Read(w *World, status chan<- string, cores int, ctx context.Cont
 			Ctx:      ctx,
 		}
 		o := ingest.BuildOptions{Cores: cores}
-		return ingest.NewWorldFromOSMSource(&pbf, &o)
+		w, err := ingest.NewWorldFromOSMSource(&pbf, &o)
+		return w, nil, err
+	case readFormatYAML:
+		status <- fmt.Sprintf("Overlay YAML %s", t.Filename)
+		f, err := t.Filesystem.OpenRead(ctx, t.Filename)
+		return nil, ingest.IngestChangesFromYAML(f), err
 	}
+	return nil, nil, fmt.Errorf("bad read format for %s", t.Filename)
 }
 
 func ReadWorld(input string, cores int) (b6.World, error) {
@@ -90,15 +105,26 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 			children = []string{s}
 		}
 		for _, child := range children {
+			format := readFormatCompact
+			if hasCompactPrefix {
+				format = readFormatCompact
+			} else if hasOSMPRefix {
+				format = readFormatOSM
+			} else if strings.HasSuffix(child, ".pbf") {
+				format = readFormatOSM
+			} else if strings.HasSuffix(child, ".yaml") {
+				format = readFormatYAML
+			}
 			trs = append(trs, toRead{
 				Filename:   child,
 				Filesystem: fs,
-				IsCompact:  (hasCompactPrefix || !strings.HasSuffix(child, ".pbf")) && !hasOSMPRefix,
+				Format:     format,
 			})
 		}
 	}
 
 	worlds := make([]b6.World, 0)
+	changes := make([]ingest.Change, 0)
 	cw := NewWorld()
 	status := make(chan string)
 	var lock sync.Mutex
@@ -107,11 +133,18 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 	for i := range trs {
 		tr := trs[i]
 		g.Go(func() error {
-			w, err := tr.Read(cw, status, cores, ctx)
-			if err == nil && w != nil {
-				lock.Lock()
-				worlds = append(worlds, w)
-				lock.Unlock()
+			w, c, err := tr.Read(cw, status, cores, ctx)
+			if err == nil {
+				if w != nil {
+					lock.Lock()
+					worlds = append(worlds, w)
+					lock.Unlock()
+				}
+				if c != nil {
+					lock.Lock()
+					changes = append(changes, c)
+					lock.Unlock()
+				}
 			}
 			return err
 		})
@@ -136,5 +169,16 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 	for _, c := range toClose {
 		c.Close()
 	}
-	return overlay, nil
+
+	if len(changes) > 0 {
+		m := ingest.NewMutableOverlayWorld(overlay)
+		for _, c := range changes {
+			if _, err := c.Apply(m); err != nil {
+				return nil, err
+			}
+		}
+		return m, nil
+	} else {
+		return overlay, nil
+	}
 }

@@ -923,7 +923,7 @@ class UI {
             this.needHighlightRedraw = false;            
         }
         const center = response.proto.mapCenter;
-        if (center) {
+        if (center && center.latE7 && center.lngE7) {
             this.map.getView().animate({
                 center: fromLonLat([center.lngE7 / 1e7, center.latE7 / 1e7]),
                 duration: 500,

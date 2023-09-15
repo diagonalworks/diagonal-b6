@@ -574,6 +574,7 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 	substack.Lines = append(substack.Lines, valueLineFromValue(f))
 	substack.Lines = append(substack.Lines, lineFromTags(f))
 	substacks = append(substacks, substack)
+
 	if path, ok := f.(b6.PathFeature); ok {
 		substack := &pb.SubstackProto{Collapsable: true}
 		line := valuePairLineFromValues("Points", path.Len())
@@ -587,6 +588,22 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 		}
 		substacks = append(substacks, substack)
 	}
+
+	if relation, ok := f.(b6.RelationFeature); ok {
+		substack := &pb.SubstackProto{Collapsable: true}
+		line := valuePairLineFromValues("Members", relation.Len())
+		substack.Lines = append(substack.Lines, line)
+		for i := 0; i < relation.Len(); i++ {
+			member := relation.Member(i)
+			if member.Role != "" {
+				substack.Lines = append(substack.Lines, valuePairLineFromValues(member.ID, member.Role))
+			} else {
+				substack.Lines = append(substack.Lines, valueLineFromValue(member.ID))
+			}
+		}
+		substacks = append(substacks, substack)
+	}
+
 	relations := b6.AllRelations(w.FindRelationsByFeature(f.FeatureID()))
 	if len(relations) > 0 {
 		substack := &pb.SubstackProto{Collapsable: true}

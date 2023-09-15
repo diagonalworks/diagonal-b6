@@ -78,6 +78,19 @@ func (r RelationMemberYAML) MarshalYAML() (interface{}, error) {
 	}, nil
 }
 
+func (r *RelationMemberYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var v struct {
+		ID   FeatureIDYAML
+		Role string
+	}
+	if err := unmarshal(&v); err != nil {
+		return nil
+	}
+	r.RelationMember.ID = v.ID.FeatureID
+	r.RelationMember.Role = v.Role
+	return nil
+}
+
 type exportedYAML struct {
 	ID     FeatureIDYAML
 	Add    []b6.Tag `yaml:",omitempty"`
