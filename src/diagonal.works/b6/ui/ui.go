@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/renderer"
@@ -48,8 +49,9 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 		uiRenderer = options.Renderer
 	} else {
 		uiRenderer = &DefaultUIRenderer{
-			World:       options.World,
-			RenderRules: renderer.BasemapRenderRules,
+			World:           options.World,
+			FunctionSymbols: functions.Functions(),
+			RenderRules:     renderer.BasemapRenderRules,
 		}
 	}
 	root.Handle("/startup", &StartupHandler{World: options.World, Renderer: uiRenderer})

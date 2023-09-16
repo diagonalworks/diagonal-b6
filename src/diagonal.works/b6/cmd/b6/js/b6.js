@@ -104,26 +104,49 @@ function newGeoJSONStyle(state, styles) {
                 font: '"Roboto" 12px',
             }));
         }
-        if (feature.get("-diagonal-stroke")) {
+        if (feature.get("-b6-stroke")) {
             if (!cloned) {
                 s = s.clone();
                 cloned = true;
             }
             if (s.getStroke()) {
-                s.getStroke().setColor(feature.get("-diagonal-stroke"));
+                s.getStroke().setColor(parseColour(feature.get("-b6-stroke"), styles));
             }
         }
-        if (feature.get("-diagonal-fill")) {
+        if (feature.get("-b6-fill")) {
             if (!cloned) {
                 s = s.clone();
                 cloned = true;
             }
             if (s.getFill()) {
-                s.getFill().setColor(feature.get("-diagonal-fill"));
+                s.getFill().setColor(parseColour(feature.get("-b6-fill"), styles));
             }
+        }
+        if (feature.get("-b6-circle")) {
+            if (!cloned) {
+                s = s.clone();
+                cloned = true;
+            }
+            s.setImage(new Circle({
+                radius: 4,
+                fill: new Fill({
+                    color: parseColour(feature.get("-b6-circle"), styles),
+                }),
+            }));
         }
         return s;
     }
+}
+
+function parseColour(colour, styles) {
+    if (colour) {
+        if (colour.startsWith("#")) {
+            return colour;
+        } else if (styles[colour]) {
+            return styles[colour]["color"];
+        }
+    }
+    return "#ff0000";
 }
 
 function setupMap(state, styles) {
@@ -563,15 +586,16 @@ class ValueLineRenderer {
     }    
 }
 
-class ValuePairLineRenderer {
+class LeftRightValueLineRenderer {
     getCSSClass() {
-        return "line-value-pair";
+        return "line-left-right-value";
     }
 
     enter(line) {}
 
     update(line, renderedResponse, ui) {
-        const values = [line.datum().valuePair.first, line.datum().valuePair.second];
+        const values = line.datum().leftRightValue.left;
+        values.push(line.datum().leftRightValue.right);
 
         let atoms = line.selectAll("span").data(values).join("span");
         renderFromProto(atoms.datum(d => d.atom), "atom", renderedResponse, ui)
@@ -761,7 +785,7 @@ const Renderers = {
     },
     "line": {
         "value": new ValueLineRenderer(),
-        "valuePair": new ValuePairLineRenderer(),
+        "leftRightValue": new LeftRightValueLineRenderer(),
         "expression": new ExpressionLineRenderer(),
         "tags": new TagsLineRenderer(),
         "histogramBar": new HistogramBarLineRenderer(),
@@ -1185,17 +1209,21 @@ function newQueryStyle(state, styles) {
 }
 
 const Styles = [
-    "road-fill",
-    "highlighted-road-fill",
-    "highlighted-point",
-    "highlighted-path",
-    "highlighted-area",
-    "geojson-point",
-    "geojson-path",
     "geojson-area",
-    "query-point",
-    "query-path",
+    "geojson-path",
+    "geojson-point",
+    "highlighted-area",
+    "highlighted-path",
+    "highlighted-point",
+    "highlighted-road-fill",
+    "outliner-blue",
+    "outliner-emerald",
+    "outliner-rose",
+    "outliner-teal",
     "query-area",
+    "query-path",
+    "query-point",
+    "road-fill",
 ];
 
 function setup(startupResponse) {

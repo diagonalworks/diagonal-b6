@@ -45,8 +45,9 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 	handler := UIHandler{
 		World: w,
 		Renderer: &DefaultUIRenderer{
-			RenderRules: renderer.BasemapRenderRules,
-			World:       w,
+			RenderRules:     renderer.BasemapRenderRules,
+			FunctionSymbols: functions.Functions(),
+			World:           w,
 		},
 		Cores:            1,
 		FunctionSymbols:  functions.Functions(),
