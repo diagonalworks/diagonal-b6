@@ -162,10 +162,6 @@ form.shell > input {
     flex: 1 0 auto;
 }
 
-.dragging .pipeline-stage {
-    cursor: grabbing;
-}
-
 .palette {
     display: none;
 }
@@ -415,6 +411,12 @@ form.shell > input {
     width: 100%;
 }
 
+.line-question {
+    font-weight: 300;
+    height: max-content;
+    white-space: wrap;
+}
+
 .line-shell > form {
     display: flex;
     flex-direction: row;
@@ -440,9 +442,12 @@ form.shell > input {
 }
 
 .stack {
-    position: absolute;
     border: 1px solid #8990ac;
     border-radius: 4px;
+}
+
+.stack-featured {
+    position: absolute;
 }
 
 .stack > .substack {
@@ -490,4 +495,39 @@ form.shell > input {
 .stack > .substack:last-child > .scrollable > .line:last-child {
     border-bottom-left-radius: 4px;
     border-bottom-right-radius: 4px;
+}
+
+#dock {
+    position: absolute;
+    top: 100px;
+    left: 10px;
+}
+
+#dock > .stack {
+    margin-bottom: 6px;
+}
+
+#dock > .stack.closed > .substack {
+    display: none;
+}
+
+#dock > .stack.closed > .substack:first-child {
+    display: block;
+}
+
+#dock > .stack.closed > .substack:first-child > .scrollable > .line:last-child {
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+#dock > .stack.closed {
+    border: 1px solid #dbdeec; /* Graphite 30 */
+}
+
+#dock > .stack.closed .line-question {
+    color: #4f5a7d; /* Graphite 80 */
+}
+
+#dock > .stack.closed .line-question:hover {
+    background: #f8f9fc /* Graphite 10 */
 }

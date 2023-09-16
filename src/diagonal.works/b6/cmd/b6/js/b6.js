@@ -400,7 +400,7 @@ function showFeature(feature, ui) {
             }
         }
         d3.json("/ui", request).then(response => {
-            ui.renderUIResponse(response);
+            ui.renderFeaturedUIResponse(response);
         });
     }
 }
@@ -738,6 +738,18 @@ class ShellLineRenderer {
     }
 }
 
+class QuestionLineRenderer {
+    getCSSClass() {
+        return "line-question";
+    }
+
+    enter(line) {}
+
+    update(line) {
+        line.text(d => d.question.question);
+    }
+}
+
 class ErrorLineRenderer {
     getCSSClass() {
         return "line-error";
@@ -763,6 +775,7 @@ const Renderers = {
         "tags": new TagsLineRenderer(),
         "histogramBar": new HistogramBarLineRenderer(),
         "shell": new ShellLineRenderer(),
+        "question": new QuestionLineRenderer(),
         "error": new ErrorLineRenderer(),
     }
 }
@@ -828,7 +841,7 @@ class UI {
             }
         }
         d3.json("/ui", request).then(response => {
-            this.renderUIResponse(response);
+            this.renderFeaturedUIResponse(response);
         });
     }
 
@@ -886,12 +899,34 @@ class UI {
         this.map.removeLayer(layer);
     }
 
-    renderUIResponse(response) {
-        const root = d3.select("body").selectAll(".stack-featured").data([1]).join("div");
+    renderDock(docked) {
+        const target = d3.select("#dock").selectAll(".stack").data(docked).join("div");
+        target.attr("class", "stack closed");
+        this.renderUIResponse(target);
+        target.on("click", function(e) {
+            e.preventDefault();
+            target.classed("closed", true);
+            d3.select(this).classed("closed", false);
+        });
+    }
+
+    renderFeaturedUIResponse(response) {
+        const root = d3.select("body").selectAll(".stack-featured").data([response]).join("div");
         root.attr("class", "stack stack-featured");
         root.style("left",  `${StackOrigin[0]}px`);
         root.style("top", `${StackOrigin[1]}px`);
-        const substacks = root.selectAll(".substack").data(response.proto.stack.substacks).join(
+        this.renderUIResponse(root);
+        const center = response.proto.mapCenter;
+        if (center && center.latE7 && center.lngE7) {
+            this.map.getView().animate({
+                center: fromLonLat([center.lngE7 / 1e7, center.latE7 / 1e7]),
+                duration: 500,
+            });
+        }
+    }
+
+    renderUIResponse(target) {
+        const substacks = target.selectAll(".substack").data(d => d.proto.stack.substacks).join(
             enter => {
                 const div = enter.append("div").attr("class", "substack");
                 div.append("div").attr("class", "scrollable");
@@ -899,7 +934,7 @@ class UI {
             }
         );
         substacks.classed("collapsable", d => d.collapsable);
-        root.selectAll(".collapsable").on("click", function(e) {
+        target.selectAll(".collapsable").on("click", function(e) {
             e.preventDefault();
             const substack = d3.select(this);
             substack.classed("collapsable-open", !substack.classed("collapsable-open"));
@@ -908,7 +943,7 @@ class UI {
         const lines = scrollables.selectAll(".line").data(d => d.lines).join("div");
         lines.attr("class", "line");
         const ui = this;
-        const f = function() {
+        const f = function(response) {
             if (this.__rendered__) {
                 this.__rendered__.remove(ui);
                 ui.rendered = ui.rendered.filter(r => r != this.__rendered__);
@@ -917,17 +952,10 @@ class UI {
             ui.rendered.push(this.__rendered__);
             renderFromProto(lines, "line", this.__rendered__, ui);
         }
-        root.each(f);
+        target.each(f);
         if (this.needHighlightRedraw) {
             this.redrawHighlights();
             this.needHighlightRedraw = false;            
-        }
-        const center = response.proto.mapCenter;
-        if (center && center.latE7 && center.lngE7) {
-            this.map.getView().animate({
-                center: fromLonLat([center.lngE7 / 1e7, center.latE7 / 1e7]),
-                duration: 500,
-            });
         }
     }
 
@@ -1171,7 +1199,7 @@ const Styles = [
     "query-area",
 ];
 
-function setup(bootstrapResponse) {
+function setup(startupResponse) {
     const state = {highlighted: {}};
     const styles = lookupStyles(Styles);
     const [map, searchableLayers, highlightChanged] = setupMap(state, styles);
@@ -1188,6 +1216,10 @@ function setup(bootstrapResponse) {
 
     setupShell(d3.select("#shell"), ui);
 
+    if (startupResponse.docked) {
+        ui.renderDock(startupResponse.docked);
+    }
+
     map.on("singleclick", e => {
         if (e.originalEvent.shiftKey) {
             showFeatureAtPixel(e.pixel, searchableLayers, ui);
@@ -1200,7 +1232,8 @@ function setup(bootstrapResponse) {
 }
 
 function main() {
-    d3.json("/bootstrap").then(response => setup(response));
+    const params = new URLSearchParams(window.location.search);
+    d3.json("/startup?" + params.toString()).then(response => setup(response));
 }
 
 export default main;
