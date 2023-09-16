@@ -12,6 +12,15 @@ func TestFeatureIDToAndFromString(t *testing.T) {
 	}
 }
 
+func TestFeatureFromStringHandlesLeadingSlash(t *testing.T) {
+	token := "/path/openstreetmap.org/way/687471322"
+	expected := MakePathID(NamespaceOSMWay, 687471322).FeatureID()
+	actual := FeatureIDFromString(token)
+	if actual != expected {
+		t.Errorf("Expected %s, found: %s", expected, actual)
+	}
+}
+
 func TestTagToAndFromStringHappyPath(t *testing.T) {
 	cases := []struct {
 		tag Tag

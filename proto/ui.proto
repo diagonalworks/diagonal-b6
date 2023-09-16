@@ -3,6 +3,7 @@ syntax = "proto3";
 package ui;
 
 import "api.proto";
+import "features.proto";
 import "geometry.proto";
 
 option go_package = "diagonal.works/b6/proto";
@@ -10,6 +11,7 @@ option go_package = "diagonal.works/b6/proto";
 message UIRequestProto {
     api.NodeProto node = 1;
     string expression = 2;
+    features.FeatureIDProto context = 3;
 }
 
 message UIResponseProto {

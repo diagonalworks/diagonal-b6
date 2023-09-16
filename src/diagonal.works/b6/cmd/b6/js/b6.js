@@ -392,16 +392,7 @@ function showFeature(feature, ui) {
     const id = feature.get("id");
     const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
     if (ns && id && types[feature.getType()]) {
-        const request = {
-            method: "POST",
-            body: JSON.stringify({expression: `find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`}),
-            headers: {
-                "Content-type": "application/json; charset=UTF-8"
-            }
-        }
-        d3.json("/ui", request).then(response => {
-            ui.renderFeaturedUIResponse(response);
-        });
+        ui.evaluateExpression(`find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`);
     }
 }
 
@@ -809,12 +800,13 @@ function renderFromProto(targets, uiElement, renderedResponse, ui) {
 }
 
 class UI {
-    constructor(map, state, queryStyle, geojsonStyle, highlightChanged) {
+    constructor(map, state, queryStyle, geojsonStyle, highlightChanged, context) {
         this.map = map;
         this.state = state;
         this.queryStyle = queryStyle;
         this.geojsonStyle = geojsonStyle;
         this.basemapHighlightChanged = highlightChanged;
+        this.context = context;
         this.dragging = null;
         this.html = d3.select("html");
         this.dragPointerOrigin = [0,0];
@@ -832,15 +824,22 @@ class UI {
     }
 
     evaluateExpressionInContext(node, expression) {
-        const body = JSON.stringify({node: node, expression: expression});
         const request = {
+            node: node,
+            expression: expression,
+        }
+        if (this.context) {
+            request.context = this.context;
+        }
+        const body = JSON.stringify(request);
+        const post = {
             method: "POST",
             body: body,
             headers: {
                 "Content-type": "application/json; charset=UTF-8"
             }
         }
-        d3.json("/ui", request).then(response => {
+        d3.json("/ui", post).then(response => {
             this.renderFeaturedUIResponse(response);
         });
     }
@@ -962,7 +961,7 @@ class UI {
     handleDragStart(event, root) {
         event.preventDefault();
         if (root.classed("stack-featured")) {
-            root.attr("class", "stack");
+            root.attr("class", "stack stack-floating");
         }
         this.dragging = root;
         this.dragging.classed("dragging", true);
@@ -1205,7 +1204,7 @@ function setup(startupResponse) {
     const [map, searchableLayers, highlightChanged] = setupMap(state, styles);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
-    const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged);
+    const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged, startupResponse.context);
     const html = d3.select("html");
     html.on("pointermove", e => {
         ui.handlePointerMove(e);

@@ -324,6 +324,9 @@ func (f FeatureID) ToRelationID() RelationID {
 }
 
 func FeatureIDFromString(s string) FeatureID {
+	if len(s) > 0 && s[0] == '/' {
+		s = s[1:]
+	}
 	i := strings.Index(s, "/")
 	j := strings.LastIndex(s, "/")
 	if i < 0 || i == j {

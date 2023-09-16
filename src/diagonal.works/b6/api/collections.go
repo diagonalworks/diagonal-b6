@@ -54,6 +54,7 @@ type PointCollection Collection
 type StringPointCollection Collection
 type PathCollection Collection
 type AreaCollection Collection
+type TagCollection Collection
 type StringAreaCollection Collection
 type FeatureCollection Collection
 type PointFeatureCollection Collection

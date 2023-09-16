@@ -6,8 +6,13 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
+	"diagonal.works/b6/encoding"
 	"diagonal.works/b6/ingest"
 )
+
+func idToRelationID(c *api.Context, namespace string, id b6.Identifiable) b6.FeatureID {
+	return b6.MakeRelationID(b6.Namespace(namespace), encoding.HashString(id.FeatureID().String())).FeatureID()
+}
 
 func addTag(c *api.Context, id b6.Identifiable, tag b6.Tag) (ingest.Change, error) {
 	tags := make(ingest.AddTags, 1)
@@ -57,6 +62,49 @@ func removeTags(c *api.Context, collection api.FeatureIDStringCollection) (inges
 		}
 	}
 	return tags, nil
+}
+
+func addRelation(c *api.Context, id b6.RelationID, tags api.TagCollection, members api.FeatureIDStringCollection) (ingest.Change, error) {
+	r := &ingest.RelationFeature{
+		RelationID: id,
+	}
+
+	i := tags.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		tag, ok := i.Value().(b6.Tag)
+		if !ok {
+			return nil, fmt.Errorf("Expected b6.Tag, found %T", i.Value())
+		}
+		r.Tags = append(r.Tags, tag)
+	}
+
+	i = members.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		member, ok := i.Key().(b6.Identifiable)
+		if !ok {
+			return nil, fmt.Errorf("Expected b6.FeatureID for member, found %T", i.Key())
+		}
+		role, ok := i.Value().(string)
+		if !ok {
+			return nil, fmt.Errorf("Expected string for role, found %T", i.Value())
+		}
+		r.Members = append(r.Members, b6.RelationMember{ID: member.FeatureID(), Role: role})
+	}
+	return &ingest.AddFeatures{
+		Relations: []*ingest.RelationFeature{r},
+	}, nil
 }
 
 func mergeChanges(c *api.Context, collection api.AnyChangeCollection) (ingest.Change, error) {

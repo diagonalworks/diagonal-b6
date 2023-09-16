@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -26,7 +27,7 @@ type DefaultUIRenderer struct {
 	World       b6.World
 }
 
-func (d *DefaultUIRenderer) RenderValue(response *UIResponseJSON, value interface{}) error {
+func (d *DefaultUIRenderer) Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature) error {
 	return fillResponseFromResult(response, value, d.RenderRules, d.World)
 }
 
@@ -183,17 +184,25 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			err = protojson.Unmarshal(body, request)
 		}
 		if err != nil {
+			log.Printf("Bad request body")
 			http.Error(w, "Bad request body", http.StatusBadRequest)
 			return
 		}
 	} else {
+		log.Printf("Bad method")
 		http.Error(w, "Bad method", http.StatusMethodNotAllowed)
 		return
 	}
 
 	if request.Expression == "" && request.Node == nil {
+		log.Printf("No expression")
 		http.Error(w, "No expression", http.StatusBadRequest)
 		return
+	}
+
+	var renderContext b6.RelationFeature
+	if request.Context != nil && request.Context.Type == pb.FeatureType_FeatureTypeRelation {
+		renderContext = b6.FindRelationByID(b6.NewFeatureIDFromProto(request.Context).ToRelationID(), b.World)
 	}
 
 	if request.Expression != "" {
@@ -204,7 +213,7 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			response.Proto.Node, err = api.ParseExpressionWithLHS(request.Expression, request.Node)
 		}
 		if err != nil {
-			b.Renderer.RenderValue(response, err)
+			b.Renderer.Render(response, err, renderContext)
 			response.Proto.Stack.Substacks = fillSubstacksFromError(response.Proto.Stack.Substacks, err)
 			sendUIResponse(response, w)
 			return
@@ -220,16 +229,16 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, substack)
 	}
 
-	context := api.Context{
+	vmContext := api.Context{
 		World:            b.World,
 		FunctionSymbols:  b.FunctionSymbols,
 		FunctionWrappers: b.FunctionWrappers,
 		Cores:            b.Cores,
 		Context:          context.Background(),
 	}
-	result, err := api.Evaluate(response.Proto.Node, &context)
+	result, err := api.Evaluate(response.Proto.Node, &vmContext)
 	if err == nil {
-		if err = b.Renderer.RenderValue(response, result); err == nil {
+		if err = b.Renderer.Render(response, result, renderContext); err == nil {
 			shell := &pb.ShellLineProto{
 				Functions: make([]string, 0),
 			}
@@ -239,7 +248,7 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	} else {
-		b.Renderer.RenderValue(response, err)
+		b.Renderer.Render(response, err, renderContext)
 	}
 	sendUIResponse(response, w)
 }

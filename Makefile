@@ -46,7 +46,7 @@ proto-go: src/diagonal.works/b6/proto/tiles.pb.go src/diagonal.works/b6/proto/ge
 
 src/diagonal.works/b6/proto/features.pb.go: proto/features.proto proto/geometry.proto
 
-src/diagonal.works/b6/proto/ui.pb.go: proto/ui.proto proto/api.proto proto/geometry.proto
+src/diagonal.works/b6/proto/ui.pb.go: proto/ui.proto proto/api.proto proto/features.proto proto/geometry.proto
 
 src/diagonal.works/b6/proto/api.pb.go: proto/api.proto proto/features.proto proto/geometry.proto
 

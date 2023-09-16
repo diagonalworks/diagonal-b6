@@ -549,6 +549,11 @@ class B6Test(unittest.TestCase):
         parks_and_grass = b6.map([parks, grass], lambda q: b6.find(q)).flatten()
         self.assertEqual(parks_count + grass_count, self.connection(parks_and_grass.count()))
 
+    def test_add_relation(self):
+        id = b6.id_to_relation_id("diagonal.works/test", b6.osm_way_id(STABLE_STREET_BRIDGE_ID))
+        add = b6.add_relation(id, [b6.tag("#route", "bicycle")], {b6.osm_way_id(STABLE_STREET_BRIDGE_ID): "forwards"})
+        print(self.connection(b6.with_change(add, lambda: b6.find_feature(id).get_string("#route"))))
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")

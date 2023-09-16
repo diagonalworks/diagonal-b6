@@ -130,10 +130,12 @@ var functions = api.FunctionSymbols{
 	"apply-to-area":         applyToArea,
 	"map-geometries":        mapGeometries,
 	// change
+	"id-to-relation-id": idToRelationID,
 	"add-tag":           addTag,
 	"add-tags":          addTags,
 	"remove-tag":        removeTag,
 	"remove-tags":       removeTags,
+	"add-relation":      addRelation,
 	"merge-changes":     mergeChanges,
 	"with-change":       withChange,
 	"changes-to-file":   changesToFile,

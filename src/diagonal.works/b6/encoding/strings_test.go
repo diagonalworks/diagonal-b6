@@ -1,8 +1,21 @@
 package encoding
 
 import (
+	"fmt"
 	"testing"
 )
+
+func TestHashString(t *testing.T) {
+	hashes := make(map[uint64]struct{})
+	n := 1024
+	for i := 0; i < n; i++ {
+		token := fmt.Sprintf("building:levels=%d", i)
+		hashes[HashString(token)] = struct{}{}
+	}
+	if len(hashes) != n {
+		t.Errorf("Expected no collisons")
+	}
+}
 
 func TestBuildStringTable(t *testing.T) {
 	names, amenities := loadGranarySquareForTests(t)
