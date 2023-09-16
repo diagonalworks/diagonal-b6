@@ -5,7 +5,24 @@ import (
 	"io"
 	"sort"
 	"sync"
+	"unsafe"
 )
+
+const Fnv64Prime = 0x00000100000001b3
+const Fnv64Offset = 0xcbf29ce484222325
+
+// An implementation of Fnv-1a hashing for strings
+// See https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+func HashString(s string) uint64 {
+	h := uint64(Fnv64Offset)
+	p := unsafe.Pointer(unsafe.StringData(s))
+	for i := 0; i < len(s); i++ {
+		b := *(*byte)(unsafe.Add(p, i))
+		h ^= uint64(b)
+		h *= Fnv64Prime
+	}
+	return h
+}
 
 type StringTableBuilder struct {
 	strings map[string]uint32

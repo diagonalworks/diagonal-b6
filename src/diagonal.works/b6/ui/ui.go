@@ -8,7 +8,9 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
+	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/renderer"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type Options struct {
@@ -64,12 +66,23 @@ func RegisterTiles(root *http.ServeMux, w b6.World, cores int) {
 }
 
 type UIRenderer interface {
-	RenderValue(response *UIResponseJSON, value interface{}) error
+	Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature) error
+}
+
+type FeatureIDProtoJSON pb.FeatureIDProto
+
+func (b *FeatureIDProtoJSON) MarshalJSON() ([]byte, error) {
+	return protojson.Marshal((*pb.FeatureIDProto)(b))
+}
+
+func (b *FeatureIDProtoJSON) UnmarshalJSON(buffer []byte) error {
+	return protojson.Unmarshal(buffer, (*pb.FeatureIDProto)(b))
 }
 
 type StartupResponseJSON struct {
-	Version string            `json:"version,omitempty"`
-	Docked  []*UIResponseJSON `json:"docked,omitempty"`
+	Version string              `json:"version,omitempty"`
+	Docked  []*UIResponseJSON   `json:"docked,omitempty"`
+	Context *FeatureIDProtoJSON `json:"context,omitempty"`
 }
 
 type StartupHandler struct {
@@ -83,7 +96,11 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r := r.URL.Query().Get("r"); len(r) > 0 {
-		s.fillStartupResponseFromRootFeature(response, b6.FeatureIDFromString(r[1:]))
+		context := b6.FeatureIDFromString(r[1:])
+		if context.IsValid() {
+			s.fillStartupResponseFromRootFeature(response, context)
+			response.Context = (*FeatureIDProtoJSON)(b6.NewProtoFromFeatureID(context))
+		}
 	}
 
 	output, err := json.Marshal(response)
@@ -101,7 +118,7 @@ func (s *StartupHandler) fillStartupResponseFromRootFeature(response *StartupRes
 			for i := 0; i < relation.Len(); i++ {
 				if member := s.World.FindFeatureByID(relation.Member(i).ID); member != nil {
 					uiResponse := NewUIResponseJSON()
-					if err := s.Renderer.RenderValue(uiResponse, member); err == nil {
+					if err := s.Renderer.Render(uiResponse, member, relation); err == nil {
 						response.Docked = append(response.Docked, uiResponse)
 					}
 				}

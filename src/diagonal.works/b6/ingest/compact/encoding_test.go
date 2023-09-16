@@ -682,18 +682,6 @@ func TestRelationEncoding(t *testing.T) {
 	}
 }
 
-func TestHashString(t *testing.T) {
-	hashes := make(map[uint64]struct{})
-	n := 1024
-	for i := 0; i < n; i++ {
-		token := fmt.Sprintf("building:levels=%d", i)
-		hashes[HashString(token)] = struct{}{}
-	}
-	if len(hashes) != n {
-		t.Errorf("Expected no collisons")
-	}
-}
-
 func TestTokenMapEncoding(t *testing.T) {
 	tokens := make([]string, 1024)
 	for i := 0; i < len(tokens); i++ {

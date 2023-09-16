@@ -450,6 +450,10 @@ form.shell > input {
     position: absolute;
 }
 
+.stack-floating {
+    position: absolute;
+}
+
 .stack > .substack {
     border-top: 1px solid #dbdeec; /* Graphite 30 */
     border-bottom: 0px;

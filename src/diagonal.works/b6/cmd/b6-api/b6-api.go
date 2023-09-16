@@ -75,6 +75,8 @@ func collectionForType(t reflect.Type) Collection {
 		return Collection{Name: n, Key: "any", Value: "Path"}
 	case "AreaCollection":
 		return Collection{Name: n, Key: "any", Value: "Area"}
+	case "TagCollection":
+		return Collection{Name: n, Key: "any", Value: "Tag"}
 	case "StringPointCollection":
 		return Collection{Name: n, Key: "string", Value: "Point"}
 	case "StringAreaCollection":
