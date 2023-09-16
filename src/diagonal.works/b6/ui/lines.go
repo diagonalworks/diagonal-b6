@@ -23,12 +23,24 @@ import (
 )
 
 type DefaultUIRenderer struct {
-	RenderRules renderer.RenderRules
-	World       b6.World
+	RenderRules     renderer.RenderRules
+	FunctionSymbols api.FunctionSymbols
+	World           b6.World
 }
 
 func (d *DefaultUIRenderer) Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature) error {
-	return fillResponseFromResult(response, value, d.RenderRules, d.World)
+	if err := fillResponseFromResult(response, value, d.RenderRules, d.World); err == nil {
+		shell := &pb.ShellLineProto{
+			Functions: make([]string, 0),
+		}
+		shell.Functions = fillMatchingFunctionSymbols(shell.Functions, value, d.FunctionSymbols)
+		response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &pb.SubstackProto{
+			Lines: []*pb.LineProto{{Line: &pb.LineProto_Shell{Shell: shell}}},
+		})
+		return nil
+	} else {
+		return fillResponseFromResult(response, err, d.RenderRules, d.World)
+	}
 }
 
 func getStringExpression(f b6.Feature, key string) *pb.NodeProto {
@@ -126,15 +138,11 @@ func fillMatchingFunctionSymbols(symbols []string, result interface{}, functions
 }
 
 func NewUIHandler(renderer UIRenderer, w ingest.MutableWorld, cores int) *UIHandler {
-	local := make(api.FunctionSymbols)
-	for name, f := range functions.Functions() {
-		local[name] = f
-	}
 	return &UIHandler{
 		Renderer:         renderer,
 		World:            w,
 		Cores:            cores,
-		FunctionSymbols:  local,
+		FunctionSymbols:  functions.Functions(),
 		FunctionWrappers: functions.Wrappers(),
 	}
 }
@@ -236,18 +244,12 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Cores:            b.Cores,
 		Context:          context.Background(),
 	}
+
 	result, err := api.Evaluate(response.Proto.Node, &vmContext)
 	if err == nil {
-		if err = b.Renderer.Render(response, result, renderContext); err == nil {
-			shell := &pb.ShellLineProto{
-				Functions: make([]string, 0),
-			}
-			shell.Functions = fillMatchingFunctionSymbols(shell.Functions, result, b.FunctionSymbols)
-			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &pb.SubstackProto{
-				Lines: []*pb.LineProto{{Line: &pb.LineProto_Shell{Shell: shell}}},
-			})
-		}
-	} else {
+		err = b.Renderer.Render(response, result, renderContext)
+	}
+	if err != nil {
 		b.Renderer.Render(response, err, renderContext)
 	}
 	sendUIResponse(response, w)
@@ -325,18 +327,8 @@ func fillSubstackFromExpression(lines *pb.SubstackProto, expression *pb.NodeProt
 func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, response *pb.UIResponseProto) error {
 	// TODO: Set collection title based on collection contents
 	if countable, ok := c.(api.Countable); ok {
-		substack.Lines = append(substack.Lines, &pb.LineProto{
-			Line: &pb.LineProto_ValuePair{
-				ValuePair: &pb.ValuePairLineProto{
-					First: &pb.ClickableAtomProto{
-						Atom: atomFromString("Collection"),
-					},
-					Second: &pb.ClickableAtomProto{
-						Atom: atomFromString(strconv.Itoa(countable.Count())),
-					},
-				},
-			},
-		})
+		line := leftRightValueLineFromValues("Collection", countable.Count())
+		substack.Lines = append(substack.Lines, line)
 	} else {
 		substack.Lines = append(substack.Lines, &pb.LineProto{
 			Line: &pb.LineProto_Value{
@@ -357,7 +349,7 @@ func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, re
 	if isFeatureCollection(keys, values) || isArrayCollection(keys, values) {
 		for i := range values {
 			if i < CollectionLineLimit {
-				line := valueLineFromValue(values[i])
+				line := ValueLineFromValue(values[i])
 				substack.Lines = append(substack.Lines, line)
 			} else {
 				break
@@ -366,7 +358,7 @@ func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, re
 	} else {
 		for i := range keys {
 			if i < CollectionLineLimit {
-				line := valuePairLineFromValues(keys[i], values[i])
+				line := leftRightValueLineFromValues(keys[i], values[i])
 				substack.Lines = append(substack.Lines, line)
 			} else {
 				break
@@ -532,7 +524,7 @@ func clickExpressionFromValue(value interface{}) *pb.NodeProto {
 	return nil
 }
 
-func valueLineFromValue(value interface{}) *pb.LineProto {
+func ValueLineFromValue(value interface{}) *pb.LineProto {
 	return &pb.LineProto{
 		Line: &pb.LineProto_Value{
 			Value: &pb.ValueLineProto{
@@ -543,15 +535,17 @@ func valueLineFromValue(value interface{}) *pb.LineProto {
 	}
 }
 
-func valuePairLineFromValues(first interface{}, second interface{}) *pb.LineProto {
+func leftRightValueLineFromValues(first interface{}, second interface{}) *pb.LineProto {
 	return &pb.LineProto{
-		Line: &pb.LineProto_ValuePair{
-			ValuePair: &pb.ValuePairLineProto{
-				First: &pb.ClickableAtomProto{
-					Atom:            atomFromValue(first),
-					ClickExpression: clickExpressionFromValue(first),
+		Line: &pb.LineProto_LeftRightValue{
+			LeftRightValue: &pb.LeftRightValueLineProto{
+				Left: []*pb.ClickableAtomProto{
+					&pb.ClickableAtomProto{
+						Atom:            atomFromValue(first),
+						ClickExpression: clickExpressionFromValue(first),
+					},
 				},
-				Second: &pb.ClickableAtomProto{
+				Right: &pb.ClickableAtomProto{
 					Atom:            atomFromValue(second),
 					ClickExpression: clickExpressionFromValue(second),
 				},
@@ -594,19 +588,19 @@ func fillSubstacksFromError(substacks []*pb.SubstackProto, err error) []*pb.Subs
 
 func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.World) []*pb.SubstackProto {
 	substack := &pb.SubstackProto{}
-	substack.Lines = append(substack.Lines, valueLineFromValue(f))
+	substack.Lines = append(substack.Lines, ValueLineFromValue(f))
 	substack.Lines = append(substack.Lines, lineFromTags(f))
 	substacks = append(substacks, substack)
 
 	if path, ok := f.(b6.PathFeature); ok {
 		substack := &pb.SubstackProto{Collapsable: true}
-		line := valuePairLineFromValues("Points", path.Len())
+		line := leftRightValueLineFromValues("Points", path.Len())
 		substack.Lines = append(substack.Lines, line)
 		for i := 0; i < path.Len(); i++ {
 			if point := path.Feature(i); point != nil {
-				substack.Lines = append(substack.Lines, valueLineFromValue(point))
+				substack.Lines = append(substack.Lines, ValueLineFromValue(point))
 			} else {
-				substack.Lines = append(substack.Lines, valueLineFromValue(path.Point(i)))
+				substack.Lines = append(substack.Lines, ValueLineFromValue(path.Point(i)))
 			}
 		}
 		substacks = append(substacks, substack)
@@ -614,14 +608,14 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 
 	if relation, ok := f.(b6.RelationFeature); ok {
 		substack := &pb.SubstackProto{Collapsable: true}
-		line := valuePairLineFromValues("Members", relation.Len())
+		line := leftRightValueLineFromValues("Members", relation.Len())
 		substack.Lines = append(substack.Lines, line)
 		for i := 0; i < relation.Len(); i++ {
 			member := relation.Member(i)
 			if member.Role != "" {
-				substack.Lines = append(substack.Lines, valuePairLineFromValues(member.ID, member.Role))
+				substack.Lines = append(substack.Lines, leftRightValueLineFromValues(member.ID, member.Role))
 			} else {
-				substack.Lines = append(substack.Lines, valueLineFromValue(member.ID))
+				substack.Lines = append(substack.Lines, ValueLineFromValue(member.ID))
 			}
 		}
 		substacks = append(substacks, substack)
@@ -630,10 +624,10 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 	relations := b6.AllRelations(w.FindRelationsByFeature(f.FeatureID()))
 	if len(relations) > 0 {
 		substack := &pb.SubstackProto{Collapsable: true}
-		line := valuePairLineFromValues("Relations", len(relations))
+		line := leftRightValueLineFromValues("Relations", len(relations))
 		substack.Lines = append(substack.Lines, line)
 		for _, r := range relations {
-			substack.Lines = append(substack.Lines, valueLineFromValue(r))
+			substack.Lines = append(substack.Lines, ValueLineFromValue(r))
 		}
 		substacks = append(substacks, substack)
 	}

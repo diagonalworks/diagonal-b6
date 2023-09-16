@@ -224,6 +224,22 @@ form.shell > input {
     fill: #ffffff;
 }
 
+.palette > .outliner-rose {
+    color: #ff8465; /* Rose 50 */
+}
+
+.palette > .outliner-blue {
+    color: #a2c9fe; /* Blue 40 */
+}
+
+.palette > .outliner-emerald {
+    color: #b6ead1; /* Emerald 30 */
+}
+
+.palette > .outliner-teal {
+    color: #66bbca; /* Teal 50 */
+}
+
 .atom-labelled-icon > img {
     vertical-align: text-bottom;
     padding-right: 9px; /* Inset squish XS */
@@ -247,26 +263,26 @@ form.shell > input {
     text-overflow: ellipsis;
 }
 
-.line-value-pair {
+.line-left-right-value {
     display: flex;
     flex-direction: row;
 }
 
-.line-value-pair > span {
+.line-left-right-value > span {
     flex-basis: auto;
     flex-grow: 1;
     flex-shrink: 1;
     overflow-x: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-}
-
-.line-value-pair > :first-child {
     padding-right: 4px; /* Inset squish XXS */
 }
 
-.line-value-pair > :last-child {
+.line-left-right-value > :last-child {
     flex: 0 1 auto;
+    padding-right: 0px;
+    text-align: end;
+    color: #528dff; /* Ultramarine 60 */
 }
 
 .line-expression {

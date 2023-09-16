@@ -34,7 +34,7 @@ message SubstackProto {
 message LineProto {
     oneof line {
         ValueLineProto value = 1;
-        ValuePairLineProto valuePair = 2;
+        LeftRightValueLineProto leftRightValue = 2;
         ExpressionLineProto expression = 3;
         TagsLineProto tags = 4;
         HistogramBarLineProto histogramBar = 5;
@@ -49,9 +49,9 @@ message ValueLineProto {
     api.NodeProto clickExpression = 2;
 }
 
-message ValuePairLineProto {
-    ClickableAtomProto first = 1;
-    ClickableAtomProto second = 2;
+message LeftRightValueLineProto {
+    repeated ClickableAtomProto left = 1;
+    ClickableAtomProto right = 2;
 }
 
 message ClickableAtomProto {
