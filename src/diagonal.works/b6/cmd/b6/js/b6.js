@@ -322,12 +322,23 @@ function setupMap(state, styles) {
         stroke: new Stroke({color: styles["highlighted-area"]["stroke"], width: 0.3})
     });
 
+    const bucketedBuildingFill = Array.from(Array(5).keys()).map(b => {
+        return new Style({
+            fill: new Fill({color: styles[`bucketed-${b}`]["fill"]}),
+            stroke: new Stroke({color: "#4f5a7d", width: 0.3})
+        });
+    });
+
     const buildings = new VectorTileLayer({
         source: baseSource,
         style: function(feature, resolution) {
             if (feature.get("layer") == "building") {
                 const id = idKeyFromFeature(feature);
+                if (state.bucketed[id]) {
+                    return bucketedBuildingFill[state.bucketed[id]];
+                }
                 if (state.highlighted[id]) {
+                    console.log("highlighted");
                     return highlightedBuildingFill;
                 }
                 return buildingFill;
@@ -410,16 +421,17 @@ function lonLatToLiteral(ll) {
     return `${ll[1].toPrecision(8)}, ${ll[0].toPrecision(8)}`
 }
 
-function showFeature(feature, ui) {
+function showFeature(feature, position, ui) {
     const ns = feature.get("ns");
     const id = feature.get("id");
     const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
     if (ns && id && types[feature.getType()]) {
-        ui.evaluateExpression(`find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`);
+        ui.evaluateExpression(`find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`, position);
     }
 }
 
-const StackOrigin = [10, 100];
+const StackOrigin = [10, 100]; // Coordinates of stacks shown in the top left
+const StackOffset = [10, 10]; // Relative coordinates of stacks shown next to the mouse cursor
 
 function elementPosition(element) {
     return [+element.style("left").replace("px", ""), +element.style("top").replace("px", "")];
@@ -448,9 +460,12 @@ class RenderedResponse {
                 const namespace = this.highlighted.namespaces[i];
                 const values = this.highlighted.ids[i].ids;
                 for (const j in values) {
-                    ui.addHighlight(namespace + "/" + values[j])
+                    ui.addHighlight(namespace + "/" + values[j]);
                 }
             }
+        }
+        if (response.proto.bucketed) {
+            this.bucketed = response.proto.bucketed;
         }
         if (response.geojson) {
             this.addGeoJSON(response.geojson, ui);
@@ -494,6 +509,20 @@ class RenderedResponse {
             type: "application/json",
         });
         this.blobURL = URL.createObjectURL(blob);
+    }
+
+    addBucketed(ui) {
+        if (this.bucketed) {
+            for (const i in this.bucketed) {
+                for (const j in this.bucketed[i].namespaces) {
+                    const namespace = this.bucketed[i].namespaces[j];
+                    const values = this.bucketed[i].ids[j].ids;
+                    for (const k in values) {
+                        ui.addBucketed(namespace + "/" + values[k], i);
+                    }
+                }
+            }
+        }
     }
 
     redrawHighlights() {
@@ -839,15 +868,15 @@ class UI {
         this.needHighlightRedraw = false;
     }
 
-    evaluateExpression(expression) {
-        this.evaluateExpressionInContext(null, expression);
+    evaluateExpression(expression, position) {
+        this.evaluateExpressionInContext(null, expression, position);
     }
 
     evaluateNode(node) {
         this.evaluateExpressionInContext(node, null);
     }
 
-    evaluateExpressionInContext(node, expression) {
+    evaluateExpressionInContext(node, expression, position) {
         const request = {
             node: node,
             expression: expression,
@@ -864,7 +893,7 @@ class UI {
             }
         }
         d3.json("/ui", post).then(response => {
-            this.renderFeaturedUIResponse(response);
+            this.renderFeaturedUIResponse(response, position);
         });
     }
 
@@ -889,6 +918,10 @@ class UI {
             this.rendered[i].redrawHighlights();
         }
         this.basemapHighlightChanged();
+    }
+
+    addBucketed(idKey, bucket) {
+        this.state.bucketed[idKey] = bucket;
     }
 
     addQueryLayer(query) {
@@ -926,18 +959,34 @@ class UI {
         const target = d3.select("#dock").selectAll(".stack").data(docked).join("div");
         target.attr("class", "stack closed");
         this.renderUIResponse(target);
+        const ui = this;
         target.on("click", function(e) {
             e.preventDefault();
             target.classed("closed", true);
             d3.select(this).classed("closed", false);
+            if (this.__rendered__) {
+                ui.state.bucketed = {};
+                this.__rendered__.addBucketed(ui);
+                ui.basemapHighlightChanged();
+            }
         });
     }
 
-    renderFeaturedUIResponse(response) {
+    renderFeaturedUIResponse(response, position) {
+        d3.select("#dock").selectAll(".stack").classed("closed", true);
+        if (Object.keys(this.state.bucketed).length > 0) {
+            this.state.bucketed = {};
+            this.basemapHighlightChanged();
+        }
         const root = d3.select("body").selectAll(".stack-featured").data([response]).join("div");
         root.attr("class", "stack stack-featured");
-        root.style("left",  `${StackOrigin[0]}px`);
-        root.style("top", `${StackOrigin[1]}px`);
+        if (position) {
+            root.style("left",  `${StackOffset[0] + position[0]}px`);
+            root.style("top", `${StackOffset[1] + position[1]}px`);
+        } else {
+            root.style("left",  `${StackOrigin[0]}px`);
+            root.style("top", `${StackOrigin[1]}px`);
+        }
         this.renderUIResponse(root);
         const center = response.proto.mapCenter;
         if (center && center.latE7 && center.lngE7) {
@@ -1024,7 +1073,7 @@ function acceptShellSuggestion(block, state, renderedResponse, ui) {
     ui.evaluateExpressionInContext(renderedResponse.getExpressionContext(), expression);
 }
 
-function showFeatureAtPixel(pixel, layers, ui) {
+function showFeatureAtPixel(pixel, layers, position, ui) {
     const search = (i, found) => {
         if (i < layers.length) {
             if (layers[i].getVisible()) {
@@ -1041,7 +1090,7 @@ function showFeatureAtPixel(pixel, layers, ui) {
             }
         }
     };
-    search(0, f => showFeature(f, ui));
+    search(0, f => showFeature(f, position, ui));
 }
 
 function idKey(id) {
@@ -1209,6 +1258,11 @@ function newQueryStyle(state, styles) {
 }
 
 const Styles = [
+    "bucketed-0",
+    "bucketed-1",
+    "bucketed-2",
+    "bucketed-3",
+    "bucketed-4",
     "geojson-area",
     "geojson-path",
     "geojson-point",
@@ -1227,7 +1281,7 @@ const Styles = [
 ];
 
 function setup(startupResponse) {
-    const state = {highlighted: {}};
+    const state = {highlighted: {}, bucketed: {}};
     const styles = lookupStyles(Styles);
     const [map, searchableLayers, highlightChanged] = setupMap(state, styles);
     const queryStyle = newQueryStyle(state, styles);
@@ -1248,11 +1302,12 @@ function setup(startupResponse) {
     }
 
     map.on("singleclick", e => {
+        const position = d3.pointer(e.originalEvent, html);
         if (e.originalEvent.shiftKey) {
-            showFeatureAtPixel(e.pixel, searchableLayers, ui);
+            showFeatureAtPixel(e.pixel, searchableLayers, position, ui);
             e.stopPropagation();
         } else {
-            ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))));
+            ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))), position);
             e.stopPropagation();
         }
     });
