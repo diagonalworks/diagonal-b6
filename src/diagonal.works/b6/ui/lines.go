@@ -389,7 +389,7 @@ func fillSubstackFromHistogram(substack *pb.SubstackProto, c *api.HistogramColle
 		substack.Lines = append(substack.Lines, &pb.LineProto{
 			Line: &pb.LineProto_HistogramBar{
 				HistogramBar: &pb.HistogramBarLineProto{
-					Range: atomFromValue(key),
+					Range: AtomFromValue(key),
 					Value: int32(values[i].(int)),
 					Index: int32(i),
 				},
@@ -453,7 +453,7 @@ func featureLabel(f b6.Feature) string {
 	return LabelForFeature(f).Singular
 }
 
-func atomFromValue(value interface{}) *pb.AtomProto {
+func AtomFromValue(value interface{}) *pb.AtomProto {
 	if i, ok := api.ToInt(value); ok {
 		return atomFromString(strconv.Itoa(i))
 	} else if f, err := api.ToFloat64(value); err == nil {
@@ -528,7 +528,7 @@ func ValueLineFromValue(value interface{}) *pb.LineProto {
 	return &pb.LineProto{
 		Line: &pb.LineProto_Value{
 			Value: &pb.ValueLineProto{
-				Atom:            atomFromValue(value),
+				Atom:            AtomFromValue(value),
 				ClickExpression: clickExpressionFromValue(value),
 			},
 		},
@@ -541,12 +541,12 @@ func leftRightValueLineFromValues(first interface{}, second interface{}) *pb.Lin
 			LeftRightValue: &pb.LeftRightValueLineProto{
 				Left: []*pb.ClickableAtomProto{
 					&pb.ClickableAtomProto{
-						Atom:            atomFromValue(first),
+						Atom:            AtomFromValue(first),
 						ClickExpression: clickExpressionFromValue(first),
 					},
 				},
 				Right: &pb.ClickableAtomProto{
-					Atom:            atomFromValue(second),
+					Atom:            AtomFromValue(second),
 					ClickExpression: clickExpressionFromValue(second),
 				},
 			},
@@ -610,13 +610,17 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 		substack := &pb.SubstackProto{Collapsable: true}
 		line := leftRightValueLineFromValues("Members", relation.Len())
 		substack.Lines = append(substack.Lines, line)
-		for i := 0; i < relation.Len(); i++ {
+		var i int
+		for i = 0; i < relation.Len() && i < CollectionLineLimit; i++ {
 			member := relation.Member(i)
 			if member.Role != "" {
 				substack.Lines = append(substack.Lines, leftRightValueLineFromValues(member.ID, member.Role))
 			} else {
 				substack.Lines = append(substack.Lines, ValueLineFromValue(member.ID))
 			}
+		}
+		if n := relation.Len() - CollectionLineLimit; n > 0 {
+			substack.Lines = append(substack.Lines, ValueLineFromValue(fmt.Sprintf("%d more", n)))
 		}
 		substacks = append(substacks, substack)
 	}
@@ -652,7 +656,7 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 			p.Stack.Substacks = fillSubstacksFromString(p.Stack.Substacks, "Query")
 		}
 	case b6.Tag:
-		p.Stack.Substacks = fillSubstacksFromAtom(p.Stack.Substacks, atomFromValue(r))
+		p.Stack.Substacks = fillSubstacksFromAtom(p.Stack.Substacks, AtomFromValue(r))
 		if !rules.IsRendered(r) {
 			if q, ok := api.UnparseQuery(b6.Tagged(r)); ok {
 				p.QueryLayers = append(p.QueryLayers, q)
@@ -728,7 +732,7 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 			Lines: []*pb.LineProto{{
 				Line: &pb.LineProto_Value{
 					Value: &pb.ValueLineProto{
-						Atom: atomFromValue(r),
+						Atom: AtomFromValue(r),
 					},
 				},
 			}},

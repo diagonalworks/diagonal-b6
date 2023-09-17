@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/ingest"
 
 	"github.com/golang/geo/s2"
 )
@@ -682,4 +683,27 @@ func FillSliceFromValues(c Collection, toFill interface{}) error {
 	}
 	reflect.ValueOf(toFill).Elem().Set(f)
 	return nil
+}
+
+func CollectionToTags(c Collection) (ingest.Tags, error) {
+	tags := make(ingest.Tags, 0)
+	i := c.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			return tags, nil
+		}
+		if tag, ok := i.Value().(b6.Tag); ok {
+			tags = append(tags, tag)
+			continue
+		} else if key, ok := i.Key().(string); ok {
+			if value, ok := i.Value().(string); ok {
+				tags = append(tags, b6.Tag{Key: key, Value: value})
+				continue
+			}
+		}
+		return nil, fmt.Errorf("Expected tag values, or string keys and values, found %T and %T", i.Key(), i.Value())
+	}
 }

@@ -29,6 +29,9 @@ func materialiseCollection(c Collection, r *ingest.RelationFeature) error {
 	}
 
 	if _, ok := i.Key().(b6.Identifiable); ok {
+		if _, ok := i.Value().(b6.Identifiable); ok {
+			return materialiseFeatureFeatureCollection(r, i)
+		}
 		r.Tags.AddTag(b6.Tag{Key: "keys", Value: "features"})
 		if t, err := typeForMaterialisedRole(i.Value()); err == nil {
 			r.Tags.AddTag(b6.Tag{Key: "role", Value: t})
@@ -51,6 +54,31 @@ func materialiseCollection(c Collection, r *ingest.RelationFeature) error {
 		}
 	} else {
 		return fmt.Errorf("can't materialise collections with keys of type %T", i.Key())
+	}
+}
+
+func materialiseFeatureFeatureCollection(r *ingest.RelationFeature, i CollectionIterator) error {
+	r.Tags.AddTag(b6.Tag{Key: "keys", Value: "features"})
+	r.Tags.AddTag(b6.Tag{Key: "values", Value: "features"})
+	for {
+		if key, ok := i.Key().(b6.Identifiable); ok {
+			if value, ok := i.Value().(b6.Identifiable); ok {
+				r.Members = append(r.Members,
+					b6.RelationMember{
+						ID: key.FeatureID(),
+					},
+					b6.RelationMember{
+						ID: value.FeatureID(),
+					},
+				)
+			}
+		} else {
+			return fmt.Errorf("expected a FeatureID key, found %T", i.Key())
+		}
+		ok, err := i.Next()
+		if !ok || err != nil {
+			return err
+		}
 	}
 }
 
@@ -121,6 +149,15 @@ func dematerialiseCollection(f b6.RelationFeature) (Collection, error) {
 		Keys:   make([]interface{}, 0, f.Len()),
 		Values: make([]interface{}, 0, f.Len()),
 	}
+	if keys := f.Get("keys"); keys.Value == "features" {
+		if values := f.Get("values"); values.Value == "features" {
+			if err := dematerialiseFeatureFeatureCollection(c, f); err == nil {
+				return c, nil
+			} else {
+				return nil, err
+			}
+		}
+	}
 	role := f.Get("role")
 	if !role.IsValid() {
 		return nil, fmt.Errorf("no role tag")
@@ -135,4 +172,15 @@ func dematerialiseCollection(f b6.RelationFeature) (Collection, error) {
 		}
 	}
 	return c, nil
+}
+
+func dematerialiseFeatureFeatureCollection(c *ArrayAnyCollection, f b6.RelationFeature) error {
+	if f.Len()%2 != 0 {
+		return fmt.Errorf("incorrectly materialised collection")
+	}
+	for i := 0; i < f.Len(); i += 2 {
+		c.Keys = append(c.Keys, f.Member(i).ID)
+		c.Values = append(c.Values, f.Member(i+1).ID)
+	}
+	return nil
 }

@@ -89,7 +89,8 @@ var functions = api.FunctionSymbols{
 	// graph
 	"reachable-area":     reachableArea,
 	"reachable-points":   reachablePoints,
-	"reachable":          reachableFeatures,
+	"reachable":          reachable,
+	"accessible":         accessible,
 	"closest":            closestFeature,
 	"closest-distance":   closestFeatureDistance,
 	"paths-to-reach":     pathsToReachFeatures,

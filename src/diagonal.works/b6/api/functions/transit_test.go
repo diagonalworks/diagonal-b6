@@ -58,7 +58,7 @@ func TestFindReachableFeatures(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	collection, err := reachableFeatures(&context, origin, "walk", 1000.0, b6.Keyed{Key: "#amenity"})
+	collection, err := reachable(&context, origin, "walk", 1000.0, b6.Keyed{Key: "#amenity"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

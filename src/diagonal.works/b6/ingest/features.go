@@ -1130,23 +1130,32 @@ func (f *FeatureReferences) AddPathsForArea(a *AreaFeature) {
 func (f *FeatureReferences) RemoveRelationsForFeature(r *RelationFeature) {
 	for _, member := range r.Members {
 		ids := f.RelationsByFeature[member.ID]
-		filtered := make([]*RelationFeature, 0, len(ids)-1)
-		for _, relation := range ids {
-			if relation != r {
-				filtered = append(filtered, relation)
+		if len(ids) > 0 {
+			filtered := make([]*RelationFeature, 0, len(ids)-1)
+			for _, relation := range ids {
+				if relation != r {
+					filtered = append(filtered, relation)
+				}
 			}
+			f.RelationsByFeature[member.ID] = filtered
 		}
-		f.RelationsByFeature[member.ID] = filtered
 	}
 }
 
 func (f *FeatureReferences) AddRelationsForFeature(r *RelationFeature) {
+	id := r.FeatureID()
+member:
 	for _, member := range r.Members {
-		ids, ok := f.RelationsByFeature[member.ID]
+		relations, ok := f.RelationsByFeature[member.ID]
 		if !ok {
-			ids = make([]*RelationFeature, 0, 1)
+			relations = make([]*RelationFeature, 0, 1)
 		}
-		f.RelationsByFeature[member.ID] = append(ids, r)
+		for _, rr := range relations {
+			if rr.FeatureID() == id {
+				continue member
+			}
+		}
+		f.RelationsByFeature[member.ID] = append(relations, r)
 	}
 }
 

@@ -18,8 +18,9 @@ message UIResponseProto {
     StackProto stack = 1;
     api.NodeProto node = 2;
     FeatureIDsProto highlighted = 3;
-    repeated string queryLayers = 4;
-    geometry.PointProto mapCenter = 5;
+    repeated FeatureIDsProto bucketed = 4;
+    repeated string queryLayers = 5;
+    geometry.PointProto mapCenter = 6;
 }
 
 message StackProto {

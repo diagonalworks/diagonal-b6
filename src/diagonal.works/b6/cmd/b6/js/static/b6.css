@@ -240,6 +240,26 @@ form.shell > input {
     color: #66bbca; /* Teal 50 */
 }
 
+.palette > .bucketed-0 {
+    fill: #F4D4E1;
+}
+
+.palette > .bucketed-1 {
+    fill: #EAB5C8;
+}
+
+.palette > .bucketed-2 {
+    fill: #E09BB5;
+}
+
+.palette > .bucketed-3 {
+    fill: #CF7C9D;
+}
+
+.palette > .bucketed-4 {
+    fill: #AD5577;
+}
+
 .atom-labelled-icon > img {
     vertical-align: text-bottom;
     padding-right: 9px; /* Inset squish XS */
@@ -266,6 +286,7 @@ form.shell > input {
 .line-left-right-value {
     display: flex;
     flex-direction: row;
+    overflow: clip;
 }
 
 .line-left-right-value > span {
