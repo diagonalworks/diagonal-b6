@@ -3,12 +3,14 @@ package functions
 import (
 	"fmt"
 	"math"
+	"sort"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/golang/geo/s2"
 )
@@ -99,8 +101,179 @@ func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature
 	return features, err
 }
 
-func reachableFeatures(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.FeatureCollection, error) {
+func reachable(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.FeatureCollection, error) {
 	return FindReachableFeaturesWithPathStates(context, origin, mode, distance, query, nil)
+}
+
+type odCollection struct {
+	origins      []b6.Identifiable
+	destinations [][]b6.FeatureID
+
+	i int
+	j int
+}
+
+func (o *odCollection) IsCountable() bool { return true }
+
+func (o *odCollection) Count() int {
+	count := 0
+	for _, ds := range o.destinations {
+		count += len(ds)
+	}
+	return count
+}
+
+func (o *odCollection) Begin() api.CollectionIterator {
+	return &odCollection{origins: o.origins, destinations: o.destinations}
+}
+
+func (o *odCollection) Key() interface{} {
+	return o.origins[o.i-1]
+}
+
+func (o *odCollection) Value() interface{} {
+	return o.destinations[o.i-1][o.j-1]
+}
+
+func (o *odCollection) Next() (bool, error) {
+	o.j++
+	if o.i < 1 || o.j > len(o.destinations[o.i-1]) {
+		o.j = 1
+		for {
+			o.i++
+			if o.i > len(o.origins) || o.j <= len(o.destinations[o.i-1]) {
+				break
+			}
+		}
+	}
+	return o.i <= len(o.origins), nil
+}
+
+func (o *odCollection) Flip() {
+	flipped := make(map[b6.FeatureID][]b6.FeatureID)
+	for i, origin := range o.origins {
+		for _, destination := range o.destinations[i] {
+			flipped[destination] = append(flipped[destination], origin.FeatureID())
+		}
+	}
+	o.origins = o.origins[0:0]
+	o.destinations = o.destinations[0:0]
+	for origin, destinations := range flipped {
+		o.origins = append(o.origins, origin)
+		o.destinations = append(o.destinations, destinations)
+	}
+}
+
+func (o *odCollection) Len() int { return len(o.origins) }
+
+func (o *odCollection) Swap(i, j int) {
+	o.origins[i], o.origins[j] = o.origins[j], o.origins[i]
+	o.destinations[i], o.destinations[j] = o.destinations[j], o.destinations[i]
+}
+
+func (o *odCollection) Less(i, j int) bool {
+	return o.origins[i].FeatureID().Less(o.origins[j].FeatureID())
+}
+
+func accessible(context *api.Context, origins api.FeatureCollection, destinations b6.Query, distance float64, options api.Collection) (api.FeatureIDFeatureIDCollection, error) {
+	tags, err := api.CollectionToTags(options)
+	if err != nil {
+		return nil, err
+	}
+
+	os := make([]b6.Identifiable, 0)
+	i := origins.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		if id, ok := i.Value().(b6.Identifiable); ok {
+			os = append(os, id)
+		} else {
+			return nil, fmt.Errorf("Expected FeatureID, found %T", i.Value())
+		}
+	}
+
+	mode := "walk"
+	if m := tags.Get("mode"); m.IsValid() {
+		mode = m.Value
+	}
+	weights, err := weightsFromMode(mode)
+	if err != nil {
+		return nil, err
+	}
+
+	ds := make([][]b6.FeatureID, len(os))
+	c := make(chan int)
+	g, gc := errgroup.WithContext(context.Context)
+	for i := 0; i < context.Cores; i++ {
+		g.Go(func() error {
+			for j := range c {
+				if origin := api.Resolve(os[j], context.World); origin != nil {
+					ds[j] = accessibleFromOrigin(ds[j], origin, destinations, weights, distance, context.World)
+				}
+			}
+			return nil
+		})
+	}
+
+done:
+	for i := range os {
+		select {
+		case <-gc.Done():
+			break done
+		case c <- i:
+		}
+	}
+	close(c)
+	err = g.Wait()
+	ods := &odCollection{origins: os, destinations: ds}
+	if flip := tags.Get("flip"); flip.Value == "yes" {
+		ods.Flip()
+	}
+	sort.Sort(ods)
+	return ods, err
+}
+
+func accessibleFromOrigin(ds []b6.FeatureID, origin b6.Feature, destinations b6.Query, weights graph.Weights, distance float64, w b6.World) []b6.FeatureID {
+	s := graph.NewShortestPathSearchFromFeature(origin, weights, w)
+	s.ExpandSearch(distance, weights, graph.PointsAndAreas, w)
+	for id := range s.AreaDistances() {
+		if id.FeatureID() == origin.FeatureID() {
+			continue
+		}
+		if area := w.FindFeatureByID(id.FeatureID()); area != nil {
+			if destinations.Matches(area, w) {
+				ds = append(ds, area.FeatureID())
+			}
+		}
+	}
+	for id := range s.PointDistances() {
+		if id.FeatureID() == origin.FeatureID() {
+			continue
+		}
+		if point := w.FindFeatureByID(id.FeatureID()); point != nil {
+			if destinations.Matches(point, w) {
+				ds = append(ds, point.FeatureID())
+			}
+		}
+	}
+	return ds
+}
+
+func weightsFromMode(mode string) (graph.Weights, error) {
+	switch mode {
+	case "bus":
+		return graph.BusWeights{}, nil
+	case "car":
+		return graph.CarWeights{}, nil
+	case "walk":
+		return graph.SimpleHighwayWeights{}, nil
+	}
+	return nil, fmt.Errorf("Unknown travel mode %q", mode)
 }
 
 func closestFeature(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Feature, error) {

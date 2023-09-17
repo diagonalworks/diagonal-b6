@@ -72,10 +72,13 @@ type RelationMemberYAML struct {
 }
 
 func (r RelationMemberYAML) MarshalYAML() (interface{}, error) {
-	return map[string]interface{}{
-		"id":   FeatureIDYAML{FeatureID: r.RelationMember.ID},
-		"role": r.RelationMember.Role,
-	}, nil
+	y := map[string]interface{}{
+		"id": FeatureIDYAML{FeatureID: r.RelationMember.ID},
+	}
+	if r.RelationMember.Role != "" {
+		y["role"] = r.RelationMember.Role
+	}
+	return y, nil
 }
 
 func (r *RelationMemberYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {

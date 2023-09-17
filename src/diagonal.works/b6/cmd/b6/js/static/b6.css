@@ -266,6 +266,7 @@ form.shell > input {
 .line-left-right-value {
     display: flex;
     flex-direction: row;
+    overflow: clip;
 }
 
 .line-left-right-value > span {

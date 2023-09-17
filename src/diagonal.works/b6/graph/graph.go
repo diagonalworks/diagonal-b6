@@ -10,6 +10,11 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+type OD struct {
+	Origin      b6.FeatureID
+	Destination b6.FeatureID
+}
+
 const WalkingMetersPerSecond = 5000.0 / (60.0 * 60.0)
 
 func weightFromSegment(segment b6.Segment) float64 {
@@ -190,12 +195,12 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 			if stopElevation > startElevation { // Ascending.
 				// Naismith’s Rule adds ~6s/m of elevation,
 				// which we're normalizing against 1.38m/s avg. walking speed.
-				w += (stopElevation-startElevation) * 6 * WalkingMetersPerSecond
+				w += (stopElevation - startElevation) * 6 * WalkingMetersPerSecond
 			}
 
 			if (e.UpHillHard && stopElevation > startElevation) ||
-			   (e.DownHillHard && stopElevation < startElevation) {
-				w *= 1.2  // Arbitrary coefficient.
+				(e.DownHillHard && stopElevation < startElevation) {
+				w *= 1.2 // Arbitrary coefficient.
 			}
 		}
 
