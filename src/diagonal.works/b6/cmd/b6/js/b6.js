@@ -149,7 +149,7 @@ function parseColour(colour, styles) {
     return "#ff0000";
 }
 
-function setupMap(state, styles) {
+function setupMap(state, styles, mapCenter) {
     const zoom = new Zoom({
         zoomInLabel: "",
         zoomOutLabel: "",
@@ -393,7 +393,7 @@ function setupMap(state, styles) {
     });
 
     const view = new View({
-        center: fromLonLat(InitialCenter),
+        center: fromLonLat(mapCenter ? [mapCenter.lngE7 / 1e7, mapCenter.latE7 / 1e7] : InitialCenter),
         zoom: InitalZoom,
     });
 
@@ -1283,7 +1283,7 @@ const Styles = [
 function setup(startupResponse) {
     const state = {highlighted: {}, bucketed: {}};
     const styles = lookupStyles(Styles);
-    const [map, searchableLayers, highlightChanged] = setupMap(state, styles);
+    const [map, searchableLayers, highlightChanged] = setupMap(state, styles, startupResponse.mapCenter);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
     const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged, startupResponse.context);

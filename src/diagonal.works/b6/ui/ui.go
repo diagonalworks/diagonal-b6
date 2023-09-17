@@ -11,6 +11,7 @@ import (
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/renderer"
+	"github.com/golang/geo/s2"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -81,10 +82,16 @@ func (b *FeatureIDProtoJSON) UnmarshalJSON(buffer []byte) error {
 	return protojson.Unmarshal(buffer, (*pb.FeatureIDProto)(b))
 }
 
+type LatLngJSON struct {
+	LatE7 int `json:"latE7"`
+	LngE7 int `json:"lngE7"`
+}
+
 type StartupResponseJSON struct {
-	Version string              `json:"version,omitempty"`
-	Docked  []*UIResponseJSON   `json:"docked,omitempty"`
-	Context *FeatureIDProtoJSON `json:"context,omitempty"`
+	Version   string              `json:"version,omitempty"`
+	Docked    []*UIResponseJSON   `json:"docked,omitempty"`
+	MapCenter *LatLngJSON         `json:"mapCenter,omitempty"`
+	Context   *FeatureIDProtoJSON `json:"context,omitempty"`
 }
 
 type StartupHandler struct {
@@ -119,9 +126,19 @@ func (s *StartupHandler) fillStartupResponseFromRootFeature(response *StartupRes
 		if relation, ok := f.(b6.RelationFeature); ok {
 			for i := 0; i < relation.Len(); i++ {
 				if member := s.World.FindFeatureByID(relation.Member(i).ID); member != nil {
-					uiResponse := NewUIResponseJSON()
-					if err := s.Renderer.Render(uiResponse, member, relation); err == nil {
-						response.Docked = append(response.Docked, uiResponse)
+					if relation.Member(i).Role == "docked" {
+						uiResponse := NewUIResponseJSON()
+						if err := s.Renderer.Render(uiResponse, member, relation); err == nil {
+							response.Docked = append(response.Docked, uiResponse)
+						}
+					} else if relation.Member(i).Role == "centroid" {
+						if p, ok := member.(b6.PhysicalFeature); ok {
+							ll := s2.LatLngFromPoint(b6.Centroid(p))
+							response.MapCenter = &LatLngJSON{
+								LatE7: int(ll.Lat.E7()),
+								LngE7: int(ll.Lng.E7()),
+							}
+						}
 					}
 				}
 			}
