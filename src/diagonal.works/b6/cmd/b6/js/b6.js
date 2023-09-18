@@ -683,7 +683,7 @@ class TagsLineRenderer {
             {class: "key", text: t.key},
             {class: "value", text: t.value, clickExpression: t.clickExpression},
         ];
-        const li = line.select("ul").selectAll("li").data(d => d.tags.tags ? d.tags.tag.map(formatTags) : []).join("li");
+        const li = line.select("ul").selectAll("li").data(d => d.tags.tags ? d.tags.tags.map(formatTags) : []).join("li");
         li.selectAll("span").data(d => d).join("span").attr("class", d => d.class).text(d => d.text);
         const clickable = li.selectAll(".value").filter(d => d.clickExpression);
         clickable.classed("clickable", true);
@@ -1022,7 +1022,7 @@ class UI {
             root.style("top", `${StackOrigin[1]}px`);
         }
         this.renderUIResponse(root, true);
-        if (response) {
+        if (response && !position) {
             const center = response.proto.mapCenter;
             if (center && center.latE7 && center.lngE7) {
                 this.map.getView().animate({
