@@ -425,17 +425,16 @@ function lonLatToLiteral(ll) {
     return `${ll[1].toPrecision(8)}, ${ll[0].toPrecision(8)}`
 }
 
-function showFeature(feature, position, ui) {
+function showFeature(feature, locked, position, ui) {
     const ns = feature.get("ns");
     const id = feature.get("id");
     const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
     if (ns && id && types[feature.getType()]) {
-        ui.evaluateExpression(`find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`, position);
+        ui.evaluateExpression(`find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`, locked, position);
     }
 }
 
-const StackOrigin = [10, 100]; // Coordinates of stacks shown in the top left
-const StackOffset = [10, 10]; // Relative coordinates of stacks shown next to the mouse cursor
+const StackOffset = [6, 6]; // Relative coordinates of stacks shown next to the mouse cursor
 
 function elementPosition(element) {
     return [+element.style("left").replace("px", ""), +element.style("top").replace("px", "")];
@@ -456,6 +455,7 @@ function lookupStyles(names) {
 class RenderedResponse {
     constructor(response, target, ui) {
         this.expressionContext = response.proto.node;
+        this.locked = response.proto.locked;
         this.target = target;
         this.layers = []
         if (response.proto.highlighted) {
@@ -480,6 +480,10 @@ class RenderedResponse {
 
     getExpressionContext() {
         return this.expressionContext;
+    }
+
+    isLocked() {
+        return this.locked;
     }
 
     getBlobURL() {
@@ -622,7 +626,7 @@ class ValueLineRenderer {
         clickable.classed("clickable", true);
         clickable.on("click", (e, d) => {
             e.preventDefault();
-            ui.evaluateNode(d.value.clickExpression);
+            ui.evaluateNode(d.value.clickExpression, renderedResponse.isLocked());
         })
     }    
 }
@@ -635,7 +639,10 @@ class LeftRightValueLineRenderer {
     enter(line) {}
 
     update(line, renderedResponse, ui) {
-        const values = line.datum().leftRightValue.left;
+        const values = [];
+        for (const i in line.datum().leftRightValue.left) {
+            values.push(line.datum().leftRightValue.left[i]);
+        }
         values.push(line.datum().leftRightValue.right);
 
         let atoms = line.selectAll("span").data(values).join("span");
@@ -880,18 +887,19 @@ class UI {
         this.needHighlightRedraw = false;
     }
 
-    evaluateExpression(expression, position) {
-        this.evaluateExpressionInContext(null, expression, position);
+    evaluateExpression(expression, locked, position) {
+        this.evaluateExpressionInContext(null, expression, locked, position);
     }
 
-    evaluateNode(node) {
-        this.evaluateExpressionInContext(node, null);
+    evaluateNode(node, locked) {
+        this.evaluateExpressionInContext(node, null, locked);
     }
 
-    evaluateExpressionInContext(node, expression, position) {
+    evaluateExpressionInContext(node, expression, locked, position) {
         const request = {
             node: node,
             expression: expression,
+            locked: locked,
         }
         if (this.context) {
             request.context = this.context;
@@ -1013,13 +1021,15 @@ class UI {
                 return exit.remove();
             },
         );
+
+        const dockRect = d3.select("#dock").node().getBoundingClientRect();
         root.attr("class", "stack stack-featured");
         if (position) {
             root.style("left",  `${StackOffset[0] + position[0]}px`);
             root.style("top", `${StackOffset[1] + position[1]}px`);
         } else {
-            root.style("left",  `${StackOrigin[0]}px`);
-            root.style("top", `${StackOrigin[1]}px`);
+            root.style("left",  `${dockRect.left}px`);
+            root.style("top", `${StackOffset[1] + dockRect.bottom}px`);
         }
         this.renderUIResponse(root, true);
         if (response && !position) {
@@ -1113,10 +1123,10 @@ function acceptShellSuggestion(block, state, renderedResponse, ui) {
     if (state.highlighted >= 0 && state.filtered[state.highlighted].length > expression.length) {
         expression = state.filtered[state.highlighted];
     }
-    ui.evaluateExpressionInContext(renderedResponse.getExpressionContext(), expression);
+    ui.evaluateExpressionInContext(renderedResponse.getExpressionContext(), expression, false);
 }
 
-function showFeatureAtPixel(pixel, layers, position, ui) {
+function showFeatureAtPixel(pixel, layers, locked, position, ui) {
     const search = (i, found) => {
         if (i < layers.length) {
             if (layers[i].getVisible()) {
@@ -1133,7 +1143,7 @@ function showFeatureAtPixel(pixel, layers, position, ui) {
             }
         }
     };
-    search(0, f => showFeature(f, position, ui));
+    search(0, f => showFeature(f, locked, position, ui));
 }
 
 function idKey(id) {
@@ -1152,7 +1162,7 @@ function idKeyFromFeature(feature) {
     return `/${type}/${feature.get("ns")}/${parseInt(feature.get("id"), 16)}`
 }
 
-function setupShell(target, blocks) {
+function setupShell(target, ui) {
     target.selectAll("form").data([1]).join(
         enter => {
             const form = enter.append("form").attr("class", "shell");
@@ -1194,7 +1204,7 @@ function setupShell(target, blocks) {
         const expression = target.select("input").node().value;
         state.history.push(expression);
         state.index = 0;
-        blocks.evaluateExpression(expression);
+        ui.evaluateExpression(expression, false);
         target.select("input").node().value = "";
     })
 }
@@ -1347,10 +1357,10 @@ function setup(startupResponse) {
     map.on("singleclick", e => {
         const position = d3.pointer(e.originalEvent, html);
         if (e.originalEvent.shiftKey) {
-            showFeatureAtPixel(e.pixel, searchableLayers, position, ui);
+            showFeatureAtPixel(e.pixel, searchableLayers, false, position, ui);
             e.stopPropagation();
         } else {
-            ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))), position);
+            ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))), true, position);
             e.stopPropagation();
         }
     });

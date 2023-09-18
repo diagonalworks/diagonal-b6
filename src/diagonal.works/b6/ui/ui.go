@@ -71,7 +71,7 @@ func RegisterTiles(root *http.ServeMux, w b6.World, cores int) {
 }
 
 type UIRenderer interface {
-	Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature) error
+	Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature, locked bool) error
 }
 
 type FeatureIDProtoJSON pb.FeatureIDProto
@@ -130,7 +130,7 @@ func (s *StartupHandler) fillStartupResponseFromRootFeature(response *StartupRes
 				if member := s.World.FindFeatureByID(relation.Member(i).ID); member != nil {
 					if relation.Member(i).Role == "docked" {
 						uiResponse := NewUIResponseJSON()
-						if err := s.Renderer.Render(uiResponse, member, relation); err == nil {
+						if err := s.Renderer.Render(uiResponse, member, relation, true); err == nil {
 							response.Docked = append(response.Docked, uiResponse)
 						}
 					} else if relation.Member(i).Role == "centroid" {

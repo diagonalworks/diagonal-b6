@@ -12,6 +12,7 @@ message UIRequestProto {
     api.NodeProto node = 1;
     string expression = 2;
     features.FeatureIDProto context = 3;
+    bool locked = 4;
 }
 
 message UIResponseProto {
@@ -21,6 +22,7 @@ message UIResponseProto {
     repeated FeatureIDsProto bucketed = 4;
     repeated string queryLayers = 5;
     geometry.PointProto mapCenter = 6;
+    bool locked = 7;
 }
 
 message StackProto {
