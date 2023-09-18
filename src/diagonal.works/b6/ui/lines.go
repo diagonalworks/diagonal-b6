@@ -28,7 +28,7 @@ type DefaultUIRenderer struct {
 	World           b6.World
 }
 
-func (d *DefaultUIRenderer) Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature) error {
+func (d *DefaultUIRenderer) Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature, locked bool) error {
 	if err := fillResponseFromResult(response, value, d.RenderRules, d.World); err == nil {
 		shell := &pb.ShellLineProto{
 			Functions: make([]string, 0),
@@ -100,9 +100,9 @@ func fillKeyValues(c api.Collection, keys []interface{}, values []interface{}) (
 
 func isFeatureCollection(keys []interface{}, values []interface{}) bool {
 	if len(keys) > 0 {
-		if id, ok := keys[0].(b6.FeatureID); ok {
-			if f, ok := values[0].(b6.Feature); ok {
-				return id == f.FeatureID()
+		if k, ok := keys[0].(b6.Identifiable); ok {
+			if v, ok := values[0].(b6.Identifiable); ok {
+				return k.FeatureID() == v.FeatureID()
 			}
 		}
 	}
@@ -221,8 +221,10 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			response.Proto.Node, err = api.ParseExpressionWithLHS(request.Expression, request.Node)
 		}
 		if err != nil {
-			u.Renderer.Render(response, err, renderContext)
-			response.Proto.Stack.Substacks = fillSubstacksFromError(response.Proto.Stack.Substacks, err)
+			u.Renderer.Render(response, err, renderContext, request.Locked)
+			var substack pb.SubstackProto
+			fillSubstackFromError(&substack, err)
+			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
 			sendUIResponse(response, w)
 			return
 		}
@@ -231,10 +233,12 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	response.Proto.Node = api.Simplify(response.Proto.Node, u.FunctionSymbols)
 
-	substack := &pb.SubstackProto{}
-	fillSubstackFromExpression(substack, response.Proto.Node, true)
-	if len(substack.Lines) > 0 {
-		response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, substack)
+	if !request.Locked {
+		substack := &pb.SubstackProto{}
+		fillSubstackFromExpression(substack, response.Proto.Node, true)
+		if len(substack.Lines) > 0 {
+			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, substack)
+		}
 	}
 
 	vmContext := api.Context{
@@ -247,10 +251,10 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	result, err := api.Evaluate(response.Proto.Node, &vmContext)
 	if err == nil {
-		err = u.Renderer.Render(response, result, renderContext)
+		err = u.Renderer.Render(response, result, renderContext, request.Locked)
 	}
 	if err != nil {
-		u.Renderer.Render(response, err, renderContext)
+		u.Renderer.Render(response, err, renderContext, request.Locked)
 	}
 	sendUIResponse(response, w)
 }
@@ -324,10 +328,10 @@ func fillSubstackFromExpression(lines *pb.SubstackProto, expression *pb.NodeProt
 	}
 }
 
-func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, response *pb.UIResponseProto) error {
+func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, response *pb.UIResponseProto, w b6.World) error {
 	// TODO: Set collection title based on collection contents
 	if countable, ok := c.(api.Countable); ok {
-		line := leftRightValueLineFromValues("Collection", countable.Count())
+		line := leftRightValueLineFromValues("Collection", countable.Count(), w)
 		substack.Lines = append(substack.Lines, line)
 	} else {
 		substack.Lines = append(substack.Lines, &pb.LineProto{
@@ -349,7 +353,7 @@ func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, re
 	if isFeatureCollection(keys, values) || isArrayCollection(keys, values) {
 		for i := range values {
 			if i < CollectionLineLimit {
-				line := ValueLineFromValue(values[i])
+				line := ValueLineFromValue(values[i], w)
 				substack.Lines = append(substack.Lines, line)
 			} else {
 				break
@@ -358,7 +362,7 @@ func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, re
 	} else {
 		for i := range keys {
 			if i < CollectionLineLimit {
-				line := leftRightValueLineFromValues(keys[i], values[i])
+				line := leftRightValueLineFromValues(keys[i], values[i], w)
 				substack.Lines = append(substack.Lines, line)
 			} else {
 				break
@@ -377,7 +381,7 @@ func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, re
 	return nil
 }
 
-func fillSubstackFromHistogram(substack *pb.SubstackProto, c *api.HistogramCollection) error {
+func fillSubstackFromHistogram(substack *pb.SubstackProto, c *api.HistogramCollection, w b6.World) error {
 	keys, values, err := fillKeyValues(c, nil, nil)
 	if err != nil {
 		return err
@@ -389,7 +393,7 @@ func fillSubstackFromHistogram(substack *pb.SubstackProto, c *api.HistogramColle
 		substack.Lines = append(substack.Lines, &pb.LineProto{
 			Line: &pb.LineProto_HistogramBar{
 				HistogramBar: &pb.HistogramBarLineProto{
-					Range: AtomFromValue(key),
+					Range: AtomFromValue(key, w),
 					Value: int32(values[i].(int)),
 					Index: int32(i),
 				},
@@ -453,7 +457,7 @@ func featureLabel(f b6.Feature) string {
 	return LabelForFeature(f).Singular
 }
 
-func AtomFromValue(value interface{}) *pb.AtomProto {
+func AtomFromValue(value interface{}, w b6.World) *pb.AtomProto {
 	if i, ok := api.ToInt(value); ok {
 		return atomFromString(strconv.Itoa(i))
 	} else if f, err := api.ToFloat64(value); err == nil {
@@ -472,13 +476,17 @@ func AtomFromValue(value interface{}) *pb.AtomProto {
 				},
 			}
 		case b6.FeatureID:
-			return &pb.AtomProto{
-				Atom: &pb.AtomProto_LabelledIcon{
-					LabelledIcon: &pb.LabelledIconProto{
-						Icon:  v.Type.String(),
-						Label: strings.Title(v.Type.String()),
+			if f := w.FindFeatureByID(v); f != nil {
+				return AtomFromValue(f, w)
+			} else {
+				return &pb.AtomProto{
+					Atom: &pb.AtomProto_LabelledIcon{
+						LabelledIcon: &pb.LabelledIconProto{
+							Icon:  v.Type.String(),
+							Label: strings.Title(v.Type.String()),
+						},
 					},
-				},
+				}
 			}
 		case b6.Tag:
 			return atomFromString(api.UnparseTag(v))
@@ -524,29 +532,29 @@ func clickExpressionFromValue(value interface{}) *pb.NodeProto {
 	return nil
 }
 
-func ValueLineFromValue(value interface{}) *pb.LineProto {
+func ValueLineFromValue(value interface{}, w b6.World) *pb.LineProto {
 	return &pb.LineProto{
 		Line: &pb.LineProto_Value{
 			Value: &pb.ValueLineProto{
-				Atom:            AtomFromValue(value),
+				Atom:            AtomFromValue(value, w),
 				ClickExpression: clickExpressionFromValue(value),
 			},
 		},
 	}
 }
 
-func leftRightValueLineFromValues(first interface{}, second interface{}) *pb.LineProto {
+func leftRightValueLineFromValues(first interface{}, second interface{}, w b6.World) *pb.LineProto {
 	return &pb.LineProto{
 		Line: &pb.LineProto_LeftRightValue{
 			LeftRightValue: &pb.LeftRightValueLineProto{
 				Left: []*pb.ClickableAtomProto{
 					&pb.ClickableAtomProto{
-						Atom:            AtomFromValue(first),
+						Atom:            AtomFromValue(first, w),
 						ClickExpression: clickExpressionFromValue(first),
 					},
 				},
 				Right: &pb.ClickableAtomProto{
-					Atom:            AtomFromValue(second),
+					Atom:            AtomFromValue(second, w),
 					ClickExpression: clickExpressionFromValue(second),
 				},
 			},
@@ -554,33 +562,29 @@ func leftRightValueLineFromValues(first interface{}, second interface{}) *pb.Lin
 	}
 }
 
-func fillSubstacksFromAtom(substacks []*pb.SubstackProto, atom *pb.AtomProto) []*pb.SubstackProto {
-	return append(substacks, &pb.SubstackProto{
-		Lines: []*pb.LineProto{
-			{
-				Line: &pb.LineProto_Value{
-					Value: &pb.ValueLineProto{
-						Atom: atom,
-					},
-				},
+func FillSubstackFromValue(substack *pb.SubstackProto, value interface{}, response *pb.UIResponseProto, w b6.World) {
+	if c, ok := value.(api.Collection); ok {
+		fillSubstackFromCollection(substack, c, response, w)
+	} else {
+		substack.Lines = append(substack.Lines, ValueLineFromValue(value, w))
+	}
+}
+
+func fillSubstackFromAtom(substack *pb.SubstackProto, atom *pb.AtomProto) {
+	substack.Lines = append(substack.Lines, &pb.LineProto{
+		Line: &pb.LineProto_Value{
+			Value: &pb.ValueLineProto{
+				Atom: atom,
 			},
 		},
 	})
 }
 
-func fillSubstacksFromString(substacks []*pb.SubstackProto, value string) []*pb.SubstackProto {
-	return fillSubstacksFromAtom(substacks, atomFromString(value))
-}
-
-func fillSubstacksFromError(substacks []*pb.SubstackProto, err error) []*pb.SubstackProto {
-	return append(substacks, &pb.SubstackProto{
-		Lines: []*pb.LineProto{
-			{
-				Line: &pb.LineProto_Error{
-					Error: &pb.ErrorLineProto{
-						Error: err.Error(),
-					},
-				},
+func fillSubstackFromError(substack *pb.SubstackProto, err error) {
+	substack.Lines = append(substack.Lines, &pb.LineProto{
+		Line: &pb.LineProto_Error{
+			Error: &pb.ErrorLineProto{
+				Error: err.Error(),
 			},
 		},
 	})
@@ -588,7 +592,7 @@ func fillSubstacksFromError(substacks []*pb.SubstackProto, err error) []*pb.Subs
 
 func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.World) []*pb.SubstackProto {
 	substack := &pb.SubstackProto{}
-	substack.Lines = append(substack.Lines, ValueLineFromValue(f))
+	substack.Lines = append(substack.Lines, ValueLineFromValue(f, w))
 	if len(f.AllTags()) > 0 {
 		substack.Lines = append(substack.Lines, lineFromTags(f))
 	}
@@ -596,13 +600,13 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 
 	if path, ok := f.(b6.PathFeature); ok {
 		substack := &pb.SubstackProto{Collapsable: true}
-		line := leftRightValueLineFromValues("Points", path.Len())
+		line := leftRightValueLineFromValues("Points", path.Len(), w)
 		substack.Lines = append(substack.Lines, line)
 		for i := 0; i < path.Len(); i++ {
 			if point := path.Feature(i); point != nil {
-				substack.Lines = append(substack.Lines, ValueLineFromValue(point))
+				substack.Lines = append(substack.Lines, ValueLineFromValue(point, w))
 			} else {
-				substack.Lines = append(substack.Lines, ValueLineFromValue(path.Point(i)))
+				substack.Lines = append(substack.Lines, ValueLineFromValue(path.Point(i), w))
 			}
 		}
 		substacks = append(substacks, substack)
@@ -610,19 +614,19 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 
 	if relation, ok := f.(b6.RelationFeature); ok {
 		substack := &pb.SubstackProto{Collapsable: true}
-		line := leftRightValueLineFromValues("Members", relation.Len())
+		line := leftRightValueLineFromValues("Members", relation.Len(), w)
 		substack.Lines = append(substack.Lines, line)
 		var i int
 		for i = 0; i < relation.Len() && i < CollectionLineLimit; i++ {
 			member := relation.Member(i)
 			if member.Role != "" {
-				substack.Lines = append(substack.Lines, leftRightValueLineFromValues(member.ID, member.Role))
+				substack.Lines = append(substack.Lines, leftRightValueLineFromValues(member.ID, member.Role, w))
 			} else {
-				substack.Lines = append(substack.Lines, ValueLineFromValue(member.ID))
+				substack.Lines = append(substack.Lines, ValueLineFromValue(member.ID, w))
 			}
 		}
 		if n := relation.Len() - CollectionLineLimit; n > 0 {
-			substack.Lines = append(substack.Lines, ValueLineFromValue(fmt.Sprintf("%d more", n)))
+			substack.Lines = append(substack.Lines, ValueLineFromValue(fmt.Sprintf("%d more", n), w))
 		}
 		substacks = append(substacks, substack)
 	}
@@ -630,10 +634,10 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 	relations := b6.AllRelations(w.FindRelationsByFeature(f.FeatureID()))
 	if len(relations) > 0 {
 		substack := &pb.SubstackProto{Collapsable: true}
-		line := leftRightValueLineFromValues("Relations", len(relations))
+		line := leftRightValueLineFromValues("Relations", len(relations), w)
 		substack.Lines = append(substack.Lines, line)
 		for _, r := range relations {
-			substack.Lines = append(substack.Lines, ValueLineFromValue(r))
+			substack.Lines = append(substack.Lines, ValueLineFromValue(r, w))
 		}
 		substacks = append(substacks, substack)
 	}
@@ -644,21 +648,31 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 	p := (*pb.UIResponseProto)(response.Proto)
 	switch r := result.(type) {
 	case error:
-		p.Stack.Substacks = fillSubstacksFromError(p.Stack.Substacks, r)
+		var substack pb.SubstackProto
+		fillSubstackFromError(&substack, r)
+		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 	case string:
-		p.Stack.Substacks = fillSubstacksFromString(p.Stack.Substacks, r)
+		var substack pb.SubstackProto
+		fillSubstackFromAtom(&substack, atomFromString(r))
+		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 	case b6.Feature:
 		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, r, w)
 		highlightInResponse(p, r.FeatureID())
 	case b6.Query:
 		if q, ok := api.UnparseQuery(r); ok {
-			p.Stack.Substacks = fillSubstacksFromString(p.Stack.Substacks, q)
+			var substack pb.SubstackProto
+			fillSubstackFromAtom(&substack, atomFromString(q))
+			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		} else {
 			// TODO: Improve the rendering of queries
-			p.Stack.Substacks = fillSubstacksFromString(p.Stack.Substacks, "Query")
+			var substack pb.SubstackProto
+			fillSubstackFromAtom(&substack, atomFromString("Query"))
+			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		}
 	case b6.Tag:
-		p.Stack.Substacks = fillSubstacksFromAtom(p.Stack.Substacks, AtomFromValue(r))
+		var substack pb.SubstackProto
+		fillSubstackFromAtom(&substack, AtomFromValue(r, w))
+		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		if !rules.IsRendered(r) {
 			if q, ok := api.UnparseQuery(b6.Tagged(r)); ok {
 				p.QueryLayers = append(p.QueryLayers, q)
@@ -666,14 +680,14 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 		}
 	case *api.HistogramCollection:
 		substack := &pb.SubstackProto{}
-		if err := fillSubstackFromHistogram(substack, r); err == nil {
+		if err := fillSubstackFromHistogram(substack, r, w); err == nil {
 			p.Stack.Substacks = append(p.Stack.Substacks, substack)
 		} else {
 			return err
 		}
 	case api.Collection:
 		substack := &pb.SubstackProto{}
-		if err := fillSubstackFromCollection(substack, r, p); err == nil {
+		if err := fillSubstackFromCollection(substack, r, p, w); err == nil {
 			p.Stack.Substacks = append(p.Stack.Substacks, substack)
 		} else {
 			return err
@@ -688,7 +702,9 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 				Download: fmt.Sprintf("%.2fm² area", dimension),
 			},
 		}
-		p.Stack.Substacks = fillSubstacksFromAtom(p.Stack.Substacks, atom)
+		var substack pb.SubstackProto
+		fillSubstackFromAtom(&substack, atom)
+		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		response.GeoJSON = r.ToGeoJSON()
 	case b6.Path:
 		dimension := b6.AngleToMeters(r.Polyline().Length())
@@ -697,7 +713,9 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 				Download: fmt.Sprintf("%.2fm path", dimension),
 			},
 		}
-		p.Stack.Substacks = fillSubstacksFromAtom(p.Stack.Substacks, atom)
+		var substack pb.SubstackProto
+		fillSubstackFromAtom(&substack, atom)
+		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		response.GeoJSON = r.ToGeoJSON()
 	case *geojson.FeatureCollection:
 		var label string
@@ -711,7 +729,9 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 				Download: fmt.Sprintf(label),
 			},
 		}
-		p.Stack.Substacks = fillSubstacksFromAtom(p.Stack.Substacks, atom)
+		var substack pb.SubstackProto
+		fillSubstackFromAtom(&substack, atom)
+		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		response.GeoJSON = r
 	case *geojson.Feature:
 		atom := &pb.AtomProto{
@@ -719,7 +739,9 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 				Download: "GeoJSON feature",
 			},
 		}
-		p.Stack.Substacks = fillSubstacksFromAtom(p.Stack.Substacks, atom)
+		var substack pb.SubstackProto
+		fillSubstackFromAtom(&substack, atom)
+		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		response.GeoJSON = r
 	case *geojson.Geometry:
 		atom := &pb.AtomProto{
@@ -727,14 +749,16 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 				Download: "GeoJSON geometry",
 			},
 		}
-		p.Stack.Substacks = fillSubstacksFromAtom(p.Stack.Substacks, atom)
+		var substack pb.SubstackProto
+		fillSubstackFromAtom(&substack, atom)
+		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		response.GeoJSON = geojson.NewFeatureWithGeometry(*r)
 	default:
 		substack := &pb.SubstackProto{
 			Lines: []*pb.LineProto{{
 				Line: &pb.LineProto_Value{
 					Value: &pb.ValueLineProto{
-						Atom: AtomFromValue(r),
+						Atom: AtomFromValue(r, w),
 					},
 				},
 			}},
