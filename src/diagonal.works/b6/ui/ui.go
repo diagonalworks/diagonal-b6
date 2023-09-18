@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
@@ -21,6 +22,7 @@ type Options struct {
 	Renderer       UIRenderer
 	Cores          int
 	World          ingest.MutableWorld
+	APIOptions     api.Options
 }
 
 func RegisterWebInterface(root *http.ServeMux, options *Options) error {
@@ -56,7 +58,7 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 		}
 	}
 	root.Handle("/startup", &StartupHandler{World: options.World, Renderer: uiRenderer})
-	root.Handle("/ui", NewUIHandler(uiRenderer, options.World, options.Cores))
+	root.Handle("/ui", NewUIHandler(uiRenderer, options.World, options.APIOptions))
 
 	return nil
 }

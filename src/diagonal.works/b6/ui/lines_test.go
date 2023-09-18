@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/renderer"
@@ -49,7 +50,9 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 			FunctionSymbols: functions.Functions(),
 			World:           w,
 		},
-		Cores:            1,
+		Options: api.Options{
+			Cores: 1,
+		},
 		FunctionSymbols:  functions.Functions(),
 		FunctionWrappers: functions.Wrappers(),
 	}

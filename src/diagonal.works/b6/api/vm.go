@@ -10,9 +10,15 @@ import (
 	pb "diagonal.works/b6/proto"
 )
 
+type Options struct {
+	Cores         int
+	FileIOAllowed bool
+}
+
 type Context struct {
 	World            b6.World
 	Cores            int
+	FileIOAllowed    bool
 	Clock            func() time.Time
 	Values           map[interface{}]interface{}
 	FunctionSymbols  FunctionSymbols
@@ -20,6 +26,11 @@ type Context struct {
 	Context          context.Context
 
 	VM *VM
+}
+
+func (c *Context) FillFromOptions(options *Options) {
+	c.Cores = options.Cores
+	c.FileIOAllowed = options.FileIOAllowed
 }
 
 func (c *Context) Fork(n int) []*Context {

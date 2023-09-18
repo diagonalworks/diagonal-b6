@@ -12,6 +12,7 @@ import (
 	rpprof "runtime/pprof"
 	"sync"
 
+	"diagonal.works/b6/api"
 	b6grpc "diagonal.works/b6/grpc"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
@@ -33,6 +34,7 @@ func main() {
 	staticFlag := flag.String("static", "src/diagonal.works/b6/cmd/b6/js/static", "Path to static content")
 	jsFlag := flag.String("js", "src/diagonal.works/b6/cmd/b6/js", "Path to JS bundle")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
+	fileIOFlag := flag.Bool("file-io", true, "Is file IO allowed from the API?")
 	flag.Parse()
 
 	if *worldFlag == "" {
@@ -52,11 +54,16 @@ func main() {
 		w = ingest.NewMutableOverlayWorld(base)
 	}
 
+	apiOptions := api.Options{
+		Cores:         *coresFlag,
+		FileIOAllowed: *fileIOFlag,
+	}
+
 	options := ui.Options{
 		StaticPath:     *staticFlag,
 		JavaScriptPath: *jsFlag,
-		Cores:          *coresFlag,
 		World:          w,
+		APIOptions:     apiOptions,
 	}
 
 	handler := http.NewServeMux()
@@ -82,7 +89,7 @@ func main() {
 	if *grpcFlag != "" {
 		log.Printf("Listening for GRPC on %s", *grpcFlag)
 		grpcServer = grpc.NewServer(grpc.MaxRecvMsgSize(*grpcSizeFlag), grpc.MaxSendMsgSize(*grpcSizeFlag))
-		pb.RegisterB6Server(grpcServer, b6grpc.NewB6Service(w, *coresFlag, &lock))
+		pb.RegisterB6Server(grpcServer, b6grpc.NewB6Service(w, apiOptions, &lock))
 		go func() {
 			listener, err := net.Listen("tcp", *grpcFlag)
 			if err == nil {

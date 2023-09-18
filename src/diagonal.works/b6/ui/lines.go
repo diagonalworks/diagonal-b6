@@ -137,11 +137,11 @@ func fillMatchingFunctionSymbols(symbols []string, result interface{}, functions
 	return symbols
 }
 
-func NewUIHandler(renderer UIRenderer, w ingest.MutableWorld, cores int) *UIHandler {
+func NewUIHandler(renderer UIRenderer, w ingest.MutableWorld, options api.Options) *UIHandler {
 	return &UIHandler{
 		Renderer:         renderer,
 		World:            w,
-		Cores:            cores,
+		Options:          options,
 		FunctionSymbols:  functions.Functions(),
 		FunctionWrappers: functions.Wrappers(),
 	}
@@ -173,12 +173,12 @@ func NewUIResponseJSON() *UIResponseJSON {
 type UIHandler struct {
 	World            ingest.MutableWorld
 	Renderer         UIRenderer
-	Cores            int
+	Options          api.Options
 	FunctionSymbols  api.FunctionSymbols
 	FunctionWrappers api.FunctionWrappers
 }
 
-func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	request := &pb.UIRequestProto{}
 	response := NewUIResponseJSON()
 
@@ -210,7 +210,7 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var renderContext b6.RelationFeature
 	if request.Context != nil && request.Context.Type == pb.FeatureType_FeatureTypeRelation {
-		renderContext = b6.FindRelationByID(b6.NewFeatureIDFromProto(request.Context).ToRelationID(), b.World)
+		renderContext = b6.FindRelationByID(b6.NewFeatureIDFromProto(request.Context).ToRelationID(), u.World)
 	}
 
 	if request.Expression != "" {
@@ -221,7 +221,7 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			response.Proto.Node, err = api.ParseExpressionWithLHS(request.Expression, request.Node)
 		}
 		if err != nil {
-			b.Renderer.Render(response, err, renderContext)
+			u.Renderer.Render(response, err, renderContext)
 			response.Proto.Stack.Substacks = fillSubstacksFromError(response.Proto.Stack.Substacks, err)
 			sendUIResponse(response, w)
 			return
@@ -229,7 +229,7 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		response.Proto.Node = request.Node
 	}
-	response.Proto.Node = api.Simplify(response.Proto.Node, b.FunctionSymbols)
+	response.Proto.Node = api.Simplify(response.Proto.Node, u.FunctionSymbols)
 
 	substack := &pb.SubstackProto{}
 	fillSubstackFromExpression(substack, response.Proto.Node, true)
@@ -238,19 +238,19 @@ func (b *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vmContext := api.Context{
-		World:            b.World,
-		FunctionSymbols:  b.FunctionSymbols,
-		FunctionWrappers: b.FunctionWrappers,
-		Cores:            b.Cores,
+		World:            u.World,
+		FunctionSymbols:  u.FunctionSymbols,
+		FunctionWrappers: u.FunctionWrappers,
 		Context:          context.Background(),
 	}
+	vmContext.FillFromOptions(&u.Options)
 
 	result, err := api.Evaluate(response.Proto.Node, &vmContext)
 	if err == nil {
-		err = b.Renderer.Render(response, result, renderContext)
+		err = u.Renderer.Render(response, result, renderContext)
 	}
 	if err != nil {
-		b.Renderer.Render(response, err, renderContext)
+		u.Renderer.Render(response, err, renderContext)
 	}
 	sendUIResponse(response, w)
 }
