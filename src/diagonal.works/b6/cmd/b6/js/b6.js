@@ -110,7 +110,7 @@ function newGeoJSONStyle(state, styles) {
                 cloned = true;
             }
             if (s.getStroke()) {
-                s.getStroke().setColor(parseColour(feature.get("-b6-stroke"), styles));
+                s.getStroke().setColor(parseColour(feature.get("-b6-stroke"), "stroke", styles));
             }
         }
         if (feature.get("-b6-fill")) {
@@ -119,7 +119,7 @@ function newGeoJSONStyle(state, styles) {
                 cloned = true;
             }
             if (s.getFill()) {
-                s.getFill().setColor(parseColour(feature.get("-b6-fill"), styles));
+                s.getFill().setColor(parseColour(feature.get("-b6-fill"), "fill", styles));
             }
         }
         if (feature.get("-b6-circle")) {
@@ -130,7 +130,11 @@ function newGeoJSONStyle(state, styles) {
             s.setImage(new Circle({
                 radius: 4,
                 fill: new Fill({
-                    color: parseColour(feature.get("-b6-circle"), styles),
+                    color: parseColour(feature.get("-b6-circle"), "fill", styles),
+                }),
+                stroke: new Stroke({
+                    color: parseColour(feature.get("-b6-circle"), "stroke", styles),
+                    width: 1,
                 }),
             }));
         }
@@ -138,12 +142,12 @@ function newGeoJSONStyle(state, styles) {
     }
 }
 
-function parseColour(colour, styles) {
+function parseColour(colour, attribute, styles) {
     if (colour) {
         if (colour.startsWith("#")) {
             return colour;
         } else if (styles[colour]) {
-            return styles[colour]["color"];
+            return styles[colour][attribute];
         }
     }
     return "#ff0000";
@@ -456,23 +460,16 @@ class RenderedResponse {
         this.layers = []
         if (response.proto.highlighted) {
             this.highlighted = response.proto.highlighted;
-            for (const i in this.highlighted.namespaces) {
-                const namespace = this.highlighted.namespaces[i];
-                const values = this.highlighted.ids[i].ids;
-                for (const j in values) {
-                    ui.addHighlight(namespace + "/" + values[j]);
-                }
-            }
         }
         if (response.proto.bucketed) {
             this.bucketed = response.proto.bucketed;
         }
         if (response.geojson) {
-            this.addGeoJSON(response.geojson, ui);
+            this.initGeoJSON(response.geojson, ui);
         }
         if (response.proto.queryLayers) {
             for (const i in response.proto.queryLayers) {
-                this.layers.push(ui.addQueryLayer(response.proto.queryLayers[i]));
+                this.layers.push(ui.createQueryLayer(response.proto.queryLayers[i]));
             }
         }
     }
@@ -489,7 +486,7 @@ class RenderedResponse {
         return this.blobURL;
     }
 
-    addGeoJSON(geojson, ui) {
+    initGeoJSON(geojson, ui) {
         const source = new VectorSource({
             features: [],
          })
@@ -503,7 +500,6 @@ class RenderedResponse {
         });
         source.addFeatures(features);
         this.layers.push(layer);
-        ui.addLayer(layer);
 
         const blob = new Blob([JSON.stringify(geojson, null, 2)], {
             type: "application/json",
@@ -531,7 +527,23 @@ class RenderedResponse {
         }
     }
 
-    remove(ui) {        
+    addTo(ui) {
+        for (const i in this.layers) {
+            ui.addLayer(this.layers[i]);
+        }
+
+        if (this.highlighted) {
+            for (const i in this.highlighted.namespaces) {
+                const namespace = this.highlighted.namespaces[i];
+                const values = this.highlighted.ids[i].ids;
+                for (const j in values) {
+                    ui.addHighlight(namespace + "/" + values[j]);
+                }
+            }
+        }
+    }
+
+    removeFrom(ui) {
         for (const i in this.layers) {
             ui.removeLayer(this.layers[i]);
         }
@@ -671,7 +683,7 @@ class TagsLineRenderer {
             {class: "key", text: t.key},
             {class: "value", text: t.value, clickExpression: t.clickExpression},
         ];
-        const li = line.select("ul").selectAll("li").data(d => d.tags.tags.map(formatTags)).join("li");
+        const li = line.select("ul").selectAll("li").data(d => d.tags.tags ? d.tags.tag.map(formatTags) : []).join("li");
         li.selectAll("span").data(d => d).join("span").attr("class", d => d.class).text(d => d.text);
         const clickable = li.selectAll(".value").filter(d => d.clickExpression);
         clickable.classed("clickable", true);
@@ -924,7 +936,7 @@ class UI {
         this.state.bucketed[idKey] = bucket;
     }
 
-    addQueryLayer(query) {
+    createQueryLayer(query) {
         const params = new URLSearchParams({"q": query});
         const source = new VectorTileSource({
             format: new MVT(),
@@ -935,7 +947,6 @@ class UI {
             source: source,
             style: this.queryStyle,
         });
-        this.map.addLayer(layer);
         return layer;
     }
 
@@ -963,10 +974,16 @@ class UI {
         target.on("click", function(e) {
             e.preventDefault();
             target.classed("closed", true);
+            target.each(function() {
+                if (this.__rendered__) {
+                    this.__rendered__.removeFrom(ui);
+                }
+            });
             ui.removeFeaturedUIResponse();
             d3.select(this).classed("closed", false);
             if (this.__rendered__) {
                 ui.state.bucketed = {};
+                this.__rendered__.addTo(ui);
                 this.__rendered__.addBucketed(ui);
                 ui.basemapHighlightChanged();
             }
@@ -1004,7 +1021,7 @@ class UI {
             root.style("left",  `${StackOrigin[0]}px`);
             root.style("top", `${StackOrigin[1]}px`);
         }
-        this.renderUIResponse(root);
+        this.renderUIResponse(root, true);
         if (response) {
             const center = response.proto.mapCenter;
             if (center && center.latE7 && center.lngE7) {
@@ -1016,7 +1033,7 @@ class UI {
         }
     }
 
-    renderUIResponse(target) {
+    renderUIResponse(target, featured) {
         const substacks = target.selectAll(".substack").data(d => d.proto.stack.substacks).join(
             enter => {
                 const div = enter.append("div").attr("class", "substack");
@@ -1039,6 +1056,9 @@ class UI {
             this.__rendered__ = new RenderedResponse(response, d3.select(this), ui);
             ui.rendered.push(this.__rendered__);
             renderFromProto(lines, "line", this.__rendered__, ui);
+            if (featured) {
+                this.__rendered__.addTo(ui);
+            }
         }
         target.each(f);
         if (this.needHighlightRedraw) {
@@ -1049,7 +1069,7 @@ class UI {
 
     removeRenderedResponse(node) {
         if (node.__rendered__) {
-            node.__rendered__.remove(this);
+            node.__rendered__.removeFrom(this);
             this.rendered = this.rendered.filter(r => r != node.__rendered__);
         }
     }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sort"
 	"strings"
 
 	"diagonal.works/b6"
@@ -77,7 +78,7 @@ func (t *toRead) Read(w *World, status chan<- string, cores int, ctx context.Con
 		t.World, err = ingest.NewWorldFromOSMSource(&pbf, &o)
 		return err
 	case readFormatYAML:
-		status <- fmt.Sprintf("Overlay YAML %s", t.Filename)
+		status <- fmt.Sprintf("Read YAML %s", t.Filename)
 		f, err := t.Filesystem.OpenRead(ctx, t.Filename)
 		if err == nil {
 			var buffer bytes.Buffer
@@ -109,13 +110,19 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 			return nil, err
 		}
 		toClose[i] = fs
-		children, err := fs.List(ctx, s+"/*")
+		var children []string
+		if strings.Index(s, "*") >= 0 {
+			children, err = fs.List(ctx, s)
+		} else {
+			children, err = fs.List(ctx, s+"/*")
+			if len(children) == 0 {
+				children = []string{s}
+			}
+		}
 		if err != nil {
 			return nil, err
 		}
-		if len(children) == 0 {
-			children = []string{s}
-		}
+		sort.Strings(children)
 		for _, child := range children {
 			format := readFormatCompact
 			if hasCompactPrefix {
@@ -160,6 +167,7 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 	overlay := b6.World(cw)
 	for _, tr := range trs {
 		if tr.World != nil {
+			log.Printf("Overlay %s", tr.Filename)
 			overlay = ingest.NewOverlayWorld(tr.World, overlay)
 		}
 	}
@@ -169,6 +177,7 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 	for _, tr := range trs {
 		if tr.Change != nil {
 			changed = true
+			log.Printf("Apply %s", tr.Filename)
 			if _, err := tr.Change.Apply(m); err != nil {
 				return nil, err
 			}

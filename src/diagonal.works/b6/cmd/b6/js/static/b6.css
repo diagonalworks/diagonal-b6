@@ -225,19 +225,23 @@ form.shell > input {
 }
 
 .palette > .outliner-rose {
-    color: #ff8465; /* Rose 50 */
+    fill: #ff8465; /* Rose 50 */
+    stroke: #ffffff;
 }
 
 .palette > .outliner-blue {
-    color: #a2c9fe; /* Blue 40 */
+    fill: #a2c9fe; /* Blue 40 */
+    stroke: #ffffff;
 }
 
 .palette > .outliner-emerald {
-    color: #b6ead1; /* Emerald 30 */
+    fill: #b6ead1; /* Emerald 30 */
+    stroke: #ffffff;
 }
 
 .palette > .outliner-teal {
-    color: #66bbca; /* Teal 50 */
+    fill: #66bbca; /* Teal 50 */
+    stroke: #ffffff;
 }
 
 .palette > .bucketed-0 {

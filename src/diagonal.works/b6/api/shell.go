@@ -289,7 +289,7 @@ func (l *lexer) lexFeatureIDLiteral(yylval *yySymType) int {
 	i := l.Index
 	for i < len(l.Expression) {
 		r, w := utf8.DecodeRuneInString(l.Expression[i:])
-		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '-' || r == '/') {
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '-' || r == '/' || r == '_') {
 			break
 		}
 		i += w

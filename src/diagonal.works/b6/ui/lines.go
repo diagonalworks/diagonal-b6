@@ -589,7 +589,9 @@ func fillSubstacksFromError(substacks []*pb.SubstackProto, err error) []*pb.Subs
 func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.World) []*pb.SubstackProto {
 	substack := &pb.SubstackProto{}
 	substack.Lines = append(substack.Lines, ValueLineFromValue(f))
-	substack.Lines = append(substack.Lines, lineFromTags(f))
+	if len(f.AllTags()) > 0 {
+		substack.Lines = append(substack.Lines, lineFromTags(f))
+	}
 	substacks = append(substacks, substack)
 
 	if path, ok := f.(b6.PathFeature); ok {
