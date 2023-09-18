@@ -963,6 +963,7 @@ class UI {
         target.on("click", function(e) {
             e.preventDefault();
             target.classed("closed", true);
+            ui.removeFeaturedUIResponse();
             d3.select(this).classed("closed", false);
             if (this.__rendered__) {
                 ui.state.bucketed = {};
@@ -972,13 +973,29 @@ class UI {
         });
     }
 
+    removeFeaturedUIResponse() {
+        this.renderFeaturedUIResponse(null);
+    }
+
     renderFeaturedUIResponse(response, position) {
         d3.select("#dock").selectAll(".stack").classed("closed", true);
         if (Object.keys(this.state.bucketed).length > 0) {
             this.state.bucketed = {};
             this.basemapHighlightChanged();
         }
-        const root = d3.select("body").selectAll(".stack-featured").data([response]).join("div");
+        const ui = this;
+        const root = d3.select("body").selectAll(".stack-featured").data(response ? [response] : []).join(
+            enter => {
+                return enter.append("div");
+            },
+            update => update,
+            exit => {
+                exit.each(function() {
+                    ui.removeRenderedResponse(this);
+                });
+                return exit.remove();
+            },
+        );
         root.attr("class", "stack stack-featured");
         if (position) {
             root.style("left",  `${StackOffset[0] + position[0]}px`);
@@ -988,12 +1005,14 @@ class UI {
             root.style("top", `${StackOrigin[1]}px`);
         }
         this.renderUIResponse(root);
-        const center = response.proto.mapCenter;
-        if (center && center.latE7 && center.lngE7) {
-            this.map.getView().animate({
-                center: fromLonLat([center.lngE7 / 1e7, center.latE7 / 1e7]),
-                duration: 500,
-            });
+        if (response) {
+            const center = response.proto.mapCenter;
+            if (center && center.latE7 && center.lngE7) {
+                this.map.getView().animate({
+                    center: fromLonLat([center.lngE7 / 1e7, center.latE7 / 1e7]),
+                    duration: 500,
+                });
+            }
         }
     }
 
@@ -1016,10 +1035,7 @@ class UI {
         lines.attr("class", "line");
         const ui = this;
         const f = function(response) {
-            if (this.__rendered__) {
-                this.__rendered__.remove(ui);
-                ui.rendered = ui.rendered.filter(r => r != this.__rendered__);
-            }
+            ui.removeRenderedResponse(this);
             this.__rendered__ = new RenderedResponse(response, d3.select(this), ui);
             ui.rendered.push(this.__rendered__);
             renderFromProto(lines, "line", this.__rendered__, ui);
@@ -1028,6 +1044,13 @@ class UI {
         if (this.needHighlightRedraw) {
             this.redrawHighlights();
             this.needHighlightRedraw = false;            
+        }
+    }
+
+    removeRenderedResponse(node) {
+        if (node.__rendered__) {
+            node.__rendered__.remove(this);
+            this.rendered = this.rendered.filter(r => r != node.__rendered__);
         }
     }
 
