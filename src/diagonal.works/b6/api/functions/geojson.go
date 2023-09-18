@@ -70,6 +70,10 @@ func parseGeoJSON(c *api.Context, s string) (geojson.GeoJSON, error) {
 }
 
 func parseGeoJSONFile(c *api.Context, filename string) (geojson.GeoJSON, error) {
+	if !c.FileIOAllowed {
+		return nil, fmt.Errorf("File IO is not allowed")
+	}
+
 	fs, err := filesystem.New(c.Context, filename)
 	if err != nil {
 		return nil, err
@@ -104,6 +108,10 @@ func importGeoJSON(c *api.Context, g geojson.GeoJSON, namespace string) (ingest.
 }
 
 func importGeoJSONFile(c *api.Context, filename string, namespace string) (ingest.Change, error) {
+	if !c.FileIOAllowed {
+		return nil, fmt.Errorf("File IO is not allowed")
+	}
+
 	fs, err := filesystem.New(c.Context, filename)
 	if err != nil {
 		return nil, err

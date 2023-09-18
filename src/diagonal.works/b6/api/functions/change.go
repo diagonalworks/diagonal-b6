@@ -137,6 +137,10 @@ func withChange(c *api.Context, change ingest.Change, f func(c *api.Context) (in
 }
 
 func changesToFile(c *api.Context, filename string) (string, error) {
+	if !c.FileIOAllowed {
+		return "", fmt.Errorf("File IO is not allowed")
+	}
+
 	w, err := os.OpenFile(filename, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to open %s for write: %w", filename, err)
@@ -148,6 +152,10 @@ func changesToFile(c *api.Context, filename string) (string, error) {
 }
 
 func changesFromFile(c *api.Context, filename string) (ingest.Change, error) {
+	if !c.FileIOAllowed {
+		return nil, fmt.Errorf("File IO is not allowed")
+	}
+
 	r, err := os.OpenFile(filename, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open %s for read: %w", filename, err)

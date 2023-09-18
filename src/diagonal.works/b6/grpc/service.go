@@ -16,11 +16,11 @@ import (
 
 type service struct {
 	pb.UnimplementedB6Server
-	world ingest.MutableWorld
-	fs    api.FunctionSymbols
-	fw    api.FunctionWrappers
-	cores int
-	lock  *sync.RWMutex
+	world   ingest.MutableWorld
+	fs      api.FunctionSymbols
+	fw      api.FunctionWrappers
+	options api.Options
+	lock    *sync.RWMutex
 }
 
 func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto) (*pb.EvaluateResponseProto, error) {
@@ -45,9 +45,9 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 		World:            s.world,
 		FunctionSymbols:  s.fs,
 		FunctionWrappers: s.fw,
-		Cores:            s.cores,
 		Context:          ctx,
 	}
+	context.FillFromOptions(&s.options)
 	if v, err := api.Evaluate(request.Request, &context); err == nil {
 		if change, ok := v.(ingest.Change); ok {
 			v, err = apply(change)
@@ -73,12 +73,12 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 	}
 }
 
-func NewB6Service(w ingest.MutableWorld, cores int, lock *sync.RWMutex) pb.B6Server {
+func NewB6Service(w ingest.MutableWorld, options api.Options, lock *sync.RWMutex) pb.B6Server {
 	return &service{
-		world: w,
-		fs:    functions.Functions(),
-		fw:    functions.Wrappers(),
-		cores: cores,
-		lock:  lock,
+		world:   w,
+		fs:      functions.Functions(),
+		fw:      functions.Wrappers(),
+		options: options,
+		lock:    lock,
 	}
 }
