@@ -981,12 +981,7 @@ class UI {
         const ui = this;
         target.on("click", function(e) {
             e.preventDefault();
-            target.classed("closed", true);
-            target.each(function() {
-                if (this.__rendered__) {
-                    this.__rendered__.removeFrom(ui);
-                }
-            });
+            ui.closeDock();
             ui.removeFeaturedUIResponse();
             d3.select(this).classed("closed", false);
             if (this.__rendered__) {
@@ -998,12 +993,23 @@ class UI {
         });
     }
 
+    closeDock() {
+        const docked = d3.select("#dock").selectAll(".stack");
+        const ui = this;
+        docked.each(function() {
+            if (this.__rendered__) {
+                this.__rendered__.removeFrom(ui);
+            }
+        });
+        docked.classed("closed", true);
+    }
+
     removeFeaturedUIResponse() {
         this.renderFeaturedUIResponse(null);
     }
 
     renderFeaturedUIResponse(response, position) {
-        d3.select("#dock").selectAll(".stack").classed("closed", true);
+        this.closeDock();
         if (Object.keys(this.state.bucketed).length > 0) {
             this.state.bucketed = {};
             this.basemapHighlightChanged();
