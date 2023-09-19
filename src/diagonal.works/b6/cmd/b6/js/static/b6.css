@@ -244,6 +244,26 @@ form.shell > input {
     stroke: #ffffff;
 }
 
+.palette > .outliner-stone {
+    fill: #92918b; /* Stone 60 */
+    stroke: #ffffff;
+}
+
+.palette > .outliner-cyan {
+    fill: #3598d7; /* Cyan 60 */
+    stroke: #ffffff;
+}
+
+.palette > .outliner-violet {
+    fill: #898ef7; /* Violet 60 */
+    stroke: #ffffff;
+}
+
+.palette > .outliner-yellow {
+    fill: #e3a616; /* Yellow 60 */
+    stroke: #ffffff;
+}
+
 .palette > .bucketed-0 {
     fill: #F4D4E1;
 }
