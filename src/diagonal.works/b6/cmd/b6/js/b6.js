@@ -248,7 +248,7 @@ function setupMap(state, styles, mapCenter) {
             const leisure = feature.get("leisure");
             const natural = feature.get("natural");
             if (feature.get("layer") == "landuse") {
-                if (landuse == "park" || landuse == "grass" || leisure == "pitch" || leisure == "park" || leisure == "garden") {
+                if (landuse == "park" || landuse == "grass" || leisure == "pitch" || leisure == "park" || leisure == "garden" || leisure == "playground" || leisure == "nature_reserve") {
                     return parkFill;
                 } else if (landuse == "forest") {
                     return forestFill;
@@ -718,9 +718,9 @@ class HistogramBarLineRenderer {
     update(line, renderedResponse, ui) {
         line.select(".range-icon").attr("class", d => `range-icon index-${d.histogramBar.index ? d.histogramBar.index : 0}`);
         renderFromProto(line.select(".range").datum(d => d.histogramBar.range), "atom", renderedResponse, ui);
-        line.select(".value").text(d => d.histogramBar.value);
+        line.select(".value").text(d => d.histogramBar.value || "0");
         line.select(".total").text(d => `/ ${d.histogramBar.total}`);
-        line.select(".fill").attr("style", d => `width: ${d.histogramBar.value/d.histogramBar.total*100.00}%;`);
+        line.select(".fill").attr("style", d => `width: ${(d.histogramBar.value || 0)/d.histogramBar.total*100.00}%;`);
     }
 }
 

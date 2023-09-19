@@ -219,6 +219,16 @@ var labelsForTag = []struct {
 	{b6.Tag{Key: "#landuse", Value: "cemetery"}, []Label{{"Cemetery", "Cemeteries"}}},
 	{b6.Tag{Key: "#landuse", Value: "allotments"}, []Label{{"Allotments", "Allotments"}}},
 	{b6.Tag{Key: "#natural", Value: "heath"}, []Label{{"Heath", "Heaths"}}},
+	// The most frequent leisure tag values from: https://taginfo.openstreetmap.org/keys/landuse#values
+	{b6.Tag{Key: "#leisure", Value: "pitch"}, []Label{{"Pitch", "Pitches"}}},
+	{b6.Tag{Key: "#leisure", Value: "swimming_pool"}, []Label{{"Swimming pool", "Swimming pools"}}},
+	{b6.Tag{Key: "#leisure", Value: "park"}, []Label{{"Park", "Parks"}}},
+	{b6.Tag{Key: "#leisure", Value: "garden"}, []Label{{"Garden", "Gardens"}}},
+	{b6.Tag{Key: "#leisure", Value: "playground"}, []Label{{"Playground", "Playgrounds"}}},
+	{b6.Tag{Key: "#leisure", Value: "sports_centre"}, []Label{{"Sports centre", "Sports centres"}}},
+	{b6.Tag{Key: "#leisure", Value: "nature_reserve"}, []Label{{"Nature reserve", "Nature reserves"}}},
+	{b6.Tag{Key: "#leisure", Value: "track"}, []Label{{"Track", "Tracks"}}},
+	{b6.Tag{Key: "#leisure", Value: "allotments"}, []Label{{"Allotments", "Allotments"}}},
 }
 
 func LabelForTag(t b6.Tag) (Label, bool) {
