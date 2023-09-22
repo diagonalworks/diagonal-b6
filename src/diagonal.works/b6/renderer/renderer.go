@@ -134,6 +134,7 @@ var BasemapRenderRules = RenderRules{
 	{Tag: b6.Tag{Key: "#leisure", Value: "playground"}, MinZoom: 14, Layer: BasemapLayerLandUse},
 	{Tag: b6.Tag{Key: "#leisure", Value: "garden"}, MinZoom: 14, Layer: BasemapLayerLandUse},
 	{Tag: b6.Tag{Key: "#leisure", Value: "nature_reserve"}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#natural", Value: "coastline"}, MinZoom: 12, Layer: BasemapLayerBoundary},
 	{Tag: b6.Tag{Key: "#natural", Value: "heath"}, MinZoom: 14, Layer: BasemapLayerLandUse},
 	{Tag: b6.Tag{Key: "#outline", Value: "contour"}, MinZoom: 14, Layer: BasemapLayerContour},
 	{Tag: b6.Tag{Key: "#water"}, MinZoom: 12, Layer: BasemapLayerWater},
