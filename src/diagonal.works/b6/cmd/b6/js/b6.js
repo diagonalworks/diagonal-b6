@@ -436,7 +436,7 @@ function showFeature(feature, locked, position, ui) {
     const id = feature.get("id");
     const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
     if (ns && id && types[feature.getType()]) {
-        ui.evaluateExpression(`find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`, locked, position);
+        ui.evaluateExpressionInNewStack(`find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`, null, locked, position);
     }
 }
 
@@ -458,12 +458,13 @@ function lookupStyles(names) {
     return styles;
 }
 
-class RenderedResponse {
+class Stack {
     constructor(response, target, ui) {
         this.expressionContext = response.proto.node;
         this.locked = response.proto.locked;
         this.target = target;
-        this.layers = []
+        this.ui = ui;
+        this.layers = [];
         if (response.proto.highlighted) {
             this.highlighted = response.proto.highlighted;
         }
@@ -471,21 +472,13 @@ class RenderedResponse {
             this.bucketed = response.proto.bucketed;
         }
         if (response.geojson) {
-            this.initGeoJSON(response.geojson, ui);
+            this.initGeoJSON(response.geojson);
         }
         if (response.proto.queryLayers) {
             for (const i in response.proto.queryLayers) {
                 this.layers.push(ui.createQueryLayer(response.proto.queryLayers[i]));
             }
         }
-    }
-
-    getTarget() {
-        return this.target;
-    }
-
-    getExpressionContext() {
-        return this.expressionContext;
     }
 
     isLocked() {
@@ -496,17 +489,17 @@ class RenderedResponse {
         return this.blobURL;
     }
 
-    initGeoJSON(geojson, ui) {
+    initGeoJSON(geojson) {
         const source = new VectorSource({
             features: [],
          })
          const layer = new VectorLayer({
              source: source,
-             style: ui.getGeoJSONStyle(),
+             style: this.ui.getGeoJSONStyle(),
          })
         const features = new GeoJSONFormat().readFeatures(geojson, {
             dataProjection: "EPSG:4326",
-            featureProjection: ui.getProjection(),
+            featureProjection: this.ui.getProjection(),
         });
         source.addFeatures(features);
         this.layers.push(layer);
@@ -517,14 +510,14 @@ class RenderedResponse {
         this.blobURL = URL.createObjectURL(blob);
     }
 
-    addBucketed(ui) {
+    addBucketed() {
         if (this.bucketed) {
             for (const i in this.bucketed) {
                 for (const j in this.bucketed[i].namespaces) {
                     const namespace = this.bucketed[i].namespaces[j];
                     const values = this.bucketed[i].ids[j].ids;
                     for (const k in values) {
-                        ui.addBucketed(namespace + "/" + values[k], i);
+                        this.ui.addBucketed(namespace + "/" + values[k], i);
                     }
                 }
             }
@@ -537,9 +530,9 @@ class RenderedResponse {
         }
     }
 
-    addTo(ui) {
+    addToMap() {
         for (const i in this.layers) {
-            ui.addLayer(this.layers[i]);
+            this.ui.addLayer(this.layers[i]);
         }
 
         if (this.highlighted) {
@@ -547,28 +540,40 @@ class RenderedResponse {
                 const namespace = this.highlighted.namespaces[i];
                 const values = this.highlighted.ids[i].ids;
                 for (const j in values) {
-                    ui.addHighlight(namespace + "/" + values[j]);
+                    this.ui.addHighlight(namespace + "/" + values[j]);
                 }
             }
         }
     }
 
-    removeFrom(ui) {
+    removeFromMap() {
         for (const i in this.layers) {
-            ui.removeLayer(this.layers[i]);
+            this.ui.removeLayer(this.layers[i]);
         }
         if (this.highlighted) {
             for (const i in this.highlighted.namespaces) {
                 const namespace = this.highlighted.namespaces[i];
                 const values = this.highlighted.ids[i].ids;
                 for (const j in values) {
-                    ui.removeHighlight(namespace + "/" + values[j])
+                    this.ui.removeHighlight(namespace + "/" + values[j])
                 }
             }
         }
         for (const i in this.layers) {
-            ui.removeLayer(this.layers[i]);
+            this.ui.removeLayer(this.layers[i]);
         }
+    }
+
+    evaluateNode(node) {
+        this.ui.evaluateExpressionInNewStack("", node, this.locked);
+    }
+
+    evaluateExpressionInContext(expression) {
+        this.ui.evaluateExpression(expression, this.expressionContext, this.locked, this.target);
+    }
+
+    handleDragStart(event, toCopy) {
+        this.ui.handleDragStart(event, this.target, toCopy);
     }
 }
 
@@ -610,9 +615,9 @@ class DownloadAtomRenderer {
         atom.append("a");
     }
 
-    update(atom, renderedResponse, ui) {
+    update(atom, stack) {
         const a = atom.select("a");
-        a.node().href = renderedResponse.getBlobURL();
+        a.node().href = stack.getBlobURL();
         a.node().download = "b6-result.geojson";
         a.text(d => d.download);
     }    
@@ -637,14 +642,14 @@ class ValueLineRenderer {
 
     enter(line) {}
 
-    update(line, renderedResponse, ui) {
+    update(line, stack) {
         const atoms = line.selectAll("span").data(d => [d.value.atom]).join("span");
-        renderFromProto(atoms, "atom", renderedResponse, ui)
+        renderFromProto(atoms, "atom", stack);
         const clickable = line.filter(d => d.value.clickExpression);
         clickable.classed("clickable", true);
         clickable.on("click", (e, d) => {
             e.preventDefault();
-            ui.evaluateNode(d.value.clickExpression, renderedResponse.isLocked());
+            stack.evaluateNode(d.value.clickExpression);
         })
         const notClickable = line.filter(d => !d.value.clickExpression);
         notClickable.on("click", (e, d) => {
@@ -663,7 +668,7 @@ class LeftRightValueLineRenderer {
 
     enter(line) {}
 
-    update(line, renderedResponse, ui) {
+    update(line, stack) {
         const values = [];
         for (const i in line.datum().leftRightValue.left) {
             values.push(line.datum().leftRightValue.left[i]);
@@ -671,7 +676,7 @@ class LeftRightValueLineRenderer {
         values.push(line.datum().leftRightValue.right);
 
         let atoms = line.selectAll("span").data(values).join("span");
-        renderFromProto(atoms.datum(d => d.atom), "atom", renderedResponse, ui)
+        renderFromProto(atoms.datum(d => d.atom), "atom", stack);
 
         atoms = line.selectAll("span").data(values);
         const clickables = atoms.datum(d => d.clickExpression).filter(d => d);
@@ -679,7 +684,7 @@ class LeftRightValueLineRenderer {
         clickables.on("click", (e, d) => {
             if (d) {
                 e.preventDefault();
-                ui.evaluateNode(d);
+                stack.evaluateNode(d);
             }
         })
     }
@@ -692,10 +697,10 @@ class ExpressionLineRenderer {
 
     enter(line) {}
 
-    update(line, renderedResponse, ui) {
+    update(line, stack) {
         line.text(d => d.expression.expression);
         line.on("mousedown", (e, d) => {
-            ui.handleDragStart(e, renderedResponse.getTarget(), d.expression.expression);
+            stack.handleDragStart(e, d.expression.expression);
         })
     }    
 }
@@ -709,7 +714,7 @@ class TagsLineRenderer {
         line.append("ul");
     }
 
-    update(line, renderedResponse, ui) {
+    update(line, stack) {
         const formatTags = t => [
             {class: "prefix", text: t.prefix},
             {class: "key", text: t.key},
@@ -721,7 +726,7 @@ class TagsLineRenderer {
         clickable.classed("clickable", true);
         clickable.on("click", (e, d) => {
             e.preventDefault();
-            ui.evaluateNode(d.clickExpression);
+            stack.evaluateNode(d.clickExpression);
         });
     }
 }
@@ -740,9 +745,9 @@ class HistogramBarLineRenderer {
         bar.append("div").attr("class", "fill");
     }
 
-    update(line, renderedResponse, ui) {
+    update(line, stack) {
         line.select(".range-icon").attr("class", d => `range-icon index-${d.histogramBar.index ? d.histogramBar.index : 0}`);
-        renderFromProto(line.select(".range").datum(d => d.histogramBar.range), "atom", renderedResponse, ui);
+        renderFromProto(line.select(".range").datum(d => d.histogramBar.range), "atom", stack);
         line.select(".value").text(d => d.histogramBar.value || "0");
         line.select(".total").text(d => `/ ${d.histogramBar.total}`);
         line.select(".fill").attr("style", d => `width: ${(d.histogramBar.value || 0)/d.histogramBar.total*100.00}%;`);
@@ -761,7 +766,7 @@ class ShellLineRenderer {
         return form
     }
 
-    update(line, renderedResponse, ui) {
+    update(line, stack) {
         const state = {suggestions: line.datum().shell.functions ? line.datum().shell.functions.toSorted() : [], highlighted: 0};
         const form = line.select("form");
         form.select("input").on("focusin", e => {
@@ -799,7 +804,11 @@ class ShellLineRenderer {
         });
         form.on("submit", e => {
             e.preventDefault();
-            acceptShellSuggestion(line, state, renderedResponse, ui);
+            var expression = line.select("input").node().value;
+            if (state.highlighted >= 0 && state.filtered[state.highlighted].length > expression.length) {
+                expression = state.filtered[state.highlighted];
+            }
+            stack.evaluateExpressionInContext(expression);
             return;
         });    
     }
@@ -868,7 +877,7 @@ const Renderers = {
     }
 }
 
-function renderFromProto(targets, uiElement, renderedResponse, ui) {
+function renderFromProto(targets, uiElement, stack) {
     const f = function(d) {
         // If the CSS class of the line's div matches the data bound to it, update() it,
         // otherwise remove all child nodes and enter() the line beforehand.
@@ -891,25 +900,25 @@ function renderFromProto(targets, uiElement, renderedResponse, ui) {
             target.classed(renderer.getCSSClass(), true);
             renderer.enter(target);
        }
-       renderer.update(target, renderedResponse, ui);
+       renderer.update(target, stack);
     }
     targets.each(f);
 }
 
 class UI {
-    constructor(map, state, queryStyle, geojsonStyle, highlightChanged, context) {
+    constructor(map, state, queryStyle, geojsonStyle, highlightChanged, uiContext) {
         this.map = map;
         this.state = state;
         this.queryStyle = queryStyle;
         this.geojsonStyle = geojsonStyle;
         this.basemapHighlightChanged = highlightChanged;
-        this.context = context;
+        this.uiContext = uiContext;
         this.dragging = null;
         this.shellHistory = [];
         this.html = d3.select("html");
         this.dragPointerOrigin = [0,0];
         this.dragElementOrigin = [0,0];
-        this.rendered = [];
+        this.stacks = [];
         this.needHighlightRedraw = false;
     }
 
@@ -917,22 +926,27 @@ class UI {
         return this.shellHistory;
     }
 
-    evaluateExpression(expression, locked, position) {
-        this.evaluateExpressionInContext(null, expression, locked, position);
+    evaluateExpressionInNewStack(expression, context, locked, position) {
+        const ui = this;
+        this._sendRequest(expression, context, locked).then(response => {
+            ui._renderNewStack(response, position);
+        });
     }
 
-    evaluateNode(node, locked) {
-        this.evaluateExpressionInContext(node, null, locked);
+    evaluateExpression(expression, context, locked, target) {
+        this._sendRequest(expression, context, locked).then(response => {
+            this._renderStack(response, target, true, false);
+        });
     }
 
-    evaluateExpressionInContext(node, expression, locked, position) {
+    _sendRequest(expression, context, locked) {
         const request = {
-            node: node,
+            node: context,
             expression: expression,
             locked: locked,
         }
-        if (this.context) {
-            request.context = this.context;
+        if (this.uiContext) {
+            request.context = this.uiContext;
         }
         const body = JSON.stringify(request);
         const post = {
@@ -942,9 +956,92 @@ class UI {
                 "Content-type": "application/json; charset=UTF-8"
             }
         }
-        d3.json("/ui", post).then(response => {
-            this.renderFeaturedUIResponse(response, position);
+        return d3.json("/ui", post);
+    }
+
+    _renderNewStack(response, position) {
+        // Creates a new featured stack if one doesn't exist, positioning
+        // under the dock, otherwise reuses the existing featured stack.
+        // Remove the existing featured stack from the UI if response is
+        // null.
+        const ui = this;
+        this.closeDock();
+        const target = d3.select("body").selectAll(".stack-featured").data(response ? [response] : []).join(
+            enter => {
+                return enter.append("div");
+            },
+            update => update,
+            exit => {
+                exit.each(function() {
+                    ui.removeStack(this);
+                });
+                return exit.remove();
+            },
+        );
+        const dockRect = d3.select("#dock").node().getBoundingClientRect();
+        target.attr("class", "stack stack-featured");
+        if (position) {
+            target.style("left",  `${StackOffset[0] + position[0]}px`);
+            target.style("top", `${StackOffset[1] + position[1]}px`);
+        } else {
+            target.style("left",  `${dockRect.left}px`);
+            target.style("top", `${StackOffset[1] + dockRect.bottom}px`);
+        }
+        target.each(function(response) {
+            ui._renderStack(response, d3.select(this), true, !position);
         });
+    }
+
+    _renderStack(response, target, addToMap, recenterMap) {
+        target = target.datum(response);
+        const substacks = target.selectAll(".substack").data(d => d.proto.stack.substacks).join(
+            enter => {
+                const div = enter.append("div").attr("class", "substack");
+                div.append("div").attr("class", "scrollable");
+                return div;
+            }
+        );
+        substacks.classed("collapsable", d => d.collapsable);
+        target.selectAll(".collapsable").on("click", function(e) {
+            e.preventDefault();
+            const substack = d3.select(this);
+            substack.classed("collapsable-open", !substack.classed("collapsable-open"));
+        });
+
+        const scrollables = substacks.select(".scrollable");
+        const lines = scrollables.selectAll(".line").data(d => d.lines).join("div");
+        lines.attr("class", "line");
+
+        this.removeStack(target.node());
+        const stack = new Stack(response, target, this);
+        target.node().__stack__ = stack;
+        this.stacks.push(stack);
+        renderFromProto(lines, "line", stack);
+
+        if (addToMap) {
+            stack.addToMap();
+        }
+        if (response.proto.expression) {
+            this.shellHistory.push(response.proto.expression);
+        }
+        if (response && recenterMap) {
+            const center = response.proto.mapCenter;
+            if (center && center.latE7 && center.lngE7) {
+                this.map.getView().animate({
+                    center: fromLonLat([center.lngE7 / 1e7, center.latE7 / 1e7]),
+                    duration: 500,
+                });
+            }
+        }
+
+        if (this.needHighlightRedraw) {
+            this.redrawHighlights();
+            this.needHighlightRedraw = false;
+        }
+    }
+
+    removeFeaturedStack() {
+        this._renderNewStack(null);
     }
 
     addHighlight(idKey) {
@@ -964,8 +1061,8 @@ class UI {
     }
 
     redrawHighlights() {
-        for (const i in this.rendered) {
-            this.rendered[i].redrawHighlights();
+        for (const i in this.stacks) {
+            this.stacks[i].redrawHighlights();
         }
         this.basemapHighlightChanged();
     }
@@ -1007,17 +1104,20 @@ class UI {
     renderDock(docked) {
         const target = d3.select("#dock").selectAll(".stack").data(docked).join("div");
         target.attr("class", "stack closed");
-        this.renderUIResponse(target);
         const ui = this;
+        target.each(function(response) {
+            ui._renderStack(response, d3.select(this), false, false);
+        });
+
         target.on("click", function(e) {
             e.preventDefault();
             ui.closeDock();
-            ui.removeFeaturedUIResponse();
+            ui.removeFeaturedStack();
             d3.select(this).classed("closed", false);
-            if (this.__rendered__) {
+            if (this.__stack__) {
                 ui.state.bucketed = {};
-                this.__rendered__.addTo(ui);
-                this.__rendered__.addBucketed(ui);
+                this.__stack__.addToMap();
+                this.__stack__.addBucketed();
                 ui.basemapHighlightChanged();
             }
         });
@@ -1027,99 +1127,17 @@ class UI {
         const docked = d3.select("#dock").selectAll(".stack");
         const ui = this;
         docked.each(function() {
-            if (this.__rendered__) {
-                this.__rendered__.removeFrom(ui);
+            if (this.__stack__) {
+                this.__stack__.removeFromMap();
             }
         });
         docked.classed("closed", true);
     }
 
-    removeFeaturedUIResponse() {
-        this.renderFeaturedUIResponse(null);
-    }
-
-    renderFeaturedUIResponse(response, position) {
-        this.closeDock();
-        if (Object.keys(this.state.bucketed).length > 0) {
-            this.state.bucketed = {};
-            this.basemapHighlightChanged();
-        }
-        const ui = this;
-        const root = d3.select("body").selectAll(".stack-featured").data(response ? [response] : []).join(
-            enter => {
-                return enter.append("div");
-            },
-            update => update,
-            exit => {
-                exit.each(function() {
-                    ui.removeRenderedResponse(this);
-                });
-                return exit.remove();
-            },
-        );
-
-        const dockRect = d3.select("#dock").node().getBoundingClientRect();
-        root.attr("class", "stack stack-featured");
-        if (position) {
-            root.style("left",  `${StackOffset[0] + position[0]}px`);
-            root.style("top", `${StackOffset[1] + position[1]}px`);
-        } else {
-            root.style("left",  `${dockRect.left}px`);
-            root.style("top", `${StackOffset[1] + dockRect.bottom}px`);
-        }
-        this.renderUIResponse(root, true);
-        if (response && !position) {
-            const center = response.proto.mapCenter;
-            if (center && center.latE7 && center.lngE7) {
-                this.map.getView().animate({
-                    center: fromLonLat([center.lngE7 / 1e7, center.latE7 / 1e7]),
-                    duration: 500,
-                });
-            }
-        }
-    }
-
-    renderUIResponse(target, featured) {
-        const substacks = target.selectAll(".substack").data(d => d.proto.stack.substacks).join(
-            enter => {
-                const div = enter.append("div").attr("class", "substack");
-                div.append("div").attr("class", "scrollable");
-                return div;
-            }
-        );
-        substacks.classed("collapsable", d => d.collapsable);
-        target.selectAll(".collapsable").on("click", function(e) {
-            e.preventDefault();
-            const substack = d3.select(this);
-            substack.classed("collapsable-open", !substack.classed("collapsable-open"));
-        });
-        const scrollables = substacks.select(".scrollable");
-        const lines = scrollables.selectAll(".line").data(d => d.lines).join("div");
-        lines.attr("class", "line");
-        const ui = this;
-        const f = function(response) {
-            if (response.proto.expression) {
-                ui.shellHistory.push(response.proto.expression);
-            }
-            ui.removeRenderedResponse(this);
-            this.__rendered__ = new RenderedResponse(response, d3.select(this), ui);
-            ui.rendered.push(this.__rendered__);
-            renderFromProto(lines, "line", this.__rendered__, ui);
-            if (featured) {
-                this.__rendered__.addTo(ui);
-            }
-        }
-        target.each(f);
-        if (this.needHighlightRedraw) {
-            this.redrawHighlights();
-            this.needHighlightRedraw = false;            
-        }
-    }
-
-    removeRenderedResponse(node) {
-        if (node.__rendered__) {
-            node.__rendered__.removeFrom(this);
-            this.rendered = this.rendered.filter(r => r != node.__rendered__);
+    removeStack(node) {
+        if (node.__stack__) {
+            node.__stack__.removeFromMap();
+            this.stacks = this.stacks.filter(r => r != node.__stack__);
         }
     }
 
@@ -1163,14 +1181,6 @@ class UI {
 
 const ShellMaxSuggestions = 6;
 
-function acceptShellSuggestion(line, state, renderedResponse, ui) {
-    var expression = line.select("input").node().value;
-    if (state.highlighted >= 0 && state.filtered[state.highlighted].length > expression.length) {
-        expression = state.filtered[state.highlighted];
-    }
-    ui.evaluateExpressionInContext(renderedResponse.getExpressionContext(), expression, false);
-}
-
 function showFeatureAtPixel(pixel, layers, locked, position, map, ui) {
     const search = (i, found) => {
         if (i < layers.length) {
@@ -1187,7 +1197,7 @@ function showFeatureAtPixel(pixel, layers, locked, position, map, ui) {
                 search(i + 1, found);
             }
         } else {
-            ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(pixel))), locked, position);
+            ui.evaluateExpressionInNewStack(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(pixel))), null, locked, position);
         }
     };
     search(0, f => showFeature(f, locked, position, ui));
@@ -1251,7 +1261,7 @@ function setupShell(target, ui) {
         target.classed("closed", true);
         const expression = target.select("input").node().value;
         state.index = 0;
-        ui.evaluateExpression(expression, false);
+        ui.evaluateExpressionInNewStack(expression, null, false);
         target.select("input").node().value = "";
     })
 }
@@ -1407,7 +1417,7 @@ function setup(startupResponse) {
             showFeatureAtPixel(e.pixel, searchableLayers, false, position, map, ui);
             e.stopPropagation();
         } else {
-            ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))), true, position);
+            ui.evaluateExpressionInNewStack(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))), null, true, position);
             e.stopPropagation();
         }
     });
