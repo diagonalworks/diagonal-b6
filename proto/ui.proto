@@ -18,11 +18,12 @@ message UIRequestProto {
 message UIResponseProto {
     StackProto stack = 1;
     api.NodeProto node = 2;
-    FeatureIDsProto highlighted = 3;
-    repeated FeatureIDsProto bucketed = 4;
-    repeated string queryLayers = 5;
-    geometry.PointProto mapCenter = 6;
-    bool locked = 7;
+    string expression = 3;
+    FeatureIDsProto highlighted = 4;
+    repeated FeatureIDsProto bucketed = 5;
+    repeated string queryLayers = 6;
+    geometry.PointProto mapCenter = 7;
+    bool locked = 8;
 }
 
 message StackProto {

@@ -241,6 +241,10 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if expression, ok := api.UnparseNode(response.Proto.Node); ok {
+		response.Proto.Expression = expression
+	}
+
 	vmContext := api.Context{
 		World:            u.World,
 		FunctionSymbols:  u.FunctionSymbols,

@@ -180,6 +180,10 @@ function setupMap(state, styles, mapCenter) {
         }
     });
 
+    const coastlineStyle = new Style({
+        stroke: new Stroke({color: "#4f5a7d", width: 0.3}),
+    });
+
     const boundaries = new VectorTileLayer({
         source: baseSource,
         style: function(feature, resolution) {
@@ -192,6 +196,9 @@ function setupMap(state, styles, mapCenter) {
                             stroke: new Stroke({color: "#4f5a7d", width: 0.3})
                         });
                     }
+                }
+                if (feature.get("natural") == "coastline") {
+                    return coastlineStyle;
                 }
             }
         },
@@ -342,7 +349,6 @@ function setupMap(state, styles, mapCenter) {
                     return bucketedBuildingFill[state.bucketed[id]];
                 }
                 if (state.highlighted[id]) {
-                    console.log("highlighted");
                     return highlightedBuildingFill;
                 }
                 return buildingFill;
@@ -612,6 +618,18 @@ class DownloadAtomRenderer {
     }    
 }
 
+function atomTextToCopy(atom) {
+    if (atom) {
+        if (atom.atom.value) {
+            return atom.atom.value;
+        } else if (atom.atom.labelledIcon) {
+            return atom.atom.labelledIcon.label;
+        } else if (atom.atom.download) {
+            return atom.atom.download;
+        }
+    }
+}
+
 class ValueLineRenderer {
     getCSSClass() {
         return "line-value";
@@ -628,6 +646,13 @@ class ValueLineRenderer {
             e.preventDefault();
             ui.evaluateNode(d.value.clickExpression, renderedResponse.isLocked());
         })
+        const notClickable = line.filter(d => !d.value.clickExpression);
+        notClickable.on("click", (e, d) => {
+            const toCopy = atomTextToCopy(d.value);
+            if (toCopy) {
+                navigator.clipboard.writeText(toCopy);
+            }
+        });
     }    
 }
 
@@ -669,8 +694,8 @@ class ExpressionLineRenderer {
 
     update(line, renderedResponse, ui) {
         line.text(d => d.expression.expression);
-        line.on("mousedown", e => {
-            ui.handleDragStart(e, renderedResponse.getTarget());
+        line.on("mousedown", (e, d) => {
+            ui.handleDragStart(e, renderedResponse.getTarget(), d.expression.expression);
         })
     }    
 }
@@ -880,11 +905,16 @@ class UI {
         this.basemapHighlightChanged = highlightChanged;
         this.context = context;
         this.dragging = null;
+        this.shellHistory = [];
         this.html = d3.select("html");
         this.dragPointerOrigin = [0,0];
         this.dragElementOrigin = [0,0];
         this.rendered = [];
         this.needHighlightRedraw = false;
+    }
+
+    getShellHistory() {
+        return this.shellHistory;
     }
 
     evaluateExpression(expression, locked, position) {
@@ -1068,6 +1098,9 @@ class UI {
         lines.attr("class", "line");
         const ui = this;
         const f = function(response) {
+            if (response.proto.expression) {
+                ui.shellHistory.push(response.proto.expression);
+            }
             ui.removeRenderedResponse(this);
             this.__rendered__ = new RenderedResponse(response, d3.select(this), ui);
             ui.rendered.push(this.__rendered__);
@@ -1090,12 +1123,13 @@ class UI {
         }
     }
 
-    handleDragStart(event, root) {
+    handleDragStart(event, root, toCopy) {
         event.preventDefault();
         if (root.classed("stack-featured")) {
             root.attr("class", "stack stack-floating");
         }
         this.dragging = root;
+        this.toCopy = toCopy;
         this.dragging.classed("dragging", true);
         this.dragPointerOrigin = d3.pointer(event, this.html);
         this.dragElementOrigin = elementPosition(root);
@@ -1116,6 +1150,11 @@ class UI {
     handleDragEnd(event) {
         if (this.dragging) {
             event.preventDefault();
+            const pointer = d3.pointer(event, this.html);
+            const delta = [pointer[0]-this.dragPointerOrigin[0], pointer[1]-this.dragPointerOrigin[1]];
+            if (delta[0] == 0 && delta[1] ==  0) {
+                navigator.clipboard.writeText(this.toCopy);
+            }
             this.dragging.classed("dragging", false);
             this.dragging = null;
         }
@@ -1124,15 +1163,15 @@ class UI {
 
 const ShellMaxSuggestions = 6;
 
-function acceptShellSuggestion(block, state, renderedResponse, ui) {
-    var expression = block.select("input").node().value;
+function acceptShellSuggestion(line, state, renderedResponse, ui) {
+    var expression = line.select("input").node().value;
     if (state.highlighted >= 0 && state.filtered[state.highlighted].length > expression.length) {
         expression = state.filtered[state.highlighted];
     }
     ui.evaluateExpressionInContext(renderedResponse.getExpressionContext(), expression, false);
 }
 
-function showFeatureAtPixel(pixel, layers, locked, position, ui) {
+function showFeatureAtPixel(pixel, layers, locked, position, map, ui) {
     const search = (i, found) => {
         if (i < layers.length) {
             if (layers[i].getVisible()) {
@@ -1147,6 +1186,8 @@ function showFeatureAtPixel(pixel, layers, locked, position, ui) {
             } else {
                 search(i + 1, found);
             }
+        } else {
+            ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(pixel))), locked, position);
         }
     };
     search(0, f => showFeature(f, locked, position, ui));
@@ -1180,17 +1221,18 @@ function setupShell(target, ui) {
             return update;
         },
     );
-    const state = {history: [], index: 0};
+    const state = {index: 0};
     d3.select("body").on("keydown", (e) => {
+        const history = ui.getShellHistory();
         if (e.key == "`" || e.key == "~") {
             e.preventDefault();
             target.classed("closed", !target.classed("closed"));
             target.select("input").node().focus();
         } else if (e.key == "ArrowUp") {
             e.preventDefault();
-            if (state.index < state.history.length) {
+            if (state.index < history.length) {
                 state.index++;
-                target.select("input").node().value = state.history[state.history.length - state.index];
+                target.select("input").node().value = history[history.length - state.index];
             }
         } else if (e.key == "ArrowDown") {
             e.preventDefault();
@@ -1199,7 +1241,7 @@ function setupShell(target, ui) {
                 if (state.index == 0) {
                     target.select("input").node().value = "";
                 } else {
-                    target.select("input").node().value = state.history[state.history.length - state.index];
+                    target.select("input").node().value = history[history.length - state.index];
                 }
             }
         }
@@ -1208,7 +1250,6 @@ function setupShell(target, ui) {
         e.preventDefault();
         target.classed("closed", true);
         const expression = target.select("input").node().value;
-        state.history.push(expression);
         state.index = 0;
         ui.evaluateExpression(expression, false);
         target.select("input").node().value = "";
@@ -1363,7 +1404,7 @@ function setup(startupResponse) {
     map.on("singleclick", e => {
         const position = d3.pointer(e.originalEvent, html);
         if (e.originalEvent.shiftKey) {
-            showFeatureAtPixel(e.pixel, searchableLayers, false, position, ui);
+            showFeatureAtPixel(e.pixel, searchableLayers, false, position, map, ui);
             e.stopPropagation();
         } else {
             ui.evaluateExpression(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))), true, position);
