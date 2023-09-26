@@ -233,6 +233,12 @@ done:
 	ods := &odCollection{origins: os, destinations: ds}
 	if flip := tags.Get("flip"); flip.Value == "yes" {
 		ods.Flip()
+	} else {
+		for i := range ods.destinations {
+			if len(ods.destinations[i]) == 0 {
+				ods.destinations[i] = append(ods.destinations[i], b6.FeatureIDInvalid)
+			}
+		}
 	}
 	sort.Sort(ods)
 	return ods, err

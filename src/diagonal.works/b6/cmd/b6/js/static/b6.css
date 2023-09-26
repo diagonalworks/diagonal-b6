@@ -166,12 +166,25 @@ form.shell > input {
     display: none;
 }
 
+.palette > .road-outline {
+    stroke: #9aa4cc;
+    fill-opacity: 0;
+}
+
 .palette > .road-fill {
     stroke: #e1e1ee;
+    fill-opacity: 0;
 }
 
 .palette > .highlighted-road-fill {
     stroke: #37589f;
+    fill-opacity: 0;
+}
+
+.palette > .point {
+    stroke: #37589f;
+    stroke-width: 1;
+    fill-opacity: 0;
 }
 
 .palette > .highlighted-point {
@@ -183,6 +196,7 @@ form.shell > input {
 .palette > .highlighted-path {
     stroke: #37589f;
     stroke-width: 2;
+    fill-opacity: 0;
 }
 
 .palette > .highlighted-area {
@@ -200,6 +214,7 @@ form.shell > input {
 .palette > .geojson-path {
     stroke: #37589f;
     stroke-width: 2;
+    fill-opacity: 0;
 }
 
 .palette > .geojson-area {
@@ -211,11 +226,13 @@ form.shell > input {
 .palette > .query-point {
     stroke: #4f5a7d;
     stroke-width: 1;
+    fill-opacity: 0;
 }
 
 .palette > .query-path {
     stroke: #4f5a7d;
     stroke-width: 2;
+    fill-opacity: 0;
 }
 
 .palette > .query-area {
@@ -265,23 +282,39 @@ form.shell > input {
 }
 
 .palette > .bucketed-0 {
-    fill: #F4D4E1;
+    fill: #ffffff;
+    stroke: #4f5a7d;
+    stroke-width: 0.3;
 }
 
 .palette > .bucketed-1 {
-    fill: #EAB5C8;
+    fill: #f4d4e1;
+    stroke: #4f5a7d;
+    stroke-width: 0.3;
 }
 
 .palette > .bucketed-2 {
-    fill: #E09BB5;
+    fill: #eab5c8;
+    stroke: #4f5a7d;
+    stroke-width: 0.3;
 }
 
 .palette > .bucketed-3 {
-    fill: #CF7C9D;
+    fill: #e09bb5;
+    stroke: #4f5a7d;
+    stroke-width: 0.3;
 }
 
 .palette > .bucketed-4 {
-    fill: #AD5577;
+    fill: #cf7c9d;
+    stroke: #4f5a7d;
+    stroke-width: 0.3;
+}
+
+.palette > .bucketed-5 {
+    fill: #ad5577;
+    stroke: #4f5a7d;
+    stroke-width: 0.3;
 }
 
 .atom-labelled-icon > img {
@@ -414,23 +447,28 @@ form.shell > input {
 }
 
 .line-histogram-bar .index-0 {
-    background-color: #F4D4E1;
+    background-color: #ffffff;
+    border: 1px solid #dbdeec; /* Graphite 30 */;
 }
 
 .line-histogram-bar .index-1 {
-    background-color: #EAB5C8;
+    background-color: #f4d4e1;
 }
 
 .line-histogram-bar .index-2 {
-    background-color: #E09BB5;
+    background-color: #eab5c8;
 }
 
 .line-histogram-bar .index-3 {
-    background-color: #CF7C9D;
+    background-color: #e09bb5;
 }
 
 .line-histogram-bar .index-4 {
-    background-color: #AD5577;
+    background-color: #cf7c9d;
+}
+
+.line-histogram-bar .index-5 {
+    background-color: #ad5577;
 }
 
 .line-histogram-bar .range {
@@ -463,7 +501,7 @@ form.shell > input {
     margin-top: 6px;
     height: 4px;
     border-radius: 2px;
-    background-color: #ECEFF8;
+    background-color: #eceff8;
     background-repeat: no-repeat;
 }
 
@@ -596,4 +634,8 @@ form.shell > input {
 
 #dock > .stack.closed .line-question:hover {
     background: #f8f9fc /* Graphite 10 */
+}
+
+#dock > .stack > .substack > .scrollable {
+    max-height: 282px;
 }

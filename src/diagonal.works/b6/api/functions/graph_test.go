@@ -29,12 +29,32 @@ func TestAccessibility(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := graph.OD{
-		Origin:      ingest.FromOSMNodeID(1447052073).FeatureID(),
-		Destination: ingest.FromOSMNodeID(3790640851).FeatureID(),
+	expected := []graph.OD{
+		{
+			Origin:      camden.StableStreetBridgeNorthEndID.FeatureID(),
+			Destination: ingest.FromOSMNodeID(3790640851).FeatureID(),
+		},
+		{
+			Origin:      camden.VermuteriaID.FeatureID(),
+			Destination: b6.FeatureIDInvalid,
+		},
 	}
-	if _, ok := seen[expected]; !ok {
-		t.Errorf("Failed to find expected origin destination pair")
+	for _, od := range expected {
+		if _, ok := seen[od]; !ok {
+			t.Errorf("Failed to find expected origin destination pair: %+v", od)
+		}
+	}
+
+	unexpected := []graph.OD{
+		{
+			Origin:      camden.StableStreetBridgeNorthEndID.FeatureID(),
+			Destination: b6.FeatureIDInvalid,
+		},
+	}
+	for _, od := range unexpected {
+		if _, ok := seen[od]; ok {
+			t.Errorf("Found unexpected origin destination pair: %+v", od)
+		}
 	}
 }
 
@@ -71,7 +91,10 @@ func accessibilityForGranarySquare(options []b6.Tag, w b6.World) (api.Collection
 		Context: context.Background(),
 	}
 	origins := &api.ArrayFeatureCollection{
-		Features: []b6.Feature{w.FindFeatureByID(camden.StableStreetBridgeNorthEndID.FeatureID())},
+		Features: []b6.Feature{
+			w.FindFeatureByID(camden.StableStreetBridgeNorthEndID.FeatureID()),
+			w.FindFeatureByID(camden.VermuteriaID.FeatureID()),
+		},
 	}
 	return accessible(context, origins, b6.Keyed{Key: "entrance"}, 500, &api.ArrayTagCollection{Tags: options})
 }

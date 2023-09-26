@@ -51,35 +51,9 @@ function waterwayWidth(resolution) {
 }
 
 function newGeoJSONStyle(state, styles) {
-    const point = new Style({
-        image: new Circle({
-            radius: 4,
-            stroke: new Stroke({
-                color: styles["geojson-point"]["stroke"],
-                width: +styles["geojson-point"]["stroke-width"].replace("px", ""),
-            }),
-            fill: new Fill({
-                color: styles["geojson-point"]["fill"],
-            }),
-        }),
-    });
-
-    const path = new Style({
-        stroke: new Stroke({
-            color: styles["geojson-path"]["stroke"],
-            width: +styles["geojson-path"]["stroke-width"].replace("px", ""),
-        })
-    });
-
-    const area = new Style({
-        stroke: new Stroke({
-            color: styles["geojson-area"]["stroke"],
-            width: +styles["geojson-area"]["stroke-width"].replace("px", ""),
-        }),
-        fill: new Fill({
-            color: styles["geojson-area"]["fill"],
-        })
-    })
+    const point = styles.lookupCircle("geojson-point");
+    const path = styles.lookupStyle("geojson-path");
+    const area = styles.lookupStyle("geojson-area");
 
     return function(feature, resolution) {
         var s = point;
@@ -91,11 +65,14 @@ function newGeoJSONStyle(state, styles) {
             case "MultiPolygon":
                 s = area;
         }
-        var cloned = false;
+        if (feature.get("-b6-style")) {
+            s = styles.lookupStyle(feature.get("-b6-style"));
+        } else if (feature.get("-b6-circle")) {
+            s = styles.lookupCircle(feature.get("-b6-circle"));
+        }
         const label = feature.get("name") || feature.get("label");
         if (label) {
             s = s.clone();
-            cloned = true;
             s.setText(new Text({
                 text: label,
                 textAlign: "left",
@@ -104,53 +81,8 @@ function newGeoJSONStyle(state, styles) {
                 font: '"Roboto" 12px',
             }));
         }
-        if (feature.get("-b6-stroke")) {
-            if (!cloned) {
-                s = s.clone();
-                cloned = true;
-            }
-            if (s.getStroke()) {
-                s.getStroke().setColor(parseColour(feature.get("-b6-stroke"), "stroke", styles));
-            }
-        }
-        if (feature.get("-b6-fill")) {
-            if (!cloned) {
-                s = s.clone();
-                cloned = true;
-            }
-            if (s.getFill()) {
-                s.getFill().setColor(parseColour(feature.get("-b6-fill"), "fill", styles));
-            }
-        }
-        if (feature.get("-b6-circle")) {
-            if (!cloned) {
-                s = s.clone();
-                cloned = true;
-            }
-            s.setImage(new Circle({
-                radius: 4,
-                fill: new Fill({
-                    color: parseColour(feature.get("-b6-circle"), "fill", styles),
-                }),
-                stroke: new Stroke({
-                    color: parseColour(feature.get("-b6-circle"), "stroke", styles),
-                    width: 1,
-                }),
-            }));
-        }
         return s;
     }
-}
-
-function parseColour(colour, attribute, styles) {
-    if (colour) {
-        if (colour.startsWith("#")) {
-            return colour;
-        } else if (styles[colour]) {
-            return styles[colour][attribute];
-        }
-    }
-    return "#ff0000";
 }
 
 function setupMap(state, styles, mapCenter) {
@@ -274,12 +206,7 @@ function setupMap(state, styles, mapCenter) {
             if (feature.get("layer") == "road") {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
-                    return new Style({
-                        stroke: new Stroke({
-                            color: "#9aa4cc",
-                            width: width + 2.0,
-                        })
-                    });
+                    return styles.lookupStyleWithStokeWidth("road-outline", width + 2.0);
                 }
             }
         },
@@ -292,31 +219,10 @@ function setupMap(state, styles, mapCenter) {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
                     const id = idKeyFromFeature(feature);
-                    if (state.featureColours) {
-                        const colour = state.featureColours[id];
-                        if (colour) {
-                            return new Style({
-                                stroke: new Stroke({
-                                    color: colour,
-                                    width: width
-                                })
-                            });
-                        }
-                    }
                     if (state.highlighted[id]) {
-                        return new Style({
-                            stroke: new Stroke({
-                                color: styles["highlighted-road-fill"]["stroke"],
-                                width: width
-                            })
-                        });
+                        return styles.lookupStyleWithStokeWidth("highlighted-road-fill", width);
                     } else {
-                        return new Style({
-                            stroke: new Stroke({
-                                color: styles["road-fill"]["stroke"],
-                                width: width
-                            })
-                        });
+                        return styles.lookupStyleWithStokeWidth("road-fill", width);
                     }
                 }
             }
@@ -328,16 +234,14 @@ function setupMap(state, styles, mapCenter) {
         stroke: new Stroke({color: "#4f5a7d", width: 0.3})
     });
 
-    const highlightedBuildingFill = new Style({
-        fill: new Fill({color: styles["highlighted-area"]["fill"]}),
-        stroke: new Stroke({color: styles["highlighted-area"]["stroke"], width: 0.3})
+    const highlightedBuildingFill = styles.lookupStyle("highlighted-area");
+
+    const bucketedBuildingFill = Array.from(Array(6).keys()).map(b => {
+        return styles.lookupStyle(`bucketed-${b}`);
     });
 
-    const bucketedBuildingFill = Array.from(Array(5).keys()).map(b => {
-        return new Style({
-            fill: new Fill({color: styles[`bucketed-${b}`]["fill"]}),
-            stroke: new Stroke({color: "#4f5a7d", width: 0.3})
-        });
+    const bucketedPoint = Array.from(Array(6).keys()).map(b => {
+        return styles.lookupCircle(`bucketed-${b}`);
     });
 
     const buildings = new VectorTileLayer({
@@ -360,19 +264,14 @@ function setupMap(state, styles, mapCenter) {
         source: baseSource,
         style: function(feature, resolution) {
             if (feature.get("layer") == "point") {
-                if (state.featureColours) {
-                    const colour = state.featureColours[idKeyFromFeature(feature)];
-                    if (colour) {
-                        return new Style({
-                            image: new Circle({
-                                radius: 2,
-                                fill: new Fill({
-                                    color: colour,
-                                }),
-                            }),
-                        });
-                    }
+                const id = idKeyFromFeature(feature);
+                if (state.bucketed[id]) {
+                    return bucketedPoint[state.bucketed[id]];
                 }
+                if (state.highlighted[id]) {
+                    return styles.lookupStyle("highlighted-point");
+                }
+                return styles.lookupStyle("point");
             }
         },
     });
@@ -444,18 +343,6 @@ const StackOffset = [6, 6]; // Relative coordinates of stacks shown next to the 
 
 function elementPosition(element) {
     return [+element.style("left").replace("px", ""), +element.style("top").replace("px", "")];
-}
-
-function lookupStyles(names) {
-    const palette = d3.select("body").selectAll(".palette").data([1]).join("g");
-    palette.classed("palette", true);
-    const items = palette.selectAll("g").data(names).join("g");
-    items.attr("class", d => d);
-    const styles = {};
-    for (const i in names) {
-        styles[names[i]] = getComputedStyle(palette.select("." + names[i]).node());
-    }
-    return styles;
 }
 
 class Stack {
@@ -1009,7 +896,7 @@ class UI {
         });
 
         const scrollables = substacks.select(".scrollable");
-        const lines = scrollables.selectAll(".line").data(d => d.lines).join("div");
+        const lines = scrollables.selectAll(".line").data(d => d.lines ? d.lines : []).join("div");
         lines.attr("class", "line");
 
         this.removeStack(target.node());
@@ -1267,77 +1154,14 @@ function setupShell(target, ui) {
 }
 
 function newQueryStyle(state, styles) {
-    const point = new Style({
-        image: new Circle({
-            radius: 4,
-            stroke: new Stroke({
-                color: styles["query-point"]["stroke"],
-                width: +styles["query-point"]["stroke-width"].replace("px", ""),
-            }),
-        }),
-    });
-
-    const highlightedPoint = new Style({
-        image: new Circle({
-            radius: 4,
-            stroke: new Stroke({
-                color: styles["highlighted-point"]["stroke"],
-                width: +styles["highlighted-point"]["stroke-width"].replace("px", ""),
-            }),
-            fill: new Fill({
-                color: styles["highlighted-point"]["fill"],
-            }),
-        }),
-    });
-
-    const path = new Style({
-        stroke: new Stroke({
-            color: styles["query-path"]["stroke"],
-            width: +styles["query-path"]["stroke-width"].replace("px", ""),
-        })
-    });
-
-    const highlightedPath = new Style({
-        stroke: new Stroke({
-            color: styles["highlighted-path"]["stroke"],
-            width: +styles["highlighted-path"]["stroke-width"].replace("px", ""),
-        })
-    });
-
-    const area = new Style({
-        stroke: new Stroke({
-            color: styles["query-area"]["stroke"],
-            width: +styles["query-area"]["stroke-width"].replace("px", ""),
-        }),
-        fill: new Fill({
-            color: styles["query-area"]["fill"],
-        })
-    })
-
-    const highlightedArea = new Style({
-        stroke: new Stroke({
-            color: styles["highlighted-area"]["stroke"],
-            width: +styles["highlighted-area"]["stroke-width"].replace("px", ""),
-        }),
-        fill: new Fill({
-            color: styles["highlighted-area"]["fill"],
-        })
-    })
-
-    const boundary = new Style({
-        stroke: new Stroke({
-            color: styles["query-area"]["stroke"],
-            width: +styles["query-area"]["stroke-width"].replace("px", ""),
-        }),
-    })
-
-    const highlightedBoundary = new Style({
-        stroke: new Stroke({
-            color: styles["highlighted-area"]["stroke"],
-            width: +styles["highlighted-area"]["stroke-width"].replace("px", ""),
-        }),
-    })
-
+    const point = styles.lookupCircle("query-point");
+    const highlightedPoint = styles.lookupCircle("highlighted-point");
+    const path = styles.lookupStyle("query-path");
+    const highlightedPath = styles.lookupStyle("highlighted-path");
+    const area = styles.lookupStyle("query-area");
+    const highlightedArea = styles.lookupStyle("highlighted-area");
+    const boundary = styles.lookupStyle("query-area");
+    const highlightedBoundary = styles.lookupStyle("highlighted-area");
 
     return function(feature, resolution) {
         if (feature.get("layer") != "background") {
@@ -1367,12 +1191,13 @@ function newQueryStyle(state, styles) {
     }
 }
 
-const Styles = [
+const StyleClasses = [
     "bucketed-0",
     "bucketed-1",
     "bucketed-2",
     "bucketed-3",
     "bucketed-4",
+    "bucketed-5",
     "geojson-area",
     "geojson-path",
     "geojson-point",
@@ -1392,11 +1217,106 @@ const Styles = [
     "query-path",
     "query-point",
     "road-fill",
+    "road-outline",
 ];
+
+class Styles {
+    constructor(classes) {
+        const palette = d3.select("body").selectAll(".palette").data([1]).join("g");
+        palette.classed("palette", true);
+        const items = palette.selectAll("g").data(classes).join("g");
+        items.attr("class", d => d);
+        this.css = {};
+        for (const i in classes) {
+            this.css[classes[i]] = getComputedStyle(palette.select("." + classes[i]).node());
+        }
+        this.styles = {};
+        this.strokes = {};
+        this.circles = {};
+        this.fills = {};
+
+        this.missingStroke = new Stroke({color: "#ff0000", width: 1});
+        this.missingFill = new Fill({color: "#ff0000"});
+    }
+
+    lookupStyle(name) {
+        if (!this.styles[name]) {
+            const options = {};
+            const stroke = this.lookupStroke(name);
+            if (stroke) {
+                options["stroke"] = stroke;
+            }
+            const fill = this.lookupFill(name);
+            if (fill) {
+                options["fill"] = fill;
+            }
+            this.styles[name] = new Style(options);
+        }
+        return this.styles[name];
+    }
+
+    lookupStyleWithStokeWidth(name, width) {
+        const key = `${name}-width${width}`;
+        if (!this.styles[key]) {
+            const s = this.lookupStyle(name).clone();
+            s.getStroke().setWidth(width);
+            this.styles[key] = s;
+        }
+        return this.styles[key];
+    }
+
+    lookupStroke(name) {
+        if (!this.strokes[name]) {
+            if (this.css[name]) {
+                if (this.css[name]["stroke"]) {
+                    this.strokes[name] = new Stroke({
+                        color: this.css[name]["stroke"],
+                        width: +this.css[name]["stroke-width"].replace("px", ""),
+                    });
+                } else {
+                    this.strokes[name] = null;
+                }
+            } else {
+                this.strokes[name] = this.missingStroke;
+            }
+        }
+        return this.strokes[name];
+    }
+
+    lookupFill(name) {
+        if (!this.fills[name]) {
+            if (this.css[name]) {
+                if (this.css[name]["fill-opacity"] != 0) {
+                    this.fills[name] = new Fill({
+                        color: this.css[name]["fill"],
+                    });
+                } else {
+                    this.fills[name] = null;
+                }
+            } else {
+                this.fills[name] = this.missingFill;
+            }
+        }
+        return this.fills[name];
+    }
+
+    lookupCircle(name) {
+        if (!this.circles[name]) {
+            this.circles[name] = new Style({
+                image: new Circle({
+                    radius: 4,
+                    stroke: this.lookupStroke(name),
+                    fill: this.lookupFill(name),
+                }),
+            });
+        }
+        return this.circles[name];
+    }
+}
 
 function setup(startupResponse) {
     const state = {highlighted: {}, bucketed: {}};
-    const styles = lookupStyles(Styles);
+    const styles = new Styles(StyleClasses);
     const [map, searchableLayers, highlightChanged] = setupMap(state, styles, startupResponse.mapCenter);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
