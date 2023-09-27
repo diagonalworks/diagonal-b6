@@ -338,6 +338,7 @@ form.shell > input {
     line-height: 20px;
     white-space: nowrap;
     text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .line-left-right-value {
