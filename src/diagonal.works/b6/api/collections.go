@@ -599,7 +599,18 @@ func (a *ArrayAnyIntCollection) Next() (bool, error) {
 var _ Collection = &ArrayAnyIntCollection{}
 var _ Countable = &ArrayAnyIntCollection{}
 
-type HistogramCollection = ArrayAnyIntCollection
+type HistogramCollection struct {
+	Collection Collection
+	i          CollectionIterator
+}
+
+func (h *HistogramCollection) Begin() CollectionIterator {
+	return &HistogramCollection{Collection: h.Collection, i: h.Collection.Begin()}
+}
+
+func (h *HistogramCollection) Next() (bool, error) { return h.i.Next() }
+func (h *HistogramCollection) Key() interface{}    { return h.i.Key() }
+func (h *HistogramCollection) Value() interface{}  { return h.i.Value() }
 
 type ArrayTagCollection struct {
 	Tags []b6.Tag
