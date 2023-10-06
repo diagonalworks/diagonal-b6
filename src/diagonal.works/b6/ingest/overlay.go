@@ -148,6 +148,21 @@ func (o *OverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatur
 	return &relationFeatures{relations: relations, i: -1}
 }
 
+func (o *OverlayWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
+	byID := make(map[b6.CollectionID]b6.CollectionFeature)
+	for _, w := range []b6.World{o.base, o.overlay} {
+		c := w.FindCollectionsByFeature(id)
+		for c.Next() {
+			byID[c.Feature().CollectionID()] = c.Feature()
+		}
+	}
+	collections := make([]b6.CollectionFeature, 0, len(byID))
+	for _, collection := range byID {
+		collections = append(collections, collection)
+	}
+	return &collectionFeatures{collections: collections, i: -1}
+}
+
 func (o *OverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
 	byID := make(map[b6.PathID]b6.PathFeature)
 	for _, w := range []b6.World{o.base, o.overlay} {

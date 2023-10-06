@@ -21,6 +21,7 @@ type MutableWorld interface {
 	AddPath(p *PathFeature) error
 	AddArea(a *AreaFeature) error
 	AddRelation(a *RelationFeature) error
+	AddCollection(c *CollectionFeature) error
 	AddTag(id b6.FeatureID, tag b6.Tag) error
 	RemoveTag(id b6.FeatureID, key string) error
 	EachModifiedFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error
@@ -82,6 +83,10 @@ func (r ReadOnlyWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatur
 	return r.World.FindRelationsByFeature(id)
 }
 
+func (r ReadOnlyWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
+	return r.World.FindCollectionsByFeature(id)
+}
+
 func (r ReadOnlyWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
 	return r.World.FindPathsByPoint(id)
 }
@@ -130,6 +135,10 @@ func (r ReadOnlyWorld) AddRelation(a *RelationFeature) error {
 	return errors.New("World is read-only")
 }
 
+func (r ReadOnlyWorld) AddCollection(c *CollectionFeature) error {
+	return errors.New("World is read-only")
+}
+
 func (r ReadOnlyWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 	return errors.New("World is read-only")
 }
@@ -157,6 +166,8 @@ func (f *mutableFeatureIndex) Feature(v search.Value) b6.Feature {
 		return newAreaFeature(feature, f.byID)
 	case *RelationFeature:
 		return newRelationFeature(feature, f.byID)
+	case *CollectionFeature:
+		return newCollectionFeature(feature, f.byID)
 	}
 	return nil
 }
@@ -170,6 +181,8 @@ func (f *mutableFeatureIndex) ID(v search.Value) b6.FeatureID {
 	case *AreaFeature:
 		return feature.FeatureID()
 	case *RelationFeature:
+		return feature.FeatureID()
+	case *CollectionFeature:
 		return feature.FeatureID()
 	}
 	return b6.FeatureIDInvalid
@@ -214,6 +227,10 @@ func (m *BasicMutableWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationF
 	return findRelationsByFeature(m.references, id, m)
 }
 
+func (m *BasicMutableWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
+	return findCollectionsByFeature(m.references, id, m)
+}
+
 func (m *BasicMutableWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
 	return findPathsByPoint(id, m, m.references, m)
 }
@@ -235,8 +252,7 @@ func (m *BasicMutableWorld) EachModifiedFeature(each func(f b6.Feature, goroutin
 }
 
 func (m *BasicMutableWorld) EachModifiedTag(each func(f ModifiedTag, goroutine int) error, options *b6.EachFeatureOptions) error {
-	// there are no modified tags, are we store every feature
-	return nil
+	return nil // There are no modified tags, as we store every feature.
 }
 
 func (m *BasicMutableWorld) Tokens() []string {
@@ -299,6 +315,15 @@ func (m *BasicMutableWorld) AddRelation(r *RelationFeature) error {
 	return nil
 }
 
+func (m *BasicMutableWorld) AddCollection(c *CollectionFeature) error {
+	if err := ValidateCollection(c); err != nil {
+		return err
+	}
+	modified := NewModifiedFeatures(c, []b6.PhysicalFeature{}, m.byID, m)
+	modified.Update(m.byID, m.references, m.index, m)
+	return nil
+}
+
 func (m *BasicMutableWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 	tokenAfter, indexedAfter := b6.TokenForTag(tag)
 	if f := m.byID.FindMutableFeatureByID(id); f != nil {
@@ -340,6 +365,8 @@ func wrapFeature(f Feature, w b6.FeaturesByID) b6.PhysicalFeature {
 		return newAreaFeature(f, w)
 	case *RelationFeature:
 		return newRelationFeature(f, w)
+	case *CollectionFeature:
+		return newCollectionFeature(f, w)
 	}
 	panic("Invalid feature type")
 }
@@ -359,6 +386,8 @@ func NewMutableWorldFromSource(source FeatureSource, cores int) (b6.World, error
 			w.AddArea(f)
 		case *RelationFeature:
 			w.AddRelation(f)
+		case *CollectionFeature:
+			w.AddCollection(f)
 		}
 		lock.Unlock()
 		return nil
@@ -488,6 +517,19 @@ func (m *modifiedTagsRelation) Get(key string) b6.Tag {
 	return modifyTag(m.RelationFeature, key, m.tags[m.RelationFeature.FeatureID()])
 }
 
+type modifiedTagsCollection struct {
+	b6.CollectionFeature
+	tags ModifiedTags
+}
+
+func (m *modifiedTagsCollection) AllTags() []b6.Tag {
+	return modifyTags(m.CollectionFeature, m.tags[m.CollectionFeature.FeatureID()])
+}
+
+func (m *modifiedTagsCollection) Get(key string) b6.Tag {
+	return modifyTag(m.CollectionFeature, key, m.tags[m.CollectionFeature.FeatureID()])
+}
+
 type ModifiedTag struct {
 	ID      b6.FeatureID
 	Tag     b6.Tag
@@ -531,6 +573,8 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 		return m.WrapAreaFeature(f)
 	case b6.RelationFeature:
 		return m.WrapRelationFeature(f)
+	case b6.CollectionFeature:
+		return m.WrapCollectionFeature(f)
 	}
 	return feature
 }
@@ -549,6 +593,10 @@ func (m ModifiedTags) WrapAreaFeature(f b6.AreaFeature) b6.AreaFeature {
 
 func (m ModifiedTags) WrapRelationFeature(f b6.RelationFeature) b6.RelationFeature {
 	return &modifiedTagsRelation{RelationFeature: f, tags: m}
+}
+
+func (m ModifiedTags) WrapCollectionFeature(f b6.CollectionFeature) b6.CollectionFeature {
+	return &modifiedTagsCollection{CollectionFeature: f, tags: m}
 }
 
 func (m ModifiedTags) WrapSegment(segment b6.Segment) b6.Segment {
@@ -573,6 +621,10 @@ func (m ModifiedTags) WrapAreas(areas b6.AreaFeatures) b6.AreaFeatures {
 
 func (m ModifiedTags) WrapRelations(relations b6.RelationFeatures) b6.RelationFeatures {
 	return &modifiedTagsRelations{relations: relations, m: m}
+}
+
+func (m ModifiedTags) WrapCollections(collections b6.CollectionFeatures) b6.CollectionFeatures {
+	return &modifiedTagsCollections{collections: collections, m: m}
 }
 
 func (m ModifiedTags) WrapSegments(segments b6.Segments) b6.Segments {
@@ -686,6 +738,27 @@ func (m *modifiedTagsRelations) RelationID() b6.RelationID {
 	return m.relations.RelationID()
 }
 
+type modifiedTagsCollections struct {
+	collections b6.CollectionFeatures
+	m           ModifiedTags
+}
+
+func (m *modifiedTagsCollections) Next() bool {
+	return m.collections.Next()
+}
+
+func (m *modifiedTagsCollections) Feature() b6.CollectionFeature {
+	return m.m.WrapCollectionFeature(m.collections.Feature())
+}
+
+func (m *modifiedTagsCollections) FeatureID() b6.FeatureID {
+	return m.collections.FeatureID()
+}
+
+func (m *modifiedTagsCollections) CollectionID() b6.CollectionID {
+	return m.collections.CollectionID()
+}
+
 type modifiedTagsSegments struct {
 	segments b6.Segments
 	m        ModifiedTags
@@ -792,6 +865,10 @@ func (m *MutableOverlayWorld) findFeatureByID(id b6.FeatureID) b6.Feature {
 		if r, ok := m.byID.Relations[id.ToRelationID()]; ok {
 			return newRelationFeature(r, m)
 		}
+	case b6.FeatureTypeCollection:
+		if c, ok := m.byID.Collections[id.ToCollectionID()]; ok {
+			return newCollectionFeature(c, m)
+		}
 	}
 	return nil
 }
@@ -810,6 +887,22 @@ func (m *MutableOverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.Relatio
 		}
 	}
 	return &relationFeatures{relations: result, i: -1}
+}
+
+func (m *MutableOverlayWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
+	result := make([]b6.CollectionFeature, 0)
+	cs := m.base.FindCollectionsByFeature(id)
+	for cs.Next() {
+		if _, ok := m.byID.Collections[cs.Feature().CollectionID()]; !ok {
+			result = append(result, cs.Feature())
+		}
+	}
+	if cs, ok := m.references.CollectionsByFeature[id]; ok {
+		for _, c := range cs {
+			result = append(result, collectionFeature{c, m})
+		}
+	}
+	return &collectionFeatures{collections: result, i: -1}
 }
 
 func (m *MutableOverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
@@ -958,6 +1051,17 @@ func (m *MutableOverlayWorld) AddRelation(r *RelationFeature) error {
 	return nil
 }
 
+func (m *MutableOverlayWorld) AddCollection(c *CollectionFeature) error {
+	if err := ValidateCollection(c); err != nil {
+		return err
+	}
+	modified := NewModifiedFeatures(c, []b6.PhysicalFeature{}, m.byID, m)
+	modified.Update(m.byID, m.references, m.index, m)
+	delete(m.tags, c.FeatureID())
+	m.epoch++
+	return nil
+}
+
 func (m *MutableOverlayWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 	tokenAfter, indexedAfter := b6.TokenForTag(tag)
 	if f := m.byID.FindMutableFeatureByID(id); f != nil {
@@ -1029,6 +1133,8 @@ func (m *MutableOverlayWorld) MergeSource(source FeatureSource) error {
 			return m.AddArea(f)
 		case *RelationFeature:
 			return m.AddRelation(f)
+		case *CollectionFeature:
+			return m.AddCollection(f)
 		}
 		return nil
 	}
@@ -1101,7 +1207,7 @@ func validateAreas(areas []*AreaFeature, w b6.World) error {
 func (m *MutableOverlayWorld) MergeInto(other MutableWorld) error {
 	// TODO: this could (perhaps) be made more efficient if necessary,
 	// since the features below have already been validated in the
-	// context of this world. Resticting merging to an original 'parent'
+	// context of this world. Restricting merging to an original 'parent'
 	// would, and checking an epoch number for changes, could enable
 	// a simple copy.
 	for _, point := range m.byID.Points {
@@ -1121,6 +1227,11 @@ func (m *MutableOverlayWorld) MergeInto(other MutableWorld) error {
 	}
 	for _, relation := range m.byID.Relations {
 		if err := other.AddRelation(relation); err != nil {
+			return err
+		}
+	}
+	for _, collection := range m.byID.Collections {
+		if err := other.AddCollection(collection); err != nil {
 			return err
 		}
 	}
@@ -1249,6 +1360,8 @@ func (m *ModifiedFeatures) Update(features *FeaturesByID, references *FeatureRef
 			existing.MergeFrom(m.features[0].(*AreaFeature))
 		case *RelationFeature:
 			existing.MergeFrom(m.features[0].(*RelationFeature))
+		case *CollectionFeature:
+			existing.MergeFrom(m.features[0].(*CollectionFeature))
 		}
 		new = m.existing
 	} else {
@@ -1376,6 +1489,10 @@ func (m *MutableTagsOverlayWorld) FindFeatures(query b6.Query) b6.Features {
 
 func (m *MutableTagsOverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
 	return m.tags.WrapRelations(m.base.FindRelationsByFeature(id))
+}
+
+func (m *MutableTagsOverlayWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
+	return m.tags.WrapCollections(m.base.FindCollectionsByFeature(id))
 }
 
 func (m *MutableTagsOverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {

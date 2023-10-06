@@ -137,6 +137,7 @@ var functions = api.FunctionSymbols{
 	"remove-tag":        removeTag,
 	"remove-tags":       removeTags,
 	"add-relation":      addRelation,
+	"add-collection":    addCollection,
 	"merge-changes":     mergeChanges,
 	"with-change":       withChange,
 	"changes-to-file":   changesToFile,

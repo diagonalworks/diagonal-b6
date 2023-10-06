@@ -63,6 +63,14 @@ func osmSimpleRelation(id osm.RelationID, member osm.WayID) *RelationFeature {
 	return relation
 }
 
+func simpleCollection(id b6.CollectionID, key, value string) *CollectionFeature {
+	return &CollectionFeature{
+		CollectionID: id,
+		Keys:         []interface{}{key},
+		Values:       []interface{}{value},
+	}
+}
+
 func addFeatures(w MutableWorld, features ...Feature) error {
 	for _, f := range features {
 		switch f := f.(type) {
@@ -80,6 +88,10 @@ func addFeatures(w MutableWorld, features ...Feature) error {
 			}
 		case *RelationFeature:
 			if err := w.AddRelation(f); err != nil {
+				return err
+			}
+		case *CollectionFeature:
+			if err := w.AddCollection(f); err != nil {
 				return err
 			}
 		default:
@@ -101,6 +113,7 @@ func TestMutableWorlds(t *testing.T) {
 		{"UpdateAreasSharingAPoint", ValidateUpdateAreasSharingAPoint},
 		{"UpdateAreasSharingAPointOnAPath", ValidateUpdateAreasSharingAPointOnAPath},
 		{"UpdateRelationsByFeatureWhenChangingRelations", ValidateUpdateRelationsByFeatureWhenChangingRelations},
+		{"UpdateCollectionsByFeatureWhenChangingCollections", ValidateUpdateCollectionsByFeatureWhenChangingCollections},
 		{"UpdatingPathUpdatesS2CellIndex", ValidateUpdatingPathUpdatesS2CellIndex},
 		{"UpdatingPointLocationsUpdatesS2CellIndex", ValidateUpdatingPointLocationsUpdatesS2CellIndex},
 		{"UpdatingPointLocationsWillFailIfAreasAreInvalidated", ValidateUpdatingPointLocationsWillFailIfAreasAreInvalidated},
@@ -409,6 +422,44 @@ func ValidateUpdateRelationsByFeatureWhenChangingRelations(w MutableWorld, t *te
 	}
 }
 
+func ValidateUpdateCollectionsByFeatureWhenChangingCollections(w MutableWorld, t *testing.T) {
+	c := simpleCollection(b6.MakeCollectionID(b6.Namespace("test"), 1), "repetition", "difference")
+
+	if err := addFeatures(w, c); err != nil {
+		t.Fatal(err)
+	}
+
+	original := w.FindFeatureByID(c.FeatureID())
+	if original.FeatureID().ToCollectionID() != c.CollectionID {
+		t.Error("Expected to find a collection")
+	}
+
+	modifiedCollection := NewCollectionFeatureFromWorld(b6.FindCollectionByID(c.CollectionID, w))
+	modifiedCollection.Keys = append(modifiedCollection.Keys, "extension")
+	modifiedCollection.Values = append(modifiedCollection.Values, "intensity")
+
+	if err := w.AddCollection(modifiedCollection); err != nil {
+		t.Errorf("Failed to add collection: %s", err)
+	}
+
+	updated := b6.FindCollectionByID(c.CollectionID, w)
+
+	updated.Begin()
+	if ok, err := updated.Next(); err != nil || !ok {
+		t.Error("Expected to find two key / value pairs")
+	}
+	if updated.Key() != "repetition" {
+		t.Errorf("Expected to find initial key, got %v", updated.Key())
+	}
+
+	if ok, err := updated.Next(); err != nil || !ok {
+		t.Error("Expected to find two key / value pairs")
+	}
+	if updated.Value() != "intensity" {
+		t.Errorf("Expected to find added value, got %v", updated.Value())
+	}
+}
+
 func ValidateUpdatingPathUpdatesS2CellIndex(w MutableWorld, t *testing.T) {
 	// Extend the Western Transit Shed in Granary Square to cover the Eastern
 	// Handyside Canopy, and ensure we can find the resulting area
@@ -561,7 +612,10 @@ func ValidateAddingFeaturesWithNoIDFails(w MutableWorld, t *testing.T) {
 		t.Error("Expected adding an area with no ID to fail")
 	}
 	if err := w.AddRelation(&RelationFeature{}); err == nil {
-		t.Error("Expected adding a realtion with no ID to fail")
+		t.Error("Expected adding a relation with no ID to fail")
+	}
+	if err := w.AddCollection(&CollectionFeature{}); err == nil {
+		t.Error("Expected adding a collection with no ID to fail")
 	}
 }
 
@@ -1122,6 +1176,33 @@ func TestChangeTagsOnExistingRelation(t *testing.T) {
 	}
 
 	if err := validateTags(relation, expected); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestChangeTagsOnExistingCollection(t *testing.T) {
+	c := simpleCollection(b6.MakeCollectionID(b6.Namespace("test"), 1), "sappho", "fragments")
+	f13 := b6.Tag{Key: "13", Value: "Of all the stars"}
+	f31 := b6.Tag{Key: "31", Value: "That man seems to me to be equal to the gods, sitting opposite of you.."}
+	c.AddTag(f13)
+	c.AddTag(f31)
+
+	base := NewBasicMutableWorld()
+	if err := addFeatures(base, c); err != nil {
+		t.Fatal(err)
+	}
+
+	overlay := NewMutableOverlayWorld(base)
+	overlay.AddTag(c.FeatureID(), b6.Tag{Key: "13", Value: "Of all the stars, the loveliest"})
+
+	collection := b6.FindCollectionByID(c.CollectionID, overlay)
+
+	expected := []b6.Tag{
+		{Key: "31", Value: "That man seems to me to be equal to the gods, sitting opposite of you.."},
+		{Key: "13", Value: "Of all the stars, the loveliest"},
+	}
+
+	if err := validateTags(collection, expected); err != nil {
 		t.Error(err)
 	}
 }

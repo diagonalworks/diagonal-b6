@@ -155,6 +155,8 @@ func NewFeatureFromWorld(f b6.Feature) Feature {
 		return NewAreaFeatureFromWorld(f)
 	case b6.RelationFeature:
 		return NewRelationFeatureFromWorld(f)
+	case b6.CollectionFeature:
+		return NewCollectionFeatureFromWorld(f)
 	}
 	panic(fmt.Sprintf("Can't handle feature type: %T", f))
 }
@@ -169,6 +171,8 @@ func WrapFeature(f Feature, byID b6.FeaturesByID) b6.Feature {
 		return WrapAreaFeature(f, byID)
 	case *RelationFeature:
 		return WrapRelationFeature(f, byID)
+	case *CollectionFeature:
+		return WrapCollectionFeature(f, byID)
 	}
 	panic(fmt.Sprintf("Can't handle feature type: %T", f))
 }
@@ -747,6 +751,63 @@ func (r *RelationFeature) MarshalYAML() (interface{}, error) {
 	return y, nil
 }
 
+type CollectionFeature struct {
+	b6.CollectionID
+	Tags
+
+	Keys   []interface{}
+	Values []interface{}
+	i      int
+}
+
+func (c *CollectionFeature) Clone() Feature {
+	return &CollectionFeature{
+		CollectionID: c.CollectionID,
+		Tags:         c.Tags.Clone(),
+		Keys:         c.Keys,
+		Values:       c.Values,
+	}
+}
+
+func (c *CollectionFeature) MergeFrom(other Feature) {
+	if collection, ok := other.(*CollectionFeature); ok {
+		c.MergeFromCollectionFeature(collection)
+	} else {
+		panic(fmt.Sprintf("Expected a CollectionFeature, found %T", other))
+	}
+}
+
+func (c *CollectionFeature) MergeFromCollectionFeature(other *CollectionFeature) {
+	c.CollectionID = other.CollectionID
+	c.Tags = other.Tags
+	c.Keys = other.Keys
+	c.Values = other.Values
+}
+
+func (c *CollectionFeature) SetFeatureID(id b6.FeatureID) {
+	c.CollectionID = id.ToCollectionID()
+}
+
+func NewCollectionFeatureFromWorld(c b6.CollectionFeature) *CollectionFeature {
+	feature := &CollectionFeature{
+		CollectionID: c.CollectionID(),
+		Tags:         NewTagsFromWorld(c),
+	}
+
+	c.Begin()
+	for {
+		ok, err := c.Next()
+		if !ok || err != nil {
+			break
+		}
+
+		feature.Keys = append(feature.Keys, c.Key())
+		feature.Values = append(feature.Values, c.Value())
+	}
+
+	return feature
+}
+
 type PathPosition struct {
 	Path     *PathFeature
 	Position int
@@ -757,20 +818,22 @@ func (p *PathPosition) IsFirstOrLast() bool {
 }
 
 type FeaturesByID struct {
-	Points    map[b6.PointID]*PointFeature
-	Paths     map[b6.PathID]*PathFeature
-	Areas     map[b6.AreaID]*AreaFeature
-	Relations map[b6.RelationID]*RelationFeature
+	Points      map[b6.PointID]*PointFeature
+	Paths       map[b6.PathID]*PathFeature
+	Areas       map[b6.AreaID]*AreaFeature
+	Relations   map[b6.RelationID]*RelationFeature
+	Collections map[b6.CollectionID]*CollectionFeature
 
 	PointsFromOSMNodes map[uint64]s2.LatLng
 }
 
 func NewFeaturesByID() *FeaturesByID {
 	f := &FeaturesByID{
-		Points:    make(map[b6.PointID]*PointFeature),
-		Paths:     make(map[b6.PathID]*PathFeature),
-		Areas:     make(map[b6.AreaID]*AreaFeature),
-		Relations: make(map[b6.RelationID]*RelationFeature),
+		Points:      make(map[b6.PointID]*PointFeature),
+		Paths:       make(map[b6.PathID]*PathFeature),
+		Areas:       make(map[b6.AreaID]*AreaFeature),
+		Relations:   make(map[b6.RelationID]*RelationFeature),
+		Collections: make(map[b6.CollectionID]*CollectionFeature),
 	}
 	f.PointsFromOSMNodes = make(map[uint64]s2.LatLng)
 	return f
@@ -798,6 +861,8 @@ func (f *FeaturesByID) AddFeature(feature Feature) {
 		f.Areas[feature.AreaID] = feature
 	case *RelationFeature:
 		f.Relations[feature.RelationID] = feature
+	case *CollectionFeature:
+		f.Collections[feature.CollectionID] = feature
 	}
 }
 
@@ -830,6 +895,10 @@ func (f *FeaturesByID) FindFeatureByID(id b6.FeatureID) b6.Feature {
 		if r, ok := f.Relations[id.ToRelationID()]; ok {
 			return newRelationFeature(r, f)
 		}
+	case b6.FeatureTypeCollection:
+		if c, ok := f.Collections[id.ToCollectionID()]; ok {
+			return newCollectionFeature(c, f)
+		}
 	}
 	return nil
 }
@@ -850,6 +919,9 @@ func (f *FeaturesByID) HasFeatureWithID(id b6.FeatureID) bool {
 		return ok
 	case b6.FeatureTypeRelation:
 		_, ok := f.Relations[id.ToRelationID()]
+		return ok
+	case b6.FeatureTypeCollection:
+		_, ok := f.Collections[id.ToCollectionID()]
 		return ok
 	}
 	return false
@@ -878,6 +950,10 @@ func (f *FeaturesByID) FindMutableFeatureByID(id b6.FeatureID) Feature {
 	case b6.FeatureTypeRelation:
 		if r, ok := f.Relations[id.ToRelationID()]; ok {
 			return r
+		}
+	case b6.FeatureTypeCollection:
+		if c, ok := f.Collections[id.ToCollectionID()]; ok {
+			return c
 		}
 	}
 	return nil
@@ -964,19 +1040,31 @@ func (f *FeaturesByID) feedFeatures(c chan<- Feature, done <-chan struct{}, opti
 			}
 		}
 	}
+
+	if !options.SkipCollections {
+		for _, collection := range f.Collections {
+			select {
+			case <-done:
+				return
+			case c <- collection:
+			}
+		}
+	}
 }
 
 type FeatureReferences struct {
-	RelationsByFeature map[b6.FeatureID][]*RelationFeature
-	PathsByPoint       map[b6.PointID][]PathPosition
-	AreasByPath        map[b6.PathID][]*AreaFeature
+	RelationsByFeature   map[b6.FeatureID][]*RelationFeature
+	PathsByPoint         map[b6.PointID][]PathPosition
+	AreasByPath          map[b6.PathID][]*AreaFeature
+	CollectionsByFeature map[b6.FeatureID][]*CollectionFeature
 }
 
 func NewFeatureReferences() *FeatureReferences {
 	return &FeatureReferences{
-		RelationsByFeature: make(map[b6.FeatureID][]*RelationFeature),
-		PathsByPoint:       make(map[b6.PointID][]PathPosition),
-		AreasByPath:        make(map[b6.PathID][]*AreaFeature),
+		RelationsByFeature:   make(map[b6.FeatureID][]*RelationFeature),
+		PathsByPoint:         make(map[b6.PointID][]PathPosition),
+		AreasByPath:          make(map[b6.PathID][]*AreaFeature),
+		CollectionsByFeature: make(map[b6.FeatureID][]*CollectionFeature),
 	}
 }
 
@@ -993,6 +1081,11 @@ func NewFilledFeatureReferences(byID *FeaturesByID) *FeatureReferences {
 	for _, relation := range byID.Relations {
 		f.AddRelationsForFeature(relation)
 	}
+
+	for _, collection := range byID.Collections {
+		f.AddCollectionsForFeature(collection)
+	}
+
 	return f
 }
 
@@ -1004,6 +1097,8 @@ func (f *FeatureReferences) AddFeature(feature Feature, byID b6.FeaturesByID) {
 		f.AddPathsForArea(feature)
 	case *RelationFeature:
 		f.AddRelationsForFeature(feature)
+	case *CollectionFeature:
+		f.AddCollectionsForFeature(feature)
 	}
 }
 
@@ -1015,6 +1110,8 @@ func (f *FeatureReferences) RemoveFeature(feature Feature, byID b6.FeaturesByID)
 		f.RemovePathsForArea(feature)
 	case *RelationFeature:
 		f.RemoveRelationsForFeature(feature)
+	case *CollectionFeature:
+		f.RemoveCollectionsForFeature(feature)
 	}
 }
 
@@ -1159,13 +1256,52 @@ member:
 	}
 }
 
+func (f *FeatureReferences) AddCollectionsForFeature(c *CollectionFeature) {
+	collectionID := c.FeatureID()
+each:
+	for _, key := range c.Keys {
+		if id, ok := key.(b6.Identifiable); ok {
+			collections, ok := f.CollectionsByFeature[id.FeatureID()]
+			if !ok {
+				collections = make([]*CollectionFeature, 0, 1)
+			}
+
+			for _, collection := range collections {
+				if collection.FeatureID() == collectionID {
+					continue each
+				}
+			}
+
+			f.CollectionsByFeature[id.FeatureID()] = append(collections, c)
+		}
+	}
+}
+
+func (f *FeatureReferences) RemoveCollectionsForFeature(c *CollectionFeature) {
+	for _, key := range c.Keys {
+		if id, ok := key.(b6.Identifiable); ok {
+			ids := f.CollectionsByFeature[id.FeatureID()]
+			if len(ids) > 0 {
+				filtered := make([]*CollectionFeature, 0, len(ids)-1)
+				for _, collection := range ids {
+					if collection != c {
+						filtered = append(filtered, collection)
+					}
+				}
+				f.CollectionsByFeature[id.FeatureID()] = filtered
+			}
+		}
+	}
+}
+
 type ReadOptions struct {
-	SkipPoints    bool
-	SkipPaths     bool
-	SkipAreas     bool
-	SkipRelations bool
-	SkipTags      bool
-	Goroutines    int
+	SkipPoints      bool
+	SkipPaths       bool
+	SkipAreas       bool
+	SkipRelations   bool
+	SkipCollections bool
+	SkipTags        bool
+	Goroutines      int
 }
 
 type WorldFeatureSource struct {
@@ -1174,11 +1310,12 @@ type WorldFeatureSource struct {
 
 func (w WorldFeatureSource) Read(options ReadOptions, emit Emit, ctx context.Context) error {
 	o := b6.EachFeatureOptions{
-		SkipPoints:    options.SkipPoints,
-		SkipPaths:     options.SkipPaths,
-		SkipAreas:     options.SkipAreas,
-		SkipRelations: options.SkipRelations,
-		Goroutines:    options.Goroutines,
+		SkipPoints:      options.SkipPoints,
+		SkipPaths:       options.SkipPaths,
+		SkipAreas:       options.SkipAreas,
+		SkipRelations:   options.SkipRelations,
+		SkipCollections: options.SkipCollections,
+		Goroutines:      options.Goroutines,
 	}
 	f := func(f b6.Feature, goroutine int) error {
 		return emit(NewFeatureFromWorld(f), goroutine)

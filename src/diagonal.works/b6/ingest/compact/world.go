@@ -638,6 +638,7 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -903,6 +904,12 @@ func (f *FeaturesByID) fillRelationsFromRelation(fb *featureBlock, id uint64, re
 	return relations
 }
 
+func (f *FeaturesByID) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
+	collections := make([]b6.CollectionFeature, 0, 2)
+	// TODO(mari)
+	return ingest.NewCollectionFeatureIterator(collections)
+}
+
 func (f *FeaturesByID) LogSummary() {
 	names := make([]string, 0, 8)
 	maps := make([]*encoding.Uint64Map, 0, 8)
@@ -974,6 +981,10 @@ func (w *World) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 
 func (w *World) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
 	return w.byID.FindRelationsByFeature(id)
+}
+
+func (w *World) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
+	return w.byID.FindCollectionsByFeature(id)
 }
 
 func (w *World) Traverse(id b6.PointID) b6.Segments {

@@ -43,3 +43,30 @@ func TestAddRelation(t *testing.T) {
 		t.Errorf("Expected to find added relation, found none")
 	}
 }
+
+func TestAddCollection(t *testing.T) {
+	m := ingest.NewMutableOverlayWorld(b6.EmptyWorld{})
+	id := b6.MakeCollectionID("diagonal.works/test", 1)
+
+	tags := api.ArrayTagCollection{
+		Tags: []b6.Tag{{Key: "#route", Value: "bicycle"}},
+	}
+
+	collection := api.ArrayAnyCollection{
+		Keys:   []interface{}{ingest.FromOSMWayID(4262451)},
+		Values: []interface{}{"forward"},
+	}
+
+	change, err := addCollection(nil, id, &tags, &collection)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if _, err := change.Apply(m); err != nil {
+		t.Fatalf("Expected no error applying change, found: %s", err)
+	}
+
+	if collection := b6.FindCollectionByID(id, m); collection == nil {
+		t.Errorf("Expected to find added collection, found none")
+	}
+}

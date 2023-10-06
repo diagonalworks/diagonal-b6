@@ -155,6 +155,7 @@ const (
 	FeatureTypeArea
 	FeatureTypeRelation
 	FeatureTypeInvalid
+	FeatureTypeCollection
 
 	FeatureTypeBegin = FeatureTypePoint
 	FeatureTypeEnd   = FeatureTypeInvalid
@@ -171,6 +172,8 @@ func (f FeatureType) String() string {
 		return "area"
 	case FeatureTypeRelation:
 		return "relation"
+	case FeatureTypeCollection:
+		return "collection"
 	default:
 		return "invalid"
 	}
@@ -323,6 +326,13 @@ func (f FeatureID) ToRelationID() RelationID {
 	panic("Not a relation")
 }
 
+func (f FeatureID) ToCollectionID() CollectionID {
+	if f.Type == FeatureTypeCollection || f.Type == FeatureTypeInvalid {
+		return CollectionID{Namespace: f.Namespace, Value: f.Value}
+	}
+	panic("Not a collection")
+}
+
 func FeatureIDFromString(s string) FeatureID {
 	if len(s) > 0 && s[0] == '/' {
 		s = s[1:]
@@ -448,7 +458,7 @@ func (a AreaID) String() string {
 	return a.FeatureID().String()
 }
 
-func (a AreaID) Less(other PointID) bool {
+func (a AreaID) Less(other AreaID) bool {
 	if a.Namespace == other.Namespace {
 		return a.Value < other.Value
 	} else {
@@ -488,6 +498,35 @@ func (r RelationID) Less(other PointID) bool {
 }
 
 var RelationIDInvalid = RelationID{Namespace: NamespaceInvalid}
+
+type CollectionID struct {
+	Namespace Namespace
+	Value     uint64
+}
+
+func MakeCollectionID(ns Namespace, v uint64) CollectionID {
+	return CollectionID{Namespace: ns, Value: v}
+}
+
+func (c CollectionID) FeatureID() FeatureID {
+	return FeatureID{Type: FeatureTypeCollection, Namespace: c.Namespace, Value: c.Value}
+}
+
+func (c CollectionID) IsValid() bool {
+	return c.Namespace != NamespaceInvalid
+}
+
+func (c CollectionID) String() string {
+	return c.FeatureID().String()
+}
+
+func (c CollectionID) Less(other CollectionID) bool {
+	if c.Namespace == other.Namespace {
+		return c.Value < other.Value
+	} else {
+		return c.Namespace < other.Namespace
+	}
+}
 
 type Geometry interface {
 	Covering(coverer s2.RegionCoverer) s2.CellUnion
@@ -715,6 +754,16 @@ type RelationFeature interface {
 	Covering(coverer s2.RegionCoverer) s2.CellUnion
 }
 
+type CollectionFeature interface {
+	Feature
+	FeatureID() FeatureID
+	CollectionID() CollectionID
+	Begin() CollectionFeature
+	Next() (bool, error)
+	Key() interface{}
+	Value() interface{}
+}
+
 type Features interface {
 	Feature() Feature
 	FeatureID() FeatureID
@@ -846,11 +895,12 @@ type FeaturesByID interface {
 }
 
 type EachFeatureOptions struct {
-	SkipPoints    bool
-	SkipPaths     bool
-	SkipAreas     bool
-	SkipRelations bool
-	Goroutines    int
+	SkipPoints      bool
+	SkipPaths       bool
+	SkipAreas       bool
+	SkipRelations   bool
+	SkipCollections bool
+	Goroutines      int
 }
 
 func (e *EachFeatureOptions) IsSkipped(t FeatureType) bool {
@@ -863,6 +913,8 @@ func (e *EachFeatureOptions) IsSkipped(t FeatureType) bool {
 		return e.SkipAreas
 	case FeatureTypeRelation:
 		return e.SkipRelations
+	case FeatureTypeCollection:
+		return e.SkipCollections
 	}
 	return false
 }
@@ -875,6 +927,7 @@ type World interface {
 	// TODO: make the query type more specific to Features, similar to the level in api.proto
 	FindFeatures(query Query) Features
 	FindRelationsByFeature(id FeatureID) RelationFeatures
+	FindCollectionsByFeature(id FeatureID) CollectionFeatures
 	FindPathsByPoint(id PointID) PathFeatures
 	FindAreasByPoint(id PointID) AreaFeatures
 	Traverse(id PointID) Segments
@@ -905,6 +958,10 @@ func (EmptyWorld) FindFeatures(query Query) Features {
 
 func (EmptyWorld) FindRelationsByFeature(id FeatureID) RelationFeatures {
 	return EmptyRelationFeatures{}
+}
+
+func (EmptyWorld) FindCollectionsByFeature(id FeatureID) CollectionFeatures {
+	return EmptyCollectionFeatures{}
 }
 
 func (EmptyWorld) FindPathsByPoint(id PointID) PathFeatures {
@@ -1188,6 +1245,31 @@ func NewRelationFeatures(features Features) RelationFeatures {
 	return relationFeatures{features: features}
 }
 
+type EmptyCollectionFeatures struct{}
+
+func (EmptyCollectionFeatures) Feature() CollectionFeature {
+	panic("No CollectionFeatures")
+}
+
+func (EmptyCollectionFeatures) FeatureID() FeatureID {
+	panic("No CollectionFeatures")
+}
+
+func (EmptyCollectionFeatures) CollectionID() CollectionID {
+	panic("No CollectionFeatures")
+}
+
+func (EmptyCollectionFeatures) Next() bool {
+	return false
+}
+
+func FindCollectionByID(id CollectionID, features FeaturesByID) CollectionFeature {
+	if collection := features.FindFeatureByID(id.FeatureID()); collection != nil {
+		return collection.(CollectionFeature)
+	}
+	return nil
+}
+
 func FindPoints(q Query, w World) PointFeatures {
 	q = Typed{Type: FeatureTypePoint, Query: q}
 	return NewPointFeatures(w.FindFeatures(q))
@@ -1206,6 +1288,45 @@ func FindAreas(q Query, w World) AreaFeatures {
 func FindRelations(q Query, w World) RelationFeatures {
 	q = Typed{Type: FeatureTypeRelation, Query: q}
 	return NewRelationFeatures(w.FindFeatures(q))
+}
+
+type CollectionFeatures interface {
+	Feature() CollectionFeature
+	FeatureID() FeatureID
+	CollectionID() CollectionID
+	Next() bool
+}
+
+type collectionFeatures struct {
+	features Features
+}
+
+func (c collectionFeatures) Feature() CollectionFeature {
+	if collection, ok := c.features.Feature().(CollectionFeature); ok {
+		return collection
+	}
+	panic(fmt.Sprintf("Not an CollectionFeature: %T", c.features.Feature()))
+}
+
+func (c collectionFeatures) FeatureID() FeatureID {
+	return c.features.FeatureID()
+}
+
+func (c collectionFeatures) CollectionID() CollectionID {
+	return c.FeatureID().ToCollectionID()
+}
+
+func (c collectionFeatures) Next() bool {
+	return c.features.Next()
+}
+
+func NewCollectionFeatures(features Features) CollectionFeatures {
+	return collectionFeatures{features: features}
+}
+
+func FindCollections(q Query, w World) CollectionFeatures {
+	q = Typed{Type: FeatureTypeCollection, Query: q}
+	return NewCollectionFeatures(w.FindFeatures(q))
 }
 
 func fillPropertiesFromTags(t Taggable, feature *geojson.Feature) {
@@ -1265,6 +1386,26 @@ func RelationFeatureToGeoJSON(relation RelationFeature, byID FeaturesByID) *geoj
 		}
 	}
 	return collection
+}
+
+func CollectionFeatureToGeoJSON(collection CollectionFeature, byID FeaturesByID) *geojson.FeatureCollection {
+	geojson := geojson.NewFeatureCollection()
+
+	collection.Begin()
+	for {
+		ok, err := collection.Next()
+		if !ok || err != nil {
+			break
+		}
+
+		if id, ok := collection.Key().(Identifiable); ok {
+			if f := byID.FindFeatureByID(id.FeatureID()); f != nil {
+				geojson.Add(f.ToGeoJSON())
+			}
+		}
+	}
+
+	return geojson
 }
 
 func AngleToMeters(angle s1.Angle) float64 {

@@ -170,6 +170,33 @@ func TestAddRelations(t *testing.T) {
 	}
 }
 
+func TestAddCollections(t *testing.T) {
+	collection := CollectionFeature{
+		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
+		Keys:         []interface{}{b6.PathID{b6.NamespaceDiagonalEntrances, 777}},
+		Values:       []interface{}{"i dont need to be humble"},
+	}
+
+	add := AddFeatures{
+		Collections: []*CollectionFeature{&collection},
+	}
+
+	w := NewBasicMutableWorld()
+
+	_, err := add.Apply(w)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	added := b6.FindCollectionByID(collection.CollectionID, w)
+	if added == nil {
+		t.Fatalf("Expected to find collection under %s", collection.CollectionID.String())
+	}
+	if collection.Values[0].(string) != "i dont need to be humble" {
+		t.Error("Expected collection member value to match")
+	}
+}
+
 func TestMergeChanges(t *testing.T) {
 	ns := b6.Namespace("diagonal.works/test")
 	p1 := NewPointFeature(b6.MakePointID(ns, 1), s2.LatLngFromDegrees(51.5366467, -0.1263796))

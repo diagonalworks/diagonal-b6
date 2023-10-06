@@ -88,3 +88,10 @@ func ValidateRelation(r *RelationFeature) error {
 	}
 	return nil
 }
+
+func ValidateCollection(c *CollectionFeature) error {
+	if !c.CollectionID.IsValid() {
+		return fmt.Errorf("%s: invalid ID", c.CollectionID)
+	}
+	return nil
+}
