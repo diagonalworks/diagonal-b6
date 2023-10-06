@@ -71,6 +71,29 @@ func TestCloneRelation(t *testing.T) {
 	}
 }
 
+func TestCloneCollection(t *testing.T) {
+	collection := CollectionFeature{
+		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
+		Keys:         []interface{}{b6.PathID{Namespace: b6.NamespaceDiagonalEntrances, Value: 777}},
+		Values:       []interface{}{"i wanna be the one to walk in the sun"},
+		Tags:         []b6.Tag{{Key: "by", Value: "chromatics"}},
+	}
+
+	clone := collection.Clone()
+	if !reflect.DeepEqual(collection.CollectionID, clone.(*CollectionFeature).CollectionID) {
+		t.Errorf("Expected cloned ID to be equal")
+	}
+	if !reflect.DeepEqual(collection.Keys, clone.(*CollectionFeature).Keys) {
+		t.Errorf("Expected cloned keys to be equal")
+	}
+	if !reflect.DeepEqual(collection.Values, clone.(*CollectionFeature).Values) {
+		t.Errorf("Expected cloned values to be equal")
+	}
+	if !reflect.DeepEqual(collection.AllTags(), clone.AllTags()) {
+		t.Errorf("Expected cloned tags to be equal")
+	}
+}
+
 func TestMergePoint(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
 	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
@@ -186,5 +209,36 @@ func TestMergeRelation(t *testing.T) {
 	m.MergeFrom(c6)
 	if !reflect.DeepEqual(c6, m) {
 		t.Error("Expected features to be equal after merge")
+	}
+}
+
+func TestMergeCollection(t *testing.T) {
+	before := CollectionFeature{
+		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
+		Keys:         []interface{}{b6.PathID{Namespace: b6.NamespaceDiagonalEntrances, Value: 11}},
+		Values:       []interface{}{"i cant find my chill"},
+	}
+
+	after := CollectionFeature{
+		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
+		Keys:         []interface{}{b6.PathID{Namespace: b6.NamespaceDiagonalEntrances, Value: 11}},
+		Values:       []interface{}{"i must have lost it"},
+		Tags:         []b6.Tag{{Key: "carpenter", Value: "nonsense"}},
+	}
+
+	m := before.Clone()
+	m.MergeFrom(&after)
+
+	if !reflect.DeepEqual(after.CollectionID, m.(*CollectionFeature).CollectionID) {
+		t.Errorf("Expected collection id to be equal after merge")
+	}
+	if !reflect.DeepEqual(after.Keys, m.(*CollectionFeature).Keys) {
+		t.Errorf("Expected keys to be equal after merge")
+	}
+	if !reflect.DeepEqual(after.Values, m.(*CollectionFeature).Values) {
+		t.Errorf("Expected values to be equal after merge")
+	}
+	if !reflect.DeepEqual(after.AllTags(), m.AllTags()) {
+		t.Errorf("Expected features to be equal after merge")
 	}
 }

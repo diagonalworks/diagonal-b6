@@ -107,6 +107,44 @@ func addRelation(c *api.Context, id b6.RelationID, tags api.TagCollection, membe
 	}, nil
 }
 
+func addCollection(c *api.Context, id b6.CollectionID, tags api.TagCollection, collection api.Collection) (ingest.Change, error) {
+	feature := &ingest.CollectionFeature{
+		CollectionID: id,
+	}
+
+	i := tags.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		tag, ok := i.Value().(b6.Tag)
+		if !ok {
+			return nil, fmt.Errorf("Expected b6.Tag, found %T", i.Value())
+		}
+		feature.Tags = append(feature.Tags, tag)
+	}
+
+	i = collection.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+
+		feature.Keys = append(feature.Keys, i.Key())
+		feature.Values = append(feature.Values, i.Value())
+	}
+
+	return &ingest.AddFeatures{
+		Collections: []*ingest.CollectionFeature{feature},
+	}, nil
+}
+
 func mergeChanges(c *api.Context, collection api.AnyChangeCollection) (ingest.Change, error) {
 	i := collection.Begin()
 	merged := make(ingest.MergedChange, 0)

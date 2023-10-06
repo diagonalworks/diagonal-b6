@@ -58,6 +58,8 @@ func (f *FeatureIndex) Feature(v search.Value) b6.Feature {
 		return newAreaFeature(feature, f.byID)
 	case *RelationFeature:
 		return newRelationFeature(feature, f.byID)
+	case *CollectionFeature:
+		return newCollectionFeature(feature, f.byID)
 	}
 	panic(fmt.Sprintf("Bad feature type: %T", v))
 }
@@ -251,6 +253,57 @@ func (r relationFeature) ToGeoJSON() geojson.GeoJSON {
 	return b6.RelationFeatureToGeoJSON(r, r.features)
 }
 
+func (r relationFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
+	return s2.CellUnion([]s2.CellID{})
+}
+
+type collectionFeature struct {
+	*CollectionFeature
+	features b6.FeaturesByID
+}
+
+func newCollectionFeature(c *CollectionFeature, byID b6.FeaturesByID) collectionFeature {
+	return collectionFeature{c, byID}
+}
+
+func WrapCollectionFeature(c *CollectionFeature, byID b6.FeaturesByID) b6.CollectionFeature {
+	return newCollectionFeature(c, byID)
+}
+
+func (c collectionFeature) ToGeoJSON() geojson.GeoJSON {
+	return b6.CollectionFeatureToGeoJSON(c, c.features)
+}
+
+func (c collectionFeature) Feature() b6.CollectionFeature {
+	return c
+}
+
+func (c collectionFeature) CollectionID() b6.CollectionID {
+	return c.CollectionFeature.CollectionID
+}
+
+func (c collectionFeature) Next() (bool, error) {
+	c.CollectionFeature.i++
+	return c.i <= len(c.CollectionFeature.Keys), nil
+}
+
+func (c collectionFeature) Key() interface{} {
+	return c.CollectionFeature.Keys[c.i-1]
+}
+
+func (c collectionFeature) Value() interface{} {
+	return c.CollectionFeature.Values[c.i-1]
+}
+
+func (c collectionFeature) Begin() b6.CollectionFeature {
+	c.CollectionFeature.i = 0
+	return c
+}
+
+func (c collectionFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
+	return s2.CellUnion([]s2.CellID{})
+}
+
 func newFeature(feature Feature, byID b6.FeaturesByID) b6.PhysicalFeature {
 	switch f := feature.(type) {
 	case *PointFeature:
@@ -261,12 +314,10 @@ func newFeature(feature Feature, byID b6.FeaturesByID) b6.PhysicalFeature {
 		return newAreaFeature(f, byID)
 	case *RelationFeature:
 		return newRelationFeature(f, byID)
+	case *CollectionFeature:
+		return newCollectionFeature(f, byID)
 	}
 	panic(fmt.Sprintf("Unknown feature: %T", feature))
-}
-
-func (r relationFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	return s2.CellUnion([]s2.CellID{})
 }
 
 type segmentIterator struct {
@@ -404,6 +455,17 @@ func findRelationsByFeature(r *FeatureReferences, id b6.FeatureID, w b6.World) b
 	return NewRelationFeatureIterator([]b6.RelationFeature{})
 }
 
+func findCollectionsByFeature(r *FeatureReferences, id b6.FeatureID, w b6.World) b6.CollectionFeatures {
+	if collections, ok := r.CollectionsByFeature[id]; ok {
+		wrapped := make([]b6.CollectionFeature, len(collections))
+		for i, c := range collections {
+			wrapped[i] = collectionFeature{c, w}
+		}
+		return NewCollectionFeatureIterator(wrapped)
+	}
+	return NewCollectionFeatureIterator([]b6.CollectionFeature{})
+}
+
 type basicWorld struct {
 	byID       *FeaturesByID
 	references *FeatureReferences
@@ -457,6 +519,40 @@ func (r *relationFeatures) RelationID() b6.RelationID {
 
 func (b *basicWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
 	return findRelationsByFeature(b.references, id, b)
+}
+
+type collectionFeatures struct {
+	collections []b6.CollectionFeature
+	i           int
+}
+
+func NewCollectionFeatureIterator(collections []b6.CollectionFeature) b6.CollectionFeatures {
+	return &collectionFeatures{collections: collections, i: -1}
+}
+
+func (c *collectionFeatures) Next() bool {
+	if c.i < len(c.collections)-1 {
+		c.i++
+		return true
+	}
+
+	return false
+}
+
+func (c *collectionFeatures) Feature() b6.CollectionFeature {
+	return c.collections[c.i]
+}
+
+func (c *collectionFeatures) FeatureID() b6.FeatureID {
+	return c.collections[c.i].FeatureID()
+}
+
+func (c *collectionFeatures) CollectionID() b6.CollectionID {
+	return c.collections[c.i].CollectionID()
+}
+
+func (b *basicWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
+	return findCollectionsByFeature(b.references, id, b)
 }
 
 func (b *basicWorld) FindPathsByPoint(p b6.PointID) b6.PathFeatures {
@@ -517,6 +613,10 @@ func (b *BasicWorldBuilder) AddRelation(r *RelationFeature) {
 	b.byID.Relations[r.RelationID] = r
 }
 
+func (b *BasicWorldBuilder) AddCollection(c *CollectionFeature) {
+	b.byID.Collections[c.CollectionID] = c
+}
+
 type BrokenFeatures []BrokenFeature
 
 func (b BrokenFeatures) Error() string {
@@ -549,6 +649,11 @@ func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 				c <- relation
 			}
 		},
+		func(c chan<- Feature, byID *FeaturesByID) {
+			for _, collection := range byID.Collections {
+				c <- collection
+			}
+		},
 	}
 
 	var wg sync.WaitGroup
@@ -568,6 +673,8 @@ func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 				err = ValidateArea(f, b.byID)
 			case *RelationFeature:
 				err = ValidateRelation(f)
+			case *CollectionFeature:
+				err = ValidateCollection(f)
 			}
 			if err != nil {
 				lock.Lock()
@@ -604,6 +711,8 @@ func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 					delete(b.byID.Areas, br.ID.ToAreaID())
 				case b6.FeatureTypeRelation:
 					delete(b.byID.Relations, br.ID.ToRelationID())
+				case b6.FeatureTypeCollection:
+					delete(b.byID.Collections, br.ID.ToCollectionID())
 				}
 			}
 		}
@@ -660,6 +769,8 @@ func NewWorldFromSource(source FeatureSource, o *BuildOptions) (b6.World, error)
 			b.AddArea(f)
 		case *RelationFeature:
 			b.AddRelation(f)
+		case *CollectionFeature:
+			b.AddCollection(f)
 		}
 		lock.Unlock()
 		return nil
