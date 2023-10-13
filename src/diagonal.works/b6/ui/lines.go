@@ -341,7 +341,7 @@ func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, re
 		substack.Lines = append(substack.Lines, &pb.LineProto{
 			Line: &pb.LineProto_Value{
 				Value: &pb.ValueLineProto{
-					Atom: atomFromString("Collection"),
+					Atom: AtomFromString("Collection"),
 				},
 			},
 		})
@@ -385,32 +385,6 @@ func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, re
 	return nil
 }
 
-func fillSubstackFromHistogram(substack *pb.SubstackProto, c *api.HistogramCollection, w b6.World) error {
-	keys, values, err := fillKeyValues(c, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	total := 0
-	begin := len(substack.Lines)
-	for i, key := range keys {
-		substack.Lines = append(substack.Lines, &pb.LineProto{
-			Line: &pb.LineProto_HistogramBar{
-				HistogramBar: &pb.HistogramBarLineProto{
-					Range: AtomFromValue(key, w),
-					Value: int32(values[i].(int)),
-					Index: int32(i),
-				},
-			},
-		})
-		total += values[i].(int)
-	}
-	for i := begin; i < len(substack.Lines); i++ {
-		substack.Lines[i].GetHistogramBar().Total = int32(total)
-	}
-	return nil
-}
-
 func lineFromTags(f b6.Feature) *pb.LineProto {
 	tags := f.AllTags()
 	tl := &pb.TagsLineProto{
@@ -431,7 +405,7 @@ func lineFromTags(f b6.Feature) *pb.LineProto {
 	}
 }
 
-func atomFromString(value string) *pb.AtomProto {
+func AtomFromString(value string) *pb.AtomProto {
 	return &pb.AtomProto{
 		Atom: &pb.AtomProto_Value{
 			Value: value,
@@ -463,13 +437,13 @@ func featureLabel(f b6.Feature) string {
 
 func AtomFromValue(value interface{}, w b6.World) *pb.AtomProto {
 	if i, ok := api.ToInt(value); ok {
-		return atomFromString(strconv.Itoa(i))
+		return AtomFromString(strconv.Itoa(i))
 	} else if f, err := api.ToFloat64(value); err == nil {
-		return atomFromString(fmt.Sprintf("%f", f))
+		return AtomFromString(fmt.Sprintf("%f", f))
 	} else {
 		switch v := value.(type) {
 		case string:
-			return atomFromString(v)
+			return AtomFromString(v)
 		case b6.Feature:
 			return &pb.AtomProto{
 				Atom: &pb.AtomProto_LabelledIcon{
@@ -493,12 +467,12 @@ func AtomFromValue(value interface{}, w b6.World) *pb.AtomProto {
 				}
 			}
 		case b6.Tag:
-			return atomFromString(api.UnparseTag(v))
+			return AtomFromString(api.UnparseTag(v))
 		case b6.Point:
 			ll := s2.LatLngFromPoint(v.Point())
-			return atomFromString(fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees()))
+			return AtomFromString(fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees()))
 		default:
-			return atomFromString(fmt.Sprintf("%v", v))
+			return AtomFromString(fmt.Sprintf("%v", v))
 		}
 	}
 }
@@ -657,7 +631,7 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 	case string:
 		var substack pb.SubstackProto
-		fillSubstackFromAtom(&substack, atomFromString(r))
+		fillSubstackFromAtom(&substack, AtomFromString(r))
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 	case b6.Feature:
 		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, r, w)
@@ -665,12 +639,12 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 	case b6.Query:
 		if q, ok := api.UnparseQuery(r); ok {
 			var substack pb.SubstackProto
-			fillSubstackFromAtom(&substack, atomFromString(q))
+			fillSubstackFromAtom(&substack, AtomFromString(q))
 			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		} else {
 			// TODO: Improve the rendering of queries
 			var substack pb.SubstackProto
-			fillSubstackFromAtom(&substack, atomFromString("Query"))
+			fillSubstackFromAtom(&substack, AtomFromString("Query"))
 			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		}
 	case b6.Tag:
@@ -683,10 +657,7 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 			}
 		}
 	case *api.HistogramCollection:
-		substack := &pb.SubstackProto{}
-		if err := fillSubstackFromHistogram(substack, r, w); err == nil {
-			p.Stack.Substacks = append(p.Stack.Substacks, substack)
-		} else {
+		if err := fillResponseFromHistogram(p, r, w); err != nil {
 			return err
 		}
 	case api.Collection:

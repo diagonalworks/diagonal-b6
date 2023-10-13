@@ -259,6 +259,7 @@ function setupMap(state, styles, mapCenter) {
             }
         },
     });
+    buildings.set("id", "buildings");
 
     const points = new VectorTileLayer({
         source: baseSource,
@@ -907,6 +908,7 @@ class UI {
 
         if (addToMap) {
             stack.addToMap();
+            stack.addBucketed();
         }
         if (response.proto.expression) {
             this.shellHistory.push(response.proto.expression);
@@ -981,6 +983,13 @@ class UI {
     }
 
     addLayer(layer) {
+        const layers = this.map.getLayers();
+        for (let i = 0; i < layers.getLength(); i++) {
+            if (layers.item(i).get("id") == "buildings") {
+                layers.insertAt(i, layer);
+                return;
+            }
+        }
         this.map.addLayer(layer);
     }
 
@@ -1163,6 +1172,10 @@ function newQueryStyle(state, styles) {
     const boundary = styles.lookupStyle("query-area");
     const highlightedBoundary = styles.lookupStyle("highlighted-area");
 
+    const bucketedArea = Array.from(Array(6).keys()).map(b => {
+        return styles.lookupStyle(`bucketed-${b}`);
+    });
+
     return function(feature, resolution) {
         if (feature.get("layer") != "background") {
             const id = idKeyFromFeature(feature);
@@ -1175,12 +1188,18 @@ function newQueryStyle(state, styles) {
                 case "MultiLineString":
                     return highlighted ? highlightedPath : path;
                 case "Polygon":
+                    if (state.bucketed[id]) {
+                        return bucketedArea[state.bucketed[id]];
+                    }
                     if (feature.get("boundary")) {
                         return highlighted ? highlightedBoundary : boundary;
                     } else {
                         return highlighted ? highlightedArea : area;
                     }
                 case "MultiPolygon":
+                    if (state.bucketed[id]) {
+                        return bucketedArea[state.bucketed[id]];
+                    }
                     if (feature.get("boundary")) {
                         return highlighted ? highlightedBoundary : boundary;
                     } else {
