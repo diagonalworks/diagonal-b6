@@ -205,6 +205,12 @@ form.shell > input {
     fill: #93acf6;
 }
 
+.palette > .highlighted-boundary {
+    stroke: #37589f;
+    stroke-width: 1;
+    fill: #93acf6;
+}
+
 .palette > .geojson-point {
     stroke: #37589f;
     fill: #5f8ef7;
@@ -224,9 +230,9 @@ form.shell > input {
 }
 
 .palette > .query-point {
-    stroke: #4f5a7d;
+    fill: #a2c9fe; /* Blue 40 */
+    stroke: #ffffff;
     stroke-width: 1;
-    fill-opacity: 0;
 }
 
 .palette > .query-path {
@@ -239,6 +245,12 @@ form.shell > input {
     stroke: #4f5a7d;
     stroke-width: 1;
     fill: #ffffff;
+}
+
+.palette > .query-boundary {
+    stroke: #4f5a7d;
+    stroke-width: 1;
+    fill-opacity: 0;
 }
 
 .palette > .outliner-rose {

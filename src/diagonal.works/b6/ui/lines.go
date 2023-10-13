@@ -653,7 +653,11 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		if !rules.IsRendered(r) {
 			if q, ok := api.UnparseQuery(b6.Tagged(r)); ok {
-				p.QueryLayers = append(p.QueryLayers, q)
+				before := pb.MapLayerPosition_MapLayerPositionEnd
+				if r.Key == "#boundary" {
+					before = pb.MapLayerPosition_MapLayerPositionBuildings
+				}
+				p.Layers = append(p.Layers, &pb.MapLayerProto{Query: q, Before: before})
 			}
 		}
 	case *api.HistogramCollection:

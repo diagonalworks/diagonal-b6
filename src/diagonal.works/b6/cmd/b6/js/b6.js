@@ -160,6 +160,7 @@ function setupMap(state, styles, mapCenter) {
             }
         }
     });
+    water.set("clickable", true);
 
     const parkFill = new Style({
         fill: new Fill({color: "#e1e1ee"}),
@@ -199,6 +200,7 @@ function setupMap(state, styles, mapCenter) {
             }
         },
     });
+    landuse.set("clickable", true);
 
     const roadOutlines = new VectorTileLayer({
         source: baseSource,
@@ -211,6 +213,8 @@ function setupMap(state, styles, mapCenter) {
             }
         },
     });
+    roadOutlines.set("clickable", true);
+    roadOutlines.set("position", "MapLayerPositionRoads");
 
     const roadFills = new VectorTileLayer({
         source: baseSource,
@@ -259,7 +263,8 @@ function setupMap(state, styles, mapCenter) {
             }
         },
     });
-    buildings.set("id", "buildings");
+    buildings.set("position", "MapLayerPositionBuildings");
+    buildings.set("clickable", true);
 
     const points = new VectorTileLayer({
         source: baseSource,
@@ -315,8 +320,6 @@ function setupMap(state, styles, mapCenter) {
         view: view,
     });
 
-    const searchableLayers = [buildings, roadOutlines, landuse, water];
-
     const highlightChanged = () => {
         boundaries.changed();
         buildings.changed();
@@ -324,7 +327,7 @@ function setupMap(state, styles, mapCenter) {
         points.changed();
     };
 
-    return [map, searchableLayers, highlightChanged];
+    return [map, highlightChanged];
 }
 
 function lonLatToLiteral(ll) {
@@ -362,9 +365,9 @@ class Stack {
         if (response.geojson) {
             this.initGeoJSON(response.geojson);
         }
-        if (response.proto.queryLayers) {
-            for (const i in response.proto.queryLayers) {
-                this.layers.push(ui.createQueryLayer(response.proto.queryLayers[i]));
+        if (response.proto.layers) {
+            for (const i in response.proto.layers) {
+                this.layers.push(ui.createQueryLayer(response.proto.layers[i].query, response.proto.layers[i].before));
             }
         }
     }
@@ -460,8 +463,8 @@ class Stack {
         this.ui.evaluateExpression(expression, this.expressionContext, this.locked, this.target);
     }
 
-    handleDragStart(event, toCopy) {
-        this.ui.handleDragStart(event, this.target, toCopy);
+    handleDragStart(event, clickAction) {
+        this.ui.handleDragStart(event, this.target, clickAction);
     }
 }
 
@@ -535,16 +538,20 @@ class ValueLineRenderer {
         renderFromProto(atoms, "atom", stack);
         const clickable = line.filter(d => d.value.clickExpression);
         clickable.classed("clickable", true);
-        clickable.on("click", (e, d) => {
-            e.preventDefault();
-            stack.evaluateNode(d.value.clickExpression);
-        })
-        const notClickable = line.filter(d => !d.value.clickExpression);
-        notClickable.on("click", (e, d) => {
-            const toCopy = atomTextToCopy(d.value);
-            if (toCopy) {
-                navigator.clipboard.writeText(toCopy);
+        clickable.on("mousedown", (e, d) => {
+            e.stopPropagation();
+            const clickHandler = () => {
+                stack.evaluateNode(d.value.clickExpression);
             }
+            stack.handleDragStart(e, clickHandler);
+        });
+        const notClickable = line.filter(d => !d.value.clickExpression);
+        notClickable.on("mousedown", (e, d) => {
+            e.stopPropagation();
+            const clickHandler = () => {
+                navigator.clipboard.writeText(atomTextToCopy(d.value));
+            }
+            stack.handleDragStart(e, clickHandler);
         });
     }    
 }
@@ -569,10 +576,13 @@ class LeftRightValueLineRenderer {
         atoms = line.selectAll("span").data(values);
         const clickables = atoms.datum(d => d.clickExpression).filter(d => d);
         clickables.classed("clickable", true);
-        clickables.on("click", (e, d) => {
+        clickables.on("mousedown", (e, d) => {
+            e.stopPropagation();
             if (d) {
-                e.preventDefault();
-                stack.evaluateNode(d);
+                const clickHandler = () => {
+                    stack.evaluateNode(d);
+                }
+                stack.handleDragStart(e, clickHandler);
             }
         })
     }
@@ -588,7 +598,11 @@ class ExpressionLineRenderer {
     update(line, stack) {
         line.text(d => d.expression.expression);
         line.on("mousedown", (e, d) => {
-            stack.handleDragStart(e, d.expression.expression);
+            e.stopPropagation();
+            const clickHandler = () => {
+                navigator.clipboard.writeText(d.expression.expression);
+            }
+            stack.handleDragStart(e, clickHandler);
         })
     }    
 }
@@ -612,9 +626,12 @@ class TagsLineRenderer {
         li.selectAll("span").data(d => d).join("span").attr("class", d => d.class).text(d => d.text);
         const clickable = li.selectAll(".value").filter(d => d.clickExpression);
         clickable.classed("clickable", true);
-        clickable.on("click", (e, d) => {
-            e.preventDefault();
-            stack.evaluateNode(d.clickExpression);
+        clickable.on("mousedown", (e, d) => {
+            e.stopPropagation();
+            const clickHandler = () => {
+                stack.evaluateNode(d.clickExpression);
+            }
+            stack.handleDragStart(e, clickHandler);
         });
     }
 }
@@ -960,7 +977,7 @@ class UI {
         this.state.bucketed[idKey] = bucket;
     }
 
-    createQueryLayer(query) {
+    createQueryLayer(query, before) {
         const params = new URLSearchParams({"q": query});
         const source = new VectorTileSource({
             format: new MVT(),
@@ -971,6 +988,10 @@ class UI {
             source: source,
             style: this.queryStyle,
         });
+        layer.set("clickable", true);
+        if (before) {
+            layer.set("before", before);
+        }
         return layer;
     }
 
@@ -983,11 +1004,13 @@ class UI {
     }
 
     addLayer(layer) {
-        const layers = this.map.getLayers();
-        for (let i = 0; i < layers.getLength(); i++) {
-            if (layers.item(i).get("id") == "buildings") {
-                layers.insertAt(i, layer);
-                return;
+        if (layer.get("before")) {
+            const layers = this.map.getLayers();
+            for (let i = 0; i < layers.getLength(); i++) {
+                if (layers.item(i).get("position") == layer.get("before")) {
+                    layers.insertAt(i, layer);
+                    return;
+                }
             }
         }
         this.map.addLayer(layer);
@@ -1037,14 +1060,13 @@ class UI {
         }
     }
 
-    handleDragStart(event, root, toCopy) {
+    // Start dragging root. If the mouse button is raised without the
+    // cursor moving, call clickHandler.
+    handleDragStart(event, root, clickHandler) {
         event.preventDefault();
-        if (root.classed("stack-featured")) {
-            root.attr("class", "stack stack-floating");
-        }
         this.dragging = root;
-        this.toCopy = toCopy;
         this.dragging.classed("dragging", true);
+        this.dragClickHandler = clickHandler;
         this.dragPointerOrigin = d3.pointer(event, this.html);
         this.dragElementOrigin = elementPosition(root);
     }
@@ -1054,6 +1076,11 @@ class UI {
             event.preventDefault();
             const pointer = d3.pointer(event, this.html);
             const delta = [pointer[0]-this.dragPointerOrigin[0], pointer[1]-this.dragPointerOrigin[1]];
+            if (delta[0] != 0 || delta[1] != 0) {
+                if (this.dragging.classed("stack-featured")) {
+                    this.dragging.attr("class", "stack stack-floating");
+                }
+            }
             const left = Math.round(this.dragElementOrigin[0]+delta[0]);
             const top = Math.round(this.dragElementOrigin[1]+delta[1]);
             this.dragging.style("left", `${left}px`);
@@ -1066,10 +1093,10 @@ class UI {
             event.preventDefault();
             const pointer = d3.pointer(event, this.html);
             const delta = [pointer[0]-this.dragPointerOrigin[0], pointer[1]-this.dragPointerOrigin[1]];
-            if (delta[0] == 0 && delta[1] ==  0) {
-                navigator.clipboard.writeText(this.toCopy);
-            }
             this.dragging.classed("dragging", false);
+            if (delta[0] == 0 && delta[1] ==  0 && this.dragClickHandler) {
+                this.dragClickHandler();
+            }
             this.dragging = null;
         }
     }
@@ -1077,26 +1104,28 @@ class UI {
 
 const ShellMaxSuggestions = 6;
 
-function showFeatureAtPixel(pixel, layers, locked, position, map, ui) {
+function showFeatureAtPixel(pixel, locked, position, map, ui) {
+    const layers = map.getLayers();
     const search = (i, found) => {
-        if (i < layers.length) {
-            if (layers[i].getVisible()) {
-                layers[i].getFeatures(pixel).then(features => {
+        if (i >= 0) {
+            const layer = layers.item(i);
+            if (layer.getVisible() && layer.get("clickable")) {
+                layer.getFeatures(pixel).then(features => {
                     if (features.length > 0) {
                         found(features[0]);
                         return
                     } else {
-                        search(i + 1, found);
+                        search(i - 1, found);
                     }
                 });
             } else {
-                search(i + 1, found);
+                search(i - 1, found);
             }
         } else {
             ui.evaluateExpressionInNewStack(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(pixel))), null, locked, position);
         }
     };
-    search(0, f => showFeature(f, locked, position, ui));
+    search(layers.getLength() - 1, f => showFeature(f, locked, position, ui));
 }
 
 function idKey(id) {
@@ -1169,8 +1198,8 @@ function newQueryStyle(state, styles) {
     const highlightedPath = styles.lookupStyle("highlighted-path");
     const area = styles.lookupStyle("query-area");
     const highlightedArea = styles.lookupStyle("highlighted-area");
-    const boundary = styles.lookupStyle("query-area");
-    const highlightedBoundary = styles.lookupStyle("highlighted-area");
+    const boundary = styles.lookupStyle("query-boundary");
+    const highlightedBoundary = styles.lookupStyle("highlighted-boundary");
 
     const bucketedArea = Array.from(Array(6).keys()).map(b => {
         return styles.lookupStyle(`bucketed-${b}`);
@@ -1224,6 +1253,7 @@ const StyleClasses = [
     "highlighted-path",
     "highlighted-point",
     "highlighted-road-fill",
+    "highlighted-boundary",
     "outliner-blue",
     "outliner-emerald",
     "outliner-rose",
@@ -1235,6 +1265,7 @@ const StyleClasses = [
     "query-area",
     "query-path",
     "query-point",
+    "query-boundary",
     "road-fill",
     "road-outline",
 ];
@@ -1336,7 +1367,7 @@ class Styles {
 function setup(startupResponse) {
     const state = {highlighted: {}, bucketed: {}};
     const styles = new Styles(StyleClasses);
-    const [map, searchableLayers, highlightChanged] = setupMap(state, styles, startupResponse.mapCenter);
+    const [map, highlightChanged] = setupMap(state, styles, startupResponse.mapCenter);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
     const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged, startupResponse.context);
@@ -1357,7 +1388,7 @@ function setup(startupResponse) {
     map.on("singleclick", e => {
         const position = d3.pointer(e.originalEvent, html);
         if (e.originalEvent.shiftKey) {
-            showFeatureAtPixel(e.pixel, searchableLayers, false, position, map, ui);
+            showFeatureAtPixel(e.pixel, false, position, map, ui);
             e.stopPropagation();
         } else {
             ui.evaluateExpressionInNewStack(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))), null, true, position);
