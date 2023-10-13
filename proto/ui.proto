@@ -21,9 +21,20 @@ message UIResponseProto {
     string expression = 3;
     FeatureIDsProto highlighted = 4;
     repeated FeatureIDsProto bucketed = 5;
-    repeated string queryLayers = 6;
+    repeated MapLayerProto layers = 6;
     geometry.PointProto mapCenter = 7;
     bool locked = 8;
+}
+
+enum MapLayerPosition {
+    MapLayerPositionEnd = 0;
+    MapLayerPositionRoads = 1;
+    MapLayerPositionBuildings = 2;
+}
+
+message MapLayerProto {
+    string query = 1;
+    MapLayerPosition before = 2;
 }
 
 message StackProto {
