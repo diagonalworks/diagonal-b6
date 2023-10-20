@@ -9,13 +9,13 @@ import (
 	"diagonal.works/b6"
 )
 
-func TestMapPositionFilledFromStartupQuery(t *testing.T) {
+func TestStateFilledFromStartupQuery(t *testing.T) {
 	handler := StartupHandler{
 		World:    b6.EmptyWorld{},
 		Renderer: NewDefaultUIRenderer(b6.EmptyWorld{}),
 	}
 
-	url := "http://b6.diagonal.works/startup?ll=51.5321489,-0.1253271&z=18"
+	url := "http://b6.diagonal.works/startup?ll=51.5321489,-0.1253271&z=18&d=2"
 	request := httptest.NewRequest("GET", url, nil)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
@@ -40,5 +40,9 @@ func TestMapPositionFilledFromStartupQuery(t *testing.T) {
 
 	if expected := 18; startupResponse.MapZoom != expected {
 		t.Errorf("Expected lng %d, found %d", expected, startupResponse.MapZoom)
+	}
+
+	if expected := 2; *startupResponse.OpenDockIndex != expected {
+		t.Errorf("Expected open dock index %d, found %d", expected, *startupResponse.OpenDockIndex)
 	}
 }
