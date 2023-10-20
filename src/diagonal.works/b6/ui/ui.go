@@ -95,11 +95,12 @@ type LatLngJSON struct {
 }
 
 type StartupResponseJSON struct {
-	Version   string              `json:"version,omitempty"`
-	Docked    []*UIResponseJSON   `json:"docked,omitempty"`
-	MapCenter *LatLngJSON         `json:"mapCenter,omitempty"`
-	MapZoom   int                 `json:"mapZoom,omitempty"`
-	Context   *FeatureIDProtoJSON `json:"context,omitempty"`
+	Version       string              `json:"version,omitempty"`
+	Docked        []*UIResponseJSON   `json:"docked,omitempty"`
+	OpenDockIndex *int                `json:"openDockIndex,omitempty"`
+	MapCenter     *LatLngJSON         `json:"mapCenter,omitempty"`
+	MapZoom       int                 `json:"mapZoom,omitempty"`
+	Context       *FeatureIDProtoJSON `json:"context,omitempty"`
 }
 
 const DefaultMapZoom = 16
@@ -138,6 +139,13 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if z := r.URL.Query().Get("z"); len("z") > 0 {
 		if zi, err := strconv.ParseInt(z, 10, 64); err == nil {
 			response.MapZoom = int(zi)
+		}
+	}
+
+	if d := r.URL.Query().Get("d"); len("d") > 0 {
+		if di, err := strconv.ParseInt(d, 10, 64); err == nil {
+			i := int(di)
+			response.OpenDockIndex = &i
 		}
 	}
 

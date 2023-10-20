@@ -825,6 +825,8 @@ class UI {
         this.dragElementOrigin = [0,0];
         this.stacks = [];
         this.needHighlightRedraw = false;
+        this.docked = [];
+        this.openDockIndex = -1;
 
         this.map.on("moveend", (e) => {
             this.updateBrowserState();
@@ -841,7 +843,13 @@ class UI {
             "ll": `${Number(ll[1].toFixed(7))},${Number(ll[0].toFixed(7))}`,
             "z": `${Number(this.map.getView().getZoom().toFixed(2))}`,
         });
-        const query = params.toString().replaceAll("%2C", ",");
+        if (this.uiContext) {
+            params.set("r", idTokenFromProto(this.uiContext));
+        }
+        if (this.openDockIndex >= 0) {
+            params.set("d", this.openDockIndex);
+        }
+        const query = params.toString().replaceAll("%2C", ",").replaceAll("%2F", "/");
         history.replaceState(null, "", "/?" + query);
     }
 
@@ -884,7 +892,6 @@ class UI {
         // Remove the existing featured stack from the UI if response is
         // null.
         const ui = this;
-        this.closeDock();
         const target = d3.select("body").selectAll(".stack-featured").data(response ? [response] : []).join(
             enter => {
                 return enter.append("div");
@@ -1038,22 +1045,38 @@ class UI {
         const target = d3.select("#dock").selectAll(".stack").data(docked).join("div");
         target.attr("class", "stack closed");
         const ui = this;
-        target.each(function(response) {
+        target.each(function(response, i) {
+            this.__dock_index__ = i;
+            ui.docked.push(this);
             ui._renderStack(response, d3.select(this), false, false);
         });
 
         target.on("click", function(e) {
             e.preventDefault();
-            ui.closeDock();
-            ui.removeFeaturedStack();
-            d3.select(this).classed("closed", false);
-            if (this.__stack__) {
-                ui.state.bucketed = {};
-                this.__stack__.addToMap();
-                this.__stack__.addBucketed();
-                ui.basemapHighlightChanged();
-            }
+            ui.toggleDockAtIndex(this.__dock_index__);
         });
+    }
+
+    toggleDockAtIndex(index) {
+        if (index === undefined || index < 0 || index >= this.docked.length) {
+            return;
+        }
+        const docked = this.docked[index];
+        if (d3.select(docked).classed("closed")) {
+            this.closeDock();
+            this.removeFeaturedStack();
+            d3.select(docked).classed("closed", false);
+            this.openDockIndex = index;
+            if (docked.__stack__) {
+                this.state.bucketed = {};
+                docked.__stack__.addToMap();
+                docked.__stack__.addBucketed();
+                this.basemapHighlightChanged();
+            }
+        } else {
+            this.closeDock();
+        }
+        this.updateBrowserState();
     }
 
     closeDock() {
@@ -1065,6 +1088,7 @@ class UI {
             }
         });
         docked.classed("closed", true);
+        this.openDockIndex = -1;
     }
 
     removeStack(node) {
@@ -1156,6 +1180,18 @@ const idGeometryTypes = {
 function idKeyFromFeature(feature) {
     const type = idGeometryTypes[feature.getGeometry().getType()] || "invalid";
     return `/${type}/${feature.get("ns")}/${parseInt(feature.get("id"), 16)}`
+}
+
+const featureTypes = {
+    "FeatureTypePoint": "point",
+    "FeatureTypePath": "path",
+    "FeatureTypeArea": "area",
+    "FeatureTypeRelation": "relation",
+}
+
+function idTokenFromProto(p) {
+    const type = featureTypes[p.type]
+    return `/${type}/${p.namespace}/${p.value || 0}`;
 }
 
 function setupShell(target, ui) {
@@ -1411,6 +1447,10 @@ function setup(startupResponse) {
             e.stopPropagation();
         }
     });
+
+    if (startupResponse.openDockIndex !== undefined) {
+        ui.toggleDockAtIndex(startupResponse.openDockIndex);
+    }
 }
 
 function main() {
