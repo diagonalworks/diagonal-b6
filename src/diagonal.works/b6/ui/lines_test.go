@@ -11,7 +11,6 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
-	"diagonal.works/b6/renderer"
 	"diagonal.works/b6/test/camden"
 
 	"github.com/google/go-cmp/cmp"
@@ -44,12 +43,8 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 	w := ingest.NewMutableOverlayWorld(base)
 
 	handler := UIHandler{
-		World: w,
-		Renderer: &DefaultUIRenderer{
-			RenderRules:     renderer.BasemapRenderRules,
-			FunctionSymbols: functions.Functions(),
-			World:           w,
-		},
+		World:    w,
+		Renderer: NewDefaultUIRenderer(w),
 		Options: api.Options{
 			Cores: 1,
 		},

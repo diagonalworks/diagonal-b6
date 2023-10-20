@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"diagonal.works/b6"
@@ -51,16 +52,20 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	if options.Renderer != nil {
 		uiRenderer = options.Renderer
 	} else {
-		uiRenderer = &DefaultUIRenderer{
-			World:           options.World,
-			FunctionSymbols: functions.Functions(),
-			RenderRules:     renderer.BasemapRenderRules,
-		}
+		uiRenderer = NewDefaultUIRenderer(options.World)
 	}
 	root.Handle("/startup", &StartupHandler{World: options.World, Renderer: uiRenderer})
 	root.Handle("/ui", NewUIHandler(uiRenderer, options.World, options.APIOptions))
 
 	return nil
+}
+
+func NewDefaultUIRenderer(w b6.World) UIRenderer {
+	return &DefaultUIRenderer{
+		World:           w,
+		FunctionSymbols: functions.Functions(),
+		RenderRules:     renderer.BasemapRenderRules,
+	}
 }
 
 func RegisterTiles(root *http.ServeMux, w b6.World, cores int) {
@@ -93,8 +98,11 @@ type StartupResponseJSON struct {
 	Version   string              `json:"version,omitempty"`
 	Docked    []*UIResponseJSON   `json:"docked,omitempty"`
 	MapCenter *LatLngJSON         `json:"mapCenter,omitempty"`
+	MapZoom   int                 `json:"mapZoom,omitempty"`
 	Context   *FeatureIDProtoJSON `json:"context,omitempty"`
 }
+
+const DefaultMapZoom = 16
 
 type StartupHandler struct {
 	World    b6.World
@@ -111,6 +119,25 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if context.IsValid() {
 			s.fillStartupResponseFromRootFeature(response, context)
 			response.Context = (*FeatureIDProtoJSON)(b6.NewProtoFromFeatureID(context))
+		}
+	}
+
+	if ll := r.URL.Query().Get("ll"); len("ll") > 0 {
+		if parts := strings.Split(ll, ","); len(parts) == 2 {
+			if lat, err := strconv.ParseFloat(parts[0], 64); err == nil {
+				if lng, err := strconv.ParseFloat(parts[1], 64); err == nil {
+					response.MapCenter = &LatLngJSON{
+						LatE7: int(lat * 1e7),
+						LngE7: int(lng * 1e7),
+					}
+				}
+			}
+		}
+	}
+
+	if z := r.URL.Query().Get("z"); len("z") > 0 {
+		if zi, err := strconv.ParseInt(z, 10, 64); err == nil {
+			response.MapZoom = int(zi)
 		}
 	}
 
@@ -140,6 +167,7 @@ func (s *StartupHandler) fillStartupResponseFromRootFeature(response *StartupRes
 								LatE7: int(ll.Lat.E7()),
 								LngE7: int(ll.Lng.E7()),
 							}
+							response.MapZoom = DefaultMapZoom
 						}
 					}
 				}

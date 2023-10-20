@@ -17,7 +17,7 @@ import VectorTileSource from "ol/source/VectorTile";
 import View from "ol/View";
 import Zoom from "ol/control/Zoom";
 
-const InitialCenter = [-0.1255161, 51.5361156];
+const InitialCenter = {latE7: 515361156, lngE7: -1255161};
 const InitalZoom = 16;
 const RoadWidths = {
     "motorway": 36.0,
@@ -85,7 +85,7 @@ function newGeoJSONStyle(state, styles) {
     }
 }
 
-function setupMap(state, styles, mapCenter) {
+function setupMap(state, styles, mapCenter, mapZoom) {
     const zoom = new Zoom({
         zoomInLabel: "",
         zoomOutLabel: "",
@@ -308,8 +308,8 @@ function setupMap(state, styles, mapCenter) {
     });
 
     const view = new View({
-        center: fromLonLat(mapCenter ? [mapCenter.lngE7 / 1e7, mapCenter.latE7 / 1e7] : InitialCenter),
-        zoom: InitalZoom,
+        center: fromLonLat([mapCenter.lngE7 / 1e7, mapCenter.latE7 / 1e7]),
+        zoom: mapZoom,
     });
 
     const map = new Map({
@@ -825,10 +825,24 @@ class UI {
         this.dragElementOrigin = [0,0];
         this.stacks = [];
         this.needHighlightRedraw = false;
+
+        this.map.on("moveend", (e) => {
+            this.updateBrowserState();
+        });
     }
 
     getShellHistory() {
         return this.shellHistory;
+    }
+
+    updateBrowserState() {
+        const ll = toLonLat(this.map.getView().getCenter());
+        const params = new URLSearchParams({
+            "ll": `${Number(ll[1].toFixed(7))},${Number(ll[0].toFixed(7))}`,
+            "z": `${Number(this.map.getView().getZoom().toFixed(2))}`,
+        });
+        const query = params.toString().replaceAll("%2C", ",");
+        history.replaceState(null, "", "/?" + query);
     }
 
     evaluateExpressionInNewStack(expression, context, locked, position) {
@@ -1367,7 +1381,9 @@ class Styles {
 function setup(startupResponse) {
     const state = {highlighted: {}, bucketed: {}};
     const styles = new Styles(StyleClasses);
-    const [map, highlightChanged] = setupMap(state, styles, startupResponse.mapCenter);
+    const mapCenter = startupResponse.mapCenter || InitialCenter;
+    const mapZoom = startupResponse.mapZoom || InitalZoom;
+    const [map, highlightChanged] = setupMap(state, styles, mapCenter, mapZoom);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
     const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged, startupResponse.context);
