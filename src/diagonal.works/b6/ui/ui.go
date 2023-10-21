@@ -101,6 +101,7 @@ type StartupResponseJSON struct {
 	MapCenter     *LatLngJSON         `json:"mapCenter,omitempty"`
 	MapZoom       int                 `json:"mapZoom,omitempty"`
 	Context       *FeatureIDProtoJSON `json:"context,omitempty"`
+	Expression    string              `json:"expression,omitempty"`
 }
 
 const DefaultMapZoom = 16
@@ -123,7 +124,7 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if ll := r.URL.Query().Get("ll"); len("ll") > 0 {
+	if ll := r.URL.Query().Get("ll"); len(ll) > 0 {
 		if parts := strings.Split(ll, ","); len(parts) == 2 {
 			if lat, err := strconv.ParseFloat(parts[0], 64); err == nil {
 				if lng, err := strconv.ParseFloat(parts[1], 64); err == nil {
@@ -136,17 +137,21 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if z := r.URL.Query().Get("z"); len("z") > 0 {
+	if z := r.URL.Query().Get("z"); len(z) > 0 {
 		if zi, err := strconv.ParseInt(z, 10, 64); err == nil {
 			response.MapZoom = int(zi)
 		}
 	}
 
-	if d := r.URL.Query().Get("d"); len("d") > 0 {
+	if d := r.URL.Query().Get("d"); len(d) > 0 {
 		if di, err := strconv.ParseInt(d, 10, 64); err == nil {
 			i := int(di)
 			response.OpenDockIndex = &i
 		}
+	}
+
+	if e := r.URL.Query().Get("e"); len(e) > 0 {
+		response.Expression = e
 	}
 
 	output, err := json.Marshal(response)

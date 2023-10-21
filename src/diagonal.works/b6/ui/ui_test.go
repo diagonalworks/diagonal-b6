@@ -15,7 +15,7 @@ func TestStateFilledFromStartupQuery(t *testing.T) {
 		Renderer: NewDefaultUIRenderer(b6.EmptyWorld{}),
 	}
 
-	url := "http://b6.diagonal.works/startup?ll=51.5321489,-0.1253271&z=18&d=2"
+	url := "http://b6.diagonal.works/startup?ll=51.5321489,-0.1253271&z=18&d=2&e=find-feature+/n/3501612811"
 	request := httptest.NewRequest("GET", url, nil)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
@@ -44,5 +44,9 @@ func TestStateFilledFromStartupQuery(t *testing.T) {
 
 	if expected := 2; *startupResponse.OpenDockIndex != expected {
 		t.Errorf("Expected open dock index %d, found %d", expected, *startupResponse.OpenDockIndex)
+	}
+
+	if expected := "find-feature /n/3501612811"; startupResponse.Expression != expected {
+		t.Errorf("Expected expression %q, found %q", expected, startupResponse.Expression)
 	}
 }
