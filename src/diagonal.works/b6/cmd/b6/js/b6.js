@@ -811,13 +811,13 @@ function renderFromProto(targets, uiElement, stack) {
 }
 
 class UI {
-    constructor(map, state, queryStyle, geojsonStyle, highlightChanged, uiContext) {
+    constructor(map, state, queryStyle, geojsonStyle, highlightChanged) {
         this.map = map;
         this.state = state;
         this.queryStyle = queryStyle;
         this.geojsonStyle = geojsonStyle;
         this.basemapHighlightChanged = highlightChanged;
-        this.uiContext = uiContext;
+        this.uiContext = null;
         this.dragging = null;
         this.shellHistory = [];
         this.html = d3.select("html");
@@ -829,7 +829,7 @@ class UI {
         this.openDockIndex = -1;
 
         this.map.on("moveend", (e) => {
-            this.updateBrowserState();
+            this._updateBrowserState();
         });
     }
 
@@ -837,7 +837,71 @@ class UI {
         return this.shellHistory;
     }
 
-    updateBrowserState() {
+    handleStartupResponse(response) {
+        this.uiContext = response.context;
+        if (response.docked) {
+            this._renderDock(response.docked);
+        }
+        if (response.openDockIndex !== undefined) {
+            this.toggleDockAtIndex(startupResponse.openDockIndex);
+        }
+        if (response.expression) {
+            const locked = this.uiContext !== undefined;
+            this.evaluateExpressionInNewStack(response.expression, null, locked, null);
+        }
+    }
+
+    _renderDock(docked) {
+        const target = d3.select("#dock").selectAll(".stack").data(docked).join("div");
+        target.attr("class", "stack closed");
+        const ui = this;
+        target.each(function(response, i) {
+            this.__dock_index__ = i;
+            ui.docked.push(this);
+            ui._renderStack(response, d3.select(this), false, false);
+        });
+
+        target.on("click", function(e) {
+            e.preventDefault();
+            ui.toggleDockAtIndex(this.__dock_index__);
+        });
+    }
+
+    toggleDockAtIndex(index) {
+        if (index === undefined || index < 0 || index >= this.docked.length) {
+            return;
+        }
+        const docked = this.docked[index];
+        if (d3.select(docked).classed("closed")) {
+            this.closeDock();
+            this.removeFeaturedStack();
+            d3.select(docked).classed("closed", false);
+            this.openDockIndex = index;
+            if (docked.__stack__) {
+                this.state.bucketed = {};
+                docked.__stack__.addToMap();
+                docked.__stack__.addBucketed();
+                this.basemapHighlightChanged();
+            }
+        } else {
+            this.closeDock();
+        }
+        this._updateBrowserState();
+    }
+
+    closeDock() {
+        const docked = d3.select("#dock").selectAll(".stack");
+        const ui = this;
+        docked.each(function() {
+            if (this.__stack__) {
+                this.__stack__.removeFromMap();
+            }
+        });
+        docked.classed("closed", true);
+        this.openDockIndex = -1;
+    }
+
+    _updateBrowserState() {
         const ll = toLonLat(this.map.getView().getCenter());
         const params = new URLSearchParams({
             "ll": `${Number(ll[1].toFixed(7))},${Number(ll[0].toFixed(7))}`,
@@ -848,6 +912,9 @@ class UI {
         }
         if (this.openDockIndex >= 0) {
             params.set("d", this.openDockIndex);
+        }
+        if (this.lastExpression) {
+            params.set("e", this.lastExpression);
         }
         const query = params.toString().replaceAll("%2C", ",").replaceAll("%2F", "/");
         history.replaceState(null, "", "/?" + query);
@@ -948,9 +1015,14 @@ class UI {
             stack.addToMap();
             stack.addBucketed();
         }
+
         if (response.proto.expression) {
             this.shellHistory.push(response.proto.expression);
+            this.lastExpression = response.proto.expression;
+        } else {
+            this.lastExpression = undefined;
         }
+
         if (response && recenterMap) {
             const center = response.proto.mapCenter;
             if (center && center.latE7 && center.lngE7) {
@@ -965,6 +1037,8 @@ class UI {
             this.redrawHighlights();
             this.needHighlightRedraw = false;
         }
+
+        this._updateBrowserState();
     }
 
     removeFeaturedStack() {
@@ -1039,56 +1113,6 @@ class UI {
 
     removeLayer(layer) {
         this.map.removeLayer(layer);
-    }
-
-    renderDock(docked) {
-        const target = d3.select("#dock").selectAll(".stack").data(docked).join("div");
-        target.attr("class", "stack closed");
-        const ui = this;
-        target.each(function(response, i) {
-            this.__dock_index__ = i;
-            ui.docked.push(this);
-            ui._renderStack(response, d3.select(this), false, false);
-        });
-
-        target.on("click", function(e) {
-            e.preventDefault();
-            ui.toggleDockAtIndex(this.__dock_index__);
-        });
-    }
-
-    toggleDockAtIndex(index) {
-        if (index === undefined || index < 0 || index >= this.docked.length) {
-            return;
-        }
-        const docked = this.docked[index];
-        if (d3.select(docked).classed("closed")) {
-            this.closeDock();
-            this.removeFeaturedStack();
-            d3.select(docked).classed("closed", false);
-            this.openDockIndex = index;
-            if (docked.__stack__) {
-                this.state.bucketed = {};
-                docked.__stack__.addToMap();
-                docked.__stack__.addBucketed();
-                this.basemapHighlightChanged();
-            }
-        } else {
-            this.closeDock();
-        }
-        this.updateBrowserState();
-    }
-
-    closeDock() {
-        const docked = d3.select("#dock").selectAll(".stack");
-        const ui = this;
-        docked.each(function() {
-            if (this.__stack__) {
-                this.__stack__.removeFromMap();
-            }
-        });
-        docked.classed("closed", true);
-        this.openDockIndex = -1;
     }
 
     removeStack(node) {
@@ -1422,7 +1446,7 @@ function setup(startupResponse) {
     const [map, highlightChanged] = setupMap(state, styles, mapCenter, mapZoom);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
-    const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged, startupResponse.context);
+    const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged);
     const html = d3.select("html");
     html.on("pointermove", e => {
         ui.handlePointerMove(e);
@@ -1432,10 +1456,7 @@ function setup(startupResponse) {
     });
 
     setupShell(d3.select("#shell"), ui);
-
-    if (startupResponse.docked) {
-        ui.renderDock(startupResponse.docked);
-    }
+    ui.handleStartupResponse(startupResponse);
 
     map.on("singleclick", e => {
         const position = d3.pointer(e.originalEvent, html);
@@ -1447,10 +1468,6 @@ function setup(startupResponse) {
             e.stopPropagation();
         }
     });
-
-    if (startupResponse.openDockIndex !== undefined) {
-        ui.toggleDockAtIndex(startupResponse.openDockIndex);
-    }
 }
 
 function main() {
