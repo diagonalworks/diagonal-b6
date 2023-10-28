@@ -843,7 +843,7 @@ class UI {
             this._renderDock(response.docked);
         }
         if (response.openDockIndex !== undefined) {
-            this.toggleDockAtIndex(startupResponse.openDockIndex);
+            this.toggleDockAtIndex(response.openDockIndex);
         }
         if (response.expression) {
             const locked = this.uiContext !== undefined;
