@@ -18,12 +18,13 @@ import (
 )
 
 type Options struct {
-	StaticPath     string
-	JavaScriptPath string
-	Renderer       UIRenderer
-	Cores          int
-	World          ingest.MutableWorld
-	APIOptions     api.Options
+	StaticPath        string
+	JavaScriptPath    string
+	Renderer          UIRenderer
+	Cores             int
+	World             ingest.MutableWorld
+	APIOptions        api.Options
+	InstrumentHandler func(handler http.Handler, name string) http.Handler
 }
 
 func RegisterWebInterface(root *http.ServeMux, options *Options) error {
@@ -54,8 +55,16 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	} else {
 		uiRenderer = NewDefaultUIRenderer(options.World)
 	}
-	root.Handle("/startup", &StartupHandler{World: options.World, Renderer: uiRenderer})
-	root.Handle("/ui", NewUIHandler(uiRenderer, options.World, options.APIOptions))
+	startup := http.Handler(&StartupHandler{World: options.World, Renderer: uiRenderer})
+	if options.InstrumentHandler != nil {
+		startup = options.InstrumentHandler(startup, "startup")
+	}
+	root.Handle("/startup", startup)
+	ui := http.Handler(NewUIHandler(uiRenderer, options.World, options.APIOptions))
+	if options.InstrumentHandler != nil {
+		ui = options.InstrumentHandler(ui, "ui")
+	}
+	root.Handle("/ui", ui)
 
 	return nil
 }
@@ -68,10 +77,16 @@ func NewDefaultUIRenderer(w b6.World) UIRenderer {
 	}
 }
 
-func RegisterTiles(root *http.ServeMux, w b6.World, cores int) {
-	base := &renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: renderer.BasemapRenderRules, World: w}}
+func RegisterTiles(root *http.ServeMux, options *Options) {
+	base := http.Handler(&renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: renderer.BasemapRenderRules, World: options.World}})
+	if options.InstrumentHandler != nil {
+		base = options.InstrumentHandler(base, "tiles_base")
+	}
 	root.Handle("/tiles/base/", base)
-	query := &renderer.TileHandler{Renderer: renderer.NewQueryRenderer(w, cores)}
+	query := http.Handler(&renderer.TileHandler{Renderer: renderer.NewQueryRenderer(options.World, options.Cores)})
+	if options.InstrumentHandler != nil {
+		query = options.InstrumentHandler(query, "tiles_query")
+	}
 	root.Handle("/tiles/query/", query)
 }
 

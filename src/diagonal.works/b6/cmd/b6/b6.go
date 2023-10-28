@@ -71,7 +71,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	ui.RegisterTiles(handler, w, *coresFlag)
+	ui.RegisterTiles(handler, &options)
 
 	handler.HandleFunc("/healthy", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
