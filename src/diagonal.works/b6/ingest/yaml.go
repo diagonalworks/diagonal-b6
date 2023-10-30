@@ -85,16 +85,52 @@ func (r *RelationMemberYAML) UnmarshalYAML(unmarshal func(interface{}) error) er
 	return nil
 }
 
+type CollectionYAML struct {
+	Keys   []InterfaceYAML
+	Values []InterfaceYAML
+}
+
+type InterfaceYAML struct {
+	v interface{}
+}
+
+func (i InterfaceYAML) MarshalYAML() (interface{}, error) {
+	switch v := i.v.(type) {
+	case b6.FeatureID:
+		return map[string]interface{}{"v": FeatureIDYAML{FeatureID: v}}, nil
+	default:
+		return map[string]interface{}{"v": v}, nil
+	}
+}
+
+func (i *InterfaceYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var m struct {
+		V interface{}
+	}
+	if err := unmarshal(&m); err != nil {
+		return err
+	}
+
+	if id := b6.FeatureIDFromString(m.V.(string)[1:]); id != b6.FeatureIDInvalid {
+		i.v = id
+	} else {
+		i.v = m.V
+	}
+
+	return nil
+}
+
 type exportedYAML struct {
 	ID     FeatureIDYAML
 	Add    []b6.Tag `yaml:",omitempty"`
 	Remove []string `yaml:",omitempty"`
 
-	Point    *LatLngYAML          `yaml:",omitempty"`
-	Path     []interface{}        `yaml:",omitempty"`
-	Area     []interface{}        `yaml:",omitempty"`
-	Relation []RelationMemberYAML `yaml:",omitempty"`
-	Tags     []b6.Tag             `yaml:",omitempty"`
+	Point      *LatLngYAML          `yaml:",omitempty"`
+	Path       []interface{}        `yaml:",omitempty"`
+	Area       []interface{}        `yaml:",omitempty"`
+	Relation   []RelationMemberYAML `yaml:",omitempty"`
+	Collection *CollectionYAML      `yaml:",omitempty"`
+	Tags       []b6.Tag             `yaml:",omitempty"`
 }
 
 type modifiedFeatureYAML struct {
@@ -184,6 +220,11 @@ func (i ingestedYAML) Apply(m MutableWorld) (AppliedChange, error) {
 			var r *RelationFeature
 			if r, err = newRelationFromYAML(&y); err == nil {
 				err = m.AddRelation(r)
+			}
+		} else if y.Collection != nil {
+			var c *CollectionFeature
+			if c, err = newCollectionFeatureFromYAML(&y); err == nil {
+				err = m.AddCollection(c)
 			}
 		}
 		if err != nil {
@@ -291,4 +332,22 @@ func newRelationFromYAML(y *exportedYAML) (*RelationFeature, error) {
 	}
 	r.Tags = y.Tags
 	return r, nil
+}
+
+func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
+	var keys, values []interface{}
+	for _, key := range y.Collection.Keys {
+		keys = append(keys, key.v)
+	}
+
+	for _, value := range y.Collection.Values {
+		values = append(values, value.v)
+	}
+
+	return &CollectionFeature{
+		CollectionID: y.ID.ToCollectionID(),
+		Keys:         keys,
+		Values:       values,
+		Tags:         y.Tags,
+	}, nil
 }

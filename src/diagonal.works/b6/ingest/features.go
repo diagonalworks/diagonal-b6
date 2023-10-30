@@ -808,6 +808,27 @@ func NewCollectionFeatureFromWorld(c b6.CollectionFeature) *CollectionFeature {
 	return feature
 }
 
+func (c *CollectionFeature) MarshalYAML() (interface{}, error) {
+	var collection CollectionYAML
+	for _, key := range c.Keys {
+		collection.Keys = append(collection.Keys, InterfaceYAML{v: key})
+	}
+	for _, value := range c.Values {
+		collection.Values = append(collection.Values, InterfaceYAML{v: value})
+	}
+
+	y := map[string]interface{}{
+		"id":         FeatureIDYAML{FeatureID: c.CollectionID.FeatureID()},
+		"collection": collection,
+	}
+
+	if len(c.Tags) > 0 {
+		y["tags"] = c.Tags
+	}
+
+	return y, nil
+}
+
 type PathPosition struct {
 	Path     *PathFeature
 	Position int
