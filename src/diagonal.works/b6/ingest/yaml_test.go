@@ -14,6 +14,9 @@ import (
 
 func TestExportModificationsAsYAML(t *testing.T) {
 	nodes, ways, relations, err := osm.ReadWholePBF(test.Data(test.GranarySquarePBF))
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
 
 	caravan := osm.Node{
 		ID:       osm.NodeID(2300722786),
@@ -86,6 +89,15 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
+	var analysis CollectionFeature
+	analysis.CollectionID = b6.MakeCollectionID(b6.Namespace("diagonal.works/test"), 5)
+	analysis.Keys = []interface{}{FromOSMNodeID(caravan.ID).FeatureID(), FromOSMNodeID(dishoom.ID).FeatureID()}
+	analysis.Values = []interface{}{"good", "best"}
+	analysis.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
+	if err := m.AddCollection(&analysis); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
 	var buffer bytes.Buffer
 	if err := ExportChangesAsYAML(m, &buffer); err != nil {
 		t.Errorf("Expected no error, found: %s", err)
@@ -103,6 +115,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		boundary.FeatureID(): false,
 		square.FeatureID():   false,
 		ranking.FeatureID():  false,
+		analysis.FeatureID(): false,
 	}
 
 	compare := func(f b6.Feature, goroutine int) error {
@@ -138,6 +151,37 @@ func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
 		}
 		for i := 0; i < a.Len(); i++ {
 			if diff := cmp.Diff(e.Member(i), a.Member(i)); diff != "" {
+				diffs += diff
+			}
+		}
+	} else if e, ok := expected.(b6.CollectionFeature); ok {
+		a := actual.(b6.CollectionFeature)
+
+		e = e.Begin()
+		a = a.Begin()
+		for {
+			eOk, err := e.Next()
+			if err != nil {
+				return fmt.Sprintf("expected no error found %s", err.Error())
+			}
+			aOk, err := a.Next()
+			if err != nil {
+				return fmt.Sprintf("expected no error found %s", err.Error())
+			}
+
+			if !eOk && !aOk {
+				break
+			}
+
+			if !(eOk && aOk) {
+				return "collection items differ in size"
+			}
+
+			if diff := cmp.Diff(e.Key(), a.Key()); diff != "" {
+				diffs += diff
+			}
+
+			if diff := cmp.Diff(e.Value(), a.Value()); diff != "" {
 				diffs += diff
 			}
 		}

@@ -180,7 +180,7 @@ func (f FeatureType) String() string {
 }
 
 func FeatureTypeFromString(s string) FeatureType {
-	for t := FeatureTypeBegin; t < FeatureTypeEnd; t++ {
+	for t := FeatureTypeBegin; t <= FeatureTypeCollection; t++ { // TODO(mari): move down invalid index
 		if s == t.String() {
 			return t
 		}
