@@ -1423,3 +1423,17 @@ func AreaToMeters2(area float64) float64 {
 func Meters2ToArea(m2 float64) float64 {
 	return units.Meters2ToArea(m2)
 }
+
+func LatLngFromString(s string) (s2.LatLng, error) {
+	parts := strings.SplitN(s, ",", 2)
+	if len(parts) == 2 {
+		lat, err := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+		if err == nil {
+			lng, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+			if err == nil {
+				return s2.LatLngFromDegrees(lat, lng), nil
+			}
+		}
+	}
+	return s2.LatLng{}, fmt.Errorf("invalid lat,lng: %s", s)
+}
