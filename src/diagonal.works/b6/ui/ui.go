@@ -140,14 +140,10 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if ll := r.URL.Query().Get("ll"); len(ll) > 0 {
-		if parts := strings.Split(ll, ","); len(parts) == 2 {
-			if lat, err := strconv.ParseFloat(parts[0], 64); err == nil {
-				if lng, err := strconv.ParseFloat(parts[1], 64); err == nil {
-					response.MapCenter = &LatLngJSON{
-						LatE7: int(lat * 1e7),
-						LngE7: int(lng * 1e7),
-					}
-				}
+		if lll, err := b6.LatLngFromString(ll); err == nil {
+			response.MapCenter = &LatLngJSON{
+				LatE7: int(lll.Lat.E7()),
+				LngE7: int(lll.Lng.E7()),
 			}
 		}
 	}

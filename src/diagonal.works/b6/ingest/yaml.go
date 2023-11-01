@@ -3,7 +3,6 @@ package ingest
 import (
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	"diagonal.works/b6"
@@ -53,17 +52,9 @@ func (f *LatLngYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 func (f *LatLngYAML) UnmarshalYAMLString(s string) error {
-	parts := strings.SplitN(s, ",", 2)
-	if len(parts) == 2 {
-		lat, err := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
-		if err == nil {
-			lng, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
-			if err == nil {
-				f.LatLng = s2.LatLngFromDegrees(lat, lng)
-				return nil
-			}
-		}
-	}
+	var err error
+	f.LatLng, err = b6.LatLngFromString(s)
+	return err
 	return fmt.Errorf("invalid lat,lng: %s", s)
 }
 
