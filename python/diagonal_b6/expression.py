@@ -79,6 +79,9 @@ class Lambda(Node):
         self.function = function
         self.arg_types = arg_types
 
+    def to_callable(self):
+        return self
+
     def with_arg_types(self, arg_types):
         return Lambda(self.function, arg_types)
 
@@ -94,9 +97,17 @@ class Lambda(Node):
     def __call__(self, *args):
         return self.function(*args)
 
+class QueryConversionTraits:
+
+    def to_callable(self):
+        return self
+
+    def with_arg_types(self, arg_types):
+        return self
+
 def to_lambda(f):
-    if isinstance(f, Lambda):
-        return f
+    if getattr(f, "to_callable", None) is not None:
+        return f.to_callable()
     arg_types = []
     for p in inspect.signature(f).parameters.values():
         if p.annotation != inspect.Signature.empty:
