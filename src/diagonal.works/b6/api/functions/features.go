@@ -184,13 +184,6 @@ func getFloat(context *api.Context, id b6.Identifiable, key string) (float64, er
 	return 0.0, nil
 }
 
-func hasKey(context *api.Context, id b6.Feature, key string) (bool, error) {
-	if feature := api.Resolve(id, context.World); feature != nil {
-		return feature.Get(key).IsValid(), nil
-	}
-	return false, nil
-}
-
 func countTagValue(context *api.Context, id b6.Identifiable, key string) (api.Collection, error) {
 	c := &api.ArrayAnyIntCollection{
 		Keys:   make([]interface{}, 0, 1),
@@ -211,6 +204,13 @@ func allTags(c *api.Context, id b6.Identifiable) (api.IntTagCollection, error) {
 		tags = f.AllTags()
 	}
 	return &api.ArrayTagCollection{Tags: tags}, nil
+}
+
+func matches(c *api.Context, id b6.Identifiable, query b6.Query) (bool, error) {
+	if f := api.Resolve(id, c.World); f != nil {
+		return query.Matches(f, c.World), nil
+	}
+	return false, nil
 }
 
 func pointDegree(context *api.Context, point b6.PointFeature) (int, error) {
