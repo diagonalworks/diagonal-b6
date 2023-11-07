@@ -9,6 +9,7 @@ import Map from "ol/Map";
 import MVT from "ol/format/MVT";
 import Stroke from "ol/style/Stroke";
 import Style from "ol/style/Style";
+import Icon from "ol/style/Icon";
 import Text from "ol/style/Text";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -69,6 +70,8 @@ function newGeoJSONStyle(state, styles) {
             s = styles.lookupStyle(feature.get("-b6-style"));
         } else if (feature.get("-b6-circle")) {
             s = styles.lookupCircle(feature.get("-b6-circle"));
+        } else if (feature.get("-b6-icon")) {
+            s = styles.lookupIcon(feature.get("-b6-icon"));
         }
         const label = feature.get("name") || feature.get("label");
         if (label) {
@@ -1356,8 +1359,9 @@ class Styles {
         }
         this.styles = {};
         this.strokes = {};
-        this.circles = {};
         this.fills = {};
+        this.circles = {};
+        this.icons = {};
 
         this.missingStroke = new Stroke({color: "#ff0000", width: 1});
         this.missingFill = new Fill({color: "#ff0000"});
@@ -1435,6 +1439,17 @@ class Styles {
             });
         }
         return this.circles[name];
+    }
+
+    lookupIcon(name) {
+        if (!this.icons[name]) {
+            this.icons[name] = new Style({
+                image: new Icon({
+                    src: `/images/${name}.svg`,
+                })
+            })
+        }
+        return this.icons[name];
     }
 }
 
