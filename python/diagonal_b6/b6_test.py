@@ -167,10 +167,14 @@ class B6Test(unittest.TestCase):
         self.assertAlmostEqual(self.connection(b6.find_points(b6.tagged("#amenity", "bicycle_parking")).count().divide(10.0)), BIKE_PARKING_IN_GRANARY_SQUARE / 10.0)
 
     def test_filter(self):
-        filtered = self.connection(b6.find_areas(b6.keyed("#amenity")).filter(lambda a: b6.has_key(a, "addr:postcode")))
+        filtered = self.connection(b6.find_areas(b6.keyed("#amenity")).filter(lambda a: b6.matches(a, b6.keyed("addr:postcode"))))
         self.assertGreater(len(filtered), 0)
         for (_, feature) in filtered:
             self.assertNotEqual(feature.get_string("addr:postcode"), "")
+
+    def test_filter_with_implicit_function(self):
+        filtered = self.connection(b6.find(b6.tagged("#amenity", "restaurant")).filter(b6.tagged("cuisine", "indian")).map(lambda f: b6.get_string(f, "name")))
+        self.assertEqual(["Dishoom"], [name for (id, name) in filtered])
 
     def test_to_geojson_collection(self):
         geojson = self.connection(b6.to_geojson_collection(b6.find_areas(b6.keyed("#building"))))
@@ -200,7 +204,7 @@ class B6Test(unittest.TestCase):
         self.assertEqual(len(applied), BUILDINGS_IN_GRANARY_SQUARE)
 
     def test_add_tags_with_filter(self):
-        applied = self.connection(b6.add_tags(b6.find_paths(b6.tagged("#highway", "footway")).filter(lambda h: b6.has_key(h, "bicycle")).map(lambda h: b6.tag("#bicycle", h.get_string("bicycle")))))
+        applied = self.connection(b6.add_tags(b6.find_paths(b6.tagged("#highway", "footway")).filter(b6.keyed("bicycle")).map(lambda h: b6.tag("#bicycle", h.get_string("bicycle")))))
         self.assertGreater(len(applied), 0)
         self.assertEqual(self.connection(b6.find_paths(b6.keyed("#bicycle")).count()), len(applied))
 
@@ -557,7 +561,8 @@ class B6Test(unittest.TestCase):
     def test_add_relation(self):
         id = b6.id_to_relation_id("diagonal.works/test", b6.osm_way_id(STABLE_STREET_BRIDGE_ID))
         add = b6.add_relation(id, [b6.tag("#route", "bicycle")], {b6.osm_way_id(STABLE_STREET_BRIDGE_ID): "forwards"})
-        print(self.connection(b6.with_change(add, lambda: b6.find_feature(id).get_string("#route"))))
+        route = self.connection(b6.with_change(add, lambda: b6.find_feature(id).get_string("#route")))
+        self.assertEqual("bicycle", route)
 
 def main():
     parser = argparse.ArgumentParser()

@@ -14,6 +14,10 @@ COLLECTION_PARENTS = {
     "AreaFeatureCollection": "AreaCollection",
 }
 
+EXTRA_TRAITS = {
+    "QueryResult": ["QueryConversionTraits"],
+}
+
 def name_for_function(name):
     if name in ["or", "and"]:
         return name + "_"
@@ -147,7 +151,7 @@ def main():
     print("from typing import Callable")
     print("")
     print("import diagonal_b6.expression")
-    print("from diagonal_b6.expression import Call, Symbol, Lambda, Result, register_builtin_result")
+    print("from diagonal_b6.expression import Call, Symbol, Lambda, Result, QueryConversionTraits, register_builtin_result")
     print("")
     print("VERSION = %s" % repr(api["Version"]))
     print("")
@@ -203,7 +207,9 @@ def main():
             output_collection_values_traits(t, api["Functions"], collections, hints, parents)
 
     for t in traits:
-        print("class %s(Result, %s):" % (name_for_result(t), name_for_traits(t)))
+        parents = ["Result", name_for_traits(t)]
+        parents.extend(EXTRA_TRAITS.get(name_for_result(t), []))
+        print("class %s(%s):" % (name_for_result(t), ",".join(parents)))
         print("    def __init__(self, node):")
         print("        Result.__init__(self, node)")        
         print("")
