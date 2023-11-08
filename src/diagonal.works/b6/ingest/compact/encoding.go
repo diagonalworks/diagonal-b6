@@ -247,7 +247,7 @@ func (n *Namespaces) ForType(t b6.FeatureType) Namespace {
 }
 
 const (
-	NamespacesLength = 8 // Verified in init()
+	NamespacesLength = 10 // Verified in init()
 )
 
 type TypeAndNamespace uint16
