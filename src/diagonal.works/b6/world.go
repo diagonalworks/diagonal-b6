@@ -147,6 +147,100 @@ type Taggable interface {
 	Get(key string) Tag
 }
 
+type Tags []Tag
+
+func (t Tags) Get(key string) Tag {
+	for _, tag := range t {
+		if tag.Key == key {
+			return tag
+		}
+	}
+	return InvalidTag()
+}
+
+func (t Tags) TagOrFallback(key string, fallback string) Tag {
+	if value := t.Get(key); value.IsValid() {
+		return value
+	}
+	return Tag{Key: key, Value: fallback}
+}
+
+func (t *Tags) AddTag(tag Tag) {
+	*t = append(*t, tag)
+}
+
+func (t *Tags) SetTags(tags []Tag) {
+	*t = tags
+}
+
+// Modifies an existing tag value, or add it if it doesn't exist.
+// Returns (true, old value) if it modifies, or (false, undefined) if
+// added.
+func (t *Tags) ModifyOrAddTag(tag Tag) (bool, string) {
+	for i := range *t {
+		if (*t)[i].Key == tag.Key {
+			old := (*t)[i].Value
+			(*t)[i].Value = tag.Value
+			return true, old
+		}
+	}
+	t.AddTag(tag)
+	return false, ""
+}
+
+func (t *Tags) RemoveTag(key string) {
+	w := 0
+	for r := range *t {
+		if (*t)[r].Key != key {
+			if w != r {
+				(*t)[w] = (*t)[r]
+			}
+			w++
+		}
+	}
+	*t = (*t)[0:w]
+}
+
+func (t *Tags) RemoveTags(keys []string) {
+	w := 0
+	for r := range *t {
+		var i int
+		for i = 0; i < len(keys); i++ {
+			if (*t)[r].Key == keys[i] {
+				break
+			}
+		}
+		if i == len(keys) {
+			if w != r {
+				(*t)[w] = (*t)[r]
+			}
+			w++
+		}
+	}
+	*t = (*t)[0:w]
+}
+
+func (t Tags) AllTags() []Tag {
+	return t
+}
+
+func (t Tags) Clone() Tags {
+	clone := make([]Tag, len(t))
+	for i, tag := range t {
+		clone[i] = tag
+	}
+	return clone
+}
+
+func (t *Tags) MergeFrom(other Tags) {
+	i := copy(*t, other)
+	if i < len(other) {
+		*t = append(*t, other[i:]...)
+	} else {
+		*t = (*t)[0:len(other)]
+	}
+}
+
 type FeatureType int
 
 const (
@@ -156,10 +250,11 @@ const (
 	FeatureTypeRelation
 	FeatureTypeInvalid
 	FeatureTypeCollection
+	FeatureTypeExpression
 
 	FeatureTypeBegin = FeatureTypePoint
 	FeatureTypeEnd   = FeatureTypeInvalid
-	FeatureTypeBits  = 2 // Bits necessary to represent all types except invalid
+	FeatureTypeBits  = 2 // Bits necessary to represent all types up to, and excluding, invalid
 )
 
 func (f FeatureType) String() string {
@@ -174,13 +269,15 @@ func (f FeatureType) String() string {
 		return "relation"
 	case FeatureTypeCollection:
 		return "collection"
+	case FeatureTypeExpression:
+		return "expression"
 	default:
 		return "invalid"
 	}
 }
 
 func FeatureTypeFromString(s string) FeatureType {
-	for t := FeatureTypeBegin; t <= FeatureTypeCollection; t++ { // TODO(mari): move down invalid index
+	for t := FeatureTypeBegin; t <= FeatureTypeExpression; t++ { // TODO(mari): move down invalid index
 		if s == t.String() {
 			return t
 		}
@@ -294,6 +391,23 @@ func (f *FeatureID) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (f FeatureID) MarshalYAML() (interface{}, error) {
+	return "/" + f.String(), nil
+}
+
+func (f *FeatureID) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	if len(s) > 0 {
+		*f = FeatureIDFromString(s[1:])
+	} else {
+		*f = FeatureIDInvalid
+	}
+	return nil
+}
+
 func (f FeatureID) FeatureID() FeatureID {
 	return f
 }
@@ -331,6 +445,13 @@ func (f FeatureID) ToCollectionID() CollectionID {
 		return CollectionID{Namespace: f.Namespace, Value: f.Value}
 	}
 	panic("Not a collection")
+}
+
+func (f FeatureID) ToExpressionID() ExpressionID {
+	if f.Type == FeatureTypeExpression || f.Type == FeatureTypeInvalid {
+		return ExpressionID{Namespace: f.Namespace, Value: f.Value}
+	}
+	panic("Not an expression")
 }
 
 func FeatureIDFromString(s string) FeatureID {
@@ -528,6 +649,35 @@ func (c CollectionID) Less(other CollectionID) bool {
 	}
 }
 
+type ExpressionID struct {
+	Namespace Namespace
+	Value     uint64
+}
+
+func MakeExpressionID(ns Namespace, v uint64) ExpressionID {
+	return ExpressionID{Namespace: ns, Value: v}
+}
+
+func (e ExpressionID) FeatureID() FeatureID {
+	return FeatureID{Type: FeatureTypeExpression, Namespace: e.Namespace, Value: e.Value}
+}
+
+func (e ExpressionID) IsValid() bool {
+	return e.Namespace != NamespaceInvalid
+}
+
+func (e ExpressionID) String() string {
+	return e.FeatureID().String()
+}
+
+func (e ExpressionID) Less(other CollectionID) bool {
+	if e.Namespace == other.Namespace {
+		return e.Value < other.Value
+	} else {
+		return e.Namespace < other.Namespace
+	}
+}
+
 type Geometry interface {
 	Covering(coverer s2.RegionCoverer) s2.CellUnion
 	ToGeoJSON() geojson.GeoJSON
@@ -536,12 +686,12 @@ type Geometry interface {
 type Feature interface {
 	FeatureID() FeatureID
 	Taggable
-	Renderable
 }
 
 type PhysicalFeature interface {
 	Feature
 	Geometry
+	Renderable
 }
 
 func Centroid(geometry Geometry) s2.Point {
@@ -764,6 +914,12 @@ type CollectionFeature interface {
 	Value() interface{}
 }
 
+type ExpressionFeature struct {
+	ExpressionID
+	Tags
+	Expression
+}
+
 type Features interface {
 	Feature() Feature
 	FeatureID() FeatureID
@@ -900,6 +1056,7 @@ type EachFeatureOptions struct {
 	SkipAreas       bool
 	SkipRelations   bool
 	SkipCollections bool
+	SkipExpressions bool
 	Goroutines      int
 }
 
@@ -1382,7 +1539,9 @@ func RelationFeatureToGeoJSON(relation RelationFeature, byID FeaturesByID) *geoj
 	collection := geojson.NewFeatureCollection()
 	for i := 0; i < relation.Len(); i++ {
 		if f := byID.FindFeatureByID(relation.Member(i).ID); f != nil {
-			collection.Add(f.ToGeoJSON())
+			if r, ok := f.(Renderable); ok {
+				collection.Add(r.ToGeoJSON())
+			}
 		}
 	}
 	return collection
@@ -1400,7 +1559,9 @@ func CollectionFeatureToGeoJSON(collection CollectionFeature, byID FeaturesByID)
 
 		if id, ok := collection.Key().(Identifiable); ok {
 			if f := byID.FindFeatureByID(id.FeatureID()); f != nil {
-				geojson.Add(f.ToGeoJSON())
+				if r, ok := f.(Renderable); ok {
+					geojson.Add(r.ToGeoJSON())
+				}
 			}
 		}
 	}

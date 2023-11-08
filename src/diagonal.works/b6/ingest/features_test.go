@@ -8,14 +8,14 @@ import (
 )
 
 func TestRemoveTags(t *testing.T) {
-	tags := Tags{
+	tags := b6.Tags{
 		{Key: "startNode", Value: "23A9FC0E-CBAB-425C-A7C9-B3356F17AF52"},
 		{Key: "roadNumber", Value: "A5202"},
 		{Key: "endNode", Value: "541F7F78-ED83-40D9-9488-3FD36D169B69"},
 		{Key: "class", Value: "A Road"},
 	}
 	tags.RemoveTags([]string{"startNode", "endNode"})
-	expected := Tags{
+	expected := b6.Tags{
 		{Key: "roadNumber", Value: "A5202"},
 		{Key: "class", Value: "A Road"},
 	}

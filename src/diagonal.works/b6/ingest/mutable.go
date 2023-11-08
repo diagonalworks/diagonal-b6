@@ -22,6 +22,7 @@ type MutableWorld interface {
 	AddArea(a *AreaFeature) error
 	AddRelation(a *RelationFeature) error
 	AddCollection(c *CollectionFeature) error
+	AddExpression(e *ExpressionFeature) error
 	AddTag(id b6.FeatureID, tag b6.Tag) error
 	RemoveTag(id b6.FeatureID, key string) error
 	EachModifiedFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error
@@ -139,6 +140,10 @@ func (r ReadOnlyWorld) AddCollection(c *CollectionFeature) error {
 	return errors.New("World is read-only")
 }
 
+func (r ReadOnlyWorld) AddExpression(e *ExpressionFeature) error {
+	return errors.New("World is read-only")
+}
+
 func (r ReadOnlyWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 	return errors.New("World is read-only")
 }
@@ -168,6 +173,8 @@ func (f *mutableFeatureIndex) Feature(v search.Value) b6.Feature {
 		return newRelationFeature(feature, f.byID)
 	case *CollectionFeature:
 		return newCollectionFeature(feature, f.byID)
+	case *ExpressionFeature:
+		return feature
 	}
 	return nil
 }
@@ -183,6 +190,8 @@ func (f *mutableFeatureIndex) ID(v search.Value) b6.FeatureID {
 	case *RelationFeature:
 		return feature.FeatureID()
 	case *CollectionFeature:
+		return feature.FeatureID()
+	case *ExpressionFeature:
 		return feature.FeatureID()
 	}
 	return b6.FeatureIDInvalid
@@ -324,6 +333,15 @@ func (m *BasicMutableWorld) AddCollection(c *CollectionFeature) error {
 	return nil
 }
 
+func (m *BasicMutableWorld) AddExpression(e *ExpressionFeature) error {
+	if err := ValidateExpression(e); err != nil {
+		return err
+	}
+	modified := NewModifiedFeatures(e, []b6.PhysicalFeature{}, m.byID, m)
+	modified.Update(m.byID, m.references, m.index, m)
+	return nil
+}
+
 func (m *BasicMutableWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 	tokenAfter, indexedAfter := b6.TokenForTag(tag)
 	if f := m.byID.FindMutableFeatureByID(id); f != nil {
@@ -355,22 +373,6 @@ func (m *BasicMutableWorld) RemoveTag(id b6.FeatureID, key string) error {
 	return nil
 }
 
-func wrapFeature(f Feature, w b6.FeaturesByID) b6.PhysicalFeature {
-	switch f := f.(type) {
-	case *PointFeature:
-		return newPointFeature(f)
-	case *PathFeature:
-		return newPathFeature(f, w)
-	case *AreaFeature:
-		return newAreaFeature(f, w)
-	case *RelationFeature:
-		return newRelationFeature(f, w)
-	case *CollectionFeature:
-		return newCollectionFeature(f, w)
-	}
-	panic("Invalid feature type")
-}
-
 func NewMutableWorldFromSource(source FeatureSource, cores int) (b6.World, error) {
 	w := NewBasicMutableWorld()
 	var lock sync.Mutex
@@ -388,6 +390,8 @@ func NewMutableWorldFromSource(source FeatureSource, cores int) (b6.World, error
 			w.AddRelation(f)
 		case *CollectionFeature:
 			w.AddCollection(f)
+		case *ExpressionFeature:
+			w.AddExpression(f)
 		}
 		lock.Unlock()
 		return nil
@@ -575,8 +579,10 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 		return m.WrapRelationFeature(f)
 	case b6.CollectionFeature:
 		return m.WrapCollectionFeature(f)
+	case b6.ExpressionFeature:
+		return m.WrapExpressionFeature(f)
 	}
-	return feature
+	panic(fmt.Sprintf("Can't wrap %T", feature))
 }
 
 func (m ModifiedTags) WrapPointFeature(f b6.PointFeature) b6.PointFeature {
@@ -597,6 +603,14 @@ func (m ModifiedTags) WrapRelationFeature(f b6.RelationFeature) b6.RelationFeatu
 
 func (m ModifiedTags) WrapCollectionFeature(f b6.CollectionFeature) b6.CollectionFeature {
 	return &modifiedTagsCollection{CollectionFeature: f, tags: m}
+}
+
+func (m ModifiedTags) WrapExpressionFeature(f b6.ExpressionFeature) b6.ExpressionFeature {
+	return b6.ExpressionFeature{
+		ExpressionID: f.ExpressionID,
+		Tags:         modifyTags(f, m[f.FeatureID()]),
+		Expression:   f.Expression,
+	}
 }
 
 func (m ModifiedTags) WrapSegment(segment b6.Segment) b6.Segment {
@@ -869,6 +883,10 @@ func (m *MutableOverlayWorld) findFeatureByID(id b6.FeatureID) b6.Feature {
 		if c, ok := m.byID.Collections[id.ToCollectionID()]; ok {
 			return newCollectionFeature(c, m)
 		}
+	case b6.FeatureTypeExpression:
+		if e, ok := m.byID.Expressions[id.ToExpressionID()]; ok {
+			return e
+		}
 	}
 	return nil
 }
@@ -1062,6 +1080,17 @@ func (m *MutableOverlayWorld) AddCollection(c *CollectionFeature) error {
 	return nil
 }
 
+func (m *MutableOverlayWorld) AddExpression(e *ExpressionFeature) error {
+	if err := ValidateExpression(e); err != nil {
+		return err
+	}
+	modified := NewModifiedFeatures(e, []b6.PhysicalFeature{}, m.byID, m)
+	modified.Update(m.byID, m.references, m.index, m)
+	delete(m.tags, e.FeatureID())
+	m.epoch++
+	return nil
+}
+
 func (m *MutableOverlayWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 	tokenAfter, indexedAfter := b6.TokenForTag(tag)
 	if f := m.byID.FindMutableFeatureByID(id); f != nil {
@@ -1086,7 +1115,7 @@ func (m *MutableOverlayWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 			f.ModifyOrAddTag(tag)
 			m.byID.AddFeature(f)
 			m.references.AddFeature(f, m)
-			m.index.Add(f, TokensForFeature(wrapFeature(f, m)))
+			m.index.Add(f, TokensForFeature(WrapFeature(f, m)))
 		} else {
 			m.tags.ModifyOrAddTag(id, tag)
 		}
@@ -1113,7 +1142,7 @@ func (m *MutableOverlayWorld) RemoveTag(id b6.FeatureID, key string) error {
 				f.RemoveTag(key)
 				m.byID.AddFeature(f)
 				m.references.AddFeature(f, m)
-				m.index.Add(f, TokensForFeature(wrapFeature(f, m)))
+				m.index.Add(f, TokensForFeature(WrapFeature(f, m)))
 			} else {
 				m.tags.RemoveTag(id, key)
 			}
@@ -1135,6 +1164,8 @@ func (m *MutableOverlayWorld) MergeSource(source FeatureSource) error {
 			return m.AddRelation(f)
 		case *CollectionFeature:
 			return m.AddCollection(f)
+		case *ExpressionFeature:
+			return m.AddExpression(f)
 		}
 		return nil
 	}
@@ -1235,6 +1266,11 @@ func (m *MutableOverlayWorld) MergeInto(other MutableWorld) error {
 			return err
 		}
 	}
+	for _, expression := range m.byID.Expressions {
+		if err := other.AddExpression(expression); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1292,7 +1328,7 @@ func NewModifiedFeatures(new Feature, features []b6.PhysicalFeature, byID *Featu
 	}
 	m.features = append(m.features, new)
 	if m.existing = byID.FindMutableFeatureByID(new.FeatureID()); m.existing != nil {
-		m.tokens = append(m.tokens, TokensForFeature(wrapFeature(m.existing, w)))
+		m.tokens = append(m.tokens, TokensForFeature(WrapFeature(m.existing, w)))
 	} else {
 		m.tokens = append(m.tokens, []string{})
 	}
@@ -1315,7 +1351,7 @@ func NewModifiedFeaturesWithCopies(new Feature, features []b6.PhysicalFeature, b
 	}
 	m.features = append(m.features, new)
 	if m.existing = byID.FindMutableFeatureByID(new.FeatureID()); m.existing != nil {
-		m.tokens = append(m.tokens, TokensForFeature(wrapFeature(m.existing, w)))
+		m.tokens = append(m.tokens, TokensForFeature(WrapFeature(m.existing, w)))
 	} else {
 		m.tokens = append(m.tokens, []string{})
 	}
@@ -1362,6 +1398,8 @@ func (m *ModifiedFeatures) Update(features *FeaturesByID, references *FeatureRef
 			existing.MergeFrom(m.features[0].(*RelationFeature))
 		case *CollectionFeature:
 			existing.MergeFrom(m.features[0].(*CollectionFeature))
+		case *ExpressionFeature:
+			existing.MergeFrom(m.features[0].(*ExpressionFeature))
 		}
 		new = m.existing
 	} else {
@@ -1381,7 +1419,7 @@ func (m *ModifiedFeatures) AddReferences(byID b6.FeaturesByID, references *Featu
 
 func (m *ModifiedFeatures) UpdateIndex(index *mutableFeatureIndex, byID b6.FeaturesByID) {
 	for i, f := range m.features {
-		added, removed := sortAndDiffTokens(m.tokens[i], TokensForFeature(wrapFeature(f, byID)))
+		added, removed := sortAndDiffTokens(m.tokens[i], TokensForFeature(WrapFeature(f, byID)))
 		index.Remove(f, removed)
 		index.Add(f, added)
 	}
