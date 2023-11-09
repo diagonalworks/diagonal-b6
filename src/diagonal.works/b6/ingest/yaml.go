@@ -55,7 +55,6 @@ func (f *LatLngYAML) UnmarshalYAMLString(s string) error {
 	var err error
 	f.LatLng, err = b6.LatLngFromString(s)
 	return err
-	return fmt.Errorf("invalid lat,lng: %s", s)
 }
 
 type RelationMemberYAML struct {
@@ -86,38 +85,8 @@ func (r *RelationMemberYAML) UnmarshalYAML(unmarshal func(interface{}) error) er
 }
 
 type CollectionYAML struct {
-	Keys   []InterfaceYAML
-	Values []InterfaceYAML
-}
-
-type InterfaceYAML struct {
-	v interface{}
-}
-
-func (i InterfaceYAML) MarshalYAML() (interface{}, error) {
-	switch v := i.v.(type) {
-	case b6.FeatureID:
-		return map[string]interface{}{"v": FeatureIDYAML{FeatureID: v}}, nil
-	default:
-		return map[string]interface{}{"v": v}, nil
-	}
-}
-
-func (i *InterfaceYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var m struct {
-		V interface{}
-	}
-	if err := unmarshal(&m); err != nil {
-		return err
-	}
-
-	if id := b6.FeatureIDFromString(m.V.(string)[1:]); id != b6.FeatureIDInvalid {
-		i.v = id
-	} else {
-		i.v = m.V
-	}
-
-	return nil
+	Keys   []b6.Literal
+	Values []b6.Literal
 }
 
 type exportedYAML struct {
@@ -130,6 +99,7 @@ type exportedYAML struct {
 	Area       []interface{}        `yaml:",omitempty"`
 	Relation   []RelationMemberYAML `yaml:",omitempty"`
 	Collection *CollectionYAML      `yaml:",omitempty"`
+	Expression *b6.Expression       `yaml:",omitempty"`
 	Tags       []b6.Tag             `yaml:",omitempty"`
 }
 
@@ -225,6 +195,11 @@ func (i ingestedYAML) Apply(m MutableWorld) (AppliedChange, error) {
 			var c *CollectionFeature
 			if c, err = newCollectionFeatureFromYAML(&y); err == nil {
 				err = m.AddCollection(c)
+			}
+		} else if y.Expression != nil {
+			var e *ExpressionFeature
+			if e, err = newExpressionFromYAML(&y); err == nil {
+				err = m.AddExpression(e)
 			}
 		}
 		if err != nil {
@@ -337,11 +312,11 @@ func newRelationFromYAML(y *exportedYAML) (*RelationFeature, error) {
 func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
 	var keys, values []interface{}
 	for _, key := range y.Collection.Keys {
-		keys = append(keys, key.v)
+		keys = append(keys, key.Literal())
 	}
 
 	for _, value := range y.Collection.Values {
-		values = append(values, value.v)
+		values = append(values, value.Literal())
 	}
 
 	return &CollectionFeature{
@@ -349,5 +324,15 @@ func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
 		Keys:         keys,
 		Values:       values,
 		Tags:         y.Tags,
+	}, nil
+}
+
+func newExpressionFromYAML(y *exportedYAML) (*ExpressionFeature, error) {
+	return &ExpressionFeature{
+		ExpressionFeature: b6.ExpressionFeature{
+			ExpressionID: y.ID.ToExpressionID(),
+			Tags:         y.Tags,
+			Expression:   *y.Expression,
+		},
 	}, nil
 }

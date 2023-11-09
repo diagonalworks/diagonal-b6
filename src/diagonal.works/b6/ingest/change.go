@@ -21,6 +21,7 @@ type AddFeatures struct {
 	Areas        []*AreaFeature
 	Relations    []*RelationFeature
 	Collections  []*CollectionFeature
+	Expressions  []*ExpressionFeature
 	IDsToReplace map[b6.Namespace]b6.Namespace
 }
 
@@ -103,6 +104,12 @@ func (a *AddFeatures) Apply(w MutableWorld) (AppliedChange, error) {
 		// ID replacement not supported for collections.
 		// TODO delete replacement for all features, no longer necessary.
 		if err := w.AddCollection(collection); err != nil {
+			return nil, err
+		}
+	}
+
+	for _, expression := range a.Expressions {
+		if err := w.AddExpression(expression); err != nil {
 			return nil, err
 		}
 	}

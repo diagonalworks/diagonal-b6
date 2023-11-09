@@ -155,16 +155,21 @@ var osmTagMapping = map[string]string{
 	"wikipedia": "@wikipedia",
 }
 
-func NewTagsFromOSM(o []osm.Tag) Tags {
-	tags := make(Tags, len(o))
-	for i, tag := range o {
+func NewTagsFromOSM(o osm.Tags) b6.Tags {
+	tags := make(b6.Tags, 0, len(o))
+	FillTagsFromOSM(&tags, o)
+	return tags
+}
+
+func FillTagsFromOSM(t *b6.Tags, o osm.Tags) {
+	*t = (*t)[0:0]
+	for _, tag := range o {
 		key := tag.Key
 		if mapped, ok := osmTagMapping[tag.Key]; ok {
 			key = mapped
 		}
-		tags[i] = b6.Tag{Key: key, Value: tag.Value}
+		*t = append(*t, b6.Tag{Key: key, Value: tag.Value})
 	}
-	return tags
 }
 
 func KeyForOSMKey(key string) string {
@@ -307,7 +312,7 @@ func reassembleMultiPolygon(relation *osm.Relation, areaWays *IDSet, ways map[os
 		polygons = append(polygons, loops)
 	}
 	area := NewAreaFeature(len(polygons))
-	area.Tags.FillFromOSM(relation.Tags)
+	FillTagsFromOSM(&area.Tags, relation.Tags)
 	area.AreaID = AreaIDFromOSMRelationID(relation.ID)
 	for i, loops := range polygons {
 		ids := make([]b6.PathID, len(loops))
@@ -363,7 +368,7 @@ func (s *pbfSource) Read(options ReadOptions, emit Emit, ctx context.Context) er
 				}
 			} else if !options.SkipRelations {
 				relations[g].RelationID = FromOSMRelationID(e.ID)
-				relations[g].Tags.FillFromOSM(e.Tags)
+				FillTagsFromOSM(&relations[g].Tags, e.Tags)
 				relations[g].Members = relations[g].Members[0:0]
 				for _, m := range e.Members {
 					var id b6.FeatureID

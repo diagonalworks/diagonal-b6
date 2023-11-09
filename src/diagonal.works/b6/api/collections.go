@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"diagonal.works/b6"
-	"diagonal.works/b6/ingest"
 
 	"github.com/golang/geo/s2"
 )
@@ -696,8 +695,8 @@ func FillSliceFromValues(c Collection, toFill interface{}) error {
 	return nil
 }
 
-func CollectionToTags(c Collection) (ingest.Tags, error) {
-	tags := make(ingest.Tags, 0)
+func CollectionToTags(c Collection) (b6.Tags, error) {
+	tags := make(b6.Tags, 0)
 	i := c.Begin()
 	for {
 		ok, err := i.Next()

@@ -3,6 +3,7 @@ package ingest
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"testing"
 
 	"diagonal.works/b6"
@@ -98,24 +99,40 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
+	var expression ExpressionFeature
+	expression.ExpressionID = b6.MakeExpressionID(b6.Namespace("diagonal.works/test"), 6)
+	expression.Expression = b6.Expression{
+		AnyExpression: &b6.CallExpression{
+			Function: b6.NewSymbolExpression("add"),
+			Args:     []b6.Expression{b6.NewIntExpression(42), b6.NewIntExpression(1)},
+		},
+	}
+
+	expression.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
+	if err := m.AddExpression(&expression); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
 	var buffer bytes.Buffer
 	if err := ExportChangesAsYAML(m, &buffer); err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	}
 
 	ingested := NewMutableOverlayWorld(base)
+	log.Printf("yaml: %s", buffer.Bytes())
 	change := IngestChangesFromYAML(&buffer)
 	if _, err := change.Apply(ingested); err != nil {
 		t.Fatalf("Expected no error from ingest, found: %s", err)
 	}
 
 	compared := map[b6.FeatureID]bool{
-		ifo.FeatureID():      false,
-		footway.FeatureID():  false,
-		boundary.FeatureID(): false,
-		square.FeatureID():   false,
-		ranking.FeatureID():  false,
-		analysis.FeatureID(): false,
+		ifo.FeatureID():        false,
+		footway.FeatureID():    false,
+		boundary.FeatureID():   false,
+		square.FeatureID():     false,
+		ranking.FeatureID():    false,
+		analysis.FeatureID():   false,
+		expression.FeatureID(): false,
 	}
 
 	compare := func(f b6.Feature, goroutine int) error {

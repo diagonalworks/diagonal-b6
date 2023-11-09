@@ -12,118 +12,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type Tags []b6.Tag
-
-func (t Tags) Get(key string) b6.Tag {
-	for _, tag := range t {
-		if tag.Key == key {
-			return tag
-		}
-	}
-	return b6.InvalidTag()
-}
-
-func (t Tags) TagOrFallback(key string, fallback string) b6.Tag {
-	if value := t.Get(key); value.IsValid() {
-		return value
-	}
-	return b6.Tag{Key: key, Value: fallback}
-}
-
-func (t *Tags) AddTag(tag b6.Tag) {
-	*t = append(*t, tag)
-}
-
-func (t *Tags) SetTags(tags []b6.Tag) {
-	*t = tags
-}
-
-// Modifies an existing tag value, or add it if it doesn't exist.
-// Returns (true, old value) if it modifies, or (false, undefined) if
-// added.
-func (t *Tags) ModifyOrAddTag(tag b6.Tag) (bool, string) {
-	for i := range *t {
-		if (*t)[i].Key == tag.Key {
-			old := (*t)[i].Value
-			(*t)[i].Value = tag.Value
-			return true, old
-		}
-	}
-	t.AddTag(tag)
-	return false, ""
-}
-
-func (t *Tags) RemoveTag(key string) {
-	w := 0
-	for r := range *t {
-		if (*t)[r].Key != key {
-			if w != r {
-				(*t)[w] = (*t)[r]
-			}
-			w++
-		}
-	}
-	*t = (*t)[0:w]
-}
-
-func (t *Tags) RemoveTags(keys []string) {
-	w := 0
-	for r := range *t {
-		var i int
-		for i = 0; i < len(keys); i++ {
-			if (*t)[r].Key == keys[i] {
-				break
-			}
-		}
-		if i == len(keys) {
-			if w != r {
-				(*t)[w] = (*t)[r]
-			}
-			w++
-		}
-	}
-	*t = (*t)[0:w]
-}
-
-func (t Tags) AllTags() []b6.Tag {
-	return t
-}
-
-func (t Tags) Clone() Tags {
-	clone := make([]b6.Tag, len(t))
-	for i, tag := range t {
-		clone[i] = tag
-	}
-	return clone
-}
-
-func (t *Tags) MergeFrom(other Tags) {
-	i := copy(*t, other)
-	if i < len(other) {
-		*t = append(*t, other[i:]...)
-	} else {
-		*t = (*t)[0:len(other)]
-	}
-}
-
-func (t *Tags) FillFromOSM(tags osm.Tags) {
-	*t = (*t)[0:0]
-	for _, tag := range tags {
-		key := tag.Key
-		if mapped, ok := osmTagMapping[tag.Key]; ok {
-			key = mapped
-		}
-		*t = append(*t, b6.Tag{Key: key, Value: tag.Value})
-	}
-}
-
-type ByTagKey Tags
+type ByTagKey b6.Tags
 
 func (t ByTagKey) Len() int           { return len(t) }
 func (t ByTagKey) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
 func (t ByTagKey) Less(i, j int) bool { return t[i].Key < t[j].Key }
 
-func NewTagsFromWorld(t b6.Taggable) Tags {
+func NewTagsFromWorld(t b6.Taggable) b6.Tags {
 	all := t.AllTags()
 	tags := make([]b6.Tag, len(all))
 	for i := range all {
@@ -157,6 +52,8 @@ func NewFeatureFromWorld(f b6.Feature) Feature {
 		return NewRelationFeatureFromWorld(f)
 	case b6.CollectionFeature:
 		return NewCollectionFeatureFromWorld(f)
+	case b6.ExpressionFeature:
+		return NewExpressionFeatureFromWorld(f)
 	}
 	panic(fmt.Sprintf("Can't handle feature type: %T", f))
 }
@@ -173,13 +70,15 @@ func WrapFeature(f Feature, byID b6.FeaturesByID) b6.Feature {
 		return WrapRelationFeature(f, byID)
 	case *CollectionFeature:
 		return WrapCollectionFeature(f, byID)
+	case *ExpressionFeature:
+		return WrapExpressionFeature(f)
 	}
-	panic(fmt.Sprintf("Can't handle feature type: %T", f))
+	panic(fmt.Sprintf("Can't wrap feature type: %T", f))
 }
 
 type PointFeature struct {
 	b6.PointID
-	Tags
+	b6.Tags
 	Location s2.LatLng
 }
 
@@ -211,7 +110,7 @@ func (p *PointFeature) SetFeatureID(id b6.FeatureID) {
 
 func (p *PointFeature) FillFromOSM(node *osm.Node) {
 	p.PointID = FromOSMNodeID(node.ID)
-	p.Tags.FillFromOSM(node.Tags)
+	FillTagsFromOSM(&p.Tags, node.Tags)
 	p.Location = node.Location.ToS2LatLng()
 }
 
@@ -340,7 +239,7 @@ func (p *PathMembers) MergeFrom(other PathMembers) {
 
 type PathFeature struct {
 	b6.PathID
-	Tags
+	b6.Tags
 	PathMembers
 }
 
@@ -374,7 +273,7 @@ func (p *PathFeature) SetFeatureID(id b6.FeatureID) {
 
 func (p *PathFeature) FillFromOSM(way *osm.Way) {
 	p.PathID = FromOSMWayID(way.ID)
-	p.Tags.FillFromOSM(way.Tags)
+	FillTagsFromOSM(&p.Tags, way.Tags)
 	p.PathMembers.FillFromOSM(way)
 }
 
@@ -541,7 +440,7 @@ func (a *AreaMembers) FillFromOSMWay(way *osm.Way) {
 
 type AreaFeature struct {
 	b6.AreaID
-	Tags
+	b6.Tags
 	AreaMembers
 }
 
@@ -551,7 +450,7 @@ func NewAreaFeature(n int) *AreaFeature {
 
 func NewAreaFeatureFromOSMWay(way *osm.Way) (*AreaFeature, *PathFeature) {
 	path := NewPathFeatureFromOSM(way)
-	path.Tags = make(Tags, 0) // Tags only exist on the area feature
+	path.Tags = make(b6.Tags, 0) // Tags only exist on the area feature
 	area := &AreaFeature{}
 	area.FillFromOSMWay(way)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
@@ -606,7 +505,7 @@ func (a *AreaFeature) SetFeatureID(id b6.FeatureID) {
 
 func (a *AreaFeature) FillFromOSMWay(way *osm.Way) {
 	a.AreaID = AreaIDFromOSMWayID(way.ID)
-	a.Tags.FillFromOSM(way.Tags)
+	FillTagsFromOSM(&a.Tags, way.Tags)
 	a.AreaMembers.FillFromOSMWay(way)
 }
 
@@ -671,7 +570,7 @@ func (a *AreaFeature) MarshalYAML() (interface{}, error) {
 
 type RelationFeature struct {
 	b6.RelationID
-	Tags
+	b6.Tags
 	Members []b6.RelationMember
 }
 
@@ -753,7 +652,7 @@ func (r *RelationFeature) MarshalYAML() (interface{}, error) {
 
 type CollectionFeature struct {
 	b6.CollectionID
-	Tags
+	b6.Tags
 
 	Keys   []interface{}
 	Values []interface{}
@@ -811,10 +710,10 @@ func NewCollectionFeatureFromWorld(c b6.CollectionFeature) *CollectionFeature {
 func (c *CollectionFeature) MarshalYAML() (interface{}, error) {
 	var collection CollectionYAML
 	for _, key := range c.Keys {
-		collection.Keys = append(collection.Keys, InterfaceYAML{v: key})
+		collection.Keys = append(collection.Keys, b6.FromLiteral(key))
 	}
 	for _, value := range c.Values {
-		collection.Values = append(collection.Values, InterfaceYAML{v: value})
+		collection.Values = append(collection.Values, b6.FromLiteral(value))
 	}
 
 	y := map[string]interface{}{
@@ -827,6 +726,63 @@ func (c *CollectionFeature) MarshalYAML() (interface{}, error) {
 	}
 
 	return y, nil
+}
+
+type ExpressionFeature struct {
+	b6.ExpressionFeature
+}
+
+func (e *ExpressionFeature) Clone() Feature {
+	return &ExpressionFeature{
+		ExpressionFeature: b6.ExpressionFeature{
+			ExpressionID: e.ExpressionID,
+			Tags:         e.Tags.Clone(),
+			Expression:   e.Expression.Clone(),
+		},
+	}
+}
+
+func (e *ExpressionFeature) SetFeatureID(id b6.FeatureID) {
+	e.ExpressionID = id.ToExpressionID()
+}
+
+func (e *ExpressionFeature) MergeFrom(other Feature) {
+	if expression, ok := other.(*ExpressionFeature); ok {
+		e.MergeFromExpressionFeature(expression)
+	} else {
+		panic(fmt.Sprintf("Expected an ExpressionFeature, found %T", other))
+	}
+}
+
+func (e *ExpressionFeature) MergeFromExpressionFeature(other *ExpressionFeature) {
+	e.ExpressionID = other.ExpressionID
+	e.Tags.MergeFrom(other.Tags)
+	e.Expression = other.Expression.Clone()
+}
+
+func (e *ExpressionFeature) MarshalYAML() (interface{}, error) {
+	y := map[string]interface{}{
+		"id":         FeatureIDYAML{FeatureID: e.ExpressionID.FeatureID()},
+		"expression": e.Expression,
+	}
+	if len(e.Tags) > 0 {
+		y["tags"] = e.Tags
+	}
+	return y, nil
+}
+
+func (e *ExpressionFeature) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return e.ExpressionFeature.UnmarshalYAML(unmarshal)
+}
+
+func NewExpressionFeatureFromWorld(e b6.ExpressionFeature) *ExpressionFeature {
+	return &ExpressionFeature{
+		ExpressionFeature: e,
+	}
+}
+
+func WrapExpressionFeature(f *ExpressionFeature) b6.ExpressionFeature {
+	return f.ExpressionFeature
 }
 
 type PathPosition struct {
@@ -844,6 +800,7 @@ type FeaturesByID struct {
 	Areas       map[b6.AreaID]*AreaFeature
 	Relations   map[b6.RelationID]*RelationFeature
 	Collections map[b6.CollectionID]*CollectionFeature
+	Expressions map[b6.ExpressionID]*ExpressionFeature
 
 	PointsFromOSMNodes map[uint64]s2.LatLng
 }
@@ -855,6 +812,7 @@ func NewFeaturesByID() *FeaturesByID {
 		Areas:       make(map[b6.AreaID]*AreaFeature),
 		Relations:   make(map[b6.RelationID]*RelationFeature),
 		Collections: make(map[b6.CollectionID]*CollectionFeature),
+		Expressions: make(map[b6.ExpressionID]*ExpressionFeature),
 	}
 	f.PointsFromOSMNodes = make(map[uint64]s2.LatLng)
 	return f
@@ -884,6 +842,8 @@ func (f *FeaturesByID) AddFeature(feature Feature) {
 		f.Relations[feature.RelationID] = feature
 	case *CollectionFeature:
 		f.Collections[feature.CollectionID] = feature
+	case *ExpressionFeature:
+		f.Expressions[feature.ExpressionID] = feature
 	}
 }
 
@@ -920,6 +880,10 @@ func (f *FeaturesByID) FindFeatureByID(id b6.FeatureID) b6.Feature {
 		if c, ok := f.Collections[id.ToCollectionID()]; ok {
 			return newCollectionFeature(c, f)
 		}
+	case b6.FeatureTypeExpression:
+		if e, ok := f.Expressions[id.ToExpressionID()]; ok {
+			return e
+		}
 	}
 	return nil
 }
@@ -943,6 +907,9 @@ func (f *FeaturesByID) HasFeatureWithID(id b6.FeatureID) bool {
 		return ok
 	case b6.FeatureTypeCollection:
 		_, ok := f.Collections[id.ToCollectionID()]
+		return ok
+	case b6.FeatureTypeExpression:
+		_, ok := f.Expressions[id.ToExpressionID()]
 		return ok
 	}
 	return false
@@ -975,6 +942,10 @@ func (f *FeaturesByID) FindMutableFeatureByID(id b6.FeatureID) Feature {
 	case b6.FeatureTypeCollection:
 		if c, ok := f.Collections[id.ToCollectionID()]; ok {
 			return c
+		}
+	case b6.FeatureTypeExpression:
+		if e, ok := f.Expressions[id.ToExpressionID()]; ok {
+			return e
 		}
 	}
 	return nil
@@ -1068,6 +1039,16 @@ func (f *FeaturesByID) feedFeatures(c chan<- Feature, done <-chan struct{}, opti
 			case <-done:
 				return
 			case c <- collection:
+			}
+		}
+	}
+
+	if !options.SkipExpressions {
+		for _, expression := range f.Expressions {
+			select {
+			case <-done:
+				return
+			case c <- expression:
 			}
 		}
 	}

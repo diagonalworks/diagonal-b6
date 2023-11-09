@@ -25,7 +25,7 @@ func TestFillColourFromFeature(t *testing.T) {
 		{"red", false, ""},
 	}
 	for _, test := range tests {
-		tags := ingest.Tags{{Key: "diagonal:colour", Value: test.featureColour}}
+		tags := b6.Tags{{Key: "diagonal:colour", Value: test.featureColour}}
 		feature := NewFeature(&Point{})
 		fillColourFromFeature(feature, tags)
 		tileColour, ok := feature.Tags["colour"]
