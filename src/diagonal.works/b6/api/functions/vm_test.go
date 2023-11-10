@@ -34,7 +34,7 @@ func TestMapWithVM(t *testing.T) {
 	}
 	values := []string{}
 
-	if err := api.FillSliceFromValues(result.(api.Collection), &values); err != nil {
+	if err := api.FillSliceFromValues(result.(b6.UntypedCollection), &values); err != nil {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	expected := []string{
@@ -54,7 +54,7 @@ func TestMapParallelWithVM(t *testing.T) {
 		t.Fatal(err)
 	}
 	values := []string{}
-	if err := api.FillSliceFromValues(result.(api.Collection), &values); err != nil {
+	if err := api.FillSliceFromValues(result.(b6.UntypedCollection), &values); err != nil {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	expected := []string{
@@ -74,7 +74,7 @@ func TestMapWithVMAndPartialFunction(t *testing.T) {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	values := []string{}
-	if err := api.FillSliceFromValues(result.(api.Collection), &values); err != nil {
+	if err := api.FillSliceFromValues(result.(b6.UntypedCollection), &values); err != nil {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	expected := []string{
@@ -94,7 +94,7 @@ func TestMapItems(t *testing.T) {
 		t.Fatal(err)
 	}
 	filled := make(map[b6.Tag]int)
-	collection, ok := result.(api.Collection)
+	collection, ok := result.(b6.UntypedCollection)
 	if !ok {
 		t.Fatalf("Expected a collection, found %T", result)
 	}
@@ -117,7 +117,7 @@ func TestWithVMAndPipelineInLamba(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	collection, ok := result.(api.Collection)
+	collection, ok := result.(b6.UntypedCollection)
 	if !ok {
 		t.Fatalf("Expected a collection, found %T", result)
 	}
@@ -197,7 +197,7 @@ func TestConvertQueryToFunctionReturningBool(t *testing.T) {
 
 	}
 	n := 0
-	i := v.(api.Collection).Begin()
+	i := v.(b6.UntypedCollection).BeginUntyped()
 	for {
 		ok, err := i.Next()
 		if err != nil {
@@ -226,7 +226,7 @@ func TestConvertQueryToFunctionReturningBoolWithSpecificFeature(t *testing.T) {
 		FunctionSymbols: api.FunctionSymbols{
 			"apply-to-example-point": apply,
 		},
-		FunctionWrappers: Wrappers(),
+		Adaptors: Adaptors(),
 	}
 	e := "apply-to-example-point [#amenity]"
 	v, err := api.EvaluateString(e, c)
@@ -240,11 +240,11 @@ func TestConvertQueryToFunctionReturningBoolWithSpecificFeature(t *testing.T) {
 
 func TestConvertIntAndFloat64ToNumber(t *testing.T) {
 	w := ingest.NewBasicMutableWorld()
-	increment := func(c *api.Context, n api.Number) (int, error) {
+	increment := func(c *api.Context, n b6.Number) (int, error) {
 		switch n := n.(type) {
-		case api.IntNumber:
+		case b6.IntNumber:
 			return int(n) + 1, nil
-		case api.FloatNumber:
+		case b6.FloatNumber:
 			return int(n) + 1, nil
 		}
 		return 0, fmt.Errorf("Bad number")
@@ -275,14 +275,14 @@ func TestCallLambdaWithNoArguments(t *testing.T) {
 				return f(c)
 			},
 		},
-		FunctionWrappers: Wrappers(),
+		Adaptors: Adaptors(),
 	}
 	e := "call {-> 42}"
 	v, err := api.EvaluateString(e, c)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if i, ok := v.(int64); !ok || i != 42 {
+	if i, ok := v.(int); !ok || i != 42 {
 		t.Errorf("Expected 42, found %T %v", v, v)
 	}
 }
@@ -316,7 +316,7 @@ func TestReturnAnErrorFromALambda(t *testing.T) {
 				return nil, fmt.Errorf("broken")
 			},
 		},
-		FunctionWrappers: Wrappers(),
+		Adaptors: Adaptors(),
 	}
 	e := "call {-> broken 42}"
 	r, err := api.EvaluateString(e, c)
@@ -333,7 +333,7 @@ func TestMapLiteralCollection(t *testing.T) {
 		t.Fatal(err)
 	}
 	collection := make(map[b6.Tag]int)
-	if err := api.FillMap(result.(api.Collection), collection); err != nil {
+	if err := api.FillMap(result.(b6.UntypedCollection), collection); err != nil {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	expected := map[b6.Tag]int{
@@ -353,7 +353,7 @@ func TestMapLiteralCollectionWithImplicitKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	collection := make(map[int]int)
-	if err := api.FillMap(result.(api.Collection), collection); err != nil {
+	if err := api.FillMap(result.(b6.UntypedCollection), collection); err != nil {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	expected := map[int]int{

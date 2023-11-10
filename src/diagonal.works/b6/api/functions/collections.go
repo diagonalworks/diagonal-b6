@@ -6,71 +6,38 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	"github.com/golang/geo/s2"
 )
 
-func emptyPointCollection(context *api.Context) (api.StringPointCollection, error) {
-	return &api.ArrayPointCollection{Keys: []string{}, Values: []s2.Point{}}, nil
+func emptyPointCollection(context *api.Context) (b6.Collection[int, b6.Point], error) {
+	return b6.ArrayValuesCollection[b6.Point]{}.Collection(), nil
 }
 
-func addPoint(context *api.Context, p b6.Point, c api.StringPointCollection) (api.StringPointCollection, error) {
+func addPoint(context *api.Context, p b6.Point, c b6.Collection[int, b6.Point]) (b6.Collection[int, b6.Point], error) {
 	// TODO: We can potentially fast-path this if c is an arrayPointCollection by
 	// modifying the underlying slices, and if not, then add a wrapper that
 	// returns the new point when Next() returns false.
-	n := 1
-	if c, ok := c.(api.Countable); ok {
-		n = c.Count()
+	n, ok := c.Count()
+	if !ok {
+		n = 0
 	}
-	keys := make([]string, 0, n+1)
-	values := make([]s2.Point, 0, n+1)
+	values := b6.ArrayValuesCollection[b6.Point](make([]b6.Point, 0, n+1))
 	i := c.Begin()
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			return nil, err
+			return b6.Collection[int, b6.Point]{}, err
 		}
 		if !ok {
 			break
 		}
-		values = append(values, i.Value().(b6.Point).Point())
+		values = append(values, i.Value())
 	}
-	ll := s2.LatLngFromPoint(p.Point())
-	keys = append(keys, fmt.Sprintf("%f,%f", ll.Lat.Degrees(), ll.Lng.Degrees()))
-	values = append(values, p.Point())
-	return &api.ArrayPointCollection{Keys: keys, Values: values}, nil
+	values = append(values, p)
+	return values.Collection(), nil
 }
 
-type singletonCollection struct {
-	k    interface{}
-	v    interface{}
-	done bool
-}
-
-func (s *singletonCollection) Count() int { return 1 }
-
-func (s *singletonCollection) Begin() api.CollectionIterator {
-	return &singletonCollection{k: s.k, v: s.v}
-}
-
-func (s *singletonCollection) Key() interface{} {
-	return s.k
-}
-
-func (s *singletonCollection) Value() interface{} {
-	return s.v
-}
-
-func (s *singletonCollection) Next() (bool, error) {
-	ok := !s.done
-	s.done = true
-	return ok, nil
-}
-
-var _ api.Collection = &singletonCollection{}
-var _ api.Countable = &singletonCollection{}
-
-func collection(_ *api.Context, pairs ...interface{}) (api.Collection, error) {
-	c := &api.ArrayAnyCollection{
+func collection(_ *api.Context, pairs ...interface{}) (b6.Collection[any, any], error) {
+	c := &b6.ArrayCollection[interface{}, interface{}]{
 		Keys:   make([]interface{}, len(pairs)),
 		Values: make([]interface{}, len(pairs)),
 	}
@@ -79,21 +46,21 @@ func collection(_ *api.Context, pairs ...interface{}) (api.Collection, error) {
 			c.Keys[i] = pair.First()
 			c.Values[i] = pair.Second()
 		} else {
-			return nil, fmt.Errorf("Expected a pair, found %T", arg)
+			return b6.Collection[any, any]{}, fmt.Errorf("Expected a pair, found %T", arg)
 		}
 	}
-	return c, nil
+	return c.Collection(), nil
 }
 
 type takeCollection struct {
-	c api.Collection
-	i api.CollectionIterator
+	c b6.UntypedCollection
+	i b6.Iterator[any, any]
 	n int
 	r int
 }
 
-func (t *takeCollection) Begin() api.CollectionIterator {
-	return &takeCollection{c: t.c, i: t.c.Begin(), n: t.n, r: t.n}
+func (t *takeCollection) Begin() b6.Iterator[any, any] {
+	return &takeCollection{c: t.c, i: t.c.BeginUntyped(), n: t.n, r: t.n}
 }
 
 func (t *takeCollection) Next() (bool, error) {
@@ -112,10 +79,21 @@ func (t *takeCollection) Value() interface{} {
 	return t.i.Value()
 }
 
-var _ api.Collection = &takeCollection{}
+func (t *takeCollection) Count() (int, bool) {
+	if n, ok := t.c.Count(); ok {
+		if n < t.n {
+			return n, true
+		} else {
+			return t.n, true
+		}
+	}
+	return 0, false
+}
 
-func take(_ *api.Context, c api.Collection, n int) (api.Collection, error) {
-	return &takeCollection{c: c, n: n}, nil
+var _ b6.AnyCollection[any, any] = &takeCollection{}
+
+func take(_ *api.Context, c b6.UntypedCollection, n int) (b6.Collection[any, any], error) {
+	return b6.Collection[any, any]{AnyCollection: &takeCollection{c: c, n: n}}, nil
 }
 
 // TODO: Don't just use anyanypair, use an int.
@@ -151,8 +129,8 @@ func (h *topIntHeap) Pop() any {
 	return x
 }
 
-func top(_ *api.Context, c api.Collection, n int) (api.Collection, error) {
-	i := c.Begin()
+func top(_ *api.Context, c b6.UntypedCollection, n int) (b6.Collection[any, any], error) {
+	i := c.BeginUntyped()
 	var err error
 	first := true
 	float := false
@@ -174,17 +152,17 @@ func top(_ *api.Context, c api.Collection, n int) (api.Collection, error) {
 				fh := make(topFloatHeap, 0, 8)
 				h = &fh
 			default:
-				return nil, fmt.Errorf("Can't order values of type %T", i.Value())
+				return b6.Collection[any, any]{}, fmt.Errorf("Can't order values of type %T", i.Value())
 			}
 			first = false
 		} else {
 			if float {
 				if _, ok := i.Value().(float64); !ok {
-					return nil, fmt.Errorf("Expected float64, found %T", i.Value())
+					return b6.Collection[any, any]{}, fmt.Errorf("Expected float64, found %T", i.Value())
 				}
 			} else {
 				if _, ok := i.Value().(int); !ok {
-					return nil, fmt.Errorf("Expected int, found %T", i.Value())
+					return b6.Collection[any, any]{}, fmt.Errorf("Expected int, found %T", i.Value())
 				}
 			}
 		}
@@ -193,7 +171,7 @@ func top(_ *api.Context, c api.Collection, n int) (api.Collection, error) {
 			heap.Pop(h)
 		}
 	}
-	r := api.ArrayAnyCollection{
+	r := b6.ArrayCollection[interface{}, interface{}]{
 		Keys:   make([]interface{}, h.Len()),
 		Values: make([]interface{}, h.Len()),
 	}
@@ -204,18 +182,18 @@ func top(_ *api.Context, c api.Collection, n int) (api.Collection, error) {
 		r.Values[len(r.Values)-1-j] = p[1]
 		j++
 	}
-	return &r, err
+	return r.Collection(), err
 }
 
 type filterCollection struct {
-	c       api.Collection
-	i       api.CollectionIterator
+	c       b6.UntypedCollection
+	i       b6.Iterator[any, any]
 	f       func(*api.Context, interface{}) (bool, error)
 	context *api.Context
 }
 
-func (f *filterCollection) Begin() api.CollectionIterator {
-	return &filterCollection{c: f.c, i: f.c.Begin(), f: f.f, context: f.context}
+func (f *filterCollection) Begin() b6.Iterator[any, any] {
+	return &filterCollection{c: f.c, i: f.c.BeginUntyped(), f: f.f, context: f.context}
 }
 
 func (f *filterCollection) Next() (bool, error) {
@@ -239,45 +217,47 @@ func (f *filterCollection) Value() interface{} {
 	return f.i.Value()
 }
 
-var _ api.Collection = &filterCollection{}
-
-func filter(context *api.Context, c api.Collection, f func(*api.Context, interface{}) (bool, error)) (api.Collection, error) {
-	return &filterCollection{c: c, f: f, context: context}, nil
+func (f *filterCollection) Count() (int, bool) {
+	return 0, false
 }
 
-func sumByKey(_ *api.Context, c api.Collection) (api.Collection, error) {
+var _ b6.AnyCollection[any, any] = &filterCollection{}
+
+func filter(context *api.Context, c b6.UntypedCollection, f func(*api.Context, interface{}) (bool, error)) (b6.Collection[any, any], error) {
+	return b6.Collection[any, any]{AnyCollection: &filterCollection{c: c, f: f, context: context}}, nil
+}
+
+func sumByKey(_ *api.Context, c b6.Collection[any, int]) (b6.Collection[any, int], error) {
 	counts := make(map[interface{}]int)
 	i := c.Begin()
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			return nil, err
+			return b6.Collection[any, int]{}, err
 		}
 		if !ok {
 			break
 		}
-		if n, ok := i.Value().(int); ok {
-			counts[i.Key()] += n
-		}
+		counts[i.Key()] += i.Value()
 	}
-	r := &api.ArrayAnyIntCollection{
-		Keys:   make([]interface{}, 0, len(counts)),
+	r := &b6.ArrayCollection[any, int]{
+		Keys:   make([]any, 0, len(counts)),
 		Values: make([]int, 0, len(counts)),
 	}
 	for k, v := range counts {
 		r.Keys = append(r.Keys, k)
 		r.Values = append(r.Values, v)
 	}
-	return r, nil
+	return r.Collection(), nil
 }
 
-func countValues(_ *api.Context, c api.Collection) (api.Collection, error) {
+func countValues(_ *api.Context, c b6.UntypedCollection) (b6.Collection[any, int], error) {
 	counts := make(map[interface{}]int)
-	i := c.Begin()
+	i := c.BeginUntyped()
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			return nil, err
+			return b6.Collection[any, int]{}, err
 		}
 		if !ok {
 			break
@@ -285,7 +265,7 @@ func countValues(_ *api.Context, c api.Collection) (api.Collection, error) {
 		// TODO: return an error if the value can't be used as a map key
 		counts[i.Value()]++
 	}
-	r := &api.ArrayAnyIntCollection{
+	r := &b6.ArrayCollection[interface{}, int]{
 		Keys:   make([]interface{}, 0, len(counts)),
 		Values: make([]int, 0, len(counts)),
 	}
@@ -293,16 +273,16 @@ func countValues(_ *api.Context, c api.Collection) (api.Collection, error) {
 		r.Keys = append(r.Keys, k)
 		r.Values = append(r.Values, v)
 	}
-	return r, nil
+	return r.Collection(), nil
 }
 
 type flattenCollection struct {
-	c  api.Collection
-	i  api.CollectionIterator
-	ii api.CollectionIterator
+	c  b6.Collection[any, b6.UntypedCollection]
+	i  b6.Iterator[any, b6.UntypedCollection]
+	ii b6.Iterator[any, any]
 }
 
-func (f *flattenCollection) Begin() api.CollectionIterator {
+func (f *flattenCollection) Begin() b6.Iterator[any, any] {
 	return &flattenCollection{c: f.c, i: f.c.Begin()}
 }
 
@@ -321,11 +301,7 @@ func (f *flattenCollection) Next() (bool, error) {
 			if !ok || err != nil {
 				return ok, err
 			}
-			if c, ok := f.i.Value().(api.Collection); ok {
-				f.ii = c.Begin()
-			} else {
-				return false, fmt.Errorf("flatten: expected a collection, found %T", f.i.Value())
-			}
+			f.ii = f.i.Value().BeginUntyped()
 		}
 		ok, err := f.ii.Next()
 		if ok || err != nil {
@@ -336,12 +312,18 @@ func (f *flattenCollection) Next() (bool, error) {
 	}
 }
 
-var _ api.Collection = &flattenCollection{}
-
-func flatten(_ *api.Context, c api.Collection) (api.Collection, error) {
-	return &flattenCollection{c: c}, nil
+func (f *flattenCollection) Count() (int, bool) {
+	return 0, false
 }
 
-func histogram(co *api.Context, c api.Collection) (api.Collection, error) {
-	return &api.HistogramCollection{Collection: c}, nil
+var _ b6.AnyCollection[any, any] = &flattenCollection{}
+
+func flatten(_ *api.Context, c b6.Collection[any, b6.UntypedCollection]) (b6.Collection[any, any], error) {
+	return b6.Collection[any, any]{
+		AnyCollection: &flattenCollection{c: c},
+	}, nil
+}
+
+func histogram(co *api.Context, c b6.UntypedCollection) (b6.UntypedCollection, error) {
+	return &api.HistogramCollection{UntypedCollection: c}, nil
 }

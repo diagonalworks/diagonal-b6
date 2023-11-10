@@ -12,12 +12,12 @@ import (
 )
 
 func TestHistogramWithStrings(t *testing.T) {
-	collection := api.ArrayAnyCollection{
-		Keys:   []interface{}{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"},
-		Values: []interface{}{"heath", "fold", "heath", "fold", "epping", "fold", "epping", "briki", "epping", "briki", "fold", "unfold", "heath", "fold", "epping", "home"},
+	collection := b6.ArrayCollection[string, string]{
+		Keys:   []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"},
+		Values: []string{"heath", "fold", "heath", "fold", "epping", "fold", "epping", "briki", "epping", "briki", "fold", "unfold", "heath", "fold", "epping", "home"},
 	}
 
-	histogram := api.HistogramCollection{Collection: &collection}
+	histogram := api.HistogramCollection{UntypedCollection: collection.Collection()}
 	response := &pb.UIResponseProto{}
 	if err := fillResponseFromHistogram(response, &histogram, b6.EmptyWorld{}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -89,12 +89,12 @@ func TestHistogramWithStrings(t *testing.T) {
 }
 
 func TestHistogramWithIntegers(t *testing.T) {
-	collection := api.ArrayAnyCollection{
-		Keys:   []interface{}{"1", "2", "3", "4", "5", "6", "7"},
-		Values: []interface{}{1, 1, 1, 1, 1, 1, 2},
+	collection := b6.ArrayCollection[string, int]{
+		Keys:   []string{"1", "2", "3", "4", "5", "6", "7"},
+		Values: []int{1, 1, 1, 1, 1, 1, 2},
 	}
 
-	histogram := api.HistogramCollection{Collection: &collection}
+	histogram := api.HistogramCollection{UntypedCollection: collection.Collection()}
 	response := &pb.UIResponseProto{}
 	if err := fillResponseFromHistogram(response, &histogram, b6.EmptyWorld{}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -136,17 +136,17 @@ func TestHistogramWithIntegers(t *testing.T) {
 }
 
 func TestHistogramWithIntegersAndMoreThan5Buckets(t *testing.T) {
-	collection := api.ArrayIntIntCollection{
-		Values: []int{1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7},
+	collection := b6.ArrayValuesCollection[int]{
+		1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7,
 	}
 
-	histogram := api.HistogramCollection{Collection: &collection}
+	histogram := api.HistogramCollection{UntypedCollection: collection.Collection()}
 	response := &pb.UIResponseProto{}
 	if err := fillResponseFromHistogram(response, &histogram, b6.EmptyWorld{}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	total := int32(len(collection.Values))
+	total := int32(len(collection))
 	expected := &pb.StackProto{
 		Substacks: []*pb.SubstackProto{
 			{
@@ -212,12 +212,12 @@ func TestHistogramWithIntegersAndMoreThan5Buckets(t *testing.T) {
 }
 
 func TestHistogramWithFeatures(t *testing.T) {
-	collection := api.ArrayAnyCollection{
-		Keys:   []interface{}{camden.VermuteriaID, camden.LightermanID, camden.GranarySquareID},
-		Values: []interface{}{"amenity", "amenity", "highway"},
+	collection := b6.ArrayCollection[b6.FeatureID, string]{
+		Keys:   []b6.FeatureID{camden.VermuteriaID.FeatureID(), camden.LightermanID.FeatureID(), camden.GranarySquareID.FeatureID()},
+		Values: []string{"amenity", "amenity", "highway"},
 	}
 
-	histogram := api.HistogramCollection{Collection: &collection}
+	histogram := api.HistogramCollection{UntypedCollection: collection.Collection()}
 	response := &pb.UIResponseProto{}
 	if err := fillResponseFromHistogram(response, &histogram, b6.EmptyWorld{}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)

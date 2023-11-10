@@ -20,7 +20,8 @@ func TestGeoJSON(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	g, err := toGeoJSONCollection(context, features)
+	renderables := b6.AdaptCollection[interface{}, b6.Renderable](features)
+	g, err := toGeoJSONCollection(context, renderables)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

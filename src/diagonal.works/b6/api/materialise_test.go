@@ -11,17 +11,17 @@ import (
 )
 
 func TestMaterialiseFeatureIntCollection(t *testing.T) {
-	c := ArrayAnyCollection{
-		Keys: []interface{}{
+	c := b6.ArrayCollection[b6.FeatureID, int]{
+		Keys: []b6.FeatureID{
 			camden.VermuteriaID.FeatureID(),
 			camden.LightermanID.FeatureID(),
 		},
-		Values: []interface{}{
+		Values: []int{
 			36,
 			42,
 		},
 	}
-	r, err := Materialise(b6.MakeRelationID(b6.Namespace("diagonal.works/test"), 1), &c)
+	r, err := Materialise(b6.MakeRelationID(b6.Namespace("diagonal.works/test"), 1), c.Collection())
 	if err != nil {
 		t.Fatalf("Expected no error from Materialise, found: %s", err)
 	}
@@ -30,8 +30,8 @@ func TestMaterialiseFeatureIntCollection(t *testing.T) {
 		t.Fatalf("Expected no error from Dematerialise, found: %s", err)
 	}
 
-	if cc, ok := dematerialised.(Collection); ok {
-		if diff := DiffCollections(&c, cc); diff != "" {
+	if cc, ok := dematerialised.(b6.UntypedCollection); ok {
+		if diff := DiffCollections(c.Collection(), cc); diff != "" {
 			t.Errorf(diff)
 		}
 	} else {
@@ -40,17 +40,17 @@ func TestMaterialiseFeatureIntCollection(t *testing.T) {
 }
 
 func TestMaterialiseFeatureFloatCollection(t *testing.T) {
-	c := ArrayAnyCollection{
-		Keys: []interface{}{
+	c := b6.ArrayCollection[b6.FeatureID, float64]{
+		Keys: []b6.FeatureID{
 			camden.VermuteriaID.FeatureID(),
 			camden.LightermanID.FeatureID(),
 		},
-		Values: []interface{}{
+		Values: []float64{
 			36.0,
 			42.0,
 		},
 	}
-	r, err := Materialise(b6.MakeRelationID(b6.Namespace("diagonal.works/test"), 1), &c)
+	r, err := Materialise(b6.MakeRelationID(b6.Namespace("diagonal.works/test"), 1), c.Collection())
 	if err != nil {
 		t.Fatalf("Expected no error from Materialise, found: %s", err)
 	}
@@ -59,8 +59,8 @@ func TestMaterialiseFeatureFloatCollection(t *testing.T) {
 		t.Fatalf("Expected no error from Dematerialise, found: %s", err)
 	}
 
-	if cc, ok := dematerialised.(Collection); ok {
-		if diff := DiffCollections(&c, cc); diff != "" {
+	if cc, ok := dematerialised.(b6.UntypedCollection); ok {
+		if diff := DiffCollections(c.Collection(), cc); diff != "" {
 			t.Errorf(diff)
 		}
 	} else {
@@ -69,17 +69,17 @@ func TestMaterialiseFeatureFloatCollection(t *testing.T) {
 }
 
 func TestMaterialiseFeatureFeatureCollection(t *testing.T) {
-	c := ArrayAnyCollection{
-		Keys: []interface{}{
+	c := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{
+		Keys: []b6.FeatureID{
 			camden.VermuteriaID.FeatureID(),
 			camden.LightermanID.FeatureID(),
 		},
-		Values: []interface{}{
+		Values: []b6.FeatureID{
 			camden.GranarySquareID.FeatureID(),
 			camden.StableStreetBridgeID.FeatureID(),
 		},
 	}
-	r, err := Materialise(b6.MakeRelationID(b6.Namespace("diagonal.works/test"), 1), &c)
+	r, err := Materialise(b6.MakeRelationID(b6.Namespace("diagonal.works/test"), 1), c.Collection())
 	if err != nil {
 		t.Fatalf("Expected no error from Materialise, found: %s", err)
 	}
@@ -92,8 +92,8 @@ func TestMaterialiseFeatureFeatureCollection(t *testing.T) {
 		t.Errorf("Expected both keys and values to be encoded as members")
 	}
 
-	if cc, ok := dematerialised.(Collection); ok {
-		if diff := DiffCollections(&c, cc); diff != "" {
+	if cc, ok := dematerialised.(b6.UntypedCollection); ok {
+		if diff := DiffCollections(c.Collection(), cc); diff != "" {
 			t.Errorf(diff)
 		}
 	} else {
@@ -101,9 +101,9 @@ func TestMaterialiseFeatureFeatureCollection(t *testing.T) {
 	}
 }
 
-func DiffCollections(a Collection, b Collection) string {
-	ai := a.Begin()
-	bi := b.Begin()
+func DiffCollections(a b6.UntypedCollection, b b6.UntypedCollection) string {
+	ai := a.BeginUntyped()
+	bi := b.BeginUntyped()
 
 	diffs := ""
 	for {

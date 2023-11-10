@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"diagonal.works/b6"
-	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
 )
 
@@ -43,7 +42,11 @@ func nameForType(t reflect.Type) string {
 	if t.Kind() == reflect.Ptr {
 		return nameForType(t.Elem())
 	} else if t == AnyType {
-		return "any"
+		return "Any"
+	} else if t == UntypedCollectionType {
+		return "AnyAnyCollection"
+	} else if t.Implements(UntypedCollectionType) {
+		return collectionForType(t).Name
 	} else if t.Kind() == reflect.Func {
 		name := "Function"
 		for i := 1; i < t.NumIn(); i++ {
@@ -65,66 +68,34 @@ func isBuiltin(t reflect.Type) bool {
 }
 
 func collectionForType(t reflect.Type) Collection {
-	// TODO: Replace with generics
-	switch n := nameForType(t); n {
-	case "Collection":
-		return Collection{Name: n, Key: "any", Value: "any"}
-	case "PointCollection":
-		return Collection{Name: n, Key: "any", Value: "Point"}
-	case "PathCollection":
-		return Collection{Name: n, Key: "any", Value: "Path"}
-	case "AreaCollection":
-		return Collection{Name: n, Key: "any", Value: "Area"}
-	case "TagCollection":
-		return Collection{Name: n, Key: "any", Value: "Tag"}
-	case "StringPointCollection":
-		return Collection{Name: n, Key: "string", Value: "Point"}
-	case "StringAreaCollection":
-		return Collection{Name: n, Key: "string", Value: "Area"}
-	case "FeatureCollection":
-		return Collection{Name: n, Key: "any", Value: "Feature"}
-	case "PointFeatureCollection":
-		return Collection{Name: n, Key: "any", Value: "PointFeature"}
-	case "PathFeatureCollection":
-		return Collection{Name: n, Key: "any", Value: "PathFeature"}
-	case "AreaFeatureCollection":
-		return Collection{Name: n, Key: "any", Value: "AreaFeature"}
-	case "RelationFeatureCollection":
-		return Collection{Name: n, Key: "any", Value: "RelationFeature"}
-	case "IntStringCollection":
-		return Collection{Name: n, Key: "int", Value: "string"}
-	case "IntTagCollection":
-		return Collection{Name: n, Key: "int", Value: "Tag"}
-	case "IntFeatureIDCollection":
-		return Collection{Name: n, Key: "int", Value: "FeatureID"}
-	case "StringStringCollection":
-		return Collection{Name: n, Key: "string", Value: "string"}
-	case "FeatureIDIntCollection":
-		return Collection{Name: n, Key: "FeatureID", Value: "int"}
-	case "AnyFloatCollection":
-		return Collection{Name: n, Key: "any", Value: "float64"}
-	case "AnyAreaCollection":
-		return Collection{Name: n, Key: "any", Value: "Area"}
-	case "AnyGeometryCollection":
-		return Collection{Name: n, Key: "any", Value: "Geometry"}
-	case "AnyRenderableCollection":
-		return Collection{Name: n, Key: "any", Value: "Renderable"}
-	case "FeatureIDStringCollection":
-		return Collection{Name: n, Key: "FeatureID", Value: "string"}
-	case "FeatureIDTagCollection":
-		return Collection{Name: n, Key: "FeatureID", Value: "Tag"}
-	case "FeatureIDStringStringPairCollection":
-		return Collection{Name: n, Key: "FeatureID", Value: "StringStringPair"}
-	case "FeatureIDFeatureIDCollection":
-		return Collection{Name: n, Key: "FeatureID", Value: "FeatureID"}
-	case "AnyChangeCollection":
-		return Collection{Name: n, Key: "any", Value: "Change"}
+	if t == UntypedCollectionType {
+		return Collection{
+			Name:  "AnyAnyCollection",
+			Key:   "Any",
+			Value: "Any",
+		}
 	}
-	panic(fmt.Sprintf("Can't handle collection %s", t))
+	begin, ok := t.MethodByName("Begin")
+	if !ok {
+		panic(fmt.Sprintf("No begin for collection %s", t))
+	}
+	key, ok := begin.Type.Out(0).MethodByName("Key")
+	if !ok {
+		panic(fmt.Sprintf("No key for collection %s", t))
+	}
+	value, ok := begin.Type.Out(0).MethodByName("Value")
+	if !ok {
+		panic(fmt.Sprintf("No value for collection %s", t))
+	}
+	return Collection{
+		Name:  fmt.Sprintf("%s%sCollection", strings.Title(nameForType(key.Type.Out(0))), strings.Title(nameForType(value.Type.Out(0)))),
+		Key:   nameForType(key.Type.Out(0)),
+		Value: nameForType(value.Type.Out(0)),
+	}
 }
 
 var AnyType = reflect.TypeOf((*interface{})(nil)).Elem()
-var CollectionType = reflect.TypeOf((*api.Collection)(nil)).Elem()
+var UntypedCollectionType = reflect.TypeOf((*b6.UntypedCollection)(nil)).Elem()
 
 func generateAPI() error {
 	var output API
@@ -156,12 +127,8 @@ func generateAPI() error {
 		}
 	}
 
-	// Force inclusion of parent types that aren't used in functions
-	types[reflect.TypeOf((*api.AreaCollection)(nil)).Elem()] = struct{}{}
-	types[reflect.TypeOf((*api.IntFeatureIDCollection)(nil)).Elem()] = struct{}{}
-
 	for t := range types {
-		if t.Implements(CollectionType) {
+		if t.Implements(UntypedCollectionType) {
 			output.Collections = append(output.Collections, collectionForType(t))
 		} else if t.Kind() == reflect.Func {
 			f := Function{Name: nameForType(t), Args: []string{}}

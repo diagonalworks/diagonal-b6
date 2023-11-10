@@ -9,10 +9,8 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-type AppliedChange map[b6.FeatureID]b6.FeatureID
-
 type Change interface {
-	Apply(w MutableWorld) (AppliedChange, error)
+	Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.FeatureID], error)
 }
 
 type AddFeatures struct {
@@ -29,8 +27,9 @@ func (a *AddFeatures) String() string {
 	return fmt.Sprintf("added: points: %d paths: %d areas: %d relations: %d", len(a.Points), len(a.Paths), len(a.Areas), len(a.Relations))
 }
 
-func (a *AddFeatures) Apply(w MutableWorld) (AppliedChange, error) {
-	newIDs := make(AppliedChange)
+func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+	newIDs := make(map[b6.FeatureID]b6.FeatureID)
+	empty := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}.Collection()
 	for _, point := range a.Points {
 		if ns, ok := a.IDsToReplace[point.PointID.Namespace]; ok {
 			allocated := allocateID(WrapFeature(point, w), ns, w)
@@ -38,7 +37,7 @@ func (a *AddFeatures) Apply(w MutableWorld) (AppliedChange, error) {
 			point.PointID = allocated.ToPointID()
 		}
 		if err := w.AddPoint(point); err != nil {
-			return nil, err
+			return empty, err
 		}
 	}
 
@@ -58,7 +57,7 @@ func (a *AddFeatures) Apply(w MutableWorld) (AppliedChange, error) {
 			}
 		}
 		if err := w.AddPath(path); err != nil {
-			return nil, err
+			return empty, err
 		}
 	}
 
@@ -80,7 +79,7 @@ func (a *AddFeatures) Apply(w MutableWorld) (AppliedChange, error) {
 			}
 		}
 		if err := w.AddArea(area); err != nil {
-			return nil, err
+			return empty, err
 		}
 	}
 
@@ -93,10 +92,10 @@ func (a *AddFeatures) Apply(w MutableWorld) (AppliedChange, error) {
 			}
 		}
 		if _, ok := a.IDsToReplace[relation.RelationID.Namespace]; ok {
-			return nil, fmt.Errorf("Can't allocate new IDs for relations: %s", relation.RelationID)
+			return empty, fmt.Errorf("Can't allocate new IDs for relations: %s", relation.RelationID)
 		}
 		if err := w.AddRelation(relation); err != nil {
-			return nil, err
+			return empty, err
 		}
 	}
 
@@ -104,17 +103,26 @@ func (a *AddFeatures) Apply(w MutableWorld) (AppliedChange, error) {
 		// ID replacement not supported for collections.
 		// TODO delete replacement for all features, no longer necessary.
 		if err := w.AddCollection(collection); err != nil {
-			return nil, err
+			return empty, err
 		}
 	}
 
 	for _, expression := range a.Expressions {
 		if err := w.AddExpression(expression); err != nil {
-			return nil, err
+			return empty, err
 		}
 	}
 
-	return newIDs, nil
+	c := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{
+		Keys:   make([]b6.FeatureID, 0, len(newIDs)),
+		Values: make([]b6.FeatureID, 0, len(newIDs)),
+	}
+	for k, v := range newIDs {
+		c.Keys = append(c.Keys, k)
+		c.Values = append(c.Values, v)
+	}
+
+	return c.Collection(), nil
 }
 
 func (a *AddFeatures) FillFromGeoJSON(g geojson.GeoJSON) {
@@ -227,15 +235,16 @@ func (a AddTags) String() string {
 	return fmt.Sprintf("set tags: %d", len(a))
 }
 
-func (a AddTags) Apply(w MutableWorld) (AppliedChange, error) {
-	modified := make(AppliedChange)
+func (a AddTags) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+	modified := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}
 	for _, t := range a {
 		if err := w.AddTag(t.ID, t.Tag); err != nil {
-			return nil, err
+			return modified.Collection(), err
 		}
-		modified[t.ID] = t.ID
+		modified.Keys = append(modified.Keys, t.ID)
+		modified.Values = append(modified.Values, t.ID)
 	}
-	return modified, nil
+	return modified.Collection(), nil
 }
 
 type RemoveTag struct {
@@ -249,38 +258,42 @@ func (r RemoveTags) String() string {
 	return fmt.Sprintf("remove tags: %d", len(r))
 }
 
-func (r RemoveTags) Apply(w MutableWorld) (AppliedChange, error) {
-	modified := make(AppliedChange)
+func (r RemoveTags) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+	modified := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}
 	for _, t := range r {
 		if err := w.RemoveTag(t.ID, t.Key); err != nil {
-			return nil, err
+			return modified.Collection(), err
 		}
-		modified[t.ID] = t.ID
+		modified.Keys = append(modified.Keys, t.ID)
+		modified.Values = append(modified.Values, t.ID)
 	}
-	return modified, nil
+	return modified.Collection(), nil
 }
 
 type MergedChange []Change
 
-func (m MergedChange) Apply(w MutableWorld) (AppliedChange, error) {
+func (m MergedChange) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 	// To ensure the world is unmodified following failure, we first
 	// apply the changes to a fresh overlay, and only change the
 	// underlying world if there's no error
+	applied := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}
 	canary := NewMutableOverlayWorld(w)
 	for _, c := range m {
 		if _, err := c.Apply(canary); err != nil {
-			return nil, err
+			return applied.Collection(), err
 		}
 	}
-	applied := make(AppliedChange)
 	for _, c := range m {
 		a, err := c.Apply(w)
 		if err != nil {
-			return applied, fmt.Errorf("change partially applied: %s", err)
+			return applied.Collection(), fmt.Errorf("change partially applied: %s", err)
 		}
-		for before, after := range a {
-			applied[before] = after
+		if applied.Keys, err = a.AllKeys(applied.Keys); err != nil {
+			panic(fmt.Sprintf("broken keys: %s", err))
+		}
+		if applied.Values, err = a.AllKeys(applied.Values); err != nil {
+			panic(fmt.Sprintf("broken values: %s", err))
 		}
 	}
-	return applied, nil
+	return applied.Collection(), nil
 }

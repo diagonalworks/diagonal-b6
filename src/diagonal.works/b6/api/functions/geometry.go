@@ -12,7 +12,7 @@ func ll(context *api.Context, lat float64, lng float64) (b6.Point, error) {
 	return b6.PointFromLatLng(s2.LatLngFromDegrees(lat, lng)), nil
 }
 
-func collectAreas(context *api.Context, c api.AnyAreaCollection) (b6.Area, error) {
+func collectAreas(context *api.Context, c b6.Collection[any, b6.Area]) (b6.Area, error) {
 	i := c.Begin()
 	ps := make([]*s2.Polygon, 0)
 	for {
@@ -183,7 +183,7 @@ func snapAreaEdges(context *api.Context, g b6.Area, query b6.Query, threshold fl
 	return b6.AreaFromS2Polygons(snapped), nil
 }
 
-func convexHull(context *api.Context, c api.AnyGeometryCollection) (b6.Area, error) {
+func convexHull(context *api.Context, c b6.Collection[any, b6.Geometry]) (b6.Area, error) {
 	query := s2.NewConvexHullQuery()
 	i := c.Begin()
 	for {

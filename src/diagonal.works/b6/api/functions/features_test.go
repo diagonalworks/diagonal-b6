@@ -58,11 +58,12 @@ func TestFindAreasContainingPoints(t *testing.T) {
 		t.Fatal("Failed to find expected test point")
 	}
 
-	points := &api.ArrayPointFeatureCollection{Features: []b6.PointFeature{vermuteria}}
+	features := b6.ArrayFeatureCollection[b6.PointFeature]([]b6.PointFeature{vermuteria})
 	context := api.Context{
 		World: m,
 	}
-	found, err := findAreasContainingPoints(&context, points, b6.Keyed{"#shop"})
+	points := b6.AdaptCollection[any, b6.Point](features.Collection())
+	found, err := findAreasContainingPoints(&context, points, b6.Keyed{Key: "#shop"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -123,11 +124,12 @@ func TestSamplePointsAlongPaths(t *testing.T) {
 		World: granarySquare,
 	}
 
-	paths, err := findPathFeatures(context, b6.Keyed{Key: "#highway"})
+	features, err := findPathFeatures(context, b6.Keyed{Key: "#highway"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
+	paths := b6.AdaptCollection[b6.FeatureID, b6.Path](features)
 	sampled, err := samplePointsAlongPaths(context, paths, 20.0)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -157,10 +159,11 @@ func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
 		World: granarySquare,
 	}
 
-	paths, err := findPathFeatures(context, b6.Keyed{Key: "#highway"})
+	features, err := findPathFeatures(context, b6.Keyed{Key: "#highway"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
+	paths := b6.AdaptCollection[b6.FeatureID, b6.Path](features)
 
 	runs := make([][]s2.Point, 4)
 	for run := range runs {

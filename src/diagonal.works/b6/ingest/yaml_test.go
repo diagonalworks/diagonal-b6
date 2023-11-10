@@ -3,7 +3,6 @@ package ingest
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"testing"
 
 	"diagonal.works/b6"
@@ -99,12 +98,18 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
+	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.536627, -0.127205)), b6.MetersToAngle(100.0))
 	var expression ExpressionFeature
 	expression.ExpressionID = b6.MakeExpressionID(b6.Namespace("diagonal.works/test"), 6)
 	expression.Expression = b6.Expression{
 		AnyExpression: &b6.CallExpression{
-			Function: b6.NewSymbolExpression("add"),
-			Args:     []b6.Expression{b6.NewIntExpression(42), b6.NewIntExpression(1)},
+			Function: b6.NewSymbolExpression("find"),
+			Args: []b6.Expression{
+				b6.NewQueryExpression(b6.Intersection{
+					b6.Tagged{Key: "#highway", Value: "cycleway"},
+					b6.NewIntersectsCap(cap),
+				}),
+			},
 		},
 	}
 
@@ -119,7 +124,6 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	}
 
 	ingested := NewMutableOverlayWorld(base)
-	log.Printf("yaml: %s", buffer.Bytes())
 	change := IngestChangesFromYAML(&buffer)
 	if _, err := change.Apply(ingested); err != nil {
 		t.Fatalf("Expected no error from ingest, found: %s", err)

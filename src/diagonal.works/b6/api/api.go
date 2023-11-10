@@ -131,18 +131,6 @@ func ToFloat64(v interface{}) (float64, error) {
 	return 0.0, fmt.Errorf("can't cast %T to float64", v)
 }
 
-type Number interface {
-	isNumber()
-}
-
-type IntNumber int
-
-func (IntNumber) isNumber() {}
-
-type FloatNumber float64
-
-func (FloatNumber) isNumber() {}
-
 func Less(a interface{}, b interface{}) (bool, error) {
 	if aa, ok := ToInt(a); ok {
 		if bb, ok := ToInt(b); ok {
@@ -198,7 +186,7 @@ func Greater(a interface{}, b interface{}) (bool, error) {
 
 var featureInterface = reflect.TypeOf((*b6.Feature)(nil)).Elem()
 var queryInterface = reflect.TypeOf((*b6.Query)(nil)).Elem()
-var numberInterface = reflect.TypeOf((*Number)(nil)).Elem()
+var numberInterface = reflect.TypeOf((*b6.Number)(nil)).Elem()
 var queryProtoPtrType = reflect.TypeOf((*pb.QueryProto)(nil))
 var featureIDType = reflect.TypeOf(b6.FeatureID{})
 var pointIDType = reflect.TypeOf(b6.PointID{})
@@ -206,6 +194,7 @@ var pathIDType = reflect.TypeOf(b6.PointID{})
 var areaIDType = reflect.TypeOf(b6.AreaID{})
 var relationIDType = reflect.TypeOf(b6.RelationID{})
 var callableInterface = reflect.TypeOf((*Callable)(nil)).Elem()
+var untypedCollectionInterface = reflect.TypeOf((*b6.UntypedCollection)(nil)).Elem()
 
 // Convert v to type t, if possible. Doesn't convert functions.
 func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error) {
@@ -247,13 +236,13 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 		}
 	case numberInterface:
 		switch vv := v.Interface().(type) {
-		case Number:
+		case b6.Number:
 			return v, nil
 		case float64:
-			return reflect.ValueOf(FloatNumber(vv)), nil
+			return reflect.ValueOf(b6.FloatNumber(vv)), nil
 		default:
 			if i, ok := ToInt(vv); ok {
-				return reflect.ValueOf(IntNumber(i)), nil
+				return reflect.ValueOf(b6.IntNumber(i)), nil
 			}
 		}
 	case reflect.TypeOf(""):
@@ -303,6 +292,14 @@ func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (refl
 			} else {
 				return reflect.Value{}, fmt.Errorf("expected a function with %d args, found %d", t.NumIn()-1, c.NumArgs())
 			}
+		}
+	} else if t.Implements(untypedCollectionInterface) {
+		if v.Type().AssignableTo(t) {
+			return v, nil
+		} else if adaptor, ok := context.Adaptors.Collections[t]; ok {
+			return adaptor(v.Interface().(b6.UntypedCollection)), nil
+		} else {
+			return reflect.Value{}, fmt.Errorf("No collection adaptor for %s", t)
 		}
 	}
 	return Convert(v, t, context.World)

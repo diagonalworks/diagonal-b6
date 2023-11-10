@@ -9,8 +9,8 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func tileIDs(c *api.Context, feature b6.Feature) (api.FeatureIDIntCollection, error) {
-	ids := &api.ArrayFeatureIDIntCollection{}
+func tileIDs(c *api.Context, feature b6.Feature) (b6.Collection[b6.FeatureID, int], error) {
+	ids := b6.ArrayCollection[b6.FeatureID, int]{}
 	if a, ok := feature.(b6.AreaFeature); ok {
 		ids.Keys = make([]b6.FeatureID, a.Len())
 		ids.Values = make([]int, a.Len())
@@ -24,11 +24,11 @@ func tileIDs(c *api.Context, feature b6.Feature) (api.FeatureIDIntCollection, er
 	for i := range ids.Keys {
 		ids.Keys[i] = feature.FeatureID()
 	}
-	return ids, nil
+	return ids.Collection(), nil
 }
 
-func tileIDsHex(c *api.Context, feature b6.Feature) (api.FeatureIDStringCollection, error) {
-	ids := &api.ArrayFeatureIDStringCollection{}
+func tileIDsHex(c *api.Context, feature b6.Feature) (b6.Collection[b6.FeatureID, string], error) {
+	ids := b6.ArrayCollection[b6.FeatureID, string]{}
 	if a, ok := feature.(b6.AreaFeature); ok {
 		ids.Keys = make([]b6.FeatureID, a.Len())
 		ids.Values = make([]string, a.Len())
@@ -42,14 +42,14 @@ func tileIDsHex(c *api.Context, feature b6.Feature) (api.FeatureIDStringCollecti
 	for i := range ids.Keys {
 		ids.Keys[i] = feature.FeatureID()
 	}
-	return ids, nil
+	return ids.Collection(), nil
 }
 
-func tilePaths(c *api.Context, g b6.Geometry, zoom int) (api.IntStringCollection, error) {
+func tilePaths(c *api.Context, g b6.Geometry, zoom int) (b6.Collection[int, string], error) {
 	coverer := s2.RegionCoverer{MaxLevel: 20, MinLevel: 0}
 	paths := make([]string, 0)
 	for _, t := range b6.CoverCellUnionWithTiles(g.Covering(coverer), uint(zoom)) {
 		paths = append(paths, t.String())
 	}
-	return &api.ArrayIntStringCollection{Values: paths}, nil
+	return b6.ArrayValuesCollection[string](paths).Collection(), nil
 }

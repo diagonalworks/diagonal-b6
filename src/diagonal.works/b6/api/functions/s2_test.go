@@ -75,7 +75,7 @@ func TestS2Grid(t *testing.T) {
 		if !ok {
 			break
 		}
-		cellID := s2.CellIDFromToken(i.Value().(string))
+		cellID := s2.CellIDFromToken(i.Value())
 		if cellID.Level() != 21 {
 			t.Fatalf("Expected cell level 21, found: %d", cellID.Level())
 		}
@@ -107,7 +107,7 @@ func TestS2Covering(t *testing.T) {
 		if !ok {
 			break
 		}
-		cellID := s2.CellIDFromToken(i.Value().(string))
+		cellID := s2.CellIDFromToken(i.Value())
 		if !s2.CellFromCellID(cellID).RectBound().Intersects(bounds) {
 			t.Fatal("Expected cell to intersect rectangle bounds")
 		}

@@ -20,7 +20,7 @@ func addTag(c *api.Context, id b6.Identifiable, tag b6.Tag) (ingest.Change, erro
 	return tags, nil
 }
 
-func addTags(c *api.Context, collection api.FeatureIDTagCollection) (ingest.Change, error) {
+func addTags(c *api.Context, collection b6.Collection[b6.FeatureID, b6.Tag]) (ingest.Change, error) {
 	i := collection.Begin()
 	tags := make(ingest.AddTags, 0)
 	for {
@@ -30,11 +30,7 @@ func addTags(c *api.Context, collection api.FeatureIDTagCollection) (ingest.Chan
 		} else if !ok {
 			break
 		}
-		if tag, ok := i.Value().(b6.Tag); ok {
-			tags = append(tags, ingest.AddTag{ID: i.Key().(b6.FeatureID), Tag: tag})
-		} else {
-			return nil, fmt.Errorf("Expected %T, found %T", b6.Tag{}, i.Value())
-		}
+		tags = append(tags, ingest.AddTag{ID: i.Key(), Tag: i.Value()})
 	}
 	return tags, nil
 }
@@ -45,7 +41,7 @@ func removeTag(c *api.Context, id b6.Identifiable, key string) (ingest.Change, e
 	return tags, nil
 }
 
-func removeTags(c *api.Context, collection api.FeatureIDStringCollection) (ingest.Change, error) {
+func removeTags(c *api.Context, collection b6.Collection[b6.FeatureID, string]) (ingest.Change, error) {
 	i := collection.Begin()
 	tags := make(ingest.RemoveTags, 0)
 	for {
@@ -55,79 +51,59 @@ func removeTags(c *api.Context, collection api.FeatureIDStringCollection) (inges
 		} else if !ok {
 			break
 		}
-		if key, ok := i.Value().(string); ok {
-			tags = append(tags, ingest.RemoveTag{ID: i.Key().(b6.FeatureID), Key: key})
-		} else {
-			return nil, fmt.Errorf("Expected string, found %T", i.Value())
-		}
+		tags = append(tags, ingest.RemoveTag{ID: i.Key(), Key: i.Value()})
 	}
 	return tags, nil
 }
 
-func addRelation(c *api.Context, id b6.RelationID, tags api.TagCollection, members api.FeatureIDStringCollection) (ingest.Change, error) {
+func addRelation(c *api.Context, id b6.RelationID, tags b6.Collection[interface{}, b6.Tag], members b6.Collection[b6.Identifiable, string]) (ingest.Change, error) {
 	r := &ingest.RelationFeature{
 		RelationID: id,
 	}
 
-	i := tags.Begin()
+	t := tags.Begin()
 	for {
-		ok, err := i.Next()
+		ok, err := t.Next()
 		if err != nil {
 			return nil, err
 		} else if !ok {
 			break
 		}
-		tag, ok := i.Value().(b6.Tag)
-		if !ok {
-			return nil, fmt.Errorf("Expected b6.Tag, found %T", i.Value())
-		}
-		r.Tags = append(r.Tags, tag)
+		r.Tags = append(r.Tags, t.Value())
 	}
 
-	i = members.Begin()
+	m := members.Begin()
 	for {
-		ok, err := i.Next()
+		ok, err := m.Next()
 		if err != nil {
 			return nil, err
 		} else if !ok {
 			break
 		}
-		member, ok := i.Key().(b6.Identifiable)
-		if !ok {
-			return nil, fmt.Errorf("Expected b6.FeatureID for member, found %T", i.Key())
-		}
-		role, ok := i.Value().(string)
-		if !ok {
-			return nil, fmt.Errorf("Expected string for role, found %T", i.Value())
-		}
-		r.Members = append(r.Members, b6.RelationMember{ID: member.FeatureID(), Role: role})
+		r.Members = append(r.Members, b6.RelationMember{ID: m.Key().FeatureID(), Role: m.Value()})
 	}
 	return &ingest.AddFeatures{
 		Relations: []*ingest.RelationFeature{r},
 	}, nil
 }
 
-func addCollection(c *api.Context, id b6.CollectionID, tags api.TagCollection, collection api.Collection) (ingest.Change, error) {
+func addCollection(c *api.Context, id b6.CollectionID, tags b6.Collection[any, b6.Tag], collection b6.UntypedCollection) (ingest.Change, error) {
 	feature := &ingest.CollectionFeature{
 		CollectionID: id,
 	}
 
-	i := tags.Begin()
+	t := tags.Begin()
 	for {
-		ok, err := i.Next()
+		ok, err := t.Next()
 		if err != nil {
 			return nil, err
 		} else if !ok {
 			break
 		}
-		tag, ok := i.Value().(b6.Tag)
-		if !ok {
-			return nil, fmt.Errorf("Expected b6.Tag, found %T", i.Value())
-		}
-		feature.Tags = append(feature.Tags, tag)
+		feature.Tags = append(feature.Tags, t.Value())
 	}
 
-	i = collection.Begin()
+	i := collection.BeginUntyped()
 	for {
 		ok, err := i.Next()
 		if err != nil {
@@ -145,7 +121,7 @@ func addCollection(c *api.Context, id b6.CollectionID, tags api.TagCollection, c
 	}, nil
 }
 
-func mergeChanges(c *api.Context, collection api.AnyChangeCollection) (ingest.Change, error) {
+func mergeChanges(c *api.Context, collection b6.Collection[any, ingest.Change]) (ingest.Change, error) {
 	i := collection.Begin()
 	merged := make(ingest.MergedChange, 0)
 	for {
@@ -155,11 +131,7 @@ func mergeChanges(c *api.Context, collection api.AnyChangeCollection) (ingest.Ch
 		} else if !ok {
 			break
 		}
-		if c, ok := i.Value().(ingest.Change); ok {
-			merged = append(merged, c)
-		} else {
-			return nil, fmt.Errorf("Expected Change, found %T", i.Value())
-		}
+		merged = append(merged, i.Value())
 	}
 	return merged, nil
 }

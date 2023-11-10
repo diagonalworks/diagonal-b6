@@ -3,27 +3,27 @@
 package api
 
 import (
-    pb "diagonal.works/b6/proto"
+    "diagonal.works/b6"
 )
 
 %}
 
 %token ',' '(' ')' '|' '{' '}' '[' ']' '=' '&' ':'
-%token <node> FLOAT
-%token <node> INT
-%token <node> FEATURE_ID
-%token <node> SYMBOL
-%token <node> STRING
-%token <node> TAG_KEY
-%token <node> ARROW
+%token <e> FLOAT
+%token <e> INT
+%token <e> FEATURE_ID
+%token <e> SYMBOL
+%token <e> STRING
+%token <e> TAG_KEY
+%token <e> ARROW
 
 %union {
-	node *pb.NodeProto
-    nodes []*pb.NodeProto
+	e b6.Expression
+    es []b6.Expression
 }
 
-%type <node> expression latlng tag call arg pipeline lambda collection collection_items collection_key_value collection_key collection_value group tagvalue query query_expression query_tag
-%type <nodes> args symbols
+%type <e> expression latlng tag call arg pipeline lambda collection collection_items collection_key_value collection_key collection_value group tagvalue query query_expression query_tag
+%type <es> args symbols
 
 %%
 

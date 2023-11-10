@@ -224,6 +224,28 @@ func (i *IntersectsCap) Matches(feature Feature, w World) bool {
 	return false
 }
 
+type intersectsCapYAML struct {
+	Center PointExpression
+	Radius float64
+}
+
+func (i IntersectsCap) MarshalYAML() (interface{}, error) {
+	return &intersectsCapYAML{
+		Center: PointExpression(s2.LatLngFromPoint(i.cap.Center())),
+		Radius: AngleToMeters(i.cap.Radius()),
+	}, nil
+}
+
+func (i *IntersectsCap) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var y intersectsCapYAML
+	err := unmarshal(&y)
+	if err == nil {
+		cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLng(y.Center)), MetersToAngle(y.Radius))
+		*i = *NewIntersectsCap(cap)
+	}
+	return err
+}
+
 // If the polygon has less than this number of vetices, it's faster to
 // skip the index and test the edges of the polygon directly. Derived
 // empirically via benchmarks alongside the unit tests.

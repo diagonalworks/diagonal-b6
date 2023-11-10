@@ -49,8 +49,12 @@ func ValidateEvaluate(service pb.B6Server, w b6.World, t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
+	p, err := root.ToProto()
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
 	request := &pb.EvaluateRequestProto{
-		Request: root,
+		Request: p,
 		Version: b6.ApiVersion,
 	}
 	response, err := service.Evaluate(context.Background(), request)
@@ -89,9 +93,17 @@ func ValidateConcurrentReadAndWrite(service pb.B6Server, w b6.World, t *testing.
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
+	writep, err := write.ToProto()
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
 
 	e = `find [#building] | map {b -> get b "building:levels"}`
 	read, err := api.ParseExpression(e)
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+	readp, err := read.ToProto()
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
@@ -101,7 +113,7 @@ func ValidateConcurrentReadAndWrite(service pb.B6Server, w b6.World, t *testing.
 		defer wg.Done()
 		for time.Now().Before(end) {
 			request := &pb.EvaluateRequestProto{
-				Request: write,
+				Request: writep,
 				Version: b6.ApiVersion,
 			}
 			if _, err := service.Evaluate(context.Background(), request); err != nil {
@@ -116,7 +128,7 @@ func ValidateConcurrentReadAndWrite(service pb.B6Server, w b6.World, t *testing.
 		defer wg.Done()
 		for time.Now().Before(end) {
 			request := &pb.EvaluateRequestProto{
-				Request: read,
+				Request: readp,
 				Version: b6.ApiVersion,
 			}
 			if _, err := service.Evaluate(context.Background(), request); err != nil {

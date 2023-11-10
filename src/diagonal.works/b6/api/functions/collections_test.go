@@ -1,28 +1,23 @@
 package functions
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 
+	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestTake(t *testing.T) {
 	r := rand.New(rand.NewSource(42))
-	values := make([]float64, 1000)
-	for i := range values {
-		values[i] = r.Float64()
-	}
-	keys := make([]interface{}, len(values))
-	for i := range keys {
-		keys[i] = fmt.Sprintf("%d", i)
-	}
+	collection := b6.ArrayValuesCollection[float64]{}
+	for i := 0; i < 1000; i++ {
+		collection = append(collection, r.Float64())
 
+	}
 	n := 100
-	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
-	took, err := take(&api.Context{}, collection, n)
+	took, err := take(&api.Context{}, collection.Collection(), n)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -37,30 +32,24 @@ func TestTake(t *testing.T) {
 	}
 
 	for i := 0; i < n; i++ {
-		if filled[keys[i]] != values[i] {
-			t.Errorf("Expected %f at index %d, found %f", values[i], i, filled[keys[i]])
+		if filled[i] != collection[i] {
+			t.Errorf("Expected %f at index %d, found %f", collection[i], i, filled[i])
 		}
 	}
 }
 
 func TestTopFloat(t *testing.T) {
-	values := make([]float64, 1000)
-	for i := range values {
-		values[i] = float64(i)
+	collection := b6.ArrayValuesCollection[float64]{}
+	for i := 0; i < 1000; i++ {
+		collection = append(collection, float64(i))
 	}
 	r := rand.New(rand.NewSource(42))
-	r.Shuffle(len(values), func(i int, j int) {
-		values[i], values[j] = values[j], values[i]
+	r.Shuffle(len(collection), func(i int, j int) {
+		collection[i], collection[j] = collection[j], collection[i]
 	})
 
-	keys := make([]interface{}, len(values))
-	for i := range keys {
-		keys[i] = fmt.Sprintf("%d", i)
-	}
-
 	n := 100
-	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
-	selected, err := top(&api.Context{}, collection, n)
+	selected, err := top(&api.Context{}, collection.Collection(), n)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -75,7 +64,7 @@ func TestTopFloat(t *testing.T) {
 	}
 
 	for i, v := range filled {
-		expected := float64(len(values) - i - 1)
+		expected := float64(len(collection) - i - 1)
 		if v != expected {
 			t.Errorf("expected %f, found %f at index %d", expected, v, i)
 		}
@@ -83,23 +72,17 @@ func TestTopFloat(t *testing.T) {
 }
 
 func TestTopInt(t *testing.T) {
-	values := make([]int, 1000)
-	for i := range values {
-		values[i] = i
+	collection := b6.ArrayValuesCollection[int]{}
+	for i := 0; i < 1000; i++ {
+		collection = append(collection, i)
 	}
 	r := rand.New(rand.NewSource(42))
-	r.Shuffle(len(values), func(i int, j int) {
-		values[i], values[j] = values[j], values[i]
+	r.Shuffle(len(collection), func(i int, j int) {
+		collection[i], collection[j] = collection[j], collection[i]
 	})
 
-	keys := make([]interface{}, len(values))
-	for i := range keys {
-		keys[i] = fmt.Sprintf("%d", i)
-	}
-
 	n := 100
-	collection := &api.ArrayAnyIntCollection{Keys: keys, Values: values}
-	selected, err := top(&api.Context{}, collection, n)
+	selected, err := top(&api.Context{}, collection.Collection(), n)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -114,7 +97,7 @@ func TestTopInt(t *testing.T) {
 	}
 
 	for i, v := range filled {
-		expected := len(values) - i - 1
+		expected := len(collection) - i - 1
 		if v != expected {
 			t.Errorf("expected %d, found %d at index %d", expected, v, i)
 		}
@@ -122,12 +105,12 @@ func TestTopInt(t *testing.T) {
 }
 
 func TestTopWithMixedValuesGivesAnError(t *testing.T) {
-	collection := api.ArrayAnyCollection{
+	collection := &b6.ArrayCollection[interface{}, interface{}]{
 		Keys:   []interface{}{"0", "1"},
 		Values: []interface{}{0, 1.0},
 	}
 
-	_, err := top(&api.Context{}, &collection, 1)
+	_, err := top(&api.Context{}, collection.Collection(), 1)
 	if err == nil {
 		t.Errorf("Expected an error, found none")
 	}
@@ -135,19 +118,16 @@ func TestTopWithMixedValuesGivesAnError(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 	r := rand.New(rand.NewSource(42))
-	values := make([]float64, 1000)
-	for i := range values {
-		values[i] = r.Float64()
-	}
-	keys := make([]interface{}, len(values))
-	for i := range keys {
-		keys[i] = fmt.Sprintf("%d", i)
+
+	collection := b6.ArrayValuesCollection[float64]{}
+	for i := 0; i < 1000; i++ {
+		collection = append(collection, r.Float64())
+
 	}
 
 	limit := 0.5
 	f := func(_ *api.Context, v interface{}) (bool, error) { return v.(float64) > limit, nil }
-	collection := &api.ArrayAnyFloatCollection{Keys: keys, Values: values}
-	filtered, err := filter(&api.Context{}, collection, f)
+	filtered, err := filter(&api.Context{}, collection.Collection(), f)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -169,12 +149,12 @@ func TestFilter(t *testing.T) {
 }
 
 func TestSumByKey(t *testing.T) {
-	collection := &api.ArrayAnyIntCollection{
-		Keys:   []interface{}{"population:total", "population:children", "population:total"},
+	collection := b6.ArrayCollection[string, int]{
+		Keys:   []string{"population:total", "population:children", "population:total"},
 		Values: []int{100, 50, 200},
 	}
 
-	byKey, err := sumByKey(&api.Context{}, collection)
+	byKey, err := sumByKey(&api.Context{}, collection.Collection().Values())
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
@@ -192,12 +172,12 @@ func TestSumByKey(t *testing.T) {
 }
 
 func TestCountValues(t *testing.T) {
-	collection := &api.ArrayAnyIntCollection{
-		Keys:   []interface{}{"epc:habitablerooms", "epc:habitablerooms", "epc:habitablerooms"},
+	collection := b6.ArrayCollection[string, int]{
+		Keys:   []string{"epc:habitablerooms", "epc:habitablerooms", "epc:habitablerooms"},
 		Values: []int{2, 3, 2},
 	}
 
-	counted, err := countValues(&api.Context{}, collection)
+	counted, err := countValues(&api.Context{}, collection.Collection())
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
@@ -215,20 +195,20 @@ func TestCountValues(t *testing.T) {
 }
 
 func TestFlatten(t *testing.T) {
-	c1 := api.ArrayStringStringCollection{
+	c1 := b6.ArrayCollection[string, string]{
 		Keys:   []string{"ka", "kb", "kc"},
 		Values: []string{"va", "vb", "vc"},
 	}
-	c2 := api.ArrayStringStringCollection{
+	c2 := b6.ArrayCollection[string, string]{
 		Keys:   []string{"kd", "ke", "kf"},
 		Values: []string{"vd", "ve", "vf"},
 	}
-	c := api.ArrayAnyCollection{
-		Keys:   []interface{}{0, 1},
-		Values: []interface{}{&c1, &c2},
+	c := b6.ArrayCollection[any, b6.UntypedCollection]{
+		Keys:   []any{0, 1},
+		Values: []b6.UntypedCollection{c1.Collection(), c2.Collection()},
 	}
 
-	flattened, err := flatten(&api.Context{}, &c)
+	flattened, err := flatten(&api.Context{}, c.Collection())
 	if err != nil {
 		t.Fatalf("Expected no error, found %q", err)
 	}

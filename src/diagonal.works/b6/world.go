@@ -412,6 +412,12 @@ func (f FeatureID) FeatureID() FeatureID {
 	return f
 }
 
+func (f *FeatureID) FromFeatureID(other FeatureID) {
+	f.Type = other.Type
+	f.Namespace = other.Namespace
+	f.Value = other.Value
+}
+
 func (f FeatureID) ToPointID() PointID {
 	if f.Type == FeatureTypePoint || f.Type == FeatureTypeInvalid {
 		return PointID{Namespace: f.Namespace, Value: f.Value}
@@ -525,6 +531,14 @@ func (p PointID) Less(other PointID) bool {
 	}
 }
 
+func (p *PointID) FromFeatureID(other FeatureID) {
+	if other.Type != FeatureTypePoint {
+		panic("Not a PointID")
+	}
+	p.Namespace = other.Namespace
+	p.Value = other.Value
+}
+
 var PointIDInvalid = PointID{Namespace: NamespaceInvalid}
 
 type PathID struct {
@@ -554,6 +568,14 @@ func (p PathID) Less(other PathID) bool {
 	} else {
 		return p.Namespace < other.Namespace
 	}
+}
+
+func (p *PathID) FromFeatureID(other FeatureID) {
+	if other.Type != FeatureTypePath {
+		panic("Not a Path")
+	}
+	p.Namespace = other.Namespace
+	p.Value = other.Value
 }
 
 var PathIDInvalid = PathID{Namespace: NamespaceInvalid}
@@ -587,6 +609,14 @@ func (a AreaID) Less(other AreaID) bool {
 	}
 }
 
+func (a *AreaID) FromFeatureID(other FeatureID) {
+	if other.Type != FeatureTypeArea {
+		panic("Not an AreaID")
+	}
+	a.Namespace = other.Namespace
+	a.Value = other.Value
+}
+
 var AreaIDInvalid = AreaID{Namespace: NamespaceInvalid}
 
 type RelationID struct {
@@ -616,6 +646,14 @@ func (r RelationID) Less(other PointID) bool {
 	} else {
 		return r.Namespace < other.Namespace
 	}
+}
+
+func (r *RelationID) FromFeatureID(other FeatureID) {
+	if other.Type != FeatureTypeRelation {
+		panic("Not a RelationID")
+	}
+	r.Namespace = other.Namespace
+	r.Value = other.Value
 }
 
 var RelationIDInvalid = RelationID{Namespace: NamespaceInvalid}
@@ -649,6 +687,14 @@ func (c CollectionID) Less(other CollectionID) bool {
 	}
 }
 
+func (c *CollectionID) FromFeatureID(other FeatureID) {
+	if other.Type != FeatureTypeCollection {
+		panic("Not a CollectionID")
+	}
+	c.Namespace = other.Namespace
+	c.Value = other.Value
+}
+
 type ExpressionID struct {
 	Namespace Namespace
 	Value     uint64
@@ -676,6 +722,14 @@ func (e ExpressionID) Less(other CollectionID) bool {
 	} else {
 		return e.Namespace < other.Namespace
 	}
+}
+
+func (e *ExpressionID) FromFeatureID(other FeatureID) {
+	if other.Type != FeatureTypeExpression {
+		panic("Not an ExpressionID")
+	}
+	e.Namespace = other.Namespace
+	e.Value = other.Value
 }
 
 type Geometry interface {

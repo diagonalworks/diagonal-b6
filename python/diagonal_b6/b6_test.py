@@ -259,7 +259,7 @@ class B6Test(unittest.TestCase):
         bottomRight = (51.5124, -0.0951)
         grid = self.connection(b6.rectangle_polygon(b6.ll(*topLeft), b6.ll(*bottomRight)).s2_grid(21))
         rect = s2sphere.LatLngRect.from_point_pair(s2sphere.LatLng.from_degrees(*topLeft), s2sphere.LatLng.from_degrees(*bottomRight))
-        for token, _ in grid:
+        for _, token in grid:
             cell = s2sphere.Cell(s2sphere.CellId.from_token(token))
             self.assertEqual(cell.level(), 21)
             self.assertTrue(rect.intersects(cell.get_rect_bound()))
@@ -270,7 +270,7 @@ class B6Test(unittest.TestCase):
         covering = self.connection(b6.rectangle_polygon(b6.ll(*topLeft), b6.ll(*bottomRight)).s2_covering(0, 30))
         rect = s2sphere.LatLngRect.from_point_pair(s2sphere.LatLng.from_degrees(*topLeft), s2sphere.LatLng.from_degrees(*bottomRight))
         count = 0
-        for token, _ in covering:
+        for _, token in covering:
             count += 1
             cell = s2sphere.Cell(s2sphere.CellId.from_token(token))
             self.assertTrue(rect.intersects(cell.get_rect_bound()))
@@ -373,7 +373,7 @@ class B6Test(unittest.TestCase):
     def test_connect_points(self):
         modified = self.connection(b6.find_point(b6.osm_node_id(VERMUTERIA_NODE_ID)).connect(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID))))
         self.assertEqual(len(modified), 1)
-        for id in modified.values():
+        for (_, id) in modified:
             self.assertTrue(id.is_path())
             self.assertEqual(id.namespace, b6.NAMESPACE_DIAGONAL_ACCESS_POINTS)
 
@@ -407,8 +407,7 @@ class B6Test(unittest.TestCase):
         }
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
-        id = list(ids.values())[0]
-        self.assertEqual(self.connection(b6.find_point(id).get_string("name")), "Ruby Violet Truck")
+        self.assertEqual(self.connection(b6.find_point(ids[0][1]).get_string("name")), "Ruby Violet Truck")
 
     def test_import_geojson_path(self):
         g = {
@@ -428,8 +427,7 @@ class B6Test(unittest.TestCase):
         }
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
-        id = list(ids.values())[0]
-        self.assertEqual(self.connection(b6.find_path(id)).get_string("bridge"), "yes")
+        self.assertEqual(self.connection(b6.find_path(ids[0][1])).get_string("bridge"), "yes")
 
     def test_import_geojson_polygon(self):
         g = {
@@ -449,8 +447,7 @@ class B6Test(unittest.TestCase):
         }
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
-        id = list(ids.values())[0]
-        self.assertEqual(self.connection(b6.find_area(id)).get_string("building"), "yes")
+        self.assertEqual(self.connection(b6.find_area(ids[0][1])).get_string("building"), "yes")
 
     def test_import_geojson_multipolygon(self):
         g = {
@@ -473,14 +470,12 @@ class B6Test(unittest.TestCase):
         }
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
-        id = list(ids.values())[0]
-        self.assertEqual(self.connection(b6.find_area(id)).get_string("building"), "yes")
+        self.assertEqual(self.connection(b6.find_area(ids[0][1])).get_string("building"), "yes")
 
     def test_import_geojson_file(self):
         ids = self.connection(b6.import_geojson_file("data/tests/granary-square.geojson", "diagonal.works/test"))
         self.assertGreater(len(ids), 0)
-        id = list(ids.values())[0]
-        self.assertGreater(self.connection(b6.find_area(id).area()), 100.0)
+        self.assertGreater(self.connection(b6.find_area(ids[0][1]).area()), 100.0)
 
     def test_parse_geojson_file(self):
         areas = b6.parse_geojson_file("data/tests/granary-square.geojson").geojson_areas()

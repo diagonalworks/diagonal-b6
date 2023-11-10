@@ -3,6 +3,7 @@ package functions
 import (
 	"fmt"
 
+	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"golang.org/x/sync/errgroup"
 )
@@ -10,17 +11,17 @@ import (
 type mapCollection struct {
 	f       func(*api.Context, interface{}) (interface{}, error)
 	v       interface{}
-	i       api.CollectionIterator
-	c       api.Collection
+	c       b6.UntypedCollection
+	i       b6.Iterator[any, any]
 	context *api.Context
 }
 
-func (v *mapCollection) Begin() api.CollectionIterator {
-	return &mapCollection{f: v.f, i: v.c.Begin(), c: v.c, context: v.context}
+func (v *mapCollection) Begin() b6.Iterator[any, any] {
+	return &mapCollection{f: v.f, c: v.c, i: v.c.BeginUntyped(), context: v.context}
 }
 
-func (v *mapCollection) Count() int {
-	return api.Count(v.c)
+func (v *mapCollection) Count() (int, bool) {
+	return v.c.Count()
 }
 
 func (v *mapCollection) Next() (bool, error) {
@@ -43,25 +44,27 @@ func (v *mapCollection) Value() interface{} {
 	return v.v
 }
 
-func map_(context *api.Context, collection api.Collection, f func(*api.Context, interface{}) (interface{}, error)) (api.Collection, error) {
-	return &mapCollection{c: collection, f: f, context: context}, nil
+func map_(context *api.Context, collection b6.UntypedCollection, f func(*api.Context, interface{}) (interface{}, error)) (b6.Collection[any, any], error) {
+	return b6.Collection[any, any]{
+		AnyCollection: &mapCollection{c: collection, f: f, context: context},
+	}, nil
 }
 
 type mapItemsCollection struct {
 	f       func(*api.Context, api.Pair) (interface{}, error)
 	k       interface{}
 	v       interface{}
-	i       api.CollectionIterator
-	c       api.Collection
+	c       b6.UntypedCollection
+	i       b6.Iterator[any, any]
 	context *api.Context
 }
 
-func (v *mapItemsCollection) Begin() api.CollectionIterator {
-	return &mapItemsCollection{f: v.f, i: v.c.Begin(), c: v.c, context: v.context}
+func (v *mapItemsCollection) Begin() b6.Iterator[any, any] {
+	return &mapItemsCollection{f: v.f, i: v.c.BeginUntyped(), c: v.c, context: v.context}
 }
 
-func (v *mapItemsCollection) Count() int {
-	return api.Count(v.c)
+func (v *mapItemsCollection) Count() (int, bool) {
+	return v.c.Count()
 }
 
 func (v *mapItemsCollection) Next() (bool, error) {
@@ -90,8 +93,10 @@ func (v *mapItemsCollection) Value() interface{} {
 	return v.v
 }
 
-func mapItems(context *api.Context, collection api.Collection, f func(*api.Context, api.Pair) (interface{}, error)) (api.Collection, error) {
-	return &mapItemsCollection{c: collection, f: f, context: context}, nil
+func mapItems(context *api.Context, collection b6.UntypedCollection, f func(*api.Context, api.Pair) (interface{}, error)) (b6.Collection[any, any], error) {
+	return b6.Collection[any, any]{
+		AnyCollection: &mapItemsCollection{c: collection, f: f, context: context},
+	}, nil
 }
 
 func pair(c *api.Context, first interface{}, second interface{}) (api.Pair, error) {
@@ -109,8 +114,8 @@ func second(c *api.Context, pair api.Pair) (interface{}, error) {
 type mapParallelCollection struct {
 	f       func(*api.Context, interface{}) (interface{}, error)
 	v       interface{}
-	i       api.CollectionIterator
-	c       api.Collection
+	c       b6.UntypedCollection
+	i       b6.Iterator[any, any]
 	context *api.Context
 
 	in      []chan api.AnyAnyPair
@@ -120,11 +125,11 @@ type mapParallelCollection struct {
 	read    int
 }
 
-func (m *mapParallelCollection) Begin() api.CollectionIterator {
+func (m *mapParallelCollection) Begin() b6.Iterator[any, any] {
 	c := &mapParallelCollection{
 		f:       m.f,
-		i:       m.c.Begin(),
 		c:       m.c,
+		i:       m.c.BeginUntyped(),
 		context: m.context,
 
 		in:   make([]chan api.AnyAnyPair, m.context.Cores),
@@ -139,8 +144,8 @@ func (m *mapParallelCollection) Begin() api.CollectionIterator {
 	return c
 }
 
-func (m *mapParallelCollection) Count() int {
-	return api.Count(m.c)
+func (m *mapParallelCollection) Count() (int, bool) {
+	return m.c.Count()
 }
 
 func (m *mapParallelCollection) Next() (bool, error) {
@@ -215,9 +220,11 @@ func (m *mapParallelCollection) run() {
 	}
 }
 
-func mapParallel(context *api.Context, collection api.Collection, f func(*api.Context, interface{}) (interface{}, error)) (api.Collection, error) {
+func mapParallel(context *api.Context, collection b6.UntypedCollection, f func(*api.Context, interface{}) (interface{}, error)) (b6.Collection[any, any], error) {
 	if context.Cores < 2 {
 		return map_(context, collection, f)
 	}
-	return &mapParallelCollection{c: collection, f: f, context: context}, nil
+	return b6.Collection[any, any]{
+		AnyCollection: &mapParallelCollection{c: collection, f: f, context: context},
+	}, nil
 }

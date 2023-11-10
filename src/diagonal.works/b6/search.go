@@ -186,6 +186,25 @@ func (t Typed) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
+type typedYAML struct {
+	Type  FeatureType
+	Query queryYAML
+}
+
+func (t Typed) MarshalYAML() (interface{}, error) {
+	return &typedYAML{Type: t.Type, Query: queryYAML{Query: t.Query}}, nil
+}
+
+func (t *Typed) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var y typedYAML
+	err := unmarshal(&y)
+	if err == nil {
+		t.Type = y.Type
+		t.Query = y.Query.Query
+	}
+	return err
+}
+
 type Intersection []Query
 
 func (i Intersection) Compile(index FeatureIndex, w World) search.Iterator {
@@ -230,6 +249,26 @@ func (i Intersection) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
+func (i Intersection) MarshalYAML() (interface{}, error) {
+	qs := make([]queryYAML, len(i))
+	for ii, q := range i {
+		qs[ii].Query = q
+	}
+	return qs, nil
+}
+
+func (i *Intersection) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var qs []queryYAML
+	err := unmarshal(&qs)
+	if err == nil {
+		*i = (*i)[0:0]
+		for _, q := range qs {
+			*i = append(*i, q.Query)
+		}
+	}
+	return err
+}
+
 type Union []Query
 
 func (u Union) Compile(index FeatureIndex, w World) search.Iterator {
@@ -272,4 +311,62 @@ func (u Union) ToProto() (*pb.QueryProto, error) {
 			},
 		},
 	}, nil
+}
+
+func (u Union) MarshalYAML() (interface{}, error) {
+	qs := make([]queryYAML, len(u))
+	for ii, q := range u {
+		qs[ii].Query = q
+	}
+	return qs, nil
+}
+
+func (u *Union) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var qs []queryYAML
+	err := unmarshal(&qs)
+	if err == nil {
+		*u = (*u)[0:0]
+		for _, q := range qs {
+			*u = append(*u, q.Query)
+		}
+	}
+	return err
+}
+
+type queryChoices struct {
+	Tagged         *Tagged
+	Keyed          *Keyed
+	Typed          *Typed
+	Intersection   *Intersection
+	Union          *Union
+	MightIntersect *MightIntersect
+	Cells          *IntersectsCells
+	Cap            *IntersectsCap
+	Feature        *IntersectsFeature
+	Point          *IntersectsPoint
+	Polyline       *IntersectsPolyline
+	MultiPolygon   *IntersectsMultiPolygon
+}
+
+type queryYAML struct {
+	Query
+}
+
+func (q queryYAML) MarshalYAML() (interface{}, error) {
+	return marshalChoiceYAML(&queryChoices{}, q.Query)
+}
+
+func (q *queryYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	choice, err := unmarshalChoiceYAML(&queryChoices{}, unmarshal)
+	if err == nil {
+		switch choice := choice.(type) {
+		case *Query:
+			q.Query = *choice
+		case Query:
+			q.Query = choice
+		default:
+			panic("choice wasn't a query")
+		}
+	}
+	return err
 }

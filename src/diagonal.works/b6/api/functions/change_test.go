@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"diagonal.works/b6"
-	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
 )
 
@@ -22,16 +21,16 @@ func TestAddRelation(t *testing.T) {
 	m := ingest.NewMutableOverlayWorld(b6.EmptyWorld{})
 	id := b6.MakeRelationID("diagonal.works/test", 1)
 
-	tags := api.ArrayTagCollection{
-		Tags: []b6.Tag{{Key: "#route", Value: "bicycle"}},
+	tags := b6.ArrayValuesCollection[b6.Tag]{
+		{Key: "#route", Value: "bicycle"},
 	}
 
-	members := api.ArrayAnyCollection{
-		Keys:   []interface{}{ingest.FromOSMWayID(4262451)},
-		Values: []interface{}{"forward"},
+	members := &b6.ArrayCollection[b6.Identifiable, string]{
+		Keys:   []b6.Identifiable{ingest.FromOSMWayID(4262451).FeatureID()},
+		Values: []string{"forward"},
 	}
 
-	change, err := addRelation(nil, id, &tags, &members)
+	change, err := addRelation(nil, id, tags.Collection().Values(), members.Collection())
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -48,16 +47,18 @@ func TestAddCollection(t *testing.T) {
 	m := ingest.NewMutableOverlayWorld(b6.EmptyWorld{})
 	id := b6.MakeCollectionID("diagonal.works/test", 1)
 
-	tags := api.ArrayTagCollection{
-		Tags: []b6.Tag{{Key: "#route", Value: "bicycle"}},
-	}
+	tags := b6.AdaptCollection[any, b6.Tag](
+		b6.ArrayValuesCollection[b6.Tag]{
+			{Key: "#route", Value: "bicycle"},
+		}.Collection(),
+	)
 
-	collection := api.ArrayAnyCollection{
+	collection := &b6.ArrayCollection[any, any]{
 		Keys:   []interface{}{ingest.FromOSMWayID(4262451)},
 		Values: []interface{}{"forward"},
 	}
 
-	change, err := addCollection(nil, id, &tags, &collection)
+	change, err := addCollection(nil, id, tags, collection.Collection())
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

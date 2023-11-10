@@ -9,14 +9,14 @@ import __yyfmt__ "fmt"
 //line shell.y:3
 
 import (
-	pb "diagonal.works/b6/proto"
+	"diagonal.works/b6"
 )
 
 //line shell.y:20
 type yySymType struct {
-	yys   int
-	node  *pb.NodeProto
-	nodes []*pb.NodeProto
+	yys int
+	e   b6.Expression
+	es  []b6.Expression
 }
 
 const FLOAT = 57346
@@ -525,169 +525,169 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:32
 		{
-			yylex.(*lexer).Top = reduceRootCall(yyDollar[1].node, yylex.(*lexer))
+			yylex.(*lexer).Top = reduceRootCall(yyDollar[1].e, yylex.(*lexer))
 		}
 	case 2:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:38
 		{
-			yyVAL.node = reducePipeline(yyDollar[1].node, yyDollar[3].node, yylex.(*lexer))
+			yyVAL.e = reducePipeline(yyDollar[1].e, yyDollar[3].e, yylex.(*lexer))
 		}
 	case 14:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:57
 		{
-			yyVAL.node = reduceLatLng(yyDollar[1].node, yyDollar[3].node, yylex.(*lexer))
+			yyVAL.e = reduceLatLng(yyDollar[1].e, yyDollar[3].e, yylex.(*lexer))
 		}
 	case 15:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:63
 		{
-			yyVAL.node = reduceTag(yyDollar[1].node, yyDollar[3].node, yylex.(*lexer))
+			yyVAL.e = reduceTag(yyDollar[1].e, yyDollar[3].e, yylex.(*lexer))
 		}
 	case 16:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:67
 		{
-			yyVAL.node = reduceTag(yyDollar[1].node, yyDollar[3].node, yylex.(*lexer))
+			yyVAL.e = reduceTag(yyDollar[1].e, yyDollar[3].e, yylex.(*lexer))
 		}
 	case 17:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:73
 		{
-			yyVAL.node = reduceCall(yyDollar[1].node, yylex.(*lexer))
+			yyVAL.e = reduceCall(yyDollar[1].e, yylex.(*lexer))
 		}
 	case 18:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line shell.y:77
 		{
-			yyVAL.node = reduceCallWithArgs(yyDollar[1].node, yyDollar[2].nodes, yylex.(*lexer))
+			yyVAL.e = reduceCallWithArgs(yyDollar[1].e, yyDollar[2].es, yylex.(*lexer))
 		}
 	case 20:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line shell.y:84
 		{
-			yyVAL.nodes = reduceArgs(yyDollar[1].nodes, yyDollar[2].node)
+			yyVAL.es = reduceArgs(yyDollar[1].es, yyDollar[2].e)
 		}
 	case 21:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:88
 		{
-			yyVAL.nodes = reduceArg(yyDollar[1].node)
+			yyVAL.es = reduceArg(yyDollar[1].e)
 		}
 	case 24:
 		yyDollar = yyS[yypt-5 : yypt+1]
 //line shell.y:98
 		{
-			yyVAL.node = reduceLambda(yyDollar[2].nodes, yyDollar[4].node)
+			yyVAL.e = reduceLambda(yyDollar[2].es, yyDollar[4].e)
 		}
 	case 25:
 		yyDollar = yyS[yypt-4 : yypt+1]
 //line shell.y:102
 		{
-			yyVAL.node = reduceLambdaWithoutArgs(yyDollar[3].node)
+			yyVAL.e = reduceLambdaWithoutArgs(yyDollar[3].e)
 		}
 	case 26:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:108
 		{
-			yyVAL.nodes = reduceSymbolsSymbol(yyDollar[1].node)
+			yyVAL.es = reduceSymbolsSymbol(yyDollar[1].e)
 		}
 	case 27:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:112
 		{
-			yyVAL.nodes = reduceSymbolsSymbols(yyDollar[1].nodes, yyDollar[3].node)
+			yyVAL.es = reduceSymbolsSymbols(yyDollar[1].es, yyDollar[3].e)
 		}
 	case 28:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:118
 		{
-			yyVAL.node = reduceCollectionItems(yyDollar[2].node)
+			yyVAL.e = reduceCollectionItems(yyDollar[2].e)
 		}
 	case 29:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:124
 		{
-			yyVAL.node = reduceCollectionItemsKeyValue(yyDollar[1].node)
+			yyVAL.e = reduceCollectionItemsKeyValue(yyDollar[1].e)
 		}
 	case 30:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:128
 		{
-			yyVAL.node = reduceCollectionItemsItemsKeyValue(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.e = reduceCollectionItemsItemsKeyValue(yyDollar[1].e, yyDollar[3].e)
 		}
 	case 31:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:134
 		{
-			yyVAL.node = reduceCollectionKeyValue(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.e = reduceCollectionKeyValue(yyDollar[1].e, yyDollar[3].e)
 		}
 	case 32:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:138
 		{
-			yyVAL.node = reduceCollectionValueWithImplictKey(yyDollar[1].node)
+			yyVAL.e = reduceCollectionValueWithImplictKey(yyDollar[1].e)
 		}
 	case 44:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:159
 		{
-			yyVAL.node = yyDollar[2].node
+			yyVAL.e = yyDollar[2].e
 		}
 	case 45:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:165
 		{
-			yyVAL.node = yyDollar[2].node
+			yyVAL.e = yyDollar[2].e
 		}
 	case 47:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:172
 		{
-			yyVAL.node = reduceAnd(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.e = reduceAnd(yyDollar[1].e, yyDollar[3].e)
 		}
 	case 48:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:176
 		{
-			yyVAL.node = reduceAnd(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.e = reduceAnd(yyDollar[1].e, yyDollar[3].e)
 		}
 	case 49:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:180
 		{
-			yyVAL.node = reduceOr(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.e = reduceOr(yyDollar[1].e, yyDollar[3].e)
 		}
 	case 50:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:184
 		{
-			yyVAL.node = reduceOr(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.e = reduceOr(yyDollar[1].e, yyDollar[3].e)
 		}
 	case 52:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:191
 		{
-			yyVAL.node = reduceTagKey(yyDollar[1].node)
+			yyVAL.e = reduceTagKey(yyDollar[1].e)
 		}
 	case 53:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:195
 		{
-			yyVAL.node = reduceTagKeyValue(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.e = reduceTagKeyValue(yyDollar[1].e, yyDollar[3].e)
 		}
 	case 54:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line shell.y:199
 		{
-			yyVAL.node = reduceTagKey(yyDollar[1].node)
+			yyVAL.e = reduceTagKey(yyDollar[1].e)
 		}
 	case 55:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line shell.y:203
 		{
-			yyVAL.node = reduceTagKeyValue(yyDollar[1].node, yyDollar[3].node)
+			yyVAL.e = reduceTagKeyValue(yyDollar[1].e, yyDollar[3].e)
 		}
 	}
 	goto yystack /* stack new state and value */

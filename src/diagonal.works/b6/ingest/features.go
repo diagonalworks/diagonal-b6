@@ -708,17 +708,16 @@ func NewCollectionFeatureFromWorld(c b6.CollectionFeature) *CollectionFeature {
 }
 
 func (c *CollectionFeature) MarshalYAML() (interface{}, error) {
-	var collection CollectionYAML
-	for _, key := range c.Keys {
-		collection.Keys = append(collection.Keys, b6.FromLiteral(key))
-	}
-	for _, value := range c.Values {
-		collection.Values = append(collection.Values, b6.FromLiteral(value))
+	e := b6.CollectionExpression{
+		UntypedCollection: b6.ArrayCollection[any, any]{
+			Keys:   c.Keys,
+			Values: c.Values,
+		}.Collection(),
 	}
 
 	y := map[string]interface{}{
 		"id":         FeatureIDYAML{FeatureID: c.CollectionID.FeatureID()},
-		"collection": collection,
+		"collection": e,
 	}
 
 	if len(c.Tags) > 0 {

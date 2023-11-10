@@ -55,50 +55,13 @@ func areaContainsAnyPoint(area b6.AreaFeature, points []s2.Point) (s2.Point, boo
 	return s2.Point{}, false
 }
 
-type arrayAreaFeatureCollection struct {
-	features []b6.AreaFeature
-	i        int
-}
-
-func (a *arrayAreaFeatureCollection) Count() int { return len(a.features) }
-
-func (a *arrayAreaFeatureCollection) Begin() api.CollectionIterator {
-	return &arrayAreaFeatureCollection{
-		features: a.features,
-	}
-}
-
-func (a *arrayAreaFeatureCollection) Key() interface{} {
-	return a.FeatureIDKey()
-}
-
-func (a *arrayAreaFeatureCollection) Value() interface{} {
-	return a.AreaFeatureValue()
-}
-
-func (a *arrayAreaFeatureCollection) FeatureIDKey() b6.FeatureID {
-	return a.features[a.i-1].FeatureID()
-}
-
-func (a *arrayAreaFeatureCollection) AreaFeatureValue() b6.AreaFeature {
-	return a.features[a.i-1]
-}
-
-func (a *arrayAreaFeatureCollection) Next() (bool, error) {
-	a.i++
-	return a.i <= len(a.features), nil
-}
-
-var _ api.Collection = &arrayAreaFeatureCollection{}
-var _ api.Countable = &arrayAreaFeatureCollection{}
-
-func findAreasContainingPoints(context *api.Context, points api.PointFeatureCollection, q b6.Query) (api.AreaFeatureCollection, error) {
+func findAreasContainingPoints(context *api.Context, points b6.Collection[any, b6.Point], q b6.Query) (b6.Collection[b6.FeatureID, b6.AreaFeature], error) {
 	cells := make(map[s2.CellID][]s2.Point)
 	i := points.Begin()
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			return nil, err
+			return b6.Collection[b6.FeatureID, b6.AreaFeature]{}, err
 		}
 		if !ok {
 			break
@@ -125,13 +88,11 @@ func findAreasContainingPoints(context *api.Context, points api.PointFeatureColl
 			}
 		}
 	}
-	collection := &arrayAreaFeatureCollection{
-		features: make([]b6.AreaFeature, 0, len(matched)),
-	}
+	collection := b6.ArrayFeatureCollection[b6.AreaFeature](make([]b6.AreaFeature, 0, len(matched)))
 	for _, feature := range matched {
-		collection.features = append(collection.features, feature)
+		collection = append(collection, feature)
 	}
-	return collection, nil
+	return collection.Collection(), nil
 }
 
 func tag(context *api.Context, key string, value string) (b6.Tag, error) {
@@ -184,8 +145,8 @@ func getFloat(context *api.Context, id b6.Identifiable, key string) (float64, er
 	return 0.0, nil
 }
 
-func countTagValue(context *api.Context, id b6.Identifiable, key string) (api.Collection, error) {
-	c := &api.ArrayAnyIntCollection{
+func countTagValue(context *api.Context, id b6.Identifiable, key string) (b6.Collection[interface{}, int], error) {
+	c := &b6.ArrayCollection[interface{}, int]{
 		Keys:   make([]interface{}, 0, 1),
 		Values: make([]int, 0, 1),
 	}
@@ -195,15 +156,15 @@ func countTagValue(context *api.Context, id b6.Identifiable, key string) (api.Co
 			c.Values = append(c.Values, 1)
 		}
 	}
-	return c, nil
+	return c.Collection(), nil
 }
 
-func allTags(c *api.Context, id b6.Identifiable) (api.IntTagCollection, error) {
+func allTags(c *api.Context, id b6.Identifiable) (b6.Collection[int, b6.Tag], error) {
 	var tags []b6.Tag
 	if f := api.Resolve(id, c.World); f != nil {
 		tags = f.AllTags()
 	}
-	return &api.ArrayTagCollection{Tags: tags}, nil
+	return b6.ArrayValuesCollection[b6.Tag](tags).Collection(), nil
 }
 
 func matches(c *api.Context, id b6.Identifiable, query b6.Query) (bool, error) {
@@ -231,12 +192,12 @@ type pathPointCollection struct {
 	i    int
 }
 
-func (p *pathPointCollection) Begin() api.CollectionIterator {
+func (p *pathPointCollection) Begin() b6.Iterator[int, b6.Point] {
 	return &pathPointCollection{path: p.path}
 }
 
-func (p *pathPointCollection) Count() int {
-	return p.path.Len()
+func (p *pathPointCollection) Count() (int, bool) {
+	return p.path.Len(), true
 }
 
 func (p *pathPointCollection) Next() (bool, error) {
@@ -247,16 +208,15 @@ func (p *pathPointCollection) Next() (bool, error) {
 	return true, nil
 }
 
-func (p *pathPointCollection) Key() interface{} {
+func (p *pathPointCollection) Key() int {
 	return p.i - 1
 }
 
-func (p *pathPointCollection) Value() interface{} {
+func (p *pathPointCollection) Value() b6.Point {
 	return b6.PointFromS2Point(p.path.Point(p.i - 1))
 }
 
-var _ api.Collection = &pathPointCollection{}
-var _ api.Countable = &pathPointCollection{}
+var _ b6.AnyCollection[int, b6.Point] = &pathPointCollection{}
 
 type areaPointCollection struct {
 	area    b6.Area
@@ -268,21 +228,21 @@ type areaPointCollection struct {
 	n       int
 }
 
-func (a *areaPointCollection) Begin() api.CollectionIterator {
+func (a *areaPointCollection) Begin() b6.Iterator[int, b6.Point] {
 	return &areaPointCollection{area: a.area}
 }
 
-func (a *areaPointCollection) Count() int {
-	count := 0
+func (a *areaPointCollection) Count() (int, bool) {
+	n := 0
 	for i := 0; i < a.area.Len(); i++ {
 		// TODO: Add a more efficient interface to Area() that takes
 		// the indices directly?
 		polygon := a.area.Polygon(i)
 		for j := 0; j < polygon.NumLoops(); j++ {
-			count += polygon.Loop(j).NumVertices()
+			n += polygon.Loop(j).NumVertices()
 		}
 	}
-	return count
+	return n, true
 }
 
 func (a *areaPointCollection) Next() (bool, error) {
@@ -316,37 +276,41 @@ func (a *areaPointCollection) Next() (bool, error) {
 	}
 }
 
-func (a *areaPointCollection) Key() interface{} {
+func (a *areaPointCollection) Key() int {
 	return a.n - 1
 }
 
-func (a *areaPointCollection) Value() interface{} {
+func (a *areaPointCollection) Value() b6.Point {
 	return b6.PointFromS2Point(a.loop.Vertex(a.k - 1))
 }
 
-var _ api.Collection = &areaPointCollection{}
+var _ b6.AnyCollection[int, b6.Point] = &areaPointCollection{}
 
-func points(context *api.Context, g b6.Geometry) (api.PointCollection, error) {
+func points(context *api.Context, g b6.Geometry) (b6.Collection[int, b6.Point], error) {
 	switch g := g.(type) {
 	case b6.Point:
-		return &singletonCollection{k: 0, v: g}, nil
+		return b6.ArrayValuesCollection[b6.Point]([]b6.Point{g}).Collection(), nil
 	case b6.Path:
-		return &pathPointCollection{path: g}, nil
+		return b6.Collection[int, b6.Point]{
+			AnyCollection: &pathPointCollection{path: g},
+		}, nil
 	case b6.Area:
-		return &areaPointCollection{area: g}, nil
+		return b6.Collection[int, b6.Point]{
+			AnyCollection: &areaPointCollection{area: g},
+		}, nil
 	}
-	return &api.ArrayPointCollection{}, nil
+	return b6.ArrayValuesCollection[b6.Point]([]b6.Point{}).Collection(), nil
 }
 
-func pointFeatures(context *api.Context, f b6.Feature) (api.PointFeatureCollection, error) {
-	points := &api.ArrayPointFeatureCollection{Features: make([]b6.PointFeature, 0)}
+func pointFeatures(context *api.Context, f b6.Feature) (b6.Collection[b6.FeatureID, b6.PointFeature], error) {
+	points := b6.ArrayFeatureCollection[b6.PointFeature](make([]b6.PointFeature, 0))
 	switch f := f.(type) {
 	case b6.PointFeature:
-		points.Features = append(points.Features, f)
+		points = append(points, f)
 	case b6.PathFeature:
 		for i := 0; i < f.Len(); i++ {
 			if p := f.Feature(i); p != nil {
-				points.Features = append(points.Features, p)
+				points = append(points, p)
 			}
 		}
 	case b6.AreaFeature:
@@ -354,53 +318,53 @@ func pointFeatures(context *api.Context, f b6.Feature) (api.PointFeatureCollecti
 			for _, path := range f.Feature(i) {
 				for j := 0; j < path.Len(); j++ {
 					if p := path.Feature(j); p != nil {
-						points.Features = append(points.Features, p)
+						points = append(points, p)
 					}
 				}
 			}
 		}
 	}
-	return points, nil
+	return points.Collection(), nil
 }
 
-func pointPaths(context *api.Context, id b6.IdentifiablePoint) (api.PathFeatureCollection, error) {
+func pointPaths(context *api.Context, id b6.IdentifiablePoint) (b6.Collection[b6.FeatureID, b6.PathFeature], error) {
 	p := api.ResolvePoint(id, context.World)
 	if p == nil {
-		return nil, fmt.Errorf("No point with id %s", id)
+		return b6.Collection[b6.FeatureID, b6.PathFeature]{}, fmt.Errorf("No point with id %s", id)
 	}
-	collection := &api.ArrayPathFeatureCollection{Features: make([]b6.PathFeature, 0)}
+	collection := b6.ArrayFeatureCollection[b6.PathFeature](make([]b6.PathFeature, 0))
 	paths := context.World.FindPathsByPoint(p.PointID())
 	for paths.Next() {
-		collection.Features = append(collection.Features, paths.Feature())
+		collection = append(collection, paths.Feature())
 	}
-	return collection, nil
+	return collection.Collection(), nil
 }
 
-func samplePointsAlongPaths(context *api.Context, paths api.PathCollection, distanceMeters float64) (api.PointCollection, error) {
+func samplePointsAlongPaths(context *api.Context, paths b6.Collection[b6.FeatureID, b6.Path], distanceMeters float64) (b6.Collection[int, b6.Point], error) {
 	// TODO: We shouldn't need to special case this: we should be able to flatten the results of sample_points
 	// on a collection of paths.
 	seen := make(map[s2.Point]struct{})
-	points := make([]s2.Point, 0, 16)
+	points := make([]b6.Point, 0, 16)
 	i := paths.Begin()
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			return nil, err
+			return b6.Collection[int, b6.Point]{}, err
 		}
 		if !ok {
 			break
 		}
-		points = appendUnseenSampledPoints(i.Value().(b6.Path), distanceMeters, seen, points)
+		points = appendUnseenSampledPoints(i.Value(), distanceMeters, seen, points)
 	}
-	return pointsToCollection(points), nil
+	return b6.ArrayValuesCollection[b6.Point](points).Collection(), nil
 }
 
-func samplePoints(context *api.Context, path b6.Path, distanceMeters float64) (api.StringPointCollection, error) {
-	points := appendUnseenSampledPoints(path, distanceMeters, make(map[s2.Point]struct{}), make([]s2.Point, 0, 16))
-	return pointsToCollection(points), nil
+func samplePoints(context *api.Context, path b6.Path, distanceMeters float64) (b6.Collection[int, b6.Point], error) {
+	points := appendUnseenSampledPoints(path, distanceMeters, make(map[s2.Point]struct{}), make([]b6.Point, 0, 16))
+	return b6.ArrayValuesCollection[b6.Point](points).Collection(), nil
 }
 
-func appendUnseenSampledPoints(p b6.Path, distanceMeters float64, seen map[s2.Point]struct{}, points []s2.Point) []s2.Point {
+func appendUnseenSampledPoints(p b6.Path, distanceMeters float64, seen map[s2.Point]struct{}, points []b6.Point) []b6.Point {
 	const epsilon s1.Angle = 1.6e-09 // Roughly 1cm
 	polyline := p.Polyline()
 	var step float64
@@ -418,23 +382,12 @@ func appendUnseenSampledPoints(p b6.Path, distanceMeters float64, seen map[s2.Po
 		}
 		p, _ := polyline.Interpolate(j)
 		if _, ok := seen[p]; !ok {
-			points = append(points, p)
+			points = append(points, b6.PointFromS2Point(p))
 			seen[p] = struct{}{}
 		}
 		j += step
 	}
 	return points
-}
-
-// pointsToCollection wraps the slice of points into a PointCollection, reusing,
-// rather than copying, the slice
-func pointsToCollection(points []s2.Point) api.StringPointCollection {
-	keys := make([]string, len(points))
-	for i, p := range points {
-		ll := s2.LatLngFromPoint(p)
-		keys[i] = fmt.Sprintf("%f,%f", ll.Lat.Degrees(), ll.Lng.Degrees())
-	}
-	return &api.ArrayPointCollection{Keys: keys, Values: points}
 }
 
 func join(context *api.Context, a b6.Path, b b6.Path) (b6.Path, error) {

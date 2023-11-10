@@ -9,10 +9,14 @@ from datetime import datetime
 SPECIAL_FUNCTIONS = ("map", "filter")
 
 COLLECTION_PARENTS = {
-    "PointFeatureCollection": "PointCollection",
-    "PathFeatureCollection": "PathCollection",
-    "AreaFeatureCollection": "AreaCollection",
+    "FeatureIDPointFeatureCollection": "AnyPointCollection",
+    "FeatureIDPathFeatureCollection": "FeatureIDPathCollection",
+    "FeatureIDAreaFeatureCollection": "AnyAreaCollection",
 }
+
+GENERIC_COLLECTION_TRAITS = "AnyAnyCollectionTraits"
+GENERIC_COLLECTION_RESULT = "AnyAnyCollectionResult"
+GENERIC_COLLECTION_COLLECTION_RESULT = "AnyAnyAnyCollectionCollectionResult"
 
 EXTRA_TRAITS = {
     "QueryResult": ["QueryConversionTraits"],
@@ -50,21 +54,24 @@ def name_for_any_key_result(t):
 
 def name_for_collection_of_traits(t, collections):
     for (name, (key, value)) in collections.items():
-        if key == "any" and value == t:
+        if key == "Any" and value == t:
             return name_for_traits(name)
-    return "CollectionTraits"
+    return GENERIC_COLLECTION_TRAITS
 
 def name_for_collection_of_result(t, collections):
     for (name, (key, value)) in collections.items():
-        if key == "any" and value == t:
+        if key == "Any" and value == t:
             return name_for_result(name)
-    return "CollectionResult"
+    if t.endswith("Collection"):
+        return GENERIC_COLLECTION_COLLECTION_RESULT
+    return GENERIC_COLLECTION_RESULT
 
 BUILTIN_RESULTS = {
     str: name_for_result("string"),
     int: name_for_result("int"),
     float: name_for_result("float64"),
     bool: name_for_result("bool"),
+    list: name_for_result("AnyAnyCollection"),
 }
 
 def output_traits(t, functions, collections, hints, parents):
@@ -112,7 +119,7 @@ def output_collection_values_traits(t, functions, collections, hints, parents):
         print("    pass")
         print("")
     
-    print("class %s(Result, %s, CollectionTraits):" % (name_for_any_key_result(n), name_for_traits(n)))
+    print("class %s(Result, %s, %s):" % (name_for_any_key_result(n), name_for_traits(n), GENERIC_COLLECTION_TRAITS))
     print("")
     print("    def __init__(self, node):")
     print("        Result.__init__(self, node)")
@@ -136,7 +143,7 @@ def output_function_arg_result(t, hints):
 def ancestors(t, parents):
     queue = copy(parents.get(t, []))
     ancestors = []
-    while len(queue) > 0:
+    while len(queue) > 0:        
         ancestors.append(queue.pop())
         queue.extend(parents.get(ancestors[-1], []))
     return ancestors
@@ -181,17 +188,17 @@ def main():
         traits.add(t["Value"])
         collections[t["Name"]] = (t["Key"], t["Value"])
         collection_values.add(t["Value"])
-        for n in (t["Value"], "Collection"):
+        for n in (t["Value"], "AnyAnyCollection"):
             reference_counts[n] = reference_counts.get(n, 0) + 1
         for a in ancestors(t["Value"], parents):
             collection_values.add(a)
             reference_counts[a] = reference_counts.get(a, 0) + 1
         hints[t["Name"]] = name_for_result(t["Name"])
-        if t["Name"] != "Collection":
+        if t["Name"] != "AnyAnyCollection":
             if t["Name"] in COLLECTION_PARENTS:
                 parents[t["Name"]] = [COLLECTION_PARENTS[t["Name"]], name_for_collection_values(t["Value"])]
             else:
-                parents[t["Name"]] = ["Collection", name_for_collection_values(t["Value"])]
+                parents[t["Name"]] = ["AnyAnyCollection", name_for_collection_values(t["Value"])]
     for t in api["FunctionArgs"]:
         hints[t["Name"]] = "Callable[[%s],%s]" % (",".join([hints[a] for a in t["Args"]]), hints[t["Result"]])
 
