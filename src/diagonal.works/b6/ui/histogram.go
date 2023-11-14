@@ -194,10 +194,10 @@ type kv struct {
 	features []b6.FeatureID // features in this bucket, if the values are Identifiable
 }
 
-func countValues(c api.Collection) ([]kv, error) {
+func countValues(c b6.UntypedCollection) ([]kv, error) {
 	m := make(map[interface{}]*kv)
 
-	i := c.Begin()
+	i := c.BeginUntyped()
 	for {
 		ok, err := i.Next()
 		if err != nil {

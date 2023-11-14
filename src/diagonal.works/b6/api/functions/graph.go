@@ -41,36 +41,36 @@ func newShortestPathSearch(origin b6.Feature, mode string, distance float64, fea
 	return s, nil
 }
 
-func reachablePoints(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.PointFeatureCollection, error) {
-	points := &api.ArrayPointFeatureCollection{Features: make([]b6.PointFeature, 0)}
+func reachablePoints(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, b6.PointFeature], error) {
+	points := b6.ArrayFeatureCollection[b6.PointFeature](make([]b6.PointFeature, 0))
 	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
 	if err == nil {
 		for id := range s.PointDistances() {
 			if point := b6.FindPointByID(id, context.World); point != nil {
 				if query.Matches(point, context.World) {
-					points.Features = append(points.Features, point)
+					points = append(points, point)
 				}
 			}
 		}
 	}
-	return points, err
+	return points.Collection(), err
 }
 
-func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (api.FeatureCollection, error) {
-	features := &api.ArrayFeatureCollection{Features: make([]b6.Feature, 0)}
+func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (b6.Collection[b6.FeatureID, b6.Feature], error) {
+	features := b6.ArrayFeatureCollection[b6.Feature](make([]b6.Feature, 0))
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		for id := range s.PointDistances() {
 			if point := b6.FindPointByID(id, context.World); point != nil {
 				if query.Matches(point, context.World) {
-					features.Features = append(features.Features, point)
+					features = append(features, point)
 				}
 			}
 		}
 		for id := range s.AreaDistances() {
 			if area := b6.FindAreaByID(id, context.World); area != nil {
 				if query.Matches(area, context.World) {
-					features.Features = append(features.Features, area)
+					features = append(features, area)
 				}
 			}
 		}
@@ -98,10 +98,10 @@ func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature
 			}
 		}
 	}
-	return features, err
+	return features.Collection(), err
 }
 
-func reachable(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.FeatureCollection, error) {
+func reachable(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, b6.Feature], error) {
 	return FindReachableFeaturesWithPathStates(context, origin, mode, distance, query, nil)
 }
 
@@ -115,23 +115,23 @@ type odCollection struct {
 
 func (o *odCollection) IsCountable() bool { return true }
 
-func (o *odCollection) Count() int {
-	count := 0
+func (o *odCollection) Count() (int, bool) {
+	n := 0
 	for _, ds := range o.destinations {
-		count += len(ds)
+		n += len(ds)
 	}
-	return count
+	return n, true
 }
 
-func (o *odCollection) Begin() api.CollectionIterator {
+func (o *odCollection) Begin() b6.Iterator[b6.Identifiable, b6.FeatureID] {
 	return &odCollection{origins: o.origins, destinations: o.destinations}
 }
 
-func (o *odCollection) Key() interface{} {
+func (o *odCollection) Key() b6.Identifiable {
 	return o.origins[o.i-1]
 }
 
-func (o *odCollection) Value() interface{} {
+func (o *odCollection) Value() b6.FeatureID {
 	return o.destinations[o.i-1][o.j-1]
 }
 
@@ -175,10 +175,10 @@ func (o *odCollection) Less(i, j int) bool {
 	return o.origins[i].FeatureID().Less(o.origins[j].FeatureID())
 }
 
-func accessible(context *api.Context, origins api.FeatureCollection, destinations b6.Query, distance float64, options api.Collection) (api.FeatureIDFeatureIDCollection, error) {
+func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable], destinations b6.Query, distance float64, options b6.UntypedCollection) (b6.Collection[b6.Identifiable, b6.FeatureID], error) {
 	tags, err := api.CollectionToTags(options)
 	if err != nil {
-		return nil, err
+		return b6.Collection[b6.Identifiable, b6.FeatureID]{}, err
 	}
 
 	os := make([]b6.Identifiable, 0)
@@ -186,15 +186,11 @@ func accessible(context *api.Context, origins api.FeatureCollection, destination
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			return nil, err
+			return b6.Collection[b6.Identifiable, b6.FeatureID]{}, err
 		} else if !ok {
 			break
 		}
-		if id, ok := i.Value().(b6.Identifiable); ok {
-			os = append(os, id)
-		} else {
-			return nil, fmt.Errorf("Expected FeatureID, found %T", i.Value())
-		}
+		os = append(os, i.Value())
 	}
 
 	mode := "walk"
@@ -203,7 +199,7 @@ func accessible(context *api.Context, origins api.FeatureCollection, destination
 	}
 	weights, err := weightsFromMode(mode)
 	if err != nil {
-		return nil, err
+		return b6.Collection[b6.Identifiable, b6.FeatureID]{}, err
 	}
 
 	ds := make([][]b6.FeatureID, len(os))
@@ -241,7 +237,9 @@ done:
 		}
 	}
 	sort.Sort(ods)
-	return ods, err
+	return b6.Collection[b6.Identifiable, b6.FeatureID]{
+		AnyCollection: ods,
+	}, err
 }
 
 func accessibleFromOrigin(ds []b6.FeatureID, origin b6.Feature, destinations b6.Query, weights graph.Weights, distance float64, w b6.World) []b6.FeatureID {
@@ -331,8 +329,11 @@ func findClosest(context *api.Context, origin b6.Feature, mode string, distance 
 	return nil, 0.0, err
 }
 
-func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (api.FeatureIDIntCollection, error) {
-	features := &api.ArrayFeatureIDIntCollection{Keys: make([]b6.FeatureID, 0), Values: make([]int, 0)}
+func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, int], error) {
+	features := &b6.ArrayCollection[b6.FeatureID, int]{
+		Keys:   make([]b6.FeatureID, 0),
+		Values: make([]int, 0),
+	}
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		points := 0
@@ -375,7 +376,7 @@ func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, 
 			features.Values = append(features.Values, count)
 		}
 	}
-	return features, err
+	return features.Collection(), err
 }
 
 func reachableArea(context *api.Context, origin b6.Feature, mode string, distance float64) (float64, error) {

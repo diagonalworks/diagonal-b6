@@ -13,29 +13,29 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func zeroBeginAndEndLocations(n *pb.NodeProto) {
-	n.Begin = 0
-	n.End = 0
-	switch n := n.Node.(type) {
-	case *pb.NodeProto_Call:
-		zeroBeginAndEndLocations(n.Call.Function)
-		for _, arg := range n.Call.Args {
-			zeroBeginAndEndLocations(arg)
+func zeroBeginAndEndLocations(e *b6.Expression) {
+	e.Begin = 0
+	e.End = 0
+	switch e := e.AnyExpression.(type) {
+	case *b6.CallExpression:
+		zeroBeginAndEndLocations(&e.Function)
+		for i := range e.Args {
+			zeroBeginAndEndLocations(&e.Args[i])
 		}
-	case *pb.NodeProto_Lambda_:
-		zeroBeginAndEndLocations(n.Lambda_.Node)
+	case *b6.LambdaExpression:
+		zeroBeginAndEndLocations(&e.Expression)
 	}
 }
 
 type testFunctionArgCounts map[string]int
 
-func (fs testFunctionArgCounts) ArgCount(symbol string) (int, bool) {
-	n, ok := fs[symbol]
+func (fs testFunctionArgCounts) ArgCount(symbol b6.SymbolExpression) (int, bool) {
+	n, ok := fs[string(symbol)]
 	return n, ok
 }
 
-func (fs testFunctionArgCounts) IsVariadic(symbol string) (bool, bool) {
-	_, ok := fs[symbol]
+func (fs testFunctionArgCounts) IsVariadic(symbol b6.SymbolExpression) (bool, bool) {
+	_, ok := fs[string(symbol)]
 	return false, ok
 }
 
@@ -758,10 +758,15 @@ func TestParseExpression(t *testing.T) {
 		f := func(t *testing.T) {
 			top, err := ParseExpression(test.expression)
 			top = Simplify(top, functions)
-			zeroBeginAndEndLocations(top) // Locations are tested separately below
+			zeroBeginAndEndLocations(&top) // Locations are tested separately below
 			if err == nil {
-				if !proto.Equal(top, test.top) {
-					t.Errorf("%s: expected %s, found %s", test.expression, prototext.Format(test.top), prototext.Format(top))
+				ptop, err := top.ToProto()
+				if err == nil {
+					if !proto.Equal(ptop, test.top) {
+						t.Errorf("%s: expected %s, found %s", test.expression, prototext.Format(test.top), prototext.Format(ptop))
+					}
+				} else {
+					t.Errorf("%s: failed to convert to proto: %s", test.expression, err)
 				}
 			} else {
 				t.Errorf("%s: expected no error, found %s", test.expression, err)
@@ -841,8 +846,13 @@ func TestParseExpressionFillsBeginAndEndLocations(t *testing.T) {
 	}
 	top, err := ParseExpression(expression)
 	if err == nil {
-		if !proto.Equal(top, expected) {
-			t.Errorf("%s: expected %s, found %s", expression, prototext.Format(expected), prototext.Format(top))
+		ptop, err := top.ToProto()
+		if err == nil {
+			if !proto.Equal(ptop, expected) {
+				t.Errorf("%s: expected %s, found %s", expression, prototext.Format(expected), prototext.Format(ptop))
+			}
+		} else {
+			t.Errorf("%s: failed to convert to proto: %s", expression, err)
 		}
 	} else {
 		t.Errorf("%s: expected no error, found %s", expression, err)
@@ -864,6 +874,14 @@ func TestOrderTokens(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 	tokens := OrderTokens(top)
+
+	ptokens := make([]*pb.NodeProto, len(tokens))
+	for i, token := range tokens {
+		if ptokens[i], err = token.ToProto(); err != nil {
+			t.Fatalf("Failed to convert %+v to proto: %s", token, err)
+		}
+	}
+
 	expected := []*pb.NodeProto{
 		{
 			Node: &pb.NodeProto_Symbol{
@@ -945,8 +963,8 @@ func TestOrderTokens(t *testing.T) {
 			End:   95,
 		},
 	}
-	if !reflect.DeepEqual(tokens, expected) {
-		t.Errorf("Expected %s, found %s", expected, tokens)
+	if !reflect.DeepEqual(ptokens, expected) {
+		t.Errorf("Expected %s, found %s", expected, ptokens)
 	}
 }
 
@@ -981,8 +999,8 @@ func TestUnparseExpression(t *testing.T) {
 		"find [#place=uprn] | filter {u -> gt (all-tags u | count) 1}",
 	}
 	for _, test := range tests {
-		if node, err := ParseExpression(test); err == nil {
-			if roundtrip, ok := UnparseNode(node); !ok || roundtrip != test {
+		if e, err := ParseExpression(test); err == nil {
+			if roundtrip, ok := UnparseExpression(e); !ok || roundtrip != test {
 				t.Errorf("Expected %q, found %q", test, roundtrip)
 			}
 		} else {

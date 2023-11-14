@@ -14,7 +14,7 @@ type QueryRenderer struct {
 	world b6.World
 	cores int
 	fs    api.FunctionSymbols
-	fw    api.FunctionWrappers
+	a     api.Adaptors
 }
 
 // QueryRenderRules is used to fill in an tile feature attributre
@@ -39,17 +39,17 @@ func NewQueryRenderer(w b6.World, cores int) *QueryRenderer {
 		world: w,
 		cores: cores,
 		fs:    functions.Functions(),
-		fw:    functions.Wrappers(),
+		a:     functions.Adaptors(),
 	}
 }
 
 func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 	context := api.Context{
-		World:            r.world,
-		FunctionSymbols:  r.fs,
-		FunctionWrappers: r.fw,
-		Cores:            r.cores,
-		Context:          context.Background(),
+		World:           r.world,
+		FunctionSymbols: r.fs,
+		Adaptors:        r.a,
+		Cores:           r.cores,
+		Context:         context.Background(),
 	}
 	v, err := api.EvaluateString(args.Q, &context)
 	if err != nil {

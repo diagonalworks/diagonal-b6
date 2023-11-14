@@ -7,6 +7,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
+	"diagonal.works/b6/ingest"
 )
 
 var functions = api.FunctionSymbols{
@@ -156,7 +157,7 @@ func Functions() api.FunctionSymbols {
 	return functions // Validated in init()
 }
 
-var wrappers = []interface{}{
+var functionAdaptors = []interface{}{
 	func(c api.Callable) func(*api.Context, interface{}) (interface{}, error) {
 		return func(context *api.Context, v interface{}) (interface{}, error) {
 			return api.Call1(context, v, c)
@@ -266,16 +267,16 @@ var wrappers = []interface{}{
 			}
 		}
 	},
-	func(c api.Callable) func(*api.Context, b6.Feature) (api.Collection, error) {
-		return func(context *api.Context, f b6.Feature) (api.Collection, error) {
+	func(c api.Callable) func(*api.Context, b6.Feature) (b6.Collection[any, any], error) {
+		return func(context *api.Context, f b6.Feature) (b6.Collection[any, any], error) {
 			result, err := api.Call1(context, f, c)
 			if err == nil {
-				if collection, ok := result.(api.Collection); ok {
+				if collection, ok := result.(b6.Collection[any, any]); ok {
 					return collection, nil
 				}
 				err = fmt.Errorf("%s: expected a collection, found %T", c, result)
 			}
-			return nil, err
+			return b6.Collection[any, any]{}, err
 		}
 	},
 	func(c api.Callable) func(*api.Context, b6.Feature) (api.Pair, error) {
@@ -309,18 +310,52 @@ var wrappers = []interface{}{
 	},
 }
 
-var wrappersByType api.FunctionWrappers
-
-func Wrappers() api.FunctionWrappers {
-	return wrappersByType
+// The b6 VM is dynamically typed, allowing you to pass Collection[any, any]
+// to a function that expects, eg, Collection[FeatureID, Feature]. These
+// functions wrap a collection to match a different type, causing a runtime
+// error if type conversion isn't possible.
+var collectionAdaptors = []interface{}{
+	b6.AdaptCollection[any, b6.Area],
+	b6.AdaptCollection[any, b6.AreaFeature],
+	b6.AdaptCollection[any, b6.Feature],
+	b6.AdaptCollection[any, b6.Geometry],
+	b6.AdaptCollection[any, b6.Identifiable],
+	b6.AdaptCollection[any, b6.Path],
+	b6.AdaptCollection[any, b6.PathFeature],
+	b6.AdaptCollection[any, b6.Point],
+	b6.AdaptCollection[any, b6.PointFeature],
+	b6.AdaptCollection[any, b6.Renderable],
+	b6.AdaptCollection[any, b6.Tag],
+	b6.AdaptCollection[any, b6.UntypedCollection],
+	b6.AdaptCollection[any, ingest.Change],
+	b6.AdaptCollection[any, float64],
+	b6.AdaptCollection[any, int],
+	b6.AdaptCollection[b6.FeatureID, b6.Area],
+	b6.AdaptCollection[b6.FeatureID, b6.AreaFeature],
+	b6.AdaptCollection[b6.FeatureID, b6.Feature],
+	b6.AdaptCollection[b6.FeatureID, b6.Identifiable],
+	b6.AdaptCollection[b6.FeatureID, b6.Path],
+	b6.AdaptCollection[b6.FeatureID, b6.PathFeature],
+	b6.AdaptCollection[b6.FeatureID, b6.Point],
+	b6.AdaptCollection[b6.FeatureID, b6.PointFeature],
+	b6.AdaptCollection[b6.FeatureID, b6.Tag],
+	b6.AdaptCollection[b6.FeatureID, string],
+	b6.AdaptCollection[b6.Identifiable, string],
+	b6.AdaptCollection[int, b6.Area],
+	b6.AdaptCollection[int, b6.AreaFeature],
+	b6.AdaptCollection[int, b6.Path],
+	b6.AdaptCollection[int, b6.PathFeature],
+	b6.AdaptCollection[int, b6.Point],
+	b6.AdaptCollection[int, b6.PointFeature],
 }
 
-func makeWrapper(wrapper interface{}) func(c api.Callable) reflect.Value {
-	return func(c api.Callable) reflect.Value {
-		w := reflect.ValueOf(wrapper)
-		return w.Call([]reflect.Value{reflect.ValueOf(c)})[0]
-	}
+var defaultAdaptors api.Adaptors
+
+func Adaptors() api.Adaptors {
+	return defaultAdaptors
 }
+
+var untypedCollectionInterface = reflect.TypeOf((*b6.UntypedCollection)(nil)).Elem()
 
 func Validate(f interface{}, name string) error {
 	t := reflect.TypeOf(f)
@@ -335,14 +370,18 @@ func Validate(f interface{}, name string) error {
 	}
 	for i := 0; i < t.NumIn(); i++ {
 		if t.In(i).Kind() == reflect.Func {
-			if _, ok := wrappersByType[t.In(i)]; !ok {
-				return fmt.Errorf("%s: no convertor for arg %d, %s", name, i, t.In(i))
+			if _, ok := defaultAdaptors.Functions[t.In(i)]; !ok {
+				return fmt.Errorf("%s: no adaptor for arg %d, %s", name, i, t.In(i))
+			}
+		} else if t.In(i).Implements(untypedCollectionInterface) && t.In(i) != untypedCollectionInterface {
+			if _, ok := defaultAdaptors.Collections[t.In(i)]; !ok {
+				return fmt.Errorf("%s: no adaptor for arg %d, %s", name, i, t.In(i))
 			}
 		}
 	}
 	for i := 0; i < t.NumOut(); i++ {
 		if t.Out(i).Kind() == reflect.Func {
-			if _, ok := wrappersByType[t.Out(i)]; !ok {
+			if _, ok := defaultAdaptors.Functions[t.Out(i)]; !ok {
 				return fmt.Errorf("%s: no convertor for result %d, %s", name, i, t.Out(i))
 			}
 		}
@@ -352,18 +391,38 @@ func Validate(f interface{}, name string) error {
 
 func NewContext(w b6.World) *api.Context {
 	return &api.Context{
-		World:            w,
-		FunctionSymbols:  Functions(),
-		FunctionWrappers: Wrappers(),
-		Context:          context.Background(),
+		World:           w,
+		FunctionSymbols: Functions(),
+		Adaptors:        Adaptors(),
+		Context:         context.Background(),
+	}
+}
+
+func makeFunctionAdaptor(adaptor interface{}) func(c api.Callable) reflect.Value {
+	return func(c api.Callable) reflect.Value {
+		w := reflect.ValueOf(adaptor)
+		return w.Call([]reflect.Value{reflect.ValueOf(c)})[0]
+	}
+}
+
+func makeCollectionAdaptor(adaptor interface{}) func(c b6.UntypedCollection) reflect.Value {
+	return func(c b6.UntypedCollection) reflect.Value {
+		w := reflect.ValueOf(adaptor)
+		return w.Call([]reflect.Value{reflect.ValueOf(c)})[0]
 	}
 }
 
 func init() {
-	wrappersByType = make(map[reflect.Type]func(api.Callable) reflect.Value)
-	for _, c := range wrappers {
+	defaultAdaptors.Functions = make(map[reflect.Type]func(api.Callable) reflect.Value)
+	for _, c := range functionAdaptors {
 		t := reflect.TypeOf(c)
-		wrappersByType[t.Out(0)] = makeWrapper(c)
+		defaultAdaptors.Functions[t.Out(0)] = makeFunctionAdaptor(c)
+	}
+
+	defaultAdaptors.Collections = make(map[reflect.Type]func(b6.UntypedCollection) reflect.Value)
+	for _, f := range collectionAdaptors {
+		t := reflect.TypeOf(f)
+		defaultAdaptors.Collections[t.Out(0)] = makeCollectionAdaptor(f)
 	}
 
 	for name, f := range Functions() {

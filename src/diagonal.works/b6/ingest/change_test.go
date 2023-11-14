@@ -20,10 +20,13 @@ func TestAddPoints(t *testing.T) {
 	}
 
 	w := NewBasicMutableWorld()
-	ids, err := add.Apply(w)
+	applied, err := add.Apply(w)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
+
+	ids := make(map[b6.FeatureID]b6.FeatureID)
+	b6.FillMap(applied, ids)
 
 	added := b6.FindPointByID(p1.PointID, w)
 	if added == nil || added.Point().Distance(s2.PointFromLatLng(p1.Location)) > b6.MetersToAngle(1.0) {
@@ -61,10 +64,13 @@ func TestAddPaths(t *testing.T) {
 	w := NewBasicMutableWorld()
 	w.AddPoint(p1)
 
-	ids, err := add.Apply(w)
+	applied, err := add.Apply(w)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
+
+	ids := make(map[b6.FeatureID]b6.FeatureID)
+	b6.FillMap(applied, ids)
 
 	allocated, ok := ids[p2.FeatureID()]
 	if !ok {
@@ -118,10 +124,13 @@ func TestAddAreas(t *testing.T) {
 	w := NewBasicMutableWorld()
 	w.AddPoint(p1)
 
-	ids, err := add.Apply(w)
+	applied, err := add.Apply(w)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
+
+	ids := make(map[b6.FeatureID]b6.FeatureID)
+	b6.FillMap(applied, ids)
 
 	allocated, ok := ids[area.FeatureID()]
 	if !ok {
@@ -156,10 +165,13 @@ func TestAddRelations(t *testing.T) {
 	w := NewBasicMutableWorld()
 	w.AddPoint(p1)
 
-	ids, err := add.Apply(w)
+	applied, err := add.Apply(w)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
+
+	ids := make(map[b6.FeatureID]b6.FeatureID)
+	b6.FillMap(applied, ids)
 
 	added := b6.FindRelationByID(relation.RelationID, w)
 	if added == nil {

@@ -16,12 +16,9 @@ func TestCollectPolygons(t *testing.T) {
 	p1 := b6.AreaFromS2Loop(s2.RegularLoop(s2.PointFromLatLng(ll1), r, 128))
 	ll2 := s2.LatLngFromDegrees(51.536631, -0.126495)
 	p2 := b6.AreaFromS2Loop(s2.RegularLoop(s2.PointFromLatLng(ll2), r, 128))
-	c := api.ArrayAnyCollection{
-		Keys:   []interface{}{0, 1},
-		Values: []interface{}{p1, p2},
-	}
+	c := b6.ArrayValuesCollection[b6.Area]{p1, p2}
 
-	collected, err := collectAreas(nil, &c)
+	collected, err := collectAreas(nil, c.Collection().Values())
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

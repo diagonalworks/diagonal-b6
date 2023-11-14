@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"diagonal.works/b6"
-	pb "diagonal.works/b6/proto"
 )
 
 type Options struct {
@@ -16,14 +15,14 @@ type Options struct {
 }
 
 type Context struct {
-	World            b6.World
-	Cores            int
-	FileIOAllowed    bool
-	Clock            func() time.Time
-	Values           map[interface{}]interface{}
-	FunctionSymbols  FunctionSymbols
-	FunctionWrappers FunctionWrappers
-	Context          context.Context
+	World           b6.World
+	Cores           int
+	FileIOAllowed   bool
+	Clock           func() time.Time
+	Values          map[interface{}]interface{}
+	FunctionSymbols FunctionSymbols
+	Adaptors        Adaptors
+	Context         context.Context
 
 	VM *VM
 }
@@ -100,7 +99,10 @@ type Callable interface {
 	String() string
 }
 
-type FunctionWrappers map[reflect.Type]func(Callable) reflect.Value
+type Adaptors struct {
+	Functions   map[reflect.Type]func(Callable) reflect.Value
+	Collections map[reflect.Type]func(b6.UntypedCollection) reflect.Value
+}
 
 func Call0(context *Context, c Callable) (interface{}, error) {
 	var scratch [MaxArgs]reflect.Value
@@ -138,9 +140,9 @@ func (i Instruction) String() string {
 }
 
 type target struct {
-	Node *pb.NodeProto
-	Args *frame
-	Done func(entrypoint int)
+	Expression b6.Expression
+	Args       *frame
+	Done       func(entrypoint int)
 }
 
 type frame struct {
@@ -154,12 +156,12 @@ func (f *frame) Bind(s string, i int) {
 	f.Args = append(f.Args, i)
 }
 
-func (f *frame) Lookup(s string) (int, bool) {
+func (f *frame) Lookup(s b6.SymbolExpression) (int, bool) {
 	if f == nil {
 		return 0, false
 	}
 	for i, ss := range f.Symbols {
-		if s == ss {
+		if string(s) == ss {
 			return f.Args[i], true
 		}
 	}
@@ -178,16 +180,16 @@ func (c *compilation) Append(i Instruction) {
 	c.Instructions = append(c.Instructions, i)
 }
 
-func Evaluate(node *pb.NodeProto, context *Context) (interface{}, error) {
-	vm, err := newVM(node, context.FunctionSymbols)
+func Evaluate(expression b6.Expression, context *Context) (interface{}, error) {
+	vm, err := newVM(expression, context.FunctionSymbols)
 	if err != nil {
 		return nil, err
 	}
 	return vm.Execute(context)
 }
 
-func EvaluateAndFill(node *pb.NodeProto, context *Context, toFill interface{}) error {
-	vm, err := newVM(node, context.FunctionSymbols)
+func EvaluateAndFill(expression b6.Expression, context *Context, toFill interface{}) error {
+	vm, err := newVM(expression, context.FunctionSymbols)
 	if err != nil {
 		return err
 	}
@@ -208,22 +210,22 @@ func EvaluateAndFill(node *pb.NodeProto, context *Context, toFill interface{}) e
 }
 
 func EvaluateString(e string, context *Context) (interface{}, error) {
-	node, err := ParseExpression(e)
+	expression, err := ParseExpression(e)
 	if err != nil {
 		return nil, err
 	}
-	node = Simplify(node, context.FunctionSymbols)
-	vm, err := newVM(node, context.FunctionSymbols)
+	expression = Simplify(expression, context.FunctionSymbols)
+	vm, err := newVM(expression, context.FunctionSymbols)
 	if err != nil {
 		return nil, err
 	}
 	return vm.Execute(context)
 }
 
-func newVM(node *pb.NodeProto, fs FunctionSymbols) (*VM, error) {
+func newVM(expression b6.Expression, fs FunctionSymbols) (*VM, error) {
 	c := compilation{
 		Globals: fs,
-		Targets: []target{{Node: node, Done: func(int) {}}},
+		Targets: []target{{Expression: expression, Done: func(int) {}}},
 	}
 	for i := 0; i < len(c.Targets); i++ {
 		entrypoint := len(c.Instructions)
@@ -233,7 +235,7 @@ func newVM(node *pb.NodeProto, fs FunctionSymbols) (*VM, error) {
 				c.Append(Instruction{Op: OpStore, Args: [2]int16{int16(c.Args.Args[i])}})
 			}
 		}
-		if err := compile(c.Targets[i].Node, &c); err != nil {
+		if err := compile(c.Targets[i].Expression, &c); err != nil {
 			return nil, err
 		}
 		c.Append(Instruction{Op: OpReturn})
@@ -242,28 +244,28 @@ func newVM(node *pb.NodeProto, fs FunctionSymbols) (*VM, error) {
 	return &VM{Instructions: c.Instructions}, nil
 }
 
-func compile(p *pb.NodeProto, c *compilation) error {
+func compile(expression b6.Expression, c *compilation) error {
 	var err error
-	switch n := p.Node.(type) {
-	case *pb.NodeProto_Call:
-		err = compileCall(n.Call, c)
-	case *pb.NodeProto_Symbol:
-		err = compileSymbol(n.Symbol, c)
-	case *pb.NodeProto_Lambda_:
+	switch e := expression.AnyExpression.(type) {
+	case *b6.CallExpression:
+		err = compileCall(e, c)
+	case *b6.SymbolExpression:
+		err = compileSymbol(e, c)
+	case *b6.LambdaExpression:
 		var l *lambdaCall
-		l, err = compileLambda(n.Lambda_, c)
+		l, err = compileLambda(e, c)
 		if err == nil {
 			c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(l)})
 		}
-	case *pb.NodeProto_Literal:
-		err = compileLiteral(n.Literal, c)
+	case b6.AnyLiteral:
+		err = compileLiteral(b6.Literal{AnyLiteral: e}, c)
 	default:
-		err = fmt.Errorf("Don't know how to compile node %T", p.Node)
+		err = fmt.Errorf("Don't know how to compile %T", e)
 	}
 	return err
 }
 
-func compileCall(call *pb.CallNodeProto, c *compilation) error {
+func compileCall(call *b6.CallExpression, c *compilation) error {
 	for _, a := range call.Args {
 		if err := compile(a, c); err != nil {
 			return err
@@ -271,41 +273,42 @@ func compileCall(call *pb.CallNodeProto, c *compilation) error {
 	}
 	var args [2]int16
 	args[ArgsNumArgs] = int16(len(call.Args))
-	if symbol, ok := call.Function.Node.(*pb.NodeProto_Symbol); ok {
-		if f, ok := c.Globals.Function(symbol.Symbol); ok {
-			c.Append(Instruction{Op: OpCallValue, Callable: goCall{f: f, name: symbol.Symbol}, Args: args})
+	// XXX TODO: use a type switch?
+	if symbol, ok := call.Function.AnyExpression.(*b6.SymbolExpression); ok {
+		if f, ok := c.Globals.Function(*symbol); ok {
+			c.Append(Instruction{Op: OpCallValue, Callable: goCall{f: f, name: symbol.String()}, Args: args})
 		} else {
-			return fmt.Errorf("Undefined symbol %q", symbol.Symbol)
+			return fmt.Errorf("Undefined symbol %q", symbol)
 		}
-	} else if f, ok := call.Function.Node.(*pb.NodeProto_Lambda_); ok {
-		if l, err := compileLambda(f.Lambda_, c); err == nil {
+	} else if f, ok := call.Function.AnyExpression.(*b6.LambdaExpression); ok {
+		if l, err := compileLambda(f, c); err == nil {
 			c.Append(Instruction{Op: OpCallValue, Callable: l, Args: args})
 		} else {
 			return err
 		}
-	} else if _, ok := call.Function.Node.(*pb.NodeProto_Call); ok {
+	} else if _, ok := call.Function.AnyExpression.(*b6.CallExpression); ok {
 		if err := compile(call.Function, c); err != nil {
 			return err
 		}
 		c.Append(Instruction{Op: OpCallStack, Args: [2]int16{int16(len(call.Args)), 0}})
 	} else {
-		return fmt.Errorf("Can't call %T", call.Function.Node)
+		return fmt.Errorf("Can't call %T", call.Function.AnyExpression)
 	}
 	return nil
 }
 
-func compileSymbol(symbol string, c *compilation) error {
-	if a, ok := c.Args.Lookup(symbol); ok {
+func compileSymbol(symbol *b6.SymbolExpression, c *compilation) error {
+	if a, ok := c.Args.Lookup(*symbol); ok {
 		c.Append(Instruction{Op: OpLoad, Args: [2]int16{int16(a)}})
-	} else if f, ok := c.Globals.Function(symbol); ok {
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(&goCall{f: f, name: symbol})})
+	} else if f, ok := c.Globals.Function(*symbol); ok {
+		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(&goCall{f: f, name: symbol.String()})})
 	} else {
 		return fmt.Errorf("Undefined symbol %q", symbol)
 	}
 	return nil
 }
 
-func compileLambda(lambda *pb.LambdaNodeProto, c *compilation) (*lambdaCall, error) {
+func compileLambda(lambda *b6.LambdaExpression, c *compilation) (*lambdaCall, error) {
 	l := &lambdaCall{args: len(lambda.Args)}
 	f := &frame{Previous: c.Args}
 	for _, s := range lambda.Args {
@@ -316,19 +319,16 @@ func compileLambda(lambda *pb.LambdaNodeProto, c *compilation) (*lambdaCall, err
 		c.NumArgs++
 	}
 	c.Targets = append(c.Targets, target{
-		Node: lambda.Node,
-		Args: f,
-		Done: func(entrypoint int) { l.pc = entrypoint },
+		Expression: lambda.Expression,
+		Args:       f,
+		Done:       func(entrypoint int) { l.pc = entrypoint },
 	})
 	return l, nil
 }
 
-func compileLiteral(literal *pb.LiteralNodeProto, c *compilation) error {
-	v, err := FromProto(literal)
-	if err == nil {
-		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(v)})
-	}
-	return err
+func compileLiteral(l b6.Literal, c *compilation) error {
+	c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(l.Literal())})
+	return nil
 }
 
 const MaxArgs = 32
@@ -531,7 +531,7 @@ func (g goCall) ToFunctionValue(t reflect.Type, context *Context) reflect.Value 
 	if g.f.Type().AssignableTo(t) {
 		return g.f
 	}
-	if w, ok := context.FunctionWrappers[t]; ok {
+	if w, ok := context.Adaptors.Functions[t]; ok {
 		return w(g)
 	}
 	panic(fmt.Sprintf("Can't convert values of type %s", t)) // Checked in init()
@@ -587,7 +587,7 @@ func (l *lambdaCall) CallWithArgs(context *Context, args []interface{}, scratch 
 }
 
 func (l *lambdaCall) ToFunctionValue(t reflect.Type, context *Context) reflect.Value {
-	if w, ok := context.FunctionWrappers[t]; ok {
+	if w, ok := context.Adaptors.Functions[t]; ok {
 		return w(l)
 	}
 	panic(fmt.Sprintf("Can't convert values of type %s", t)) // Checked in init()
@@ -650,7 +650,7 @@ func (p *partialCall) CallWithArgs(context *Context, args []interface{}, scratch
 }
 
 func (p *partialCall) ToFunctionValue(t reflect.Type, context *Context) reflect.Value {
-	if w, ok := context.FunctionWrappers[t]; ok {
+	if w, ok := context.Adaptors.Functions[t]; ok {
 		return w(p)
 	}
 	panic(fmt.Sprintf("Can't convert values of type %s", t)) // Checked in init()

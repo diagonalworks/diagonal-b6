@@ -84,23 +84,18 @@ func (r *RelationMemberYAML) UnmarshalYAML(unmarshal func(interface{}) error) er
 	return nil
 }
 
-type CollectionYAML struct {
-	Keys   []b6.Literal
-	Values []b6.Literal
-}
-
 type exportedYAML struct {
 	ID     FeatureIDYAML
 	Add    []b6.Tag `yaml:",omitempty"`
 	Remove []string `yaml:",omitempty"`
 
-	Point      *LatLngYAML          `yaml:",omitempty"`
-	Path       []interface{}        `yaml:",omitempty"`
-	Area       []interface{}        `yaml:",omitempty"`
-	Relation   []RelationMemberYAML `yaml:",omitempty"`
-	Collection *CollectionYAML      `yaml:",omitempty"`
-	Expression *b6.Expression       `yaml:",omitempty"`
-	Tags       []b6.Tag             `yaml:",omitempty"`
+	Point      *LatLngYAML              `yaml:",omitempty"`
+	Path       []interface{}            `yaml:",omitempty"`
+	Area       []interface{}            `yaml:",omitempty"`
+	Relation   []RelationMemberYAML     `yaml:",omitempty"`
+	Collection *b6.CollectionExpression `yaml:",omitempty"`
+	Expression *b6.Expression           `yaml:",omitempty"`
+	Tags       []b6.Tag                 `yaml:",omitempty"`
 }
 
 type modifiedFeatureYAML struct {
@@ -147,8 +142,7 @@ func ExportChangesAsYAML(m MutableWorld, w io.Writer) error {
 	features := func(f b6.Feature, goroutine int) error {
 		return encoder.Encode(modifiedFeatureYAML{Feature: NewFeatureFromWorld(f)})
 	}
-	m.EachModifiedFeature(features, &b6.EachFeatureOptions{Goroutines: 1})
-	return nil
+	return m.EachModifiedFeature(features, &b6.EachFeatureOptions{Goroutines: 1})
 }
 
 func IngestChangesFromYAML(r io.Reader) Change {
@@ -159,8 +153,8 @@ type ingestedYAML struct {
 	r io.Reader
 }
 
-func (i ingestedYAML) Apply(m MutableWorld) (AppliedChange, error) {
-	applied := make(map[b6.FeatureID]b6.FeatureID)
+func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+	applied := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}
 	decoder := yaml.NewDecoder(i.r)
 	for {
 		var y exportedYAML
@@ -168,7 +162,7 @@ func (i ingestedYAML) Apply(m MutableWorld) (AppliedChange, error) {
 			if err == io.EOF {
 				break
 			}
-			return applied, err
+			return applied.Collection(), err
 		}
 		var err error
 		if y.Point != nil {
@@ -203,7 +197,7 @@ func (i ingestedYAML) Apply(m MutableWorld) (AppliedChange, error) {
 			}
 		}
 		if err != nil {
-			return applied, err
+			return applied.Collection(), err
 		}
 		for _, tag := range y.Add {
 			m.AddTag(y.ID.FeatureID, tag)
@@ -211,9 +205,10 @@ func (i ingestedYAML) Apply(m MutableWorld) (AppliedChange, error) {
 		for _, key := range y.Remove {
 			m.RemoveTag(y.ID.FeatureID, key)
 		}
-		applied[y.ID.FeatureID] = y.ID.FeatureID
+		applied.Keys = append(applied.Keys, y.ID.FeatureID)
+		applied.Values = append(applied.Values, y.ID.FeatureID)
 	}
-	return applied, nil
+	return applied.Collection(), nil
 }
 
 // TODO: find a neat way of moving these functions alongside MarshalYAML
@@ -311,12 +306,17 @@ func newRelationFromYAML(y *exportedYAML) (*RelationFeature, error) {
 
 func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
 	var keys, values []interface{}
-	for _, key := range y.Collection.Keys {
-		keys = append(keys, key.Literal())
-	}
 
-	for _, value := range y.Collection.Values {
-		values = append(values, value.Literal())
+	i := y.Collection.BeginUntyped()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		keys = append(keys, i.Key())
+		values = append(values, i.Value())
 	}
 
 	return &CollectionFeature{

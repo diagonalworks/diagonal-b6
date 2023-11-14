@@ -18,7 +18,7 @@ type service struct {
 	pb.UnimplementedB6Server
 	world   ingest.MutableWorld
 	fs      api.FunctionSymbols
-	fw      api.FunctionWrappers
+	a       api.Adaptors
 	options api.Options
 	lock    *sync.RWMutex
 }
@@ -26,7 +26,7 @@ type service struct {
 func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto) (*pb.EvaluateResponseProto, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	apply := func(change ingest.Change) (ingest.AppliedChange, error) {
+	apply := func(change ingest.Change) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 		s.lock.RUnlock()
 		s.lock.Lock()
 		ids, err := change.Apply(s.world)
@@ -42,42 +42,53 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 	}
 
 	context := api.Context{
-		World:            s.world,
-		FunctionSymbols:  s.fs,
-		FunctionWrappers: s.fw,
-		Context:          ctx,
+		World:           s.world,
+		FunctionSymbols: s.fs,
+		Adaptors:        s.a,
+		Context:         ctx,
 	}
 	context.FillFromOptions(&s.options)
-	if v, err := api.Evaluate(request.Request, &context); err == nil {
-		if change, ok := v.(ingest.Change); ok {
-			v, err = apply(change)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if p, err := api.ToProto(v); err == nil {
-			r := &pb.EvaluateResponseProto{
-				Result: p,
-			}
-			if _, err := proto.Marshal(r); err != nil {
-				panic(err)
-			}
-			return &pb.EvaluateResponseProto{
-				Result: p,
-			}, nil
-		} else {
-			return nil, err
-		}
-	} else {
+	var expression b6.Expression
+	if err := expression.FromProto(request.Request); err != nil {
 		return nil, err
 	}
+	v, err := api.Evaluate(expression, &context)
+	if err != nil {
+		return nil, err
+	}
+
+	if change, ok := v.(ingest.Change); ok {
+		v, err = apply(change)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ve, err := b6.FromLiteral(v)
+	if err != nil {
+		return nil, err
+	}
+
+	pe, err := ve.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	r := &pb.EvaluateResponseProto{
+		Result: pe,
+	}
+	if _, err := proto.Marshal(r); err != nil {
+		panic(err)
+	}
+	return &pb.EvaluateResponseProto{
+		Result: pe,
+	}, nil
 }
 
 func NewB6Service(w ingest.MutableWorld, options api.Options, lock *sync.RWMutex) pb.B6Server {
 	return &service{
 		world:   w,
 		fs:      functions.Functions(),
-		fw:      functions.Wrappers(),
+		a:       functions.Adaptors(),
 		options: options,
 		lock:    lock,
 	}

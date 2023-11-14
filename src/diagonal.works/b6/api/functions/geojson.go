@@ -22,30 +22,26 @@ func toGeoJSON(c *api.Context, renderable b6.Renderable) (geojson.GeoJSON, error
 	return geojson.NewFeatureCollection(), nil
 }
 
-func toGeoJSONCollection(c *api.Context, renderables api.AnyRenderableCollection) (geojson.GeoJSON, error) {
+func toGeoJSONCollection(c *api.Context, renderables b6.Collection[interface{}, b6.Renderable]) (geojson.GeoJSON, error) {
 	collection := geojson.NewFeatureCollection()
 	var err error
-	if renderables != nil {
-		i := renderables.Begin()
-		for {
-			var ok bool
-			ok, err = i.Next()
-			if !ok || err != nil {
-				break
+	i := renderables.Begin()
+	for {
+		var ok bool
+		ok, err = i.Next()
+		if !ok || err != nil {
+			break
+		}
+		rendered := i.Value().ToGeoJSON()
+		switch r := rendered.(type) {
+		case *geojson.Feature:
+			collection.AddFeature(r)
+		case *geojson.FeatureCollection:
+			for _, f := range r.Features {
+				collection.AddFeature(f)
 			}
-			if renderable, ok := i.Value().(b6.Renderable); ok {
-				rendered := renderable.ToGeoJSON()
-				switch r := rendered.(type) {
-				case *geojson.Feature:
-					collection.AddFeature(r)
-				case *geojson.FeatureCollection:
-					for _, f := range r.Features {
-						collection.AddFeature(f)
-					}
-				case *geojson.Geometry:
-					collection.AddFeature(geojson.NewFeatureWithGeometry(*r))
-				}
-			}
+		case *geojson.Geometry:
+			collection.AddFeature(geojson.NewFeatureWithGeometry(*r))
 		}
 	}
 	return collection, err
@@ -138,20 +134,18 @@ func importGeoJSONFile(c *api.Context, filename string, namespace string) (inges
 	return add, nil
 }
 
-func geojsonAreas(c *api.Context, g geojson.GeoJSON) (api.StringAreaCollection, error) {
+func geojsonAreas(c *api.Context, g geojson.GeoJSON) (b6.Collection[int, b6.Area], error) {
 	polygons := g.ToS2Polygons()
-	collection := &api.ArrayAreaCollection{
-		Areas: make([]b6.Area, 0),
-	}
+	collection := b6.ArrayValuesCollection[b6.Area]{}
 	for _, p := range polygons {
 		if err := p.Validate(); err == nil {
 			if p.NumLoops() > 0 && p.Loop(0).Area() > 2.0*math.Pi {
 				p.Invert()
 			}
-			collection.Areas = append(collection.Areas, b6.AreaFromS2Polygon(p))
+			collection = append(collection, b6.AreaFromS2Polygon(p))
 		}
 	}
-	return collection, nil
+	return collection.Collection(), nil
 }
 
 func applyToPoint(context *api.Context, f func(*api.Context, b6.Point) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {

@@ -48,8 +48,8 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 		Options: api.Options{
 			Cores: 1,
 		},
-		FunctionSymbols:  functions.Functions(),
-		FunctionWrappers: functions.Wrappers(),
+		FunctionSymbols: functions.Functions(),
+		Adaptors:        functions.Adaptors(),
 	}
 
 	url := fmt.Sprintf("http://b6.diagonal.works/blocks?e=%s", url.QueryEscape(e))

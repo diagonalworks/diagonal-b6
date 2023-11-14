@@ -84,22 +84,21 @@ func TestAccessibilityFlipped(t *testing.T) {
 	}
 }
 
-func accessibilityForGranarySquare(options []b6.Tag, w b6.World) (api.Collection, error) {
+func accessibilityForGranarySquare(options []b6.Tag, w b6.World) (b6.Collection[b6.Identifiable, b6.FeatureID], error) {
 	context := &api.Context{
 		World:   w,
 		Cores:   2,
 		Context: context.Background(),
 	}
-	origins := &api.ArrayFeatureCollection{
-		Features: []b6.Feature{
-			w.FindFeatureByID(camden.StableStreetBridgeNorthEndID.FeatureID()),
-			w.FindFeatureByID(camden.VermuteriaID.FeatureID()),
-		},
+	origins := b6.ArrayFeatureCollection[b6.Feature]{
+		w.FindFeatureByID(camden.StableStreetBridgeNorthEndID.FeatureID()),
+		w.FindFeatureByID(camden.VermuteriaID.FeatureID()),
 	}
-	return accessible(context, origins, b6.Keyed{Key: "entrance"}, 500, &api.ArrayTagCollection{Tags: options})
+	ids := b6.AdaptCollection[any, b6.Identifiable](origins.Collection())
+	return accessible(context, ids, b6.Keyed{Key: "entrance"}, 500, b6.ArrayValuesCollection[b6.Tag](options).Collection())
 }
 
-func fillODsFromCollection(ods map[graph.OD]struct{}, c api.Collection) error {
+func fillODsFromCollection(ods map[graph.OD]struct{}, c b6.Collection[b6.Identifiable, b6.FeatureID]) error {
 	i := c.Begin()
 	for {
 		ok, err := i.Next()
@@ -108,13 +107,7 @@ func fillODsFromCollection(ods map[graph.OD]struct{}, c api.Collection) error {
 		} else if !ok {
 			break
 		}
-		if o, ok := i.Key().(b6.Identifiable); ok {
-			if d, ok := i.Value().(b6.Identifiable); ok {
-				ods[graph.OD{Origin: o.FeatureID(), Destination: d.FeatureID()}] = struct{}{}
-			}
-		} else {
-			return fmt.Errorf("Expected b6.Identifiable for key, found %T", i.Key())
-		}
+		ods[graph.OD{Origin: i.Key().FeatureID(), Destination: i.Value().FeatureID()}] = struct{}{}
 	}
 	return nil
 }

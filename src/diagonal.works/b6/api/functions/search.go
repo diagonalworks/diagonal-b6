@@ -14,26 +14,18 @@ type searchFeatureCollection struct {
 	i     b6.Features
 }
 
-func (s *searchFeatureCollection) Begin() api.CollectionIterator {
+func (s *searchFeatureCollection) Begin() b6.Iterator[b6.FeatureID, b6.Feature] {
 	return &searchFeatureCollection{
 		query: s.query,
 		w:     s.w,
 	}
 }
 
-func (s *searchFeatureCollection) Key() interface{} {
-	return s.FeatureIDKey()
-}
-
-func (s *searchFeatureCollection) Value() interface{} {
-	return s.FeatureValue()
-}
-
-func (s *searchFeatureCollection) FeatureIDKey() b6.FeatureID {
+func (s *searchFeatureCollection) Key() b6.FeatureID {
 	return s.i.FeatureID()
 }
 
-func (s *searchFeatureCollection) FeatureValue() b6.Feature {
+func (s *searchFeatureCollection) Value() b6.Feature {
 	return s.i.Feature()
 }
 
@@ -44,39 +36,53 @@ func (s *searchFeatureCollection) Next() (bool, error) {
 	return s.i.Next(), nil
 }
 
-func (s *searchFeatureCollection) Count() int {
+func (s *searchFeatureCollection) Count() (int, bool) {
 	n := 0
 	i := s.w.FindFeatures(s.query)
 	for i.Next() {
 		n++
 	}
-	return n
+	return n, true
 }
 
-var _ api.Collection = &searchFeatureCollection{}
+var _ b6.AnyCollection[b6.FeatureID, b6.Feature] = &searchFeatureCollection{}
 
-func find(context *api.Context, query b6.Query) (api.FeatureCollection, error) {
-	return &searchFeatureCollection{query: query, w: context.World}, nil
+func find(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.Feature], error) {
+	return b6.Collection[b6.FeatureID, b6.Feature]{
+		AnyCollection: &searchFeatureCollection{query: query, w: context.World},
+	}, nil
 }
 
-func findPointFeatures(context *api.Context, query b6.Query) (api.PointFeatureCollection, error) {
+func findPointFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.PointFeature], error) {
 	tq := b6.Typed{Type: b6.FeatureTypePoint, Query: query}
-	return &searchFeatureCollection{query: tq, w: context.World}, nil
+	c := b6.Collection[b6.FeatureID, b6.Feature]{
+		AnyCollection: &searchFeatureCollection{query: tq, w: context.World},
+	}
+	return b6.AdaptCollection[b6.FeatureID, b6.PointFeature](c), nil
 }
 
-func findPathFeatures(context *api.Context, query b6.Query) (api.PathFeatureCollection, error) {
+func findPathFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.PathFeature], error) {
 	tq := b6.Typed{Type: b6.FeatureTypePath, Query: query}
-	return &searchFeatureCollection{query: tq, w: context.World}, nil
+	c := b6.Collection[b6.FeatureID, b6.Feature]{
+		AnyCollection: &searchFeatureCollection{query: tq, w: context.World},
+	}
+	return b6.AdaptCollection[b6.FeatureID, b6.PathFeature](c), nil
 }
 
-func findAreaFeatures(context *api.Context, query b6.Query) (api.AreaFeatureCollection, error) {
+func findAreaFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.AreaFeature], error) {
 	tq := b6.Typed{Type: b6.FeatureTypeArea, Query: query}
-	return &searchFeatureCollection{query: tq, w: context.World}, nil
+	c := b6.Collection[b6.FeatureID, b6.Feature]{
+		AnyCollection: &searchFeatureCollection{query: tq, w: context.World},
+	}
+	return b6.AdaptCollection[b6.FeatureID, b6.AreaFeature](c), nil
 }
 
-func findRelationFeatures(context *api.Context, query b6.Query) (api.RelationFeatureCollection, error) {
+func findRelationFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.RelationFeature], error) {
 	tq := b6.Typed{Type: b6.FeatureTypeRelation, Query: query}
-	return &searchFeatureCollection{query: tq, w: context.World}, nil
+	c := b6.Collection[b6.FeatureID, b6.Feature]{
+		AnyCollection: &searchFeatureCollection{query: tq, w: context.World},
+	}
+	return b6.AdaptCollection[b6.FeatureID, b6.RelationFeature](c), nil
 }
 
 func intersecting(context *api.Context, g b6.Geometry) (b6.Query, error) {
@@ -167,16 +173,3 @@ func or(context *api.Context, a b6.Query, b b6.Query) (b6.Query, error) {
 func all(context *api.Context) (b6.Query, error) {
 	return b6.All{}, nil
 }
-
-/*
-func queryFromCap(cap s2.Cap) *pb.QueryProto {
-	return &pb.QueryProto{
-		Query: &pb.QueryProto_IntersectsCap{
-			IntersectsCap: &pb.CapProto{
-				Center:       b6.NewPointProtoFromS2Point(cap.Center()),
-				RadiusMeters: b6.AngleToMeters(cap.Radius()),
-			},
-		},
-	}
-}
-*/

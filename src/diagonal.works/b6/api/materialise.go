@@ -13,15 +13,15 @@ func Materialise(id b6.RelationID, value interface{}) (*ingest.RelationFeature, 
 		RelationID: id,
 	}
 	switch v := value.(type) {
-	case Collection:
+	case b6.UntypedCollection:
 		return r, materialiseCollection(v, r)
 	}
 	return nil, fmt.Errorf("can't materialise values of type %T", value)
 }
 
-func materialiseCollection(c Collection, r *ingest.RelationFeature) error {
+func materialiseCollection(c b6.UntypedCollection, r *ingest.RelationFeature) error {
 	r.AddTag(b6.Tag{Key: "b6", Value: "collection"})
-	i := c.Begin()
+	i := c.BeginUntyped()
 
 	ok, err := i.Next()
 	if !ok || err != nil {
@@ -57,7 +57,7 @@ func materialiseCollection(c Collection, r *ingest.RelationFeature) error {
 	}
 }
 
-func materialiseFeatureFeatureCollection(r *ingest.RelationFeature, i CollectionIterator) error {
+func materialiseFeatureFeatureCollection(r *ingest.RelationFeature, i b6.Iterator[any, any]) error {
 	r.Tags.AddTag(b6.Tag{Key: "keys", Value: "features"})
 	r.Tags.AddTag(b6.Tag{Key: "values", Value: "features"})
 	for {
@@ -142,25 +142,25 @@ func Dematerialise(f b6.RelationFeature) (interface{}, error) {
 	return nil, fmt.Errorf("can't dematerialise features with tag %s", t)
 }
 
-func dematerialiseCollection(f b6.RelationFeature) (Collection, error) {
+func dematerialiseCollection(f b6.RelationFeature) (b6.Collection[any, any], error) {
 	// TODO: To support large collections, we could avoid the copy and
 	// use a collection that dematerialised from the feature on the fly.
-	c := &ArrayAnyCollection{
+	c := &b6.ArrayCollection[interface{}, interface{}]{
 		Keys:   make([]interface{}, 0, f.Len()),
 		Values: make([]interface{}, 0, f.Len()),
 	}
 	if keys := f.Get("keys"); keys.Value == "features" {
 		if values := f.Get("values"); values.Value == "features" {
 			if err := dematerialiseFeatureFeatureCollection(c, f); err == nil {
-				return c, nil
+				return b6.Collection[any, any]{AnyCollection: c}, nil
 			} else {
-				return nil, err
+				return b6.Collection[any, any]{}, err
 			}
 		}
 	}
 	role := f.Get("role")
 	if !role.IsValid() {
-		return nil, fmt.Errorf("no role tag")
+		return b6.Collection[any, any]{}, fmt.Errorf("no role tag")
 	}
 	for i := 0; i < f.Len(); i++ {
 		member := f.Member(i)
@@ -168,13 +168,13 @@ func dematerialiseCollection(f b6.RelationFeature) (Collection, error) {
 		if v, err := dematerialiseFromRole(member.Role, role); err == nil {
 			c.Values = append(c.Values, v)
 		} else {
-			return nil, err
+			return b6.Collection[any, any]{}, err
 		}
 	}
-	return c, nil
+	return b6.Collection[any, any]{AnyCollection: c}, nil
 }
 
-func dematerialiseFeatureFeatureCollection(c *ArrayAnyCollection, f b6.RelationFeature) error {
+func dematerialiseFeatureFeatureCollection(c *b6.ArrayCollection[interface{}, interface{}], f b6.RelationFeature) error {
 	if f.Len()%2 != 0 {
 		return fmt.Errorf("incorrectly materialised collection")
 	}

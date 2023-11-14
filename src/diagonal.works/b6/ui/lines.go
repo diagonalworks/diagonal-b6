@@ -80,8 +80,8 @@ func getStringExpression(f b6.Feature, key string) *pb.NodeProto {
 const CollectionLineLimit = 200
 const CollectionHighlightLimit = 10000
 
-func fillKeyValues(c api.Collection, keys []interface{}, values []interface{}) ([]interface{}, []interface{}, error) {
-	i := c.Begin()
+func fillKeyValues(c b6.UntypedCollection, keys []interface{}, values []interface{}) ([]interface{}, []interface{}, error) {
+	i := c.BeginUntyped()
 	var err error
 	for {
 		var ok bool
@@ -139,11 +139,11 @@ func fillMatchingFunctionSymbols(symbols []string, result interface{}, functions
 
 func NewUIHandler(renderer UIRenderer, w ingest.MutableWorld, options api.Options) *UIHandler {
 	return &UIHandler{
-		Renderer:         renderer,
-		World:            w,
-		Options:          options,
-		FunctionSymbols:  functions.Functions(),
-		FunctionWrappers: functions.Wrappers(),
+		Renderer:        renderer,
+		World:           w,
+		Options:         options,
+		FunctionSymbols: functions.Functions(),
+		Adaptors:        functions.Adaptors(),
 	}
 }
 
@@ -171,11 +171,11 @@ func NewUIResponseJSON() *UIResponseJSON {
 }
 
 type UIHandler struct {
-	World            ingest.MutableWorld
-	Renderer         UIRenderer
-	Options          api.Options
-	FunctionSymbols  api.FunctionSymbols
-	FunctionWrappers api.FunctionWrappers
+	World           ingest.MutableWorld
+	Renderer        UIRenderer
+	Options         api.Options
+	FunctionSymbols api.FunctionSymbols
+	Adaptors        api.Adaptors
 }
 
 func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -213,12 +213,16 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		renderContext = b6.FindRelationByID(b6.NewFeatureIDFromProto(request.Context).ToRelationID(), u.World)
 	}
 
+	var expression b6.Expression
 	if request.Expression != "" {
 		var err error
 		if request.Node == nil {
-			response.Proto.Node, err = api.ParseExpression(request.Expression)
+			expression, err = api.ParseExpression(request.Expression)
 		} else {
-			response.Proto.Node, err = api.ParseExpressionWithLHS(request.Expression, request.Node)
+			var lhs b6.Expression
+			if err = lhs.FromProto(request.Node); err == nil {
+				expression, err = api.ParseExpressionWithLHS(request.Expression, lhs)
+			}
 		}
 		if err != nil {
 			u.Renderer.Render(response, err, renderContext, request.Locked)
@@ -229,31 +233,38 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		response.Proto.Node = request.Node
+		expression.FromProto(request.Node)
 	}
-	response.Proto.Node = api.Simplify(response.Proto.Node, u.FunctionSymbols)
+	expression = api.Simplify(expression, u.FunctionSymbols)
 
 	if !request.Locked {
 		substack := &pb.SubstackProto{}
-		fillSubstackFromExpression(substack, response.Proto.Node, true)
+		fillSubstackFromExpression(substack, expression, true)
 		if len(substack.Lines) > 0 {
 			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, substack)
 		}
 	}
 
-	if expression, ok := api.UnparseNode(response.Proto.Node); ok {
-		response.Proto.Expression = expression
+	if unparsed, ok := api.UnparseExpression(expression); ok {
+		response.Proto.Expression = unparsed
+	}
+
+	var err error
+	if response.Proto.Node, err = expression.ToProto(); err != nil {
+		u.Renderer.Render(response, err, renderContext, request.Locked)
+		sendUIResponse(response, w)
+		return
 	}
 
 	vmContext := api.Context{
-		World:            u.World,
-		FunctionSymbols:  u.FunctionSymbols,
-		FunctionWrappers: u.FunctionWrappers,
-		Context:          context.Background(),
+		World:           u.World,
+		FunctionSymbols: u.FunctionSymbols,
+		Adaptors:        u.Adaptors,
+		Context:         context.Background(),
 	}
 	vmContext.FillFromOptions(&u.Options)
 
-	result, err := api.Evaluate(response.Proto.Node, &vmContext)
+	result, err := api.Evaluate(expression, &vmContext)
 	if err == nil {
 		err = u.Renderer.Render(response, result, renderContext, request.Locked)
 	}
@@ -293,16 +304,14 @@ func highlightInResponse(response *pb.UIResponseProto, id b6.FeatureID) {
 	response.Highlighted.Ids[ids].Ids = append(response.Highlighted.Ids[ids].Ids, id.Value)
 }
 
-func fillSubstackFromExpression(lines *pb.SubstackProto, expression *pb.NodeProto, root bool) {
-	if call, ok := expression.Node.(*pb.NodeProto_Call); ok {
-		if call.Call.Pipelined {
-			left := call.Call.Args[0]
-			right := &pb.NodeProto{
-				Node: &pb.NodeProto_Call{
-					Call: &pb.CallNodeProto{
-						Function: call.Call.Function,
-						Args:     call.Call.Args[1:],
-					},
+func fillSubstackFromExpression(lines *pb.SubstackProto, expression b6.Expression, root bool) {
+	if call, ok := expression.AnyExpression.(*b6.CallExpression); ok {
+		if call.Pipelined {
+			left := call.Args[0]
+			right := b6.Expression{
+				AnyExpression: &b6.CallExpression{
+					Function: call.Function,
+					Args:     call.Args[1:],
 				},
 			}
 			fillSubstackFromExpression(lines, left, false)
@@ -310,8 +319,8 @@ func fillSubstackFromExpression(lines *pb.SubstackProto, expression *pb.NodeProt
 			return
 		}
 	}
-	_, isLiteral := expression.Node.(*pb.NodeProto_Literal)
-	if expression, ok := api.UnparseNode(expression); ok {
+	_, isLiteral := expression.AnyExpression.(b6.AnyLiteral)
+	if expression, ok := api.UnparseExpression(expression); ok {
 		if !isLiteral || !root {
 			lines.Lines = append(lines.Lines, &pb.LineProto{
 				Line: &pb.LineProto_Expression{
@@ -332,10 +341,10 @@ func fillSubstackFromExpression(lines *pb.SubstackProto, expression *pb.NodeProt
 	}
 }
 
-func fillSubstackFromCollection(substack *pb.SubstackProto, c api.Collection, response *pb.UIResponseProto, w b6.World) error {
+func fillSubstackFromCollection(substack *pb.SubstackProto, c b6.UntypedCollection, response *pb.UIResponseProto, w b6.World) error {
 	// TODO: Set collection title based on collection contents
-	if countable, ok := c.(api.Countable); ok {
-		line := leftRightValueLineFromValues("Collection", countable.Count(), w)
+	if count, ok := c.Count(); ok {
+		line := leftRightValueLineFromValues("Collection", count, w)
 		substack.Lines = append(substack.Lines, line)
 	} else {
 		substack.Lines = append(substack.Lines, &pb.LineProto{
@@ -519,7 +528,7 @@ func leftRightValueLineFromValues(first interface{}, second interface{}, w b6.Wo
 }
 
 func FillSubstackFromValue(substack *pb.SubstackProto, value interface{}, response *pb.UIResponseProto, w b6.World) {
-	if c, ok := value.(api.Collection); ok {
+	if c, ok := value.(b6.UntypedCollection); ok {
 		fillSubstackFromCollection(substack, c, response, w)
 	} else {
 		substack.Lines = append(substack.Lines, ValueLineFromValue(value, w))
@@ -642,7 +651,7 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 		if err := fillResponseFromHistogram(p, r, w); err != nil {
 			return err
 		}
-	case api.Collection:
+	case b6.UntypedCollection:
 		substack := &pb.SubstackProto{}
 		if err := fillSubstackFromCollection(substack, r, p, w); err == nil {
 			p.Stack.Substacks = append(p.Stack.Substacks, substack)

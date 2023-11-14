@@ -6,18 +6,16 @@ import (
 	"diagonal.works/b6/graph"
 )
 
-func buildingAccess(c *api.Context, origins api.FeatureCollection, limit float64, mode string) (api.FeatureIDFeatureIDCollection, error) {
+func buildingAccess(c *api.Context, origins b6.Collection[interface{}, b6.Feature], limit float64, mode string) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 	o := make(map[b6.FeatureID]b6.Feature)
 	i := origins.Begin()
 	for {
 		if ok, err := i.Next(); err != nil {
-			return nil, err
+			return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 		} else if !ok {
 			break
 		}
-		if f, ok := i.Value().(b6.Feature); ok {
-			o[f.FeatureID()] = f
-		}
+		o[i.Value().FeatureID()] = i.Value()
 	}
 
 	from := make([]b6.FeatureID, 0)
@@ -36,8 +34,8 @@ func buildingAccess(c *api.Context, origins api.FeatureCollection, limit float64
 			}
 		}
 	}
-	return &api.ArrayFeatureIDFeatureIDCollection{
+	return b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{
 		Keys:   from,
 		Values: to,
-	}, nil
+	}.Collection(), nil
 }

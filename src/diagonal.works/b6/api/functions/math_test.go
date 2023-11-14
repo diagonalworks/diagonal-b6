@@ -1,7 +1,6 @@
 package functions
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
 	"reflect"
@@ -14,16 +13,12 @@ import (
 
 func TestPercentiles(t *testing.T) {
 	r := rand.New(rand.NewSource(42))
-	values := make([]float64, 1000)
-	for i := range values {
-		values[i] = r.Float64() * 5.0
-	}
-	keys := make([]interface{}, len(values))
-	for i := range keys {
-		keys[i] = fmt.Sprintf("%d", i)
+	input := b6.ArrayValuesCollection[float64](make([]float64, 1000))
+	for i := range input {
+		input[i] = r.Float64() * 5.0
 	}
 
-	collection, err := percentiles(&api.Context{}, &api.ArrayAnyFloatCollection{Keys: keys, Values: values})
+	collection, err := percentiles(&api.Context{}, input.Collection().Values())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,14 +33,14 @@ func TestPercentiles(t *testing.T) {
 		if !ok {
 			break
 		}
-		expected := values[i] / 5.0
-		if math.Abs(j.Value().(float64)-expected) > 0.05 {
-			t.Fatalf("Expected a value close to %f, found %f", expected, j.Value().(float64))
+		expected := input[i] / 5.0
+		if math.Abs(j.Value()-expected) > 0.05 {
+			t.Fatalf("Expected a value close to %f, found %f", expected, j.Value())
 		}
 		i++
 	}
-	if i != len(values) {
-		t.Errorf("Expected %d values, found %d", len(values), i)
+	if i != len(input) {
+		t.Errorf("Expected %d values, found %d", len(input), i)
 	}
 }
 
@@ -55,7 +50,7 @@ func TestCount(t *testing.T) {
 	context := &api.Context{
 		World: granarySquare,
 	}
-	collection, err := find(context, b6.Keyed{"#building"})
+	collection, err := find(context, b6.Keyed{Key: "#building"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -72,14 +67,14 @@ func TestCount(t *testing.T) {
 
 func TestAdd(t *testing.T) {
 	tests := []struct {
-		a api.Number
-		b api.Number
-		r api.Number
+		a b6.Number
+		b b6.Number
+		r b6.Number
 	}{
-		{api.IntNumber(2), api.IntNumber(3), api.IntNumber(5)},
-		{api.IntNumber(2), api.FloatNumber(3.0), api.FloatNumber(5.0)},
-		{api.FloatNumber(2.0), api.IntNumber(3.0), api.FloatNumber(5.0)},
-		{api.FloatNumber(2.0), api.FloatNumber(3.0), api.FloatNumber(5.0)},
+		{b6.IntNumber(2), b6.IntNumber(3), b6.IntNumber(5)},
+		{b6.IntNumber(2), b6.FloatNumber(3.0), b6.FloatNumber(5.0)},
+		{b6.FloatNumber(2.0), b6.IntNumber(3.0), b6.FloatNumber(5.0)},
+		{b6.FloatNumber(2.0), b6.FloatNumber(3.0), b6.FloatNumber(5.0)},
 	}
 	for _, test := range tests {
 		if r, err := add(&api.Context{}, test.a, test.b); err != nil || !reflect.DeepEqual(r, test.r) {
@@ -90,14 +85,14 @@ func TestAdd(t *testing.T) {
 
 func TestDivide(t *testing.T) {
 	tests := []struct {
-		a api.Number
-		b api.Number
-		r api.Number
+		a b6.Number
+		b b6.Number
+		r b6.Number
 	}{
-		{api.IntNumber(6), api.IntNumber(2), api.IntNumber(3)},
-		{api.IntNumber(6), api.FloatNumber(2.0), api.FloatNumber(3.0)},
-		{api.FloatNumber(6.0), api.IntNumber(2.0), api.FloatNumber(3.0)},
-		{api.FloatNumber(6.0), api.FloatNumber(2.0), api.FloatNumber(3.0)},
+		{b6.IntNumber(6), b6.IntNumber(2), b6.IntNumber(3)},
+		{b6.IntNumber(6), b6.FloatNumber(2.0), b6.FloatNumber(3.0)},
+		{b6.FloatNumber(6.0), b6.IntNumber(2.0), b6.FloatNumber(3.0)},
+		{b6.FloatNumber(6.0), b6.FloatNumber(2.0), b6.FloatNumber(3.0)},
 	}
 	for _, test := range tests {
 		if r, err := divide(&api.Context{}, test.a, test.b); err != nil || !reflect.DeepEqual(r, test.r) {

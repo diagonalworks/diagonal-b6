@@ -9,47 +9,7 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-// compactArrayStringCollection is a StringCollection where the value for each key
-// is the same as that key
-type compactArrayStringCollection struct {
-	strings []string
-	i       int
-}
-
-func (c *compactArrayStringCollection) Count() int { return len(c.strings) }
-
-func (c *compactArrayStringCollection) Begin() api.CollectionIterator {
-	return &compactArrayStringCollection{
-		strings: c.strings,
-		i:       0,
-	}
-}
-
-func (c *compactArrayStringCollection) Key() interface{} {
-	return c.StringKey()
-}
-
-func (c *compactArrayStringCollection) Value() interface{} {
-	return c.StringValue()
-}
-
-func (c *compactArrayStringCollection) StringKey() string {
-	return c.strings[c.i-1]
-}
-
-func (c *compactArrayStringCollection) StringValue() string {
-	return c.strings[c.i-1]
-}
-
-func (c *compactArrayStringCollection) Next() (bool, error) {
-	c.i++
-	return c.i <= len(c.strings), nil
-}
-
-var _ api.Collection = &compactArrayStringCollection{}
-var _ api.Countable = &compactArrayStringCollection{}
-
-func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (api.StringPointCollection, error) {
+func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (b6.Collection[string, b6.Point], error) {
 	coverer := s2.RegionCoverer{MinLevel: minLevel, MaxLevel: maxLevel}
 	cells := make(map[s2.CellID]struct{})
 	for i := 0; i < area.Len(); i++ {
@@ -58,15 +18,15 @@ func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (a
 		}
 	}
 	keys := make([]string, 0, len(cells))
-	values := make([]s2.Point, 0, len(cells))
+	values := make([]b6.Point, 0, len(cells))
 	for cell := range cells {
 		keys = append(keys, cell.ToToken())
-		values = append(values, cell.Point())
+		values = append(values, b6.PointFromS2Point(cell.Point()))
 	}
-	return &api.ArrayPointCollection{Keys: keys, Values: values}, nil
+	return b6.ArrayCollection[string, b6.Point]{Keys: keys, Values: values}.Collection(), nil
 }
 
-func s2Grid(context *api.Context, area b6.Area, level int) (api.StringStringCollection, error) {
+func s2Grid(context *api.Context, area b6.Area, level int) (b6.Collection[int, string], error) {
 	coverer := s2.RegionCoverer{MinLevel: level, MaxLevel: level}
 	cells := make(map[s2.CellID]struct{})
 	for i := 0; i < area.Len(); i++ {
@@ -79,10 +39,10 @@ func s2Grid(context *api.Context, area b6.Area, level int) (api.StringStringColl
 		tokens = append(tokens, cell.ToToken())
 	}
 	sort.Strings(tokens)
-	return &compactArrayStringCollection{strings: tokens}, nil
+	return b6.ArrayValuesCollection[string](tokens).Collection(), nil
 }
 
-func s2Covering(context *api.Context, area b6.Area, minLevel int, maxLevel int) (api.StringStringCollection, error) {
+func s2Covering(context *api.Context, area b6.Area, minLevel int, maxLevel int) (b6.Collection[int, string], error) {
 	coverer := s2.RegionCoverer{MinLevel: minLevel, MaxLevel: maxLevel}
 	cells := make(s2.CellUnion, 0, 4)
 	for i := 0; i < area.Len(); i++ {
@@ -92,7 +52,7 @@ func s2Covering(context *api.Context, area b6.Area, minLevel int, maxLevel int) 
 	for _, cell := range cells {
 		tokens = append(tokens, cell.ToToken())
 	}
-	return &compactArrayStringCollection{strings: tokens}, nil
+	return b6.ArrayValuesCollection[string](tokens).Collection(), nil
 }
 
 func s2Center(context *api.Context, token string) (b6.Point, error) {
