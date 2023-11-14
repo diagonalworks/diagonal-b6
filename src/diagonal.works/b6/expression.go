@@ -39,24 +39,23 @@ type Expression struct {
 }
 
 type expressionChoices struct {
-	Symbol            *SymbolExpression
-	Int               *IntExpression
-	Float             *FloatExpression
-	Bool              *BoolExpression
-	String            *StringExpression
-	ID                *FeatureIDExpression
-	SID               *SpecificFeatureIDExpression // PointID etc, rather than FeatureID
-	Tag               *TagExpression
-	Query             *QueryExpression
-	GeoJSON           *GeoJSONExpression
-	FeatureExpression *FeatureExpression
-	Point             *PointExpression
-	Path              *PathExpression
-	AreaExpression    *AreaExpression
-	NilExpression     *NilExpression
-	Collection        *CollectionExpression
-	Call              *CallExpression
-	Lambda            *LambdaExpression
+	Symbol     *SymbolExpression
+	Int        *IntExpression
+	Float      *FloatExpression
+	Bool       *BoolExpression
+	String     *StringExpression
+	ID         *FeatureIDExpression
+	Tag        *TagExpression
+	Query      *QueryExpression
+	GeoJSON    *GeoJSONExpression
+	Feature    *FeatureExpression
+	Point      *PointExpression
+	Path       *PathExpression
+	Area       *AreaExpression
+	Nil        *NilExpression
+	Collection *CollectionExpression
+	Call       *CallExpression
+	Lambda     *LambdaExpression
 }
 
 func (e Expression) MarshalYAML() (interface{}, error) {
@@ -99,7 +98,7 @@ func (e *Expression) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
-func (e *Expression) ToProto() (*pb.NodeProto, error) {
+func (e Expression) ToProto() (*pb.NodeProto, error) {
 	p, err := e.AnyExpression.ToProto()
 	p.Begin = int32(e.Begin)
 	p.End = int32(e.End)
@@ -151,6 +150,10 @@ func (e *Expression) FromProto(node *pb.NodeProto) error {
 	e.Begin = int(node.Begin)
 	e.End = int(node.End)
 	return e.AnyExpression.FromProto(node)
+}
+
+func (e Expression) Clone() Expression {
+	return e.AnyExpression.Clone()
 }
 
 type AnyLiteral interface {
@@ -222,28 +225,22 @@ func FromLiteral(l interface{}) (Literal, error) {
 		id := FeatureIDExpression(l)
 		return Literal{AnyLiteral: &id}, nil
 	case PointID:
-		id := SpecificFeatureIDExpression{FeatureIDExpression: FeatureIDExpression(l.FeatureID())}
-		return Literal{AnyLiteral: &id}, nil
+		return FromLiteral(l.FeatureID())
 	case PathID:
-		id := SpecificFeatureIDExpression{FeatureIDExpression: FeatureIDExpression(l.FeatureID())}
-		return Literal{AnyLiteral: &id}, nil
+		return FromLiteral(l.FeatureID())
 	case AreaID:
-		id := SpecificFeatureIDExpression{FeatureIDExpression: FeatureIDExpression(l.FeatureID())}
-		return Literal{AnyLiteral: &id}, nil
+		return FromLiteral(l.FeatureID())
 	case RelationID:
-		id := SpecificFeatureIDExpression{FeatureIDExpression: FeatureIDExpression(l.FeatureID())}
-		return Literal{AnyLiteral: &id}, nil
+		return FromLiteral(l.FeatureID())
 	case CollectionID:
-		id := SpecificFeatureIDExpression{FeatureIDExpression: FeatureIDExpression(l.FeatureID())}
-		return Literal{AnyLiteral: &id}, nil
+		return FromLiteral(l.FeatureID())
 	case ExpressionID:
-		id := SpecificFeatureIDExpression{FeatureIDExpression: FeatureIDExpression(l.FeatureID())}
-		return Literal{AnyLiteral: &id}, nil
+		return FromLiteral(l.FeatureID())
 	case Tag:
 		tag := TagExpression(l)
 		return Literal{AnyLiteral: &tag}, nil
 	case Feature:
-		f := FeatureExpression{Feature: l}
+		f := FeatureExpression{Identifiable: l}
 		return Literal{AnyLiteral: &f}, nil
 	case Point:
 		ll := PointExpression(s2.LatLngFromPoint(l.Point()))
@@ -455,31 +452,9 @@ func (f FeatureIDExpression) Literal() interface{} {
 	return FeatureID(f)
 }
 
-type SpecificFeatureIDExpression struct {
-	FeatureIDExpression
-}
-
-func (f *SpecificFeatureIDExpression) Clone() Expression {
-	clone := *f
-	return Expression{AnyExpression: &clone}
-}
-
-func (f SpecificFeatureIDExpression) Literal() interface{} {
-	switch f.FeatureIDExpression.Type {
-	case FeatureTypePoint:
-		return FeatureID(f.FeatureIDExpression).ToPointID()
-	case FeatureTypePath:
-		return FeatureID(f.FeatureIDExpression).ToPathID()
-	case FeatureTypeArea:
-		return FeatureID(f.FeatureIDExpression).ToAreaID()
-	case FeatureTypeRelation:
-		return FeatureID(f.FeatureIDExpression).ToRelationID()
-	case FeatureTypeCollection:
-		return FeatureID(f.FeatureIDExpression).ToCollectionID()
-	case FeatureTypeExpression:
-		return FeatureID(f.FeatureIDExpression).ToExpressionID()
-	}
-	panic("bad FeatureType")
+func NewFeatureIDExpression(id FeatureID) Expression {
+	l := FeatureIDExpression(id)
+	return Expression{AnyExpression: &l}
 }
 
 type TagExpression Tag
@@ -618,19 +593,35 @@ func (g GeoJSONExpression) Literal() interface{} {
 }
 
 type FeatureExpression struct {
-	Feature
+	Identifiable
 }
 
 func (f *FeatureExpression) ToProto() (*pb.NodeProto, error) {
-	return &pb.NodeProto{
-		Node: &pb.NodeProto_Literal{
-			Literal: &pb.LiteralNodeProto{
-				Value: &pb.LiteralNodeProto_FeatureValue{
-					FeatureValue: NewProtoFromFeature(f.Feature),
+	if f, ok := f.Identifiable.(Feature); ok {
+		if p, err := NewProtoFromFeature(f); err == nil {
+			return &pb.NodeProto{
+				Node: &pb.NodeProto_Literal{
+					Literal: &pb.LiteralNodeProto{
+						Value: &pb.LiteralNodeProto_FeatureValue{
+							FeatureValue: p,
+						},
+					},
+				},
+			}, nil
+		} else {
+			return nil, err
+		}
+	} else {
+		return &pb.NodeProto{
+			Node: &pb.NodeProto_Literal{
+				Literal: &pb.LiteralNodeProto{
+					Value: &pb.LiteralNodeProto_FeatureIDValue{
+						FeatureIDValue: NewProtoFromFeatureID(f.FeatureID()),
+					},
 				},
 			},
-		},
-	}, nil
+		}, nil
+	}
 }
 
 func (f *FeatureExpression) FromProto(node *pb.NodeProto) error {
@@ -638,11 +629,16 @@ func (f *FeatureExpression) FromProto(node *pb.NodeProto) error {
 }
 
 func (f *FeatureExpression) MarshalYAML() (interface{}, error) {
-	panic("Unimplemented")
+	return f.FeatureID().MarshalYAML()
 }
 
 func (f *FeatureExpression) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	return errors.New("Can't import features from YAML")
+	var id FeatureID
+	err := unmarshal(&id)
+	if err == nil {
+		f.Identifiable = &id
+	}
+	return err
 }
 
 func (f *FeatureExpression) Clone() Expression {
@@ -651,7 +647,7 @@ func (f *FeatureExpression) Clone() Expression {
 }
 
 func (f *FeatureExpression) Literal() interface{} {
-	return f.Feature
+	return f.Identifiable
 }
 
 type PointExpression s2.LatLng
@@ -901,6 +897,10 @@ func (c *CollectionExpression) FromProto(node *pb.NodeProto) error {
 	return nil
 }
 
+func NewCollectionExpression(c UntypedCollection) Expression {
+	return Expression{AnyExpression: &CollectionExpression{UntypedCollection: c}}
+}
+
 type collectionYAML struct {
 	Keys   []Literal
 	Values []Literal
@@ -1016,6 +1016,10 @@ func (c *CallExpression) Clone() Expression {
 	}}
 }
 
+func NewCallExpression(function Expression, args []Expression) Expression {
+	return Expression{AnyExpression: &CallExpression{Function: function, Args: args}}
+}
+
 type LambdaExpression struct {
 	Args       []string   `yaml:",omitempty"`
 	Expression Expression `yaml:",omitempty"`
@@ -1051,4 +1055,8 @@ func (l *LambdaExpression) Clone() Expression {
 		Args:       names,
 		Expression: l.Expression.Clone(),
 	}}
+}
+
+func NewLambdaExpression(args []string, e Expression) Expression {
+	return Expression{AnyExpression: &LambdaExpression{Args: args, Expression: e}}
 }

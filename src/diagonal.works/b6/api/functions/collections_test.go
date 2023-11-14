@@ -177,7 +177,8 @@ func TestCountValues(t *testing.T) {
 		Values: []int{2, 3, 2},
 	}
 
-	counted, err := countValues(&api.Context{}, collection.Collection())
+	c := b6.AdaptCollection[any, any](collection.Collection())
+	counted, err := countValues(&api.Context{}, c)
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}

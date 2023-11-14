@@ -55,7 +55,8 @@ func TestCount(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	count, err := count(context, collection)
+	c := b6.AdaptCollection[any, any](collection)
+	count, err := count(context, c)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

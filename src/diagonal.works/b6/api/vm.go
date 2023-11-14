@@ -96,7 +96,7 @@ type Callable interface {
 	// the context, and the stack is left unmodified.
 	CallWithArgs(context *Context, args []interface{}, scratch []reflect.Value) (interface{}, []reflect.Value, error)
 	ToFunctionValue(t reflect.Type, context *Context) reflect.Value
-	String() string
+	Expression() (b6.Expression, bool)
 }
 
 type Adaptors struct {
@@ -276,7 +276,8 @@ func compileCall(call *b6.CallExpression, c *compilation) error {
 	// XXX TODO: use a type switch?
 	if symbol, ok := call.Function.AnyExpression.(*b6.SymbolExpression); ok {
 		if f, ok := c.Globals.Function(*symbol); ok {
-			c.Append(Instruction{Op: OpCallValue, Callable: goCall{f: f, name: symbol.String()}, Args: args})
+			callable := goCall{f: f, name: symbol.String(), expression: call.Function}
+			c.Append(Instruction{Op: OpCallValue, Callable: callable, Args: args})
 		} else {
 			return fmt.Errorf("Undefined symbol %q", symbol)
 		}
@@ -309,7 +310,7 @@ func compileSymbol(symbol *b6.SymbolExpression, c *compilation) error {
 }
 
 func compileLambda(lambda *b6.LambdaExpression, c *compilation) (*lambdaCall, error) {
-	l := &lambdaCall{args: len(lambda.Args)}
+	l := &lambdaCall{args: len(lambda.Args), expression: b6.Expression{AnyExpression: lambda}}
 	f := &frame{Previous: c.Args}
 	for _, s := range lambda.Args {
 		if c.NumArgs > MaxArgs {
@@ -407,16 +408,21 @@ func (v *VM) execute(context *Context) error {
 }
 
 type goCall struct {
-	f    reflect.Value
-	name string
+	f          reflect.Value
+	name       string
+	expression b6.Expression
 }
 
 func (g goCall) NumArgs() int {
 	return g.f.Type().NumIn() - 1
 }
 
-func (g goCall) String() string {
-	return "go: " + g.name
+func (g goCall) Expression() (b6.Expression, bool) {
+	if g.expression.AnyExpression != nil {
+		return g.expression, true
+	} else {
+		return b6.Expression{}, false
+	}
 }
 
 func (g goCall) CallFromStack(context *Context, n int, scratch []reflect.Value) ([]reflect.Value, error) {
@@ -538,12 +544,17 @@ func (g goCall) ToFunctionValue(t reflect.Type, context *Context) reflect.Value 
 }
 
 type lambdaCall struct {
-	pc   int
-	args int
+	pc         int
+	args       int
+	expression b6.Expression
 }
 
 func (l *lambdaCall) NumArgs() int {
 	return l.args
+}
+
+func (l *lambdaCall) Expression() (b6.Expression, bool) {
+	return l.expression, true
 }
 
 func (l *lambdaCall) String() string {
@@ -675,6 +686,22 @@ func (p *partialCall) ToFunction() interface{} {
 	}
 }
 
-func (p *partialCall) String() string {
-	return fmt.Sprintf("partial/%d: %s", p.n, p.c.String())
+func (p *partialCall) Expression() (b6.Expression, bool) {
+	if expression, ok := p.c.Expression(); ok {
+		args := make([]b6.Expression, p.n)
+		for i := 0; i < p.n; i++ {
+			if literal, err := b6.FromLiteral(p.args[i].Interface()); err == nil {
+				args[i] = b6.Expression{AnyExpression: literal.AnyLiteral}
+			} else {
+				return b6.Expression{}, false
+			}
+		}
+		return b6.Expression{
+			AnyExpression: &b6.CallExpression{
+				Function: expression,
+				Args:     args,
+			},
+		}, true
+	}
+	return b6.Expression{}, false
 }

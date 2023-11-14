@@ -244,6 +244,16 @@ func (a ArrayCollection[Key, Value]) Collection() Collection[Key, Value] {
 	return Collection[Key, Value]{AnyCollection: a}
 }
 
+func (a ArrayCollection[Key, Value]) Clone() ArrayCollection[Key, Value] {
+	clone := ArrayCollection[Key, Value]{
+		Keys:   make([]Key, len(a.Keys)),
+		Values: make([]Value, len(a.Values)),
+	}
+	copy(clone.Keys, a.Keys)
+	copy(clone.Values, a.Values)
+	return clone
+}
+
 var _ AnyCollection[int, string] = &ArrayCollection[int, string]{}
 
 type ArrayValuesCollection[Value any] []Value

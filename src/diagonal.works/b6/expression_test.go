@@ -8,8 +8,11 @@ import (
 )
 
 func TestExportCollectionExpressionAsYAML(t *testing.T) {
-	c := ArrayCollection[PointID, string]{
-		Keys:   []PointID{MakePointID(NamespaceOSMNode, 2300722786), MakePointID(NamespaceOSMNode, 3501612811)},
+	c := ArrayCollection[FeatureID, string]{
+		Keys: []FeatureID{
+			MakePointID(NamespaceOSMNode, 2300722786).FeatureID(),
+			MakePointID(NamespaceOSMNode, 3501612811).FeatureID(),
+		},
 		Values: []string{"good", "best"},
 	}
 	e := Expression{AnyExpression: &CollectionExpression{UntypedCollection: c.Collection()}}
@@ -24,7 +27,7 @@ func TestExportCollectionExpressionAsYAML(t *testing.T) {
 	}
 
 	if collection, ok := ee.AnyExpression.(*CollectionExpression); ok {
-		cc := AdaptCollection[PointID, string](collection.UntypedCollection)
+		cc := AdaptCollection[FeatureID, string](collection.UntypedCollection)
 		if keys, err := cc.AllKeys(nil); err == nil {
 			if diff := cmp.Diff(c.Keys, keys); diff != "" {
 				t.Errorf("Differing keys (-want, +got):\n%s", diff)

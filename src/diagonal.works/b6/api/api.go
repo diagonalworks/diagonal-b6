@@ -193,6 +193,8 @@ var pointIDType = reflect.TypeOf(b6.PointID{})
 var pathIDType = reflect.TypeOf(b6.PointID{})
 var areaIDType = reflect.TypeOf(b6.AreaID{})
 var relationIDType = reflect.TypeOf(b6.RelationID{})
+var collectionIDType = reflect.TypeOf(b6.CollectionID{})
+var expressionIDType = reflect.TypeOf(b6.ExpressionID{})
 var callableInterface = reflect.TypeOf((*Callable)(nil)).Elem()
 var untypedCollectionInterface = reflect.TypeOf((*b6.UntypedCollection)(nil)).Elem()
 
@@ -232,6 +234,18 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 		if vv, ok := v.Interface().(b6.Identifiable); ok {
 			if id := vv.FeatureID(); id.Type == b6.FeatureTypeRelation {
 				return reflect.ValueOf(id.ToRelationID()), nil
+			}
+		}
+	case collectionIDType:
+		if vv, ok := v.Interface().(b6.Identifiable); ok {
+			if id := vv.FeatureID(); id.Type == b6.FeatureTypeCollection {
+				return reflect.ValueOf(id.ToCollectionID()), nil
+			}
+		}
+	case expressionIDType:
+		if vv, ok := v.Interface().(b6.Identifiable); ok {
+			if id := vv.FeatureID(); id.Type == b6.FeatureTypeExpression {
+				return reflect.ValueOf(id.ToExpressionID()), nil
 			}
 		}
 	case numberInterface:
@@ -281,8 +295,8 @@ func convertInterface(v reflect.Value, t reflect.Type) (reflect.Value, bool) {
 func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (reflect.Value, error) {
 	if t.Kind() == reflect.Func {
 		var c Callable
-		if v.Type().Implements(callableInterface) {
-			c = v.Interface().(Callable)
+		if vc, ok := v.Interface().(Callable); ok {
+			c = vc
 		} else if matches, ok := convertQueryToCallable(v, t); ok {
 			c = matches
 		}
@@ -297,7 +311,11 @@ func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (refl
 		if v.Type().AssignableTo(t) {
 			return v, nil
 		} else if adaptor, ok := context.Adaptors.Collections[t]; ok {
-			return adaptor(v.Interface().(b6.UntypedCollection)), nil
+			if vc, ok := v.Interface().(b6.UntypedCollection); ok {
+				return adaptor(vc), nil
+			} else {
+				return reflect.Value{}, fmt.Errorf("expected a collection, found %s", v.Type())
+			}
 		} else {
 			return reflect.Value{}, fmt.Errorf("No collection adaptor for %s", t)
 		}
