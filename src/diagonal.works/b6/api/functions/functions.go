@@ -144,8 +144,7 @@ var functions = api.FunctionSymbols{
 	"changes-to-file":   changesToFile,
 	"changes-from-file": changesFromFile,
 	// materialise
-	"materialise":   materialise,
-	"dematerialise": dematerialise,
+	"materialise": materialise,
 	// debug
 	"debug-tokens":    debugTokens,
 	"debug-all-query": debugAllQuery,
@@ -315,6 +314,7 @@ var functionAdaptors = []interface{}{
 // functions wrap a collection to match a different type, causing a runtime
 // error if type conversion isn't possible.
 var collectionAdaptors = []interface{}{
+	b6.AdaptCollection[any, any],
 	b6.AdaptCollection[any, b6.Area],
 	b6.AdaptCollection[any, b6.AreaFeature],
 	b6.AdaptCollection[any, b6.Feature],

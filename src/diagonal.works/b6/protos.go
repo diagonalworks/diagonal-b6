@@ -19,19 +19,11 @@ func NewProtoFromFeatureID(id FeatureID) *pb.FeatureIDProto {
 }
 
 func NewFeatureIDFromProto(p *pb.FeatureIDProto) FeatureID {
-	switch p.Type {
-	case pb.FeatureType_FeatureTypePoint:
-		return MakePointID(Namespace(p.Namespace), p.Value).FeatureID()
-	case pb.FeatureType_FeatureTypePath:
-		return MakePathID(Namespace(p.Namespace), p.Value).FeatureID()
-	case pb.FeatureType_FeatureTypeArea:
-		return MakeAreaID(Namespace(p.Namespace), p.Value).FeatureID()
-	case pb.FeatureType_FeatureTypeRelation:
-		return MakeRelationID(Namespace(p.Namespace), p.Value).FeatureID()
-	case pb.FeatureType_FeatureTypeInvalid:
-		return FeatureIDInvalid
+	return FeatureID{
+		Type:      NewFeatureTypeFromProto(p.Type),
+		Namespace: Namespace(p.Namespace),
+		Value:     p.Value,
 	}
-	panic(fmt.Sprintf("Invalid FeatureType: %s", p.Type))
 }
 
 func NewFeatureTypeFromProto(t pb.FeatureType) FeatureType {
@@ -44,6 +36,10 @@ func NewFeatureTypeFromProto(t pb.FeatureType) FeatureType {
 		return FeatureTypeArea
 	case pb.FeatureType_FeatureTypeRelation:
 		return FeatureTypeRelation
+	case pb.FeatureType_FeatureTypeCollection:
+		return FeatureTypeCollection
+	case pb.FeatureType_FeatureTypeExpression:
+		return FeatureTypeExpression
 	}
 	panic(fmt.Sprintf("Invalid pb.FeatureType: %s", t))
 }
@@ -58,6 +54,10 @@ func NewProtoFromFeatureType(t FeatureType) pb.FeatureType {
 		return pb.FeatureType_FeatureTypeArea
 	case FeatureTypeRelation:
 		return pb.FeatureType_FeatureTypeRelation
+	case FeatureTypeCollection:
+		return pb.FeatureType_FeatureTypeCollection
+	case FeatureTypeExpression:
+		return pb.FeatureType_FeatureTypeExpression
 	}
 	panic(fmt.Sprintf("Invalid FeatureType: %s", t))
 }
@@ -71,7 +71,7 @@ func newProtoFromTagged(t Taggable) []*pb.TagProto {
 	return p
 }
 
-func NewProtoFromFeature(feature Feature) *pb.FeatureProto {
+func NewProtoFromFeature(feature Feature) (*pb.FeatureProto, error) {
 	switch f := feature.(type) {
 	case PointFeature:
 		return newProtoFromPointFeature(f)
@@ -81,11 +81,15 @@ func NewProtoFromFeature(feature Feature) *pb.FeatureProto {
 		return newProtoFromAreaFeature(f)
 	case RelationFeature:
 		return newProtoFromRelationFeature(f)
+	case CollectionFeature:
+		return newProtoFromCollectionFeature(f)
+	case ExpressionFeature:
+		return newProtoFromExpressionFeature(f)
 	}
 	panic(fmt.Sprintf("Can't handle feature %T", feature))
 }
 
-func newProtoFromPointFeature(f PointFeature) *pb.FeatureProto {
+func newProtoFromPointFeature(f PointFeature) (*pb.FeatureProto, error) {
 	return &pb.FeatureProto{
 		Feature: &pb.FeatureProto_Point{
 			Point: &pb.PointFeatureProto{
@@ -93,10 +97,10 @@ func newProtoFromPointFeature(f PointFeature) *pb.FeatureProto {
 				Tags: newProtoFromTagged(f),
 			},
 		},
-	}
+	}, nil
 }
 
-func newProtoFromPathFeature(f PathFeature) *pb.FeatureProto {
+func newProtoFromPathFeature(f PathFeature) (*pb.FeatureProto, error) {
 	return &pb.FeatureProto{
 		Feature: &pb.FeatureProto_Path{
 			Path: &pb.PathFeatureProto{
@@ -105,10 +109,10 @@ func newProtoFromPathFeature(f PathFeature) *pb.FeatureProto {
 				LengthMeters: units.AngleToMeters(f.Polyline().Length()),
 			},
 		},
-	}
+	}, nil
 }
 
-func newProtoFromAreaFeature(f AreaFeature) *pb.FeatureProto {
+func newProtoFromAreaFeature(f AreaFeature) (*pb.FeatureProto, error) {
 	return &pb.FeatureProto{
 		Feature: &pb.FeatureProto_Area{
 			Area: &pb.AreaFeatureProto{
@@ -116,10 +120,10 @@ func newProtoFromAreaFeature(f AreaFeature) *pb.FeatureProto {
 				Tags: newProtoFromTagged(f),
 			},
 		},
-	}
+	}, nil
 }
 
-func newProtoFromRelationFeature(f RelationFeature) *pb.FeatureProto {
+func newProtoFromRelationFeature(f RelationFeature) (*pb.FeatureProto, error) {
 	return &pb.FeatureProto{
 		Feature: &pb.FeatureProto_Relation{
 			Relation: &pb.RelationFeatureProto{
@@ -128,7 +132,7 @@ func newProtoFromRelationFeature(f RelationFeature) *pb.FeatureProto {
 				Members: newProtoFromRelationMembers(f),
 			},
 		},
-	}
+	}, nil
 }
 
 func newProtoFromRelationMembers(f RelationFeature) []*pb.RelationMemberProto {
@@ -141,6 +145,40 @@ func newProtoFromRelationMembers(f RelationFeature) []*pb.RelationMemberProto {
 		}
 	}
 	return members
+}
+
+func newProtoFromCollectionFeature(f CollectionFeature) (*pb.FeatureProto, error) {
+	c := CollectionExpression{UntypedCollection: f}
+	if node, err := c.ToProto(); err == nil {
+		return &pb.FeatureProto{
+			Feature: &pb.FeatureProto_Collection{
+				Collection: &pb.CollectionFeatureProto{
+					Id:         NewProtoFromFeatureID(f.FeatureID()),
+					Tags:       newProtoFromTagged(f),
+					Collection: node.GetLiteral().GetCollectionValue(),
+				},
+			},
+		}, nil
+	} else {
+		return nil, err
+	}
+}
+
+func newProtoFromExpressionFeature(f ExpressionFeature) (*pb.FeatureProto, error) {
+	e := f.Expression()
+	if node, err := e.ToProto(); err == nil {
+		return &pb.FeatureProto{
+			Feature: &pb.FeatureProto_Expression{
+				Expression: &pb.ExpressionFeatureProto{
+					Id:         NewProtoFromFeatureID(f.FeatureID()),
+					Tags:       newProtoFromTagged(f),
+					Expression: node,
+				},
+			},
+		}, nil
+	} else {
+		return nil, err
+	}
 }
 
 func NewPointProto(lat float64, lng float64) *pb.PointProto {

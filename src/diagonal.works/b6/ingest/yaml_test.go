@@ -3,6 +3,7 @@ package ingest
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"testing"
 
 	"diagonal.works/b6"
@@ -122,6 +123,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	if err := ExportChangesAsYAML(m, &buffer); err != nil {
 		t.Errorf("Expected no error, found: %s", err)
 	}
+	log.Printf("yaml: %s", buffer.Bytes())
 
 	ingested := NewMutableOverlayWorld(base)
 	change := IngestChangesFromYAML(&buffer)
@@ -178,14 +180,14 @@ func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
 	} else if e, ok := expected.(b6.CollectionFeature); ok {
 		a := actual.(b6.CollectionFeature)
 
-		e = e.Begin()
-		a = a.Begin()
+		ei := e.BeginUntyped()
+		ai := a.BeginUntyped()
 		for {
-			eOk, err := e.Next()
+			eOk, err := ei.Next()
 			if err != nil {
 				return fmt.Sprintf("expected no error found %s", err.Error())
 			}
-			aOk, err := a.Next()
+			aOk, err := ai.Next()
 			if err != nil {
 				return fmt.Sprintf("expected no error found %s", err.Error())
 			}
@@ -198,11 +200,11 @@ func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
 				return "collection items differ in size"
 			}
 
-			if diff := cmp.Diff(e.Key(), a.Key()); diff != "" {
+			if diff := cmp.Diff(ei.Key(), ai.Key()); diff != "" {
 				diffs += diff
 			}
 
-			if diff := cmp.Diff(e.Value(), a.Value()); diff != "" {
+			if diff := cmp.Diff(ei.Value(), ai.Value()); diff != "" {
 				diffs += diff
 			}
 		}

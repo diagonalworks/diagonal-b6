@@ -162,21 +162,10 @@ func newMutableFeatureIndex(byID b6.FeaturesByID) *mutableFeatureIndex {
 }
 
 func (f *mutableFeatureIndex) Feature(v search.Value) b6.Feature {
-	switch feature := v.(type) {
-	case *PointFeature:
-		return newPointFeature(feature)
-	case *PathFeature:
-		return newPathFeature(feature, f.byID)
-	case *AreaFeature:
-		return newAreaFeature(feature, f.byID)
-	case *RelationFeature:
-		return newRelationFeature(feature, f.byID)
-	case *CollectionFeature:
-		return newCollectionFeature(feature, f.byID)
-	case *ExpressionFeature:
-		return feature
+	if feature, ok := v.(Feature); ok {
+		return WrapFeature(feature, f.byID)
 	}
-	return nil
+	panic("Not a feature")
 }
 
 func (f *mutableFeatureIndex) ID(v search.Value) b6.FeatureID {
@@ -534,6 +523,19 @@ func (m *modifiedTagsCollection) Get(key string) b6.Tag {
 	return modifyTag(m.CollectionFeature, key, m.tags[m.CollectionFeature.FeatureID()])
 }
 
+type modifiedTagsExpression struct {
+	b6.ExpressionFeature
+	tags ModifiedTags
+}
+
+func (m *modifiedTagsExpression) AllTags() []b6.Tag {
+	return modifyTags(m.ExpressionFeature, m.tags[m.ExpressionFeature.FeatureID()])
+}
+
+func (m *modifiedTagsExpression) Get(key string) b6.Tag {
+	return modifyTag(m.ExpressionFeature, key, m.tags[m.ExpressionFeature.FeatureID()])
+}
+
 type ModifiedTag struct {
 	ID      b6.FeatureID
 	Tag     b6.Tag
@@ -606,11 +608,7 @@ func (m ModifiedTags) WrapCollectionFeature(f b6.CollectionFeature) b6.Collectio
 }
 
 func (m ModifiedTags) WrapExpressionFeature(f b6.ExpressionFeature) b6.ExpressionFeature {
-	return b6.ExpressionFeature{
-		ExpressionID: f.ExpressionID,
-		Tags:         modifyTags(f, m[f.FeatureID()]),
-		Expression:   f.Expression,
-	}
+	return &modifiedTagsExpression{ExpressionFeature: f, tags: m}
 }
 
 func (m ModifiedTags) WrapSegment(segment b6.Segment) b6.Segment {
@@ -862,31 +860,35 @@ func (m *MutableOverlayWorld) HasFeatureWithID(id b6.FeatureID) bool {
 }
 
 func (m *MutableOverlayWorld) findFeatureByID(id b6.FeatureID) b6.Feature {
+	var feature Feature
 	switch id.Type {
 	case b6.FeatureTypePoint:
 		if p, ok := m.byID.Points[id.ToPointID()]; ok {
-			return newPointFeature(p)
+			feature = p
 		}
 	case b6.FeatureTypePath:
 		if p, ok := m.byID.Paths[id.ToPathID()]; ok {
-			return newPathFeature(p, m)
+			feature = p
 		}
 	case b6.FeatureTypeArea:
 		if a, ok := m.byID.Areas[id.ToAreaID()]; ok {
-			return newAreaFeature(a, m)
+			feature = a
 		}
 	case b6.FeatureTypeRelation:
 		if r, ok := m.byID.Relations[id.ToRelationID()]; ok {
-			return newRelationFeature(r, m)
+			feature = r
 		}
 	case b6.FeatureTypeCollection:
 		if c, ok := m.byID.Collections[id.ToCollectionID()]; ok {
-			return newCollectionFeature(c, m)
+			feature = c
 		}
 	case b6.FeatureTypeExpression:
 		if e, ok := m.byID.Expressions[id.ToExpressionID()]; ok {
-			return e
+			feature = e
 		}
+	}
+	if feature != nil {
+		return WrapFeature(feature, m)
 	}
 	return nil
 }

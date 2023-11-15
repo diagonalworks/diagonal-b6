@@ -251,9 +251,9 @@ func sumByKey(_ *api.Context, c b6.Collection[any, int]) (b6.Collection[any, int
 	return r.Collection(), nil
 }
 
-func countValues(_ *api.Context, c b6.UntypedCollection) (b6.Collection[any, int], error) {
+func countValues(_ *api.Context, c b6.Collection[any, any]) (b6.Collection[any, int], error) {
 	counts := make(map[interface{}]int)
-	i := c.BeginUntyped()
+	i := c.Begin()
 	for {
 		ok, err := i.Next()
 		if err != nil {

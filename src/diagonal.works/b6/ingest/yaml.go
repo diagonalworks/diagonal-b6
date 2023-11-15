@@ -10,31 +10,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type FeatureIDYAML struct {
-	b6.FeatureID
-}
-
-func (f FeatureIDYAML) MarshalYAML() (interface{}, error) {
-	return "/" + f.FeatureID.String(), nil
-}
-
-func (f *FeatureIDYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var s string
-	if err := unmarshal(&s); err != nil {
-		return err
-	}
-	return f.UnmarshalYAMLString(s)
-}
-
-func (f *FeatureIDYAML) UnmarshalYAMLString(s string) error {
-	if len(s) > 0 {
-		f.FeatureID = b6.FeatureIDFromString(s[1:])
-	} else {
-		f.FeatureID = b6.FeatureIDInvalid
-	}
-	return nil
-}
-
 type LatLngYAML struct {
 	s2.LatLng
 }
@@ -57,69 +32,31 @@ func (f *LatLngYAML) UnmarshalYAMLString(s string) error {
 	return err
 }
 
-type RelationMemberYAML struct {
-	b6.RelationMember
-}
-
-func (r RelationMemberYAML) MarshalYAML() (interface{}, error) {
-	y := map[string]interface{}{
-		"id": FeatureIDYAML{FeatureID: r.RelationMember.ID},
-	}
-	if r.RelationMember.Role != "" {
-		y["role"] = r.RelationMember.Role
-	}
-	return y, nil
-}
-
-func (r *RelationMemberYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var v struct {
-		ID   FeatureIDYAML
-		Role string
-	}
-	if err := unmarshal(&v); err != nil {
-		return nil
-	}
-	r.RelationMember.ID = v.ID.FeatureID
-	r.RelationMember.Role = v.Role
-	return nil
-}
-
 type exportedYAML struct {
-	ID     FeatureIDYAML
+	ID     b6.FeatureID
 	Add    []b6.Tag `yaml:",omitempty"`
 	Remove []string `yaml:",omitempty"`
 
 	Point      *LatLngYAML              `yaml:",omitempty"`
 	Path       []interface{}            `yaml:",omitempty"`
 	Area       []interface{}            `yaml:",omitempty"`
-	Relation   []RelationMemberYAML     `yaml:",omitempty"`
+	Relation   []b6.RelationMember      `yaml:",omitempty"`
 	Collection *b6.CollectionExpression `yaml:",omitempty"`
 	Expression *b6.Expression           `yaml:",omitempty"`
 	Tags       []b6.Tag                 `yaml:",omitempty"`
 }
 
-type modifiedFeatureYAML struct {
-	Feature Feature
-}
-
-func (f modifiedFeatureYAML) MarshalYAML() (interface{}, error) {
-	if y, ok := f.Feature.(yaml.Marshaler); ok {
-		return y.MarshalYAML()
-	}
-	return f.Feature, nil
-}
-
 func ExportChangesAsYAML(m MutableWorld, w io.Writer) error {
 	encoder := yaml.NewEncoder(w)
-	y := exportedYAML{ID: FeatureIDYAML{FeatureID: b6.FeatureIDInvalid}}
+	y := exportedYAML{ID: b6.FeatureIDInvalid}
 	tags := func(t ModifiedTag, goroutine int) error {
-		if y.ID.FeatureID != t.ID {
-			if y.ID.FeatureID != b6.FeatureIDInvalid {
+		if y.ID != t.ID {
+			if y.ID != b6.FeatureIDInvalid {
 				if err := encoder.Encode(y); err != nil {
 					return err
 				}
 			}
-			y.ID.FeatureID = t.ID
+			y.ID = t.ID
 			y.Add = y.Add[0:0]
 			y.Remove = y.Remove[0:0]
 		}
@@ -133,14 +70,14 @@ func ExportChangesAsYAML(m MutableWorld, w io.Writer) error {
 	if err := m.EachModifiedTag(tags, &b6.EachFeatureOptions{Goroutines: 1}); err != nil {
 		return err
 	}
-	if y.ID.FeatureID != b6.FeatureIDInvalid {
+	if y.ID != b6.FeatureIDInvalid {
 		if err := encoder.Encode(y); err != nil {
 			return err
 		}
 	}
 
 	features := func(f b6.Feature, goroutine int) error {
-		return encoder.Encode(modifiedFeatureYAML{Feature: NewFeatureFromWorld(f)})
+		return encoder.Encode(NewFeatureFromWorld(f))
 	}
 	return m.EachModifiedFeature(features, &b6.EachFeatureOptions{Goroutines: 1})
 }
@@ -200,13 +137,13 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 			return applied.Collection(), err
 		}
 		for _, tag := range y.Add {
-			m.AddTag(y.ID.FeatureID, tag)
+			m.AddTag(y.ID, tag)
 		}
 		for _, key := range y.Remove {
-			m.RemoveTag(y.ID.FeatureID, key)
+			m.RemoveTag(y.ID, key)
 		}
-		applied.Keys = append(applied.Keys, y.ID.FeatureID)
-		applied.Values = append(applied.Values, y.ID.FeatureID)
+		applied.Keys = append(applied.Keys, y.ID)
+		applied.Values = append(applied.Values, y.ID)
 	}
 	return applied.Collection(), nil
 }
@@ -225,9 +162,7 @@ func newPathFromYAML(y *exportedYAML) (*PathFeature, error) {
 	for i := range y.Path {
 		if s, ok := y.Path[i].(string); ok {
 			if strings.HasPrefix(s, "/") {
-				id := FeatureIDYAML{}
-				id.UnmarshalYAMLString(s)
-				p.SetPointID(i, id.ToPointID())
+				p.SetPointID(i, b6.FeatureIDFromString(s[1:]).ToPointID())
 			} else {
 				ll := LatLngYAML{}
 				if err := ll.UnmarshalYAMLString(s); err != nil {
@@ -253,9 +188,7 @@ func newAreaFromYAML(y *exportedYAML) (*AreaFeature, error) {
 					pathIDs := make([]b6.PathID, len(loopsYAML))
 					for j := range loopsYAML {
 						if s, ok := loopsYAML[j].(string); ok {
-							id := FeatureIDYAML{}
-							id.UnmarshalYAMLString(s)
-							pathIDs[j] = id.FeatureID.ToPathID()
+							pathIDs[j] = b6.FeatureIDFromString(s).ToPathID()
 						} else {
 							return nil, fmt.Errorf("bad feature ID in polygon loops")
 						}
@@ -296,10 +229,7 @@ func newAreaFromYAML(y *exportedYAML) (*AreaFeature, error) {
 func newRelationFromYAML(y *exportedYAML) (*RelationFeature, error) {
 	r := NewRelationFeature(len(y.Relation))
 	r.RelationID = y.ID.ToRelationID()
-	r.Members = make([]b6.RelationMember, len(y.Relation))
-	for i := range y.Relation {
-		r.Members[i] = y.Relation[i].RelationMember
-	}
+	r.Members = y.Relation
 	r.Tags = y.Tags
 	return r, nil
 }
@@ -329,10 +259,8 @@ func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
 
 func newExpressionFromYAML(y *exportedYAML) (*ExpressionFeature, error) {
 	return &ExpressionFeature{
-		ExpressionFeature: b6.ExpressionFeature{
-			ExpressionID: y.ID.ToExpressionID(),
-			Tags:         y.Tags,
-			Expression:   *y.Expression,
-		},
+		ExpressionID: y.ID.ToExpressionID(),
+		Tags:         y.Tags,
+		Expression:   *y.Expression,
 	}, nil
 }

@@ -49,19 +49,10 @@ func NewFeatureIndex(byID b6.FeaturesByID) *FeatureIndex {
 }
 
 func (f *FeatureIndex) Feature(v search.Value) b6.Feature {
-	switch feature := v.(type) {
-	case *PointFeature:
-		return newPointFeature(feature)
-	case *PathFeature:
-		return newPathFeature(feature, f.byID)
-	case *AreaFeature:
-		return newAreaFeature(feature, f.byID)
-	case *RelationFeature:
-		return newRelationFeature(feature, f.byID)
-	case *CollectionFeature:
-		return newCollectionFeature(feature, f.byID)
+	if feature, ok := v.(Feature); ok {
+		return WrapFeature(feature, f.byID)
 	}
-	panic(fmt.Sprintf("Bad feature type: %T", v))
+	panic("Not a feature")
 }
 
 func (f *FeatureIndex) ID(v search.Value) b6.FeatureID {
@@ -73,10 +64,6 @@ func (f *FeatureIndex) ID(v search.Value) b6.FeatureID {
 
 type pointFeature struct {
 	*PointFeature
-}
-
-func newPointFeature(p *PointFeature) pointFeature {
-	return pointFeature{p}
 }
 
 func (p pointFeature) PointID() b6.PointID {
@@ -94,16 +81,12 @@ func (p pointFeature) ToGeoJSON() geojson.GeoJSON {
 var _ b6.PointFeature = (*pointFeature)(nil)
 
 func WrapPointFeature(p *PointFeature) b6.PointFeature {
-	return newPointFeature(p)
+	return pointFeature{p}
 }
 
 type pathFeature struct {
 	*PathFeature
 	features b6.FeaturesByID
-}
-
-func newPathFeature(p *PathFeature, features b6.FeaturesByID) pathFeature {
-	return pathFeature{p, features}
 }
 
 func (p pathFeature) PathID() b6.PathID {
@@ -150,7 +133,7 @@ func (p pathFeature) ToGeoJSON() geojson.GeoJSON {
 var _ b6.PathFeature = (*pathFeature)(nil)
 
 func WrapPathFeature(p *PathFeature, features b6.FeaturesByID) b6.PathFeature {
-	return newPathFeature(p, features)
+	return pathFeature{p, features}
 }
 
 type areaFeature struct {
@@ -158,12 +141,8 @@ type areaFeature struct {
 	features b6.FeaturesByID
 }
 
-func newAreaFeature(a *AreaFeature, features b6.FeaturesByID) areaFeature {
-	return areaFeature{a, features}
-}
-
 func WrapAreaFeature(a *AreaFeature, byID b6.FeaturesByID) b6.AreaFeature {
-	return newAreaFeature(a, byID)
+	return areaFeature{a, byID}
 }
 
 func (a areaFeature) AreaID() b6.AreaID {
@@ -230,12 +209,8 @@ type relationFeature struct {
 	features b6.FeaturesByID
 }
 
-func newRelationFeature(r *RelationFeature, byID b6.FeaturesByID) relationFeature {
-	return relationFeature{r, byID}
-}
-
 func WrapRelationFeature(r *RelationFeature, byID b6.FeaturesByID) b6.RelationFeature {
-	return newRelationFeature(r, byID)
+	return relationFeature{r, byID}
 }
 
 func (r relationFeature) RelationID() b6.RelationID {
@@ -262,12 +237,8 @@ type collectionFeature struct {
 	features b6.FeaturesByID
 }
 
-func newCollectionFeature(c *CollectionFeature, byID b6.FeaturesByID) collectionFeature {
-	return collectionFeature{c, byID}
-}
-
 func WrapCollectionFeature(c *CollectionFeature, byID b6.FeaturesByID) b6.CollectionFeature {
-	return newCollectionFeature(c, byID)
+	return collectionFeature{c, byID}
 }
 
 func (c collectionFeature) ToGeoJSON() geojson.GeoJSON {
@@ -282,43 +253,53 @@ func (c collectionFeature) CollectionID() b6.CollectionID {
 	return c.CollectionFeature.CollectionID
 }
 
-func (c collectionFeature) Next() (bool, error) {
-	c.CollectionFeature.i++
-	return c.i <= len(c.CollectionFeature.Keys), nil
+func (c collectionFeature) BeginUntyped() b6.Iterator[any, any] {
+	return &collectionFeatureIterator{c: c.CollectionFeature}
 }
 
-func (c collectionFeature) Key() interface{} {
-	return c.CollectionFeature.Keys[c.i-1]
+func (c collectionFeature) Count() (int, bool) {
+	return len(c.Keys), true
 }
 
-func (c collectionFeature) Value() interface{} {
-	return c.CollectionFeature.Values[c.i-1]
+type collectionFeatureIterator struct {
+	c *CollectionFeature
+	i int
 }
 
-func (c collectionFeature) Begin() b6.CollectionFeature {
-	c.CollectionFeature.i = 0
-	return c
+func (c *collectionFeatureIterator) Next() (bool, error) {
+	c.i++
+	return c.i <= len(c.c.Keys), nil
+}
+
+func (c *collectionFeatureIterator) Key() interface{} {
+	return c.c.Keys[c.i-1]
+}
+
+func (c collectionFeatureIterator) Value() interface{} {
+	return c.c.Values[c.i-1]
 }
 
 func (c collectionFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
 	return s2.CellUnion([]s2.CellID{})
 }
 
-func newFeature(feature Feature, byID b6.FeaturesByID) b6.PhysicalFeature {
-	switch f := feature.(type) {
-	case *PointFeature:
-		return newPointFeature(f)
-	case *PathFeature:
-		return newPathFeature(f, byID)
-	case *AreaFeature:
-		return newAreaFeature(f, byID)
-	case *RelationFeature:
-		return newRelationFeature(f, byID)
-	case *CollectionFeature:
-		return newCollectionFeature(f, byID)
-	}
-	panic(fmt.Sprintf("Unknown feature: %T", feature))
+type expressionFeature struct {
+	*ExpressionFeature
 }
+
+func (e expressionFeature) ExpressionID() b6.ExpressionID {
+	return e.ExpressionFeature.ExpressionID
+}
+
+func (e expressionFeature) Expression() b6.Expression {
+	return e.ExpressionFeature.Expression
+}
+
+func WrapExpressionFeature(f *ExpressionFeature) b6.ExpressionFeature {
+	return expressionFeature{ExpressionFeature: f}
+}
+
+var _ b6.ExpressionFeature = &expressionFeature{}
 
 type segmentIterator struct {
 	segments []b6.Segment
@@ -439,7 +420,7 @@ func findAreasByPoint(r *FeatureReferences, p b6.PointID, w b6.World) b6.AreaFea
 	areas := r.AreasForPoint(p, w)
 	features := make([]b6.AreaFeature, len(areas))
 	for i, area := range areas {
-		features[i] = newAreaFeature(area, w)
+		features[i] = WrapAreaFeature(area, w)
 	}
 	return NewAreaFeatureIterator(features)
 }
@@ -727,7 +708,7 @@ func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 	index := func(toIndex <-chan Feature) {
 		defer wg.Done()
 		for feature := range toIndex {
-			tokens := TokensForFeature(newFeature(feature, w))
+			tokens := TokensForFeature(WrapFeature(feature, w))
 			lock.Lock()
 			w.index.Add(feature, tokens)
 			lock.Unlock()

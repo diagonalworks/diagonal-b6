@@ -2,6 +2,7 @@ package b6
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -531,12 +532,26 @@ func (p PointID) Less(other PointID) bool {
 	}
 }
 
-func (p *PointID) FromFeatureID(other FeatureID) {
+func (p *PointID) FromFeatureID(other FeatureID) error {
 	if other.Type != FeatureTypePoint {
-		panic("Not a PointID")
+		return errors.New("not a point ID")
 	}
 	p.Namespace = other.Namespace
 	p.Value = other.Value
+	return nil
+}
+
+func (p PointID) MarshalYAML() (interface{}, error) {
+	return p.FeatureID().MarshalYAML()
+}
+
+func (p *PointID) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var id FeatureID
+	err := unmarshal(&id)
+	if err == nil {
+		err = p.FromFeatureID(id)
+	}
+	return err
 }
 
 var PointIDInvalid = PointID{Namespace: NamespaceInvalid}
@@ -570,12 +585,26 @@ func (p PathID) Less(other PathID) bool {
 	}
 }
 
-func (p *PathID) FromFeatureID(other FeatureID) {
+func (p *PathID) FromFeatureID(other FeatureID) error {
 	if other.Type != FeatureTypePath {
-		panic("Not a Path")
+		return errors.New("not a path ID")
 	}
 	p.Namespace = other.Namespace
 	p.Value = other.Value
+	return nil
+}
+
+func (p PathID) MarshalYAML() (interface{}, error) {
+	return p.FeatureID().MarshalYAML()
+}
+
+func (p *PathID) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var id FeatureID
+	err := unmarshal(&id)
+	if err == nil {
+		err = p.FromFeatureID(id)
+	}
+	return err
 }
 
 var PathIDInvalid = PathID{Namespace: NamespaceInvalid}
@@ -609,12 +638,26 @@ func (a AreaID) Less(other AreaID) bool {
 	}
 }
 
-func (a *AreaID) FromFeatureID(other FeatureID) {
+func (a *AreaID) FromFeatureID(other FeatureID) error {
 	if other.Type != FeatureTypeArea {
-		panic("Not an AreaID")
+		return errors.New("not a area ID")
 	}
 	a.Namespace = other.Namespace
 	a.Value = other.Value
+	return nil
+}
+
+func (a AreaID) MarshalYAML() (interface{}, error) {
+	return a.FeatureID().MarshalYAML()
+}
+
+func (a *AreaID) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var id FeatureID
+	err := unmarshal(&id)
+	if err == nil {
+		err = a.FromFeatureID(id)
+	}
+	return err
 }
 
 var AreaIDInvalid = AreaID{Namespace: NamespaceInvalid}
@@ -648,12 +691,26 @@ func (r RelationID) Less(other PointID) bool {
 	}
 }
 
-func (r *RelationID) FromFeatureID(other FeatureID) {
+func (r *RelationID) FromFeatureID(other FeatureID) error {
 	if other.Type != FeatureTypeRelation {
-		panic("Not a RelationID")
+		return errors.New("Not a relation ID")
 	}
 	r.Namespace = other.Namespace
 	r.Value = other.Value
+	return nil
+}
+
+func (r RelationID) MarshalYAML() (interface{}, error) {
+	return r.FeatureID().MarshalYAML()
+}
+
+func (r *RelationID) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var id FeatureID
+	err := unmarshal(&id)
+	if err == nil {
+		err = r.FromFeatureID(id)
+	}
+	return err
 }
 
 var RelationIDInvalid = RelationID{Namespace: NamespaceInvalid}
@@ -687,12 +744,26 @@ func (c CollectionID) Less(other CollectionID) bool {
 	}
 }
 
-func (c *CollectionID) FromFeatureID(other FeatureID) {
+func (c *CollectionID) FromFeatureID(other FeatureID) error {
 	if other.Type != FeatureTypeCollection {
-		panic("Not a CollectionID")
+		return errors.New("not a collection ID")
 	}
 	c.Namespace = other.Namespace
 	c.Value = other.Value
+	return nil
+}
+
+func (c CollectionID) MarshalYAML() (interface{}, error) {
+	return c.FeatureID().MarshalYAML()
+}
+
+func (c *CollectionID) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var id FeatureID
+	err := unmarshal(&id)
+	if err == nil {
+		err = c.FromFeatureID(id)
+	}
+	return err
 }
 
 type ExpressionID struct {
@@ -724,12 +795,26 @@ func (e ExpressionID) Less(other CollectionID) bool {
 	}
 }
 
-func (e *ExpressionID) FromFeatureID(other FeatureID) {
+func (e *ExpressionID) FromFeatureID(other FeatureID) error {
 	if other.Type != FeatureTypeExpression {
-		panic("Not an ExpressionID")
+		return errors.New("not an expression ID")
 	}
 	e.Namespace = other.Namespace
 	e.Value = other.Value
+	return nil
+}
+
+func (e ExpressionID) MarshalYAML() (interface{}, error) {
+	return e.FeatureID().MarshalYAML()
+}
+
+func (e *ExpressionID) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var id FeatureID
+	err := unmarshal(&id)
+	if err == nil {
+		err = e.FromFeatureID(id)
+	}
+	return err
 }
 
 type Geometry interface {
@@ -960,18 +1045,15 @@ type RelationFeature interface {
 
 type CollectionFeature interface {
 	Feature
+	UntypedCollection
 	FeatureID() FeatureID
 	CollectionID() CollectionID
-	Begin() CollectionFeature
-	Next() (bool, error)
-	Key() interface{}
-	Value() interface{}
 }
 
-type ExpressionFeature struct {
-	ExpressionID
-	Tags
-	Expression
+type ExpressionFeature interface {
+	Feature
+	ExpressionID() ExpressionID
+	Expression() Expression
 }
 
 type Features interface {
@@ -1481,6 +1563,13 @@ func FindCollectionByID(id CollectionID, features FeaturesByID) CollectionFeatur
 	return nil
 }
 
+func FindExpressionByID(id ExpressionID, features FeaturesByID) ExpressionFeature {
+	if expression := features.FindFeatureByID(id.FeatureID()); expression != nil {
+		return expression.(ExpressionFeature)
+	}
+	return nil
+}
+
 func FindPoints(q Query, w World) PointFeatures {
 	q = Typed{Type: FeatureTypePoint, Query: q}
 	return NewPointFeatures(w.FindFeatures(q))
@@ -1604,14 +1693,14 @@ func RelationFeatureToGeoJSON(relation RelationFeature, byID FeaturesByID) *geoj
 func CollectionFeatureToGeoJSON(collection CollectionFeature, byID FeaturesByID) *geojson.FeatureCollection {
 	geojson := geojson.NewFeatureCollection()
 
-	collection.Begin()
+	i := collection.BeginUntyped()
 	for {
-		ok, err := collection.Next()
+		ok, err := i.Next()
 		if !ok || err != nil {
 			break
 		}
 
-		if id, ok := collection.Key().(Identifiable); ok {
+		if id, ok := i.Key().(Identifiable); ok {
 			if f := byID.FindFeatureByID(id.FeatureID()); f != nil {
 				if r, ok := f.(Renderable); ok {
 					geojson.Add(r.ToGeoJSON())

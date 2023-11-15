@@ -444,19 +444,19 @@ func ValidateUpdateCollectionsByFeatureWhenChangingCollections(w MutableWorld, t
 
 	updated := b6.FindCollectionByID(c.CollectionID, w)
 
-	updated.Begin()
-	if ok, err := updated.Next(); err != nil || !ok {
+	i := updated.BeginUntyped()
+	if ok, err := i.Next(); err != nil || !ok {
 		t.Error("Expected to find two key / value pairs")
 	}
-	if updated.Key() != "repetition" {
-		t.Errorf("Expected to find initial key, got %v", updated.Key())
+	if i.Key() != "repetition" {
+		t.Errorf("Expected to find initial key, got %v", i.Key())
 	}
 
-	if ok, err := updated.Next(); err != nil || !ok {
+	if ok, err := i.Next(); err != nil || !ok {
 		t.Error("Expected to find two key / value pairs")
 	}
-	if updated.Value() != "intensity" {
-		t.Errorf("Expected to find added value, got %v", updated.Value())
+	if i.Value() != "intensity" {
+		t.Errorf("Expected to find added value, got %v", i.Value())
 	}
 }
 

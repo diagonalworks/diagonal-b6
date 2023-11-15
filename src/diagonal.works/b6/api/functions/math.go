@@ -103,7 +103,7 @@ func percentiles(context *api.Context, collection b6.Collection[interface{}, flo
 	return b6.ArrayCollection[interface{}, float64]{Keys: keys, Values: values}.Collection(), nil
 }
 
-func count(context *api.Context, collection b6.UntypedCollection) (int, error) {
+func count(context *api.Context, collection b6.Collection[any, any]) (int, error) {
 	if n, ok := collection.Count(); ok {
 		return n, nil
 	}

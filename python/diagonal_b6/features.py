@@ -1,12 +1,13 @@
 from diagonal_b6 import expression
 
 from diagonal_b6 import api_pb2
-from diagonal_b6 import features_pb2
 
-FEATURE_TYPE_POINT = features_pb2.FeatureType.FeatureTypePoint
-FEATURE_TYPE_PATH = features_pb2.FeatureType.FeatureTypePath
-FEATURE_TYPE_AREA = features_pb2.FeatureType.FeatureTypeArea
-FEATURE_TYPE_RELATION = features_pb2.FeatureType.FeatureTypeRelation
+FEATURE_TYPE_POINT = api_pb2.FeatureType.FeatureTypePoint
+FEATURE_TYPE_PATH = api_pb2.FeatureType.FeatureTypePath
+FEATURE_TYPE_AREA = api_pb2.FeatureType.FeatureTypeArea
+FEATURE_TYPE_RELATION = api_pb2.FeatureType.FeatureTypeRelation
+FEATURE_TYPE_COLLECTION = api_pb2.FeatureType.FeatureTypeCollection
+FEATURE_TYPE_EXPRESSION = api_pb2.FeatureType.FeatureTypeExpression
 
 NAMESPACE_OSM_NODE = "openstreetmap.org/node"
 NAMESPACE_OSM_WAY = "openstreetmap.org/way"
@@ -41,7 +42,7 @@ class FeatureID(expression.Literal):
         return l
 
     def __str__(self):
-        type = features_pb2.FeatureType.Name(self.type).replace("FeatureType", "").lower()
+        type = api_pb2.FeatureType.Name(self.type).replace("FeatureType", "").lower()
         return "/%s/%s/%d" % (type, self.namespace, self.value)
 
     def __repr__(self):
@@ -112,7 +113,7 @@ class Feature(expression.Node):
         return node
 
     def __str__(self):
-        type = features_pb2.FeatureType.Name(self.id.type).replace("FeatureType", "").title()
+        type = api_pb2.FeatureType.Name(self.id.type).replace("FeatureType", "").title()
         return "<%s %s>" % (type, self.id)
 
     def _fill_query(self, query):
@@ -169,6 +170,25 @@ class RelationMember:
     def __str__(self):
         return "<RelationMember %s" % (str(self.id),)
 
+class CollectionFeature(Feature):
+
+    def __init__(self, pb):
+        self.id = from_id_proto(pb.collection.id)
+        self._pb = pb.collection
+
+    def __len__(self):
+        return len(self._pb.collection.keys)
+
+    def __iter__(self):
+        for (key, value) in zip(self._pb.collection.keys, self._pb.collection.values):
+            yield (expression.from_literal_node_proto(key), expression.from_literal_node_proto(value))
+
+class ExpressionFeature(Feature):
+
+    def __init__(self, pb):
+        self.id = from_id_proto(pb.expression.id)
+        self._pb = pb.expression
+
 def from_id_proto(p):
     return FeatureID(p.type, p.namespace, p.value)
 
@@ -183,7 +203,7 @@ def from_applied_change_proto(change):
 expression.register_literal_from_proto("appliedChangeValue", from_applied_change_proto)
 
 def id_to_proto(id):
-    pb = features_pb2.FeatureIDProto()
+    pb = api_pb2.FeatureIDProto()
     pb.type = id.type
     pb.namespace = id.namespace
     pb.value = id.value
@@ -201,6 +221,12 @@ def _from_area_proto(p):
 def _from_relation_proto(p):
     return RelationFeature(p)
 
+def _from_collection_proto(p):
+    return CollectionFeature(p)
+
+def _from_expression_proto(p):
+    return ExpressionFeature(p)
+
 def _from_relation_member_proto(p):
     return RelationMember(from_id_proto(p.id), p.role)
 
@@ -214,6 +240,10 @@ def from_proto(p):
         return _from_area_proto(p)
     elif oneof == "relation":
         return _from_relation_proto(p)
+    elif oneof == "collection":
+        return _from_collection_proto(p)
+    elif oneof == "expression":
+        return _from_expression_proto(p)
     elif oneof == None:
         return None
     raise Exception("Unexpected feature %s" % (p,))

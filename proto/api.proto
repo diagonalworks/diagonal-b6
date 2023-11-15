@@ -3,9 +3,86 @@ syntax = "proto3";
 package api;
 
 import "geometry.proto";
-import "features.proto";
 
 option go_package = "diagonal.works/b6/proto";
+
+message TagProto {
+    string key = 1;
+    string value = 2;
+}
+
+enum FeatureType {
+    FeatureTypeInvalid = 0;
+    FeatureTypePoint = 1;
+    FeatureTypePath = 2;
+    FeatureTypeArea = 3;
+    FeatureTypeRelation = 4;
+    FeatureTypeCollection = 5;
+    FeatureTypeExpression = 6;
+}
+
+message FeatureIDProto {
+    FeatureType type = 1;
+    string namespace = 2;
+    uint64 value = 3;
+}
+
+message PointFeatureProto {
+    FeatureIDProto id = 1;
+    repeated TagProto tags = 2;
+    geometry.PointProto point = 3;
+}
+
+message PathFeatureProto {
+    FeatureIDProto id = 1;
+    repeated TagProto tags = 2;
+    repeated PointFeatureProto features = 3;
+    double lengthMeters = 4;
+}
+
+message PathFeaturesProto {
+    repeated PathFeatureProto paths = 1;
+}
+
+message AreaFeatureProto {
+    FeatureIDProto id = 1;
+    repeated TagProto tags = 2;
+    repeated PathFeaturesProto features = 3;
+}
+
+message RelationMemberProto {
+    FeatureIDProto id = 1;
+    string role = 3;
+}
+
+message RelationFeatureProto {
+    FeatureIDProto id = 1;
+    repeated TagProto tags = 2;
+    repeated RelationMemberProto members = 3;
+}
+
+message CollectionFeatureProto {
+    FeatureIDProto id = 1;
+    repeated TagProto tags = 2;
+    CollectionProto collection = 3;
+}
+
+message ExpressionFeatureProto {
+    FeatureIDProto id = 1;
+    repeated TagProto tags = 2;
+    NodeProto expression = 3;
+}
+
+message FeatureProto {
+    oneof feature {
+        PointFeatureProto point = 1;
+        PathFeatureProto path = 2;
+        AreaFeatureProto area = 3;
+        RelationFeatureProto relation = 4;
+        CollectionFeatureProto collection = 5;
+        ExpressionFeatureProto expression = 6;
+    }
+}
 
 message CollectionProto {
     repeated LiteralNodeProto keys = 2;
@@ -18,12 +95,12 @@ message PairProto {
 }
 
 message ModifiedFeaturesProto {
-    repeated features.FeatureIDProto ids = 1;
+    repeated FeatureIDProto ids = 1;
 }
 
 message AppliedChangeProto {
-    repeated features.FeatureIDProto original = 1;
-    repeated features.FeatureIDProto modified = 2;
+    repeated FeatureIDProto original = 1;
+    repeated FeatureIDProto modified = 2;
 }
 
 message NodeProto {
@@ -46,15 +123,15 @@ message LiteralNodeProto {
         double floatValue = 5;
         CollectionProto collectionValue = 6;
         PairProto pairValue = 7;
-        features.FeatureProto featureValue = 8;
+        FeatureProto featureValue = 8;
         QueryProto queryValue = 9;
-        features.FeatureIDProto featureIDValue = 10;
+        FeatureIDProto featureIDValue = 10;
         geometry.PointProto pointValue = 11;
         geometry.PolylineProto pathValue = 12;
         geometry.MultiPolygonProto areaValue = 13;
         AppliedChangeProto appliedChangeValue = 14;
         bytes geoJSONValue = 15; // gzipped
-        features.TagProto tagValue = 16;
+        TagProto tagValue = 16;
     }
 }
 
@@ -79,7 +156,7 @@ message KeyValueQueryProto {
 }
 
 message TypedQueryProto {
-    features.FeatureType type = 1;
+    FeatureType type = 1;
     QueryProto query = 2;
 }
 
@@ -105,12 +182,12 @@ message QueryProto {
         AllQueryProto all = 1;
         EmptyQueryProto empty = 2;
         string keyed = 3;
-        features.TagProto tagged = 4;
+        TagProto tagged = 4;
         TypedQueryProto typed = 5;
         QueriesProto intersection = 6;
         QueriesProto union = 7;
         CapProto intersectsCap = 8;
-        features.FeatureIDProto intersectsFeature = 9;
+        FeatureIDProto intersectsFeature = 9;
         geometry.PointProto intersectsPoint = 10;
         geometry.PolylineProto intersectsPolyline = 11;
         geometry.MultiPolygonProto intersectsMultiPolygon = 12;
@@ -120,11 +197,11 @@ message QueryProto {
 }
 
 message FindFeatureByIDRequestProto {
-    features.FeatureIDProto id = 1;
+    FeatureIDProto id = 1;
 }
 
 message FindFeatureByIDResponseProto {
-    features.FeatureProto feature = 1;
+    FeatureProto feature = 1;
 }
 
 message FindFeaturesRequestProto {
@@ -132,12 +209,12 @@ message FindFeaturesRequestProto {
 }
 
 message FindFeaturesResponseProto {
-    repeated features.FeatureProto features = 1;
+    repeated FeatureProto features = 1;
 }
 
 message ModifyTagsRequestProto {
-    features.FeatureIDProto id = 1;
-    repeated features.TagProto tags = 2;
+    FeatureIDProto id = 1;
+    repeated TagProto tags = 2;
 }
 
 message ModifyTagsBatchRequestProto {

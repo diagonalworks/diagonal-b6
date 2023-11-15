@@ -42,15 +42,13 @@ b6-api:
 
 proto: proto-go proto-python
 
-proto-go: src/diagonal.works/b6/proto/tiles.pb.go src/diagonal.works/b6/proto/geometry.pb.go src/diagonal.works/b6/proto/features.pb.go src/diagonal.works/b6/proto/compact.pb.go src/diagonal.works/b6/proto/ui.pb.go src/diagonal.works/b6/proto/api.pb.go src/diagonal.works/b6/proto/api_grpc.pb.go src/diagonal.works/b6/osm/proto/pbf.pb.go
+proto-go: src/diagonal.works/b6/proto/tiles.pb.go src/diagonal.works/b6/proto/geometry.pb.go src/diagonal.works/b6/proto/compact.pb.go src/diagonal.works/b6/proto/ui.pb.go src/diagonal.works/b6/proto/api.pb.go src/diagonal.works/b6/proto/api_grpc.pb.go src/diagonal.works/b6/osm/proto/pbf.pb.go
 
-src/diagonal.works/b6/proto/features.pb.go: proto/features.proto proto/geometry.proto
+src/diagonal.works/b6/proto/ui.pb.go: proto/ui.proto proto/api.proto proto/geometry.proto
 
-src/diagonal.works/b6/proto/ui.pb.go: proto/ui.proto proto/api.proto proto/features.proto proto/geometry.proto
+src/diagonal.works/b6/proto/api.pb.go: proto/api.proto proto/geometry.proto
 
-src/diagonal.works/b6/proto/api.pb.go: proto/api.proto proto/features.proto proto/geometry.proto
-
-src/diagonal.works/b6/proto/api_grpc.pb.go: proto/api.proto proto/features.proto proto/geometry.proto
+src/diagonal.works/b6/proto/api_grpc.pb.go: proto/api.proto proto/geometry.proto
 
 src/diagonal.works/b6/osm/proto/pbf.pb.go: proto/pbf.proto
 
@@ -65,26 +63,20 @@ src/diagonal.works/b6/api/y.go: src/diagonal.works/b6/api/shell.y
 
 python: proto-python python/diagonal_b6/api_generated.py python/pyproject.toml
 
-proto-python: python/diagonal_b6/geometry_pb2.py python/diagonal_b6/features_pb2.py python/diagonal_b6/api_pb2.py python/diagonal_b6/api_pb2_grpc.py
+proto-python: python/diagonal_b6/geometry_pb2.py python/diagonal_b6/api_pb2.py python/diagonal_b6/api_pb2_grpc.py
 
-python/diagonal_b6/features_pb2.py: proto/features.proto proto/geometry.proto
+python/diagonal_b6/api_pb2.py: proto/api.proto proto/geometry.proto
 
-python/diagonal_b6/api_pb2.py: proto/api.proto proto/features.proto proto/geometry.proto
-
-python/diagonal_b6/api_pb2_grpc.py: proto/api.proto proto/features.proto proto/geometry.proto
+python/diagonal_b6/api_pb2_grpc.py: proto/api.proto proto/geometry.proto
 
 python/diagonal_b6/%_pb2.py: proto/%.proto
 	python3 -m grpc_tools.protoc -Iproto --python_out=python/diagonal_b6 $<
 	sed -e 's/import geometry_pb2/import diagonal_b6.geometry_pb2/' $@ > $@.modified
 	mv $@.modified $@
-	sed -e 's/import features_pb2/import diagonal_b6.features_pb2/' $@ > $@.modified
-	mv $@.modified $@
 
 python/diagonal_b6/%_pb2_grpc.py: proto/%.proto
 	python3 -m grpc_tools.protoc -Iproto --grpc_python_out=python/diagonal_b6 $<
 	sed -e 's/import geometry_pb2/import diagonal_b6.geometry_pb2/' $@ > $@.modified
-	mv $@.modified $@
-	sed -e 's/import features_pb2/import diagonal_b6.features_pb2/' $@ > $@.modified	
 	mv $@.modified $@
 	sed -e 's/import api_pb2/import diagonal_b6.api_pb2/' $@ > $@.modified
 	mv $@.modified $@

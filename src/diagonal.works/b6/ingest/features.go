@@ -150,7 +150,7 @@ func (p *PointFeature) MergeFromPointFeature(other *PointFeature) {
 
 func (p *PointFeature) MarshalYAML() (interface{}, error) {
 	y := map[string]interface{}{
-		"id":    FeatureIDYAML{FeatureID: p.PointID.FeatureID()},
+		"id":    p.PointID,
 		"point": LatLngYAML{LatLng: p.Location},
 	}
 	if len(p.Tags) > 0 {
@@ -336,11 +336,11 @@ func (p *PathFeature) MarshalYAML() (interface{}, error) {
 			pointsYAML[i] = LatLngYAML{LatLng: ll}
 		} else {
 			id, _ := p.PathMembers.PointID(i)
-			pointsYAML[i] = FeatureIDYAML{FeatureID: id.FeatureID()}
+			pointsYAML[i] = id.FeatureID()
 		}
 	}
 	y := map[string]interface{}{
-		"id":   FeatureIDYAML{FeatureID: p.PathID.FeatureID()},
+		"id":   p.PathID,
 		"path": pointsYAML,
 	}
 	if len(p.Tags) > 0 {
@@ -553,13 +553,13 @@ func (a *AreaFeature) MarshalYAML() (interface{}, error) {
 			pathIDs, _ := a.AreaMembers.PathIDs(i)
 			loopsYAML := make([]interface{}, len(pathIDs))
 			for j := range loopsYAML {
-				loopsYAML[j] = FeatureIDYAML{FeatureID: pathIDs[j].FeatureID()}
+				loopsYAML[j] = pathIDs[j]
 			}
 			polygonsYAML[i] = loopsYAML
 		}
 	}
 	y := map[string]interface{}{
-		"id":   FeatureIDYAML{FeatureID: a.AreaID.FeatureID()},
+		"id":   a.AreaID,
 		"area": polygonsYAML,
 	}
 	if len(a.Tags) > 0 {
@@ -636,13 +636,9 @@ func (r *RelationFeature) MergeFromRelationFeature(other *RelationFeature) {
 }
 
 func (r *RelationFeature) MarshalYAML() (interface{}, error) {
-	relationYAML := make([]RelationMemberYAML, len(r.Members))
-	for i := range relationYAML {
-		relationYAML[i].RelationMember = r.Members[i]
-	}
 	y := map[string]interface{}{
-		"id":       FeatureIDYAML{FeatureID: r.RelationID.FeatureID()},
-		"relation": relationYAML,
+		"id":       r.RelationID,
+		"relation": r.Members,
 	}
 	if len(r.Tags) > 0 {
 		y["tags"] = r.Tags
@@ -656,7 +652,6 @@ type CollectionFeature struct {
 
 	Keys   []interface{}
 	Values []interface{}
-	i      int
 }
 
 func (c *CollectionFeature) Clone() Feature {
@@ -693,15 +688,15 @@ func NewCollectionFeatureFromWorld(c b6.CollectionFeature) *CollectionFeature {
 		Tags:         NewTagsFromWorld(c),
 	}
 
-	c.Begin()
+	i := c.BeginUntyped()
 	for {
-		ok, err := c.Next()
+		ok, err := i.Next()
 		if !ok || err != nil {
 			break
 		}
 
-		feature.Keys = append(feature.Keys, c.Key())
-		feature.Values = append(feature.Values, c.Value())
+		feature.Keys = append(feature.Keys, i.Key())
+		feature.Values = append(feature.Values, i.Value())
 	}
 
 	return feature
@@ -716,7 +711,7 @@ func (c *CollectionFeature) MarshalYAML() (interface{}, error) {
 	}
 
 	y := map[string]interface{}{
-		"id":         FeatureIDYAML{FeatureID: c.CollectionID.FeatureID()},
+		"id":         c.CollectionID,
 		"collection": e,
 	}
 
@@ -728,16 +723,16 @@ func (c *CollectionFeature) MarshalYAML() (interface{}, error) {
 }
 
 type ExpressionFeature struct {
-	b6.ExpressionFeature
+	b6.ExpressionID
+	b6.Tags
+	b6.Expression
 }
 
 func (e *ExpressionFeature) Clone() Feature {
 	return &ExpressionFeature{
-		ExpressionFeature: b6.ExpressionFeature{
-			ExpressionID: e.ExpressionID,
-			Tags:         e.Tags.Clone(),
-			Expression:   e.Expression.Clone(),
-		},
+		ExpressionID: e.ExpressionID,
+		Tags:         e.Tags.Clone(),
+		Expression:   e.Expression.Clone(),
 	}
 }
 
@@ -761,7 +756,7 @@ func (e *ExpressionFeature) MergeFromExpressionFeature(other *ExpressionFeature)
 
 func (e *ExpressionFeature) MarshalYAML() (interface{}, error) {
 	y := map[string]interface{}{
-		"id":         FeatureIDYAML{FeatureID: e.ExpressionID.FeatureID()},
+		"id":         e.ExpressionID,
 		"expression": e.Expression,
 	}
 	if len(e.Tags) > 0 {
@@ -771,17 +766,15 @@ func (e *ExpressionFeature) MarshalYAML() (interface{}, error) {
 }
 
 func (e *ExpressionFeature) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	return e.ExpressionFeature.UnmarshalYAML(unmarshal)
+	return e.Expression.UnmarshalYAML(unmarshal)
 }
 
 func NewExpressionFeatureFromWorld(e b6.ExpressionFeature) *ExpressionFeature {
 	return &ExpressionFeature{
-		ExpressionFeature: e,
+		ExpressionID: e.ExpressionID(),
+		Tags:         NewTagsFromWorld(e),
+		Expression:   e.Expression().Clone(),
 	}
-}
-
-func WrapExpressionFeature(f *ExpressionFeature) b6.ExpressionFeature {
-	return f.ExpressionFeature
 }
 
 type PathPosition struct {
@@ -858,30 +851,30 @@ func (f *FeaturesByID) FindFeatureByID(id b6.FeatureID) b6.Feature {
 	switch id.Type {
 	case b6.FeatureTypePoint:
 		if ll, ok := f.findSimplePointByID(id); ok {
-			return newPointFeature(NewPointFeature(id.ToPointID(), ll))
+			return WrapPointFeature(NewPointFeature(id.ToPointID(), ll))
 		}
 		if p, ok := f.Points[id.ToPointID()]; ok {
-			return newPointFeature(p)
+			return WrapPointFeature(p)
 		}
 	case b6.FeatureTypePath:
 		if p, ok := f.Paths[id.ToPathID()]; ok {
-			return newPathFeature(p, f)
+			return WrapPathFeature(p, f)
 		}
 	case b6.FeatureTypeArea:
 		if a, ok := f.Areas[id.ToAreaID()]; ok {
-			return newAreaFeature(a, f)
+			return WrapAreaFeature(a, f)
 		}
 	case b6.FeatureTypeRelation:
 		if r, ok := f.Relations[id.ToRelationID()]; ok {
-			return newRelationFeature(r, f)
+			return WrapRelationFeature(r, f)
 		}
 	case b6.FeatureTypeCollection:
 		if c, ok := f.Collections[id.ToCollectionID()]; ok {
-			return newCollectionFeature(c, f)
+			return WrapCollectionFeature(c, f)
 		}
 	case b6.FeatureTypeExpression:
 		if e, ok := f.Expressions[id.ToExpressionID()]; ok {
-			return e
+			return WrapExpressionFeature(e)
 		}
 	}
 	return nil

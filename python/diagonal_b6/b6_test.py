@@ -559,6 +559,25 @@ class B6Test(unittest.TestCase):
         route = self.connection(b6.with_change(add, lambda: b6.find_feature(id).get_string("#route")))
         self.assertEqual("bicycle", route)
 
+    def test_materialise(self):
+        collection_id = b6.FeatureID(b6.FEATURE_TYPE_COLLECTION, "diagonal.works/test", 1)
+        roads = b6.find(b6.keyed("#highway"))
+        n = self.connection(b6.with_change(b6.materialise(collection_id, lambda: roads), lambda: b6.count(b6.find_feature(collection_id))))
+        self.assertGreater(n, 100)
+        self.assertLess(n, 200)
+        collection = self.connection(b6.with_change(b6.materialise(collection_id, lambda: roads), lambda: b6.find_feature(collection_id)))
+        self.assertEqual(n, len(collection))
+        self.assertEqual(n, len(list(collection)))
+        self.assertIn(b6.osm_way_id(STABLE_STREET_BRIDGE_ID), [id for (id, _) in collection])
+
+    def test_materialise_includes_expression(self):
+        collection_id = b6.FeatureID(b6.FEATURE_TYPE_COLLECTION, "diagonal.works/test", 1)
+        expression_id = b6.FeatureID(b6.FEATURE_TYPE_EXPRESSION, "diagonal.works/test", 1)
+        roads = b6.find(b6.keyed("#highway"))
+        expression = self.connection(b6.with_change(b6.materialise(collection_id, lambda: roads), lambda: b6.find_feature(expression_id)))
+        # TODO: Test expression behaviour in Python, once it exists.
+        self.assertIsNotNone(expression)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")
