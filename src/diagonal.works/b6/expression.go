@@ -240,7 +240,7 @@ func FromLiteral(l interface{}) (Literal, error) {
 		tag := TagExpression(l)
 		return Literal{AnyLiteral: &tag}, nil
 	case Feature:
-		f := FeatureExpression{Identifiable: l}
+		f := FeatureExpression{Feature: l}
 		return Literal{AnyLiteral: &f}, nil
 	case Point:
 		ll := PointExpression(s2.LatLngFromPoint(l.Point()))
@@ -593,52 +593,41 @@ func (g GeoJSONExpression) Literal() interface{} {
 }
 
 type FeatureExpression struct {
-	Identifiable
+	Feature
 }
 
 func (f *FeatureExpression) ToProto() (*pb.NodeProto, error) {
-	if f, ok := f.Identifiable.(Feature); ok {
-		if p, err := NewProtoFromFeature(f); err == nil {
-			return &pb.NodeProto{
-				Node: &pb.NodeProto_Literal{
-					Literal: &pb.LiteralNodeProto{
-						Value: &pb.LiteralNodeProto_FeatureValue{
-							FeatureValue: p,
-						},
-					},
-				},
-			}, nil
-		} else {
-			return nil, err
-		}
-	} else {
+	if p, err := NewProtoFromFeature(f.Feature); err == nil {
 		return &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
 				Literal: &pb.LiteralNodeProto{
-					Value: &pb.LiteralNodeProto_FeatureIDValue{
-						FeatureIDValue: NewProtoFromFeatureID(f.FeatureID()),
+					Value: &pb.LiteralNodeProto_FeatureValue{
+						FeatureValue: p,
 					},
 				},
 			},
 		}, nil
+	} else {
+		return nil, err
 	}
 }
 
 func (f *FeatureExpression) FromProto(node *pb.NodeProto) error {
+	// TODO: Remove Feature from the external API, and instead
+	// just use FeatureIDs
 	return errors.New("Can't import features from protos")
 }
 
 func (f *FeatureExpression) MarshalYAML() (interface{}, error) {
-	return f.FeatureID().MarshalYAML()
+	// TODO: Remove Feature from the external API, and instead
+	// just use FeatureIDs
+	return nil, errors.New("Can't export features as YAML")
 }
 
 func (f *FeatureExpression) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var id FeatureID
-	err := unmarshal(&id)
-	if err == nil {
-		f.Identifiable = &id
-	}
-	return err
+	// TODO: Remove Feature from the external API, and instead
+	// just use FeatureIDs
+	return errors.New("Can't import features from YAML")
 }
 
 func (f *FeatureExpression) Clone() Expression {
@@ -647,7 +636,7 @@ func (f *FeatureExpression) Clone() Expression {
 }
 
 func (f *FeatureExpression) Literal() interface{} {
-	return f.Identifiable
+	return f.Feature
 }
 
 type PointExpression s2.LatLng
@@ -908,7 +897,7 @@ type collectionYAML struct {
 
 func (c CollectionExpression) MarshalYAML() (interface{}, error) {
 	i := c.UntypedCollection.BeginUntyped()
-	var y collectionYAML
+	y := make([][2]Literal, 0)
 	for {
 		ok, err := i.Next()
 		if err != nil {
@@ -916,33 +905,26 @@ func (c CollectionExpression) MarshalYAML() (interface{}, error) {
 		} else if !ok {
 			break
 		}
-		if k, err := FromLiteral(i.Key()); err == nil {
-			y.Keys = append(y.Keys, k)
-		} else {
-			return nil, err
+		var pair [2]Literal
+		if pair[0], err = FromLiteral(i.Key()); err == nil {
+			pair[1], err = FromLiteral(i.Value())
 		}
-		if v, err := FromLiteral(i.Value()); err == nil {
-			y.Values = append(y.Values, v)
-		} else {
-			return nil, err
-		}
+		y = append(y, pair)
 	}
-	return &y, nil
+	return y, nil
 }
 
 func (c *CollectionExpression) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var y collectionYAML
+	var y [][2]Literal
 	err := unmarshal(&y)
 	if err == nil {
 		collection := ArrayCollection[any, any]{
-			Keys:   make([]any, len(y.Keys)),
-			Values: make([]any, len(y.Values)),
+			Keys:   make([]any, len(y)),
+			Values: make([]any, len(y)),
 		}
-		for i, k := range y.Keys {
-			collection.Keys[i] = k.Literal()
-		}
-		for i, v := range y.Values {
-			collection.Values[i] = v.Literal()
+		for i := range y {
+			collection.Keys[i] = y[i][0].Literal()
+			collection.Values[i] = y[i][1].Literal()
 		}
 		c.UntypedCollection = collection.Collection()
 	}

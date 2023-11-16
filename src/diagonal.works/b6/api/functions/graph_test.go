@@ -84,7 +84,7 @@ func TestAccessibilityFlipped(t *testing.T) {
 	}
 }
 
-func accessibilityForGranarySquare(options []b6.Tag, w b6.World) (b6.Collection[b6.Identifiable, b6.FeatureID], error) {
+func accessibilityForGranarySquare(options []b6.Tag, w b6.World) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 	context := &api.Context{
 		World:   w,
 		Cores:   2,
@@ -98,7 +98,7 @@ func accessibilityForGranarySquare(options []b6.Tag, w b6.World) (b6.Collection[
 	return accessible(context, ids, b6.Keyed{Key: "entrance"}, 500, b6.ArrayValuesCollection[b6.Tag](options).Collection())
 }
 
-func fillODsFromCollection(ods map[graph.OD]struct{}, c b6.Collection[b6.Identifiable, b6.FeatureID]) error {
+func fillODsFromCollection(ods map[graph.OD]struct{}, c b6.Collection[b6.FeatureID, b6.FeatureID]) error {
 	i := c.Begin()
 	for {
 		ok, err := i.Next()
@@ -107,7 +107,7 @@ func fillODsFromCollection(ods map[graph.OD]struct{}, c b6.Collection[b6.Identif
 		} else if !ok {
 			break
 		}
-		ods[graph.OD{Origin: i.Key().FeatureID(), Destination: i.Value().FeatureID()}] = struct{}{}
+		ods[graph.OD{Origin: i.Key(), Destination: i.Value()}] = struct{}{}
 	}
 	return nil
 }

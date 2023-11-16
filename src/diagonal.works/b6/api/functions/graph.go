@@ -106,7 +106,7 @@ func reachable(context *api.Context, origin b6.Feature, mode string, distance fl
 }
 
 type odCollection struct {
-	origins      []b6.Identifiable
+	origins      []b6.FeatureID
 	destinations [][]b6.FeatureID
 
 	i int
@@ -123,12 +123,12 @@ func (o *odCollection) Count() (int, bool) {
 	return n, true
 }
 
-func (o *odCollection) Begin() b6.Iterator[b6.Identifiable, b6.FeatureID] {
+func (o *odCollection) Begin() b6.Iterator[b6.FeatureID, b6.FeatureID] {
 	return &odCollection{origins: o.origins, destinations: o.destinations}
 }
 
-func (o *odCollection) Key() b6.Identifiable {
-	return o.origins[o.i-1]
+func (o *odCollection) Key() b6.FeatureID {
+	return o.origins[o.i-1].FeatureID()
 }
 
 func (o *odCollection) Value() b6.FeatureID {
@@ -175,22 +175,22 @@ func (o *odCollection) Less(i, j int) bool {
 	return o.origins[i].FeatureID().Less(o.origins[j].FeatureID())
 }
 
-func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable], destinations b6.Query, distance float64, options b6.UntypedCollection) (b6.Collection[b6.Identifiable, b6.FeatureID], error) {
+func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable], destinations b6.Query, distance float64, options b6.UntypedCollection) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 	tags, err := api.CollectionToTags(options)
 	if err != nil {
-		return b6.Collection[b6.Identifiable, b6.FeatureID]{}, err
+		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
 
-	os := make([]b6.Identifiable, 0)
+	os := make([]b6.FeatureID, 0)
 	i := origins.Begin()
 	for {
 		ok, err := i.Next()
 		if err != nil {
-			return b6.Collection[b6.Identifiable, b6.FeatureID]{}, err
+			return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 		} else if !ok {
 			break
 		}
-		os = append(os, i.Value())
+		os = append(os, i.Value().FeatureID())
 	}
 
 	mode := "walk"
@@ -199,7 +199,7 @@ func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable
 	}
 	weights, err := weightsFromMode(mode)
 	if err != nil {
-		return b6.Collection[b6.Identifiable, b6.FeatureID]{}, err
+		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
 
 	ds := make([][]b6.FeatureID, len(os))
@@ -208,7 +208,7 @@ func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable
 	for i := 0; i < context.Cores; i++ {
 		g.Go(func() error {
 			for j := range c {
-				if origin := api.Resolve(os[j], context.World); origin != nil {
+				if origin := context.World.FindFeatureByID(os[j]); origin != nil {
 					ds[j] = accessibleFromOrigin(ds[j], origin, destinations, weights, distance, context.World)
 				}
 			}
@@ -237,7 +237,7 @@ done:
 		}
 	}
 	sort.Sort(ods)
-	return b6.Collection[b6.Identifiable, b6.FeatureID]{
+	return b6.Collection[b6.FeatureID, b6.FeatureID]{
 		AnyCollection: ods,
 	}, err
 }

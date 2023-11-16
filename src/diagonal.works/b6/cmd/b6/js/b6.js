@@ -1214,6 +1214,8 @@ const featureTypes = {
     "FeatureTypePath": "path",
     "FeatureTypeArea": "area",
     "FeatureTypeRelation": "relation",
+    "FeatureTypeCollection": "collection",
+    "FeatureTypeExpression": "expression",
 }
 
 function idTokenFromProto(p) {
@@ -1454,6 +1456,10 @@ class Styles {
 }
 
 function setup(startupResponse) {
+    if (startupResponse.error) {
+        console.log(startupResponse.error); // TODO: show a banner
+        return;
+    }
     const state = {highlighted: {}, bucketed: {}};
     const styles = new Styles(StyleClasses);
     const mapCenter = startupResponse.mapCenter || InitialCenter;
