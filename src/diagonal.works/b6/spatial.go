@@ -2,6 +2,7 @@ package b6
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"diagonal.works/b6/geometry"
@@ -45,6 +46,13 @@ func (m MightIntersect) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
+func (m MightIntersect) Equal(other Query) bool {
+	if mm, ok := other.(MightIntersect); ok {
+		return reflect.DeepEqual(m.Region, mm.Region)
+	}
+	return false
+}
+
 type IntersectsCells struct {
 	Cells []s2.Cell
 }
@@ -85,6 +93,21 @@ func (i IntersectsCells) ToProto() (*pb.QueryProto, error) {
 			},
 		},
 	}, nil
+}
+
+func (i IntersectsCells) Equal(other Query) bool {
+	if ii, ok := other.(IntersectsCells); ok {
+		if len(i.Cells) != len(ii.Cells) {
+			return false
+		}
+		for j := range i.Cells {
+			if i.Cells[j].ID() != ii.Cells[j].ID() {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func cellsIntersectFeature(cells []s2.Cell, feature Feature) bool {
@@ -246,6 +269,13 @@ func (i *IntersectsCap) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
+func (i *IntersectsCap) Equal(other Query) bool {
+	if ii, ok := other.(*IntersectsCap); ok {
+		return i.cap.Center() == ii.cap.Center() && i.cap.Radius() == ii.cap.Radius()
+	}
+	return false
+}
+
 // If the polygon has less than this number of vetices, it's faster to
 // skip the index and test the edges of the polygon directly. Derived
 // empirically via benchmarks alongside the unit tests.
@@ -364,6 +394,13 @@ func (i IntersectsFeature) toGeometryQuery(w World) Query {
 	return Empty{}
 }
 
+func (i IntersectsFeature) Equal(other Query) bool {
+	if ii, ok := other.(*IntersectsFeature); ok {
+		return i.ID == ii.ID
+	}
+	return false
+}
+
 type IntersectsPoint struct {
 	Point s2.Point
 }
@@ -390,6 +427,13 @@ func (i IntersectsPoint) ToProto() (*pb.QueryProto, error) {
 			IntersectsPoint: NewPointProtoFromS2Point(i.Point),
 		},
 	}, nil
+}
+
+func (i IntersectsPoint) Equal(other Query) bool {
+	if ii, ok := other.(*IntersectsPoint); ok {
+		return i.Point == ii.Point
+	}
+	return false
 }
 
 type intersectsPoint struct {
@@ -469,6 +513,13 @@ func (i IntersectsPolyline) ToProto() (*pb.QueryProto, error) {
 			IntersectsPolyline: NewPolylineProto(i.Polyline),
 		},
 	}, nil
+}
+
+func (i IntersectsPolyline) Equal(other Query) bool {
+	if ii, ok := other.(*IntersectsPolyline); ok {
+		return geometry.PolylineEqual(i.Polyline, ii.Polyline)
+	}
+	return false
 }
 
 type intersectsPolyline struct {
@@ -565,6 +616,13 @@ func (i IntersectsMultiPolygon) ToProto() (*pb.QueryProto, error) {
 			IntersectsMultiPolygon: NewMultiPolygonProto(i.MultiPolygon),
 		},
 	}, nil
+}
+
+func (i IntersectsMultiPolygon) Equal(other Query) bool {
+	if ii, ok := other.(*IntersectsMultiPolygon); ok {
+		return geometry.MultiPolygonEqual(i.MultiPolygon, ii.MultiPolygon)
+	}
+	return false
 }
 
 type intersectsMultiPolygon struct {

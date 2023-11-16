@@ -29,6 +29,7 @@ func (FloatNumber) isNumber() {}
 type AnyExpression interface {
 	ToProto() (*pb.NodeProto, error)
 	FromProto(node *pb.NodeProto) error
+	Equal(other AnyExpression) bool
 	Clone() Expression
 }
 
@@ -156,6 +157,10 @@ func (e Expression) Clone() Expression {
 	return e.AnyExpression.Clone()
 }
 
+func (e Expression) Equal(other Expression) bool {
+	return e.AnyExpression.Equal(other.AnyExpression)
+}
+
 type AnyLiteral interface {
 	AnyExpression
 	Literal() interface{}
@@ -196,6 +201,10 @@ func (l *Literal) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("Can't convert literal from yaml %T", e.AnyExpression)
 	}
 	return nil
+}
+
+func (l Literal) Equal(other Literal) bool {
+	return l.AnyLiteral.Equal(other.AnyLiteral)
 }
 
 func FromLiteral(l interface{}) (Literal, error) {
@@ -260,6 +269,15 @@ func FromLiteral(l interface{}) (Literal, error) {
 	return Literal{}, fmt.Errorf("Can't make literal from %T", l)
 }
 
+func LiteralEqual(v interface{}, vv interface{}) bool {
+	if l, err := FromLiteral(v); err == nil {
+		if ll, err := FromLiteral(vv); err == nil {
+			return l.Equal(ll)
+		}
+	}
+	return false
+}
+
 type SymbolExpression string
 
 func (s *SymbolExpression) ToProto() (*pb.NodeProto, error) {
@@ -280,13 +298,20 @@ func (s *SymbolExpression) Clone() Expression {
 	return Expression{AnyExpression: &clone}
 }
 
+func (s SymbolExpression) String() string {
+	return string(s)
+}
+
+func (s SymbolExpression) Equal(other AnyExpression) bool {
+	if ss, ok := other.(*SymbolExpression); ok {
+		return s == *ss
+	}
+	return false
+}
+
 func NewSymbolExpression(symbol string) Expression {
 	s := SymbolExpression(symbol)
 	return Expression{AnyExpression: &s}
-}
-
-func (s SymbolExpression) String() string {
-	return string(s)
 }
 
 type IntExpression int
@@ -315,6 +340,13 @@ func (i *IntExpression) Clone() Expression {
 
 func (i IntExpression) Literal() interface{} {
 	return int(i)
+}
+
+func (i IntExpression) Equal(other AnyExpression) bool {
+	if ii, ok := other.(*IntExpression); ok {
+		return i == *ii
+	}
+	return false
 }
 
 func NewIntExpression(value int) Expression {
@@ -350,6 +382,13 @@ func (f FloatExpression) Literal() interface{} {
 	return float64(f)
 }
 
+func (f FloatExpression) Equal(other AnyExpression) bool {
+	if ff, ok := other.(*FloatExpression); ok {
+		return f == *ff
+	}
+	return false
+}
+
 func NewFloatExpression(value float64) Expression {
 	i := FloatExpression(value)
 	return Expression{AnyExpression: &i}
@@ -383,6 +422,13 @@ func (b BoolExpression) Literal() interface{} {
 	return bool(b)
 }
 
+func (b BoolExpression) Equal(other AnyExpression) bool {
+	if bb, ok := other.(*BoolExpression); ok {
+		return b == *bb
+	}
+	return false
+}
+
 type StringExpression string
 
 func (s *StringExpression) ToProto() (*pb.NodeProto, error) {
@@ -409,6 +455,13 @@ func (s *StringExpression) Clone() Expression {
 
 func (s StringExpression) Literal() interface{} {
 	return string(s)
+}
+
+func (s StringExpression) Equal(other AnyExpression) bool {
+	if ss, ok := other.(*StringExpression); ok {
+		return s == *ss
+	}
+	return false
 }
 
 func NewStringExpression(s string) Expression {
@@ -450,6 +503,13 @@ func (f *FeatureIDExpression) Clone() Expression {
 
 func (f FeatureIDExpression) Literal() interface{} {
 	return FeatureID(f)
+}
+
+func (f FeatureIDExpression) Equal(other AnyExpression) bool {
+	if ff, ok := other.Clone().AnyExpression.(*FeatureIDExpression); ok {
+		return f == *ff
+	}
+	return false
 }
 
 func NewFeatureIDExpression(id FeatureID) Expression {
@@ -497,6 +557,13 @@ func (t TagExpression) Literal() interface{} {
 	return Tag(t)
 }
 
+func (t TagExpression) Equal(other AnyExpression) bool {
+	if tt, ok := other.(*TagExpression); ok {
+		return t == *tt
+	}
+	return false
+}
+
 type QueryExpression struct {
 	Query Query
 }
@@ -542,6 +609,13 @@ func (q *QueryExpression) Clone() Expression {
 
 func (q QueryExpression) Literal() interface{} {
 	return q.Query
+}
+
+func (q QueryExpression) Equal(other AnyExpression) bool {
+	if qq, ok := other.(*QueryExpression); ok {
+		return q.Query.Equal(qq.Query)
+	}
+	return false
 }
 
 func NewQueryExpression(query Query) Expression {
@@ -592,6 +666,17 @@ func (g GeoJSONExpression) Literal() interface{} {
 	return g.GeoJSON
 }
 
+func (g GeoJSONExpression) Equal(other AnyExpression) bool {
+	if gg, ok := other.(*GeoJSONExpression); ok {
+		if b, err := json.Marshal(g.GeoJSON); err == nil {
+			if bb, err := json.Marshal(gg.GeoJSON); err == nil {
+				return bytes.Equal(b, bb)
+			}
+		}
+	}
+	return false
+}
+
 type FeatureExpression struct {
 	Feature
 }
@@ -639,6 +724,13 @@ func (f *FeatureExpression) Literal() interface{} {
 	return f.Feature
 }
 
+func (f FeatureExpression) Equal(other AnyExpression) bool {
+	if ff, ok := other.(*FeatureExpression); ok {
+		return f.FeatureID() == ff.FeatureID()
+	}
+	return false
+}
+
 type PointExpression s2.LatLng
 
 func (p *PointExpression) ToProto() (*pb.NodeProto, error) {
@@ -683,6 +775,13 @@ func (p *PointExpression) Clone() Expression {
 
 func (p PointExpression) Literal() interface{} {
 	return PointFromLatLng(s2.LatLng(p))
+}
+
+func (p PointExpression) Equal(other AnyExpression) bool {
+	if pp, ok := other.(*PointExpression); ok {
+		return p == *pp
+	}
+	return false
 }
 
 func NewPointExpressionFromLatLng(ll s2.LatLng) Expression {
@@ -742,6 +841,13 @@ func (p PathExpression) Literal() interface{} {
 	return p.Path
 }
 
+func (p PathExpression) Equal(other AnyExpression) bool {
+	if pp, ok := other.(*PathExpression); ok {
+		return geometry.PolylineEqual(p.Path.Polyline(), pp.Path.Polyline())
+	}
+	return false
+}
+
 type AreaExpression struct {
 	Area Area
 }
@@ -777,6 +883,13 @@ func (a AreaExpression) Literal() interface{} {
 	return a.Area
 }
 
+func (a AreaExpression) Equal(other AnyExpression) bool {
+	if aa, ok := other.(*AreaExpression); ok {
+		return geometry.MultiPolygonEqual(a.Area.MultiPolygon(), aa.Area.MultiPolygon())
+	}
+	return false
+}
+
 type NilExpression struct{}
 
 func (_ NilExpression) ToProto() (*pb.NodeProto, error) {
@@ -799,6 +912,11 @@ func (n NilExpression) Clone() Expression {
 
 func (n NilExpression) Literal() interface{} {
 	return nil
+}
+
+func (n NilExpression) Equal(other AnyExpression) bool {
+	_, ok := other.(NilExpression)
+	return ok
 }
 
 type CollectionExpression struct {
@@ -884,6 +1002,33 @@ func (c *CollectionExpression) FromProto(node *pb.NodeProto) error {
 		AnyCollection: collection,
 	}
 	return nil
+}
+
+func (c CollectionExpression) Equal(other AnyExpression) bool {
+	if cc, ok := other.(*CollectionExpression); ok {
+		i := [2]Iterator[any, any]{c.BeginUntyped(), cc.BeginUntyped()}
+		for {
+			var ok [2]bool
+			var err [2]error
+			for j := range ok {
+				ok[j], err[j] = i[j].Next()
+			}
+			if err[0] != nil || err[1] != nil {
+				return false
+			}
+			if ok[0] != ok[1] {
+				return false
+			}
+			if !ok[0] {
+				break
+			}
+			if !LiteralEqual(i[0].Key(), i[1].Key()) || !LiteralEqual(i[0].Value(), i[1].Value()) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func NewCollectionExpression(c UntypedCollection) Expression {
@@ -998,6 +1143,24 @@ func (c *CallExpression) Clone() Expression {
 	}}
 }
 
+func (c *CallExpression) Equal(other AnyExpression) bool {
+	if cc, ok := other.(*CallExpression); ok {
+		if !c.Function.Equal(cc.Function) {
+			return false
+		}
+		if len(c.Args) != len(cc.Args) {
+			return false
+		}
+		for i := range c.Args {
+			if !c.Args[i].Equal(cc.Args[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 func NewCallExpression(function Expression, args []Expression) Expression {
 	return Expression{AnyExpression: &CallExpression{Function: function, Args: args}}
 }
@@ -1037,6 +1200,24 @@ func (l *LambdaExpression) Clone() Expression {
 		Args:       names,
 		Expression: l.Expression.Clone(),
 	}}
+}
+
+func (l *LambdaExpression) Equal(other AnyExpression) bool {
+	if ll, ok := other.(*LambdaExpression); ok {
+		if !l.Expression.Equal(ll.Expression) {
+			return false
+		}
+		if len(l.Args) != len(ll.Args) {
+			return false
+		}
+		for i := range l.Args {
+			if l.Args[i] != ll.Args[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func NewLambdaExpression(args []string, e Expression) Expression {

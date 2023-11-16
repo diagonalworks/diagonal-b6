@@ -118,3 +118,46 @@ func NewMultiPolygonFromLoops(loops []*s2.Loop) MultiPolygon {
 	}
 	return m
 }
+
+func PolylineEqual(p *s2.Polyline, pp *s2.Polyline) bool {
+	if len(*p) != len(*pp) {
+		return false
+	}
+	for i := range *p {
+		if (*p)[i] != (*pp)[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func PolygonEqual(p *s2.Polygon, pp *s2.Polygon) bool {
+	if p.NumLoops() != pp.NumLoops() {
+		return false
+	}
+	for i := 0; i < p.NumLoops(); i++ {
+		l := p.Loop(i)
+		ll := pp.Loop(i)
+		if l.NumVertices() != ll.NumVertices() {
+			return false
+		}
+		for j := 0; j < l.NumVertices(); j++ {
+			if l.Vertex(j) != ll.Vertex(j) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func MultiPolygonEqual(m MultiPolygon, mm MultiPolygon) bool {
+	if len(m) != len(mm) {
+		return false
+	}
+	for i := range m {
+		if !PolygonEqual(m[i], mm[i]) {
+			return false
+		}
+	}
+	return true
+}
