@@ -10,9 +10,6 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-// GeoJSON is implemented by all GeoJSON objects, specifically, Feature,
-// FeatureCollection and Geometry.
-
 type GeometryMapFunction func(c Coordinates) (Coordinates, error)
 
 func MapS2Polygons(f func(p *s2.Polygon) ([]*s2.Polygon, error)) GeometryMapFunction {
@@ -45,6 +42,9 @@ func MapS2Polygons(f func(p *s2.Polygon) ([]*s2.Polygon, error)) GeometryMapFunc
 		}
 	}
 }
+
+// GeoJSON is implemented by all GeoJSON objects, specifically, Feature,
+// FeatureCollection and Geometry.
 
 type GeoJSON interface {
 	MapGeometries(f GeometryMapFunction) (GeoJSON, error)

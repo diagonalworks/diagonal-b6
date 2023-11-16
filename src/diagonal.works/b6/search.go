@@ -22,6 +22,7 @@ type Query interface {
 	Compile(i FeatureIndex, w World) search.Iterator
 	Matches(f Feature, w World) bool
 	ToProto() (*pb.QueryProto, error)
+	Equal(other Query) bool
 	String() string
 }
 
@@ -47,6 +48,11 @@ func (_ Empty) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
+func (_ Empty) Equal(other Query) bool {
+	_, ok := other.(Empty)
+	return ok
+}
+
 type All struct{}
 
 func (_ All) Matches(f Feature, w World) bool {
@@ -65,6 +71,11 @@ func (_ All) ToProto() (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_All{},
 	}, nil
+}
+
+func (_ All) Equal(other Query) bool {
+	_, ok := other.(All)
+	return ok
 }
 
 func TokenForTag(tag Tag) (string, bool) {
@@ -104,6 +115,13 @@ func (t Tagged) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
+func (t Tagged) Equal(other Query) bool {
+	if tt, ok := other.(Tagged); ok {
+		return t.Key == tt.Key && t.Value == tt.Value
+	}
+	return false
+}
+
 type Keyed struct {
 	Key string
 }
@@ -131,6 +149,13 @@ func (k Keyed) ToProto() (*pb.QueryProto, error) {
 			Keyed: k.Key,
 		},
 	}, nil
+}
+
+func (k Keyed) Equal(other Query) bool {
+	if kk, ok := other.(Keyed); ok {
+		return k.Key == kk.Key
+	}
+	return false
 }
 
 type Typed struct {
@@ -184,6 +209,13 @@ func (t Typed) ToProto() (*pb.QueryProto, error) {
 			},
 		},
 	}, nil
+}
+
+func (t Typed) Equal(other Query) bool {
+	if tt, ok := other.(Typed); ok {
+		return t.Type == tt.Type && t.Query.Equal(tt.Query)
+	}
+	return false
 }
 
 type typedYAML struct {
@@ -269,6 +301,21 @@ func (i *Intersection) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
+func (i Intersection) Equal(other Query) bool {
+	if ii, ok := other.(Intersection); ok {
+		if len(i) != len(ii) {
+			return false
+		}
+		for j := range i {
+			if !i[j].Equal(ii[j]) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 type Union []Query
 
 func (u Union) Compile(index FeatureIndex, w World) search.Iterator {
@@ -331,6 +378,21 @@ func (u *Union) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 	}
 	return err
+}
+
+func (u Union) Equal(other Query) bool {
+	if uu, ok := other.(Union); ok {
+		if len(u) != len(uu) {
+			return false
+		}
+		for i := range u {
+			if !u[i].Equal(uu[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 type queryChoices struct {
