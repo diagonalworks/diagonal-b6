@@ -29,7 +29,7 @@ type DefaultUIRenderer struct {
 }
 
 func (d *DefaultUIRenderer) Render(response *UIResponseJSON, value interface{}, context b6.CollectionFeature, locked bool) error {
-	if err := fillResponseFromResult(response, value, d.RenderRules, d.World); err == nil {
+	if err := d.fillResponseFromResult(response, value); err == nil {
 		shell := &pb.ShellLineProto{
 			Functions: make([]string, 0),
 		}
@@ -39,7 +39,7 @@ func (d *DefaultUIRenderer) Render(response *UIResponseJSON, value interface{}, 
 		})
 		return nil
 	} else {
-		return fillResponseFromResult(response, err, d.RenderRules, d.World)
+		return d.fillResponseFromResult(response, err)
 	}
 }
 
@@ -334,7 +334,7 @@ func fillSubstackFromExpression(lines *pb.SubstackProto, expression b6.Expressio
 		lines.Lines = append(lines.Lines, &pb.LineProto{
 			Line: &pb.LineProto_Error{
 				Error: &pb.ErrorLineProto{
-					Error: "can't convert function",
+					Error: "can't convert expression",
 				},
 			},
 		})
@@ -465,6 +465,9 @@ func AtomFromValue(value interface{}, w b6.World) *pb.AtomProto {
 }
 
 func clickExpressionFromIdentifiable(f b6.Identifiable) *pb.NodeProto {
+	if !f.FeatureID().IsValid() {
+		return nil
+	}
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Call{
 			Call: &pb.CallNodeProto{
@@ -609,7 +612,7 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 	return substacks
 }
 
-func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules renderer.RenderRules, w b6.World) error {
+func (d *DefaultUIRenderer) fillResponseFromResult(response *UIResponseJSON, result interface{}) error {
 	p := (*pb.UIResponseProto)(response.Proto)
 	switch r := result.(type) {
 	case error:
@@ -620,8 +623,28 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 		var substack pb.SubstackProto
 		fillSubstackFromAtom(&substack, AtomFromString(r))
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
+	case b6.ExpressionFeature:
+		// This is not perfect, as it makes original expression that
+		// returned the ExpressionFeature, and the expression from the
+		// feature itself, look like part of the same stack.
+		// TODO: improve the UX for expression features
+		substack := &pb.SubstackProto{}
+		expression := api.AddPipelines(api.Simplify(b6.NewCallExpression(r.Expression(), []b6.Expression{}), d.FunctionSymbols))
+		fillSubstackFromExpression(substack, expression, true)
+		if len(substack.Lines) > 0 {
+			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, substack)
+		}
+		id := b6.MakeCollectionID(r.ExpressionID().Namespace, r.ExpressionID().Value)
+		if c := b6.FindCollectionByID(id, d.World); c != nil {
+			substack := &pb.SubstackProto{}
+			if err := fillSubstackFromCollection(substack, c, p, d.World); err == nil {
+				p.Stack.Substacks = append(p.Stack.Substacks, substack)
+			} else {
+				return err
+			}
+		}
 	case b6.Feature:
-		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, r, w)
+		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, r, d.World)
 		highlightInResponse(p, r.FeatureID())
 	case b6.Query:
 		if q, ok := api.UnparseQuery(r); ok {
@@ -636,9 +659,9 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 		}
 	case b6.Tag:
 		var substack pb.SubstackProto
-		fillSubstackFromAtom(&substack, AtomFromValue(r, w))
+		fillSubstackFromAtom(&substack, AtomFromValue(r, d.World))
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-		if !rules.IsRendered(r) {
+		if !d.RenderRules.IsRendered(r) {
 			if q, ok := api.UnparseQuery(b6.Tagged(r)); ok {
 				before := pb.MapLayerPosition_MapLayerPositionEnd
 				if r.Key == "#boundary" {
@@ -648,12 +671,12 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 			}
 		}
 	case *api.HistogramCollection:
-		if err := fillResponseFromHistogram(p, r, w); err != nil {
+		if err := fillResponseFromHistogram(p, r, d.World); err != nil {
 			return err
 		}
 	case b6.UntypedCollection:
 		substack := &pb.SubstackProto{}
-		if err := fillSubstackFromCollection(substack, r, p, w); err == nil {
+		if err := fillSubstackFromCollection(substack, r, p, d.World); err == nil {
 			p.Stack.Substacks = append(p.Stack.Substacks, substack)
 		} else {
 			return err
@@ -724,7 +747,7 @@ func fillResponseFromResult(response *UIResponseJSON, result interface{}, rules 
 			Lines: []*pb.LineProto{{
 				Line: &pb.LineProto_Value{
 					Value: &pb.ValueLineProto{
-						Atom: AtomFromValue(r, w),
+						Atom: AtomFromValue(r, d.World),
 					},
 				},
 			}},

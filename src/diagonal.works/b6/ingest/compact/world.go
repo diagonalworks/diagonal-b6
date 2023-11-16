@@ -114,6 +114,9 @@ func (f *FeaturesByID) FindFeatureByID(id b6.FeatureID) b6.Feature {
 }
 
 func (f *FeaturesByID) findWithoutCache(id b6.FeatureID) b6.Feature {
+	if int(id.Type) >= len(f.features) {
+		return nil
+	}
 	for _, fb := range f.features[id.Type] {
 		if ns, ok := fb.NamespaceTable.MaybeEncode(id.Namespace); ok && ns == fb.Namespaces[id.Type] {
 			switch id.Type {
@@ -140,6 +143,9 @@ func (f *FeaturesByID) findWithoutCache(id b6.FeatureID) b6.Feature {
 }
 
 func (f *FeaturesByID) HasFeatureWithID(id b6.FeatureID) bool {
+	if int(id.Type) >= len(f.features) {
+		return false
+	}
 	return hasFeatureWithID(id, f.features[id.Type]) || f.base.HasFeatureWithID(id)
 }
 
@@ -817,6 +823,9 @@ func (f *FeaturesByID) isGraphNode(point Reference) bool {
 
 func (f *FeaturesByID) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
 	relations := make([]b6.RelationFeature, 0, 2)
+	if int(id.Type) >= len(f.features) {
+		return ingest.NewRelationFeatureIterator(relations)
+	}
 	for _, fb := range f.features[id.Type] {
 		if ns, ok := fb.NamespaceTable.MaybeEncode(id.Namespace); ok && ns == fb.Namespaces[id.Type] {
 			switch id.Type {
