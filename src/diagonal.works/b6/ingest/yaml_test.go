@@ -3,7 +3,6 @@ package ingest
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"testing"
 
 	"diagonal.works/b6"
@@ -121,9 +120,8 @@ func TestExportModificationsAsYAML(t *testing.T) {
 
 	var buffer bytes.Buffer
 	if err := ExportChangesAsYAML(m, &buffer); err != nil {
-		t.Errorf("Expected no error, found: %s", err)
+		t.Fatalf("Expected no error, found: %s", err)
 	}
-	log.Printf("yaml: %s", buffer.Bytes())
 
 	ingested := NewMutableOverlayWorld(base)
 	change := IngestChangesFromYAML(&buffer)

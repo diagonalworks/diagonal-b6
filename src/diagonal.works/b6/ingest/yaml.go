@@ -151,12 +151,19 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 // TODO: find a neat way of moving these functions alongside MarshalYAML
 // on the feature implementations themselves.
 func newPointFromYAML(y *exportedYAML) (*PointFeature, error) {
+	if y.ID.Type != b6.FeatureTypePoint {
+		return nil, fmt.Errorf("expected a point for %s", y.ID)
+	}
 	p := NewPointFeature(y.ID.ToPointID(), y.Point.LatLng)
 	p.Tags = y.Tags
 	return p, nil
 }
 
 func newPathFromYAML(y *exportedYAML) (*PathFeature, error) {
+	if y.ID.Type != b6.FeatureTypePath {
+		return nil, fmt.Errorf("expected a path for %s", y.ID)
+	}
+
 	p := NewPathFeature(len(y.Path))
 	p.PathID = y.ID.ToPathID()
 	for i := range y.Path {
@@ -179,6 +186,10 @@ func newPathFromYAML(y *exportedYAML) (*PathFeature, error) {
 }
 
 func newAreaFromYAML(y *exportedYAML) (*AreaFeature, error) {
+	if y.ID.Type != b6.FeatureTypeArea {
+		return nil, fmt.Errorf("expected an area for %s", y.ID)
+	}
+
 	a := NewAreaFeature(len(y.Area))
 	a.AreaID = y.ID.ToAreaID()
 	for i := range y.Area {
@@ -227,6 +238,9 @@ func newAreaFromYAML(y *exportedYAML) (*AreaFeature, error) {
 }
 
 func newRelationFromYAML(y *exportedYAML) (*RelationFeature, error) {
+	if y.ID.Type != b6.FeatureTypeRelation {
+		return nil, fmt.Errorf("expected a relation for %s", y.ID)
+	}
 	r := NewRelationFeature(len(y.Relation))
 	r.RelationID = y.ID.ToRelationID()
 	r.Members = y.Relation
@@ -235,8 +249,11 @@ func newRelationFromYAML(y *exportedYAML) (*RelationFeature, error) {
 }
 
 func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
-	var keys, values []interface{}
+	if y.ID.Type != b6.FeatureTypeCollection {
+		return nil, fmt.Errorf("expected a collection for %s", y.ID)
+	}
 
+	var keys, values []interface{}
 	i := y.Collection.BeginUntyped()
 	for {
 		ok, err := i.Next()
@@ -258,6 +275,10 @@ func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
 }
 
 func newExpressionFromYAML(y *exportedYAML) (*ExpressionFeature, error) {
+	if y.ID.Type != b6.FeatureTypeExpression {
+		return nil, fmt.Errorf("expected an expression for %s", y.ID)
+	}
+
 	return &ExpressionFeature{
 		ExpressionID: y.ID.ToExpressionID(),
 		Tags:         y.Tags,

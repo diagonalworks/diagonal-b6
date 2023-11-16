@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -91,7 +92,7 @@ func RegisterTiles(root *http.ServeMux, options *Options) {
 }
 
 type UIRenderer interface {
-	Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature, locked bool) error
+	Render(response *UIResponseJSON, value interface{}, context b6.CollectionFeature, locked bool) error
 }
 
 type FeatureIDProtoJSON pb.FeatureIDProto
@@ -117,6 +118,7 @@ type StartupResponseJSON struct {
 	MapZoom       int                 `json:"mapZoom,omitempty"`
 	Context       *FeatureIDProtoJSON `json:"context,omitempty"`
 	Expression    string              `json:"expression,omitempty"`
+	Error         string              `json:"error,omitempty"`
 }
 
 const DefaultMapZoom = 16
@@ -132,10 +134,16 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r := r.URL.Query().Get("r"); len(r) > 0 {
-		context := b6.FeatureIDFromString(r[1:])
-		if context.IsValid() {
-			s.fillStartupResponseFromRootFeature(response, context)
-			response.Context = (*FeatureIDProtoJSON)(b6.NewProtoFromFeatureID(context))
+		renderContext := b6.FeatureIDFromString(r[1:])
+		if renderContext.IsValid() && renderContext.Type == b6.FeatureTypeCollection {
+			if err := s.fillStartupResponseFromRenderContext(response, renderContext.ToCollectionID()); err != nil {
+				response.Error = err.Error()
+				output, _ := json.Marshal(response)
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(output))
+				return
+			}
+			response.Context = (*FeatureIDProtoJSON)(b6.NewProtoFromFeatureID(renderContext))
 		}
 	}
 
@@ -174,18 +182,21 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(output))
 }
 
-func (s *StartupHandler) fillStartupResponseFromRootFeature(response *StartupResponseJSON, id b6.FeatureID) {
-	if f := s.World.FindFeatureByID(id); f != nil {
-		if relation, ok := f.(b6.RelationFeature); ok {
-			for i := 0; i < relation.Len(); i++ {
-				if member := s.World.FindFeatureByID(relation.Member(i).ID); member != nil {
-					if relation.Member(i).Role == "docked" {
-						uiResponse := NewUIResponseJSON()
-						if err := s.Renderer.Render(uiResponse, member, relation, true); err == nil {
-							response.Docked = append(response.Docked, uiResponse)
-						}
-					} else if relation.Member(i).Role == "centroid" {
-						if p, ok := member.(b6.PhysicalFeature); ok {
+func (s *StartupHandler) fillStartupResponseFromRenderContext(response *StartupResponseJSON, id b6.CollectionID) error {
+	if context := b6.FindCollectionByID(id, s.World); context != nil {
+		if context, ok := context.(b6.CollectionFeature); ok {
+			c := b6.AdaptCollection[string, b6.FeatureID](context)
+			i := c.Begin()
+			for {
+				ok, err := i.Next()
+				if err != nil {
+					return fmt.Errorf("%s: %w", id, err)
+				} else if !ok {
+					break
+				}
+				if i.Key() == "centroid" {
+					if centroid := s.World.FindFeatureByID(i.Value()); centroid != nil {
+						if p, ok := centroid.(b6.PhysicalFeature); ok {
 							ll := s2.LatLngFromPoint(b6.Centroid(p))
 							response.MapCenter = &LatLngJSON{
 								LatE7: int(ll.Lat.E7()),
@@ -194,8 +205,18 @@ func (s *StartupHandler) fillStartupResponseFromRootFeature(response *StartupRes
 							response.MapZoom = DefaultMapZoom
 						}
 					}
+				} else if i.Key() == "docked" {
+					if docked := s.World.FindFeatureByID(i.Value()); docked != nil {
+						uiResponse := NewUIResponseJSON()
+						if err := s.Renderer.Render(uiResponse, docked, context, true); err == nil {
+							response.Docked = append(response.Docked, uiResponse)
+						} else {
+							return fmt.Errorf("%s: %w", i.Value(), err)
+						}
+					}
 				}
 			}
 		}
 	}
+	return nil
 }

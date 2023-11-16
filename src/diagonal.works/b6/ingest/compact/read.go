@@ -179,7 +179,7 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 			changed = true
 			log.Printf("Apply %s", tr.Filename)
 			if _, err := tr.Change.Apply(m); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%s: %w", tr.Filename, err)
 			}
 		}
 	}

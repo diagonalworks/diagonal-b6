@@ -28,7 +28,7 @@ type DefaultUIRenderer struct {
 	World           b6.World
 }
 
-func (d *DefaultUIRenderer) Render(response *UIResponseJSON, value interface{}, context b6.RelationFeature, locked bool) error {
+func (d *DefaultUIRenderer) Render(response *UIResponseJSON, value interface{}, context b6.CollectionFeature, locked bool) error {
 	if err := fillResponseFromResult(response, value, d.RenderRules, d.World); err == nil {
 		shell := &pb.ShellLineProto{
 			Functions: make([]string, 0),
@@ -208,9 +208,9 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var renderContext b6.RelationFeature
+	var root b6.CollectionFeature
 	if request.Context != nil && request.Context.Type == pb.FeatureType_FeatureTypeRelation {
-		renderContext = b6.FindRelationByID(b6.NewFeatureIDFromProto(request.Context).ToRelationID(), u.World)
+		root = b6.FindCollectionByID(b6.NewFeatureIDFromProto(request.Context).ToCollectionID(), u.World)
 	}
 
 	var expression b6.Expression
@@ -225,7 +225,7 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if err != nil {
-			u.Renderer.Render(response, err, renderContext, request.Locked)
+			u.Renderer.Render(response, err, root, request.Locked)
 			var substack pb.SubstackProto
 			fillSubstackFromError(&substack, err)
 			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
@@ -251,7 +251,7 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	if response.Proto.Node, err = expression.ToProto(); err != nil {
-		u.Renderer.Render(response, err, renderContext, request.Locked)
+		u.Renderer.Render(response, err, root, request.Locked)
 		sendUIResponse(response, w)
 		return
 	}
@@ -266,10 +266,10 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	result, err := api.Evaluate(expression, &vmContext)
 	if err == nil {
-		err = u.Renderer.Render(response, result, renderContext, request.Locked)
+		err = u.Renderer.Render(response, result, root, request.Locked)
 	}
 	if err != nil {
-		u.Renderer.Render(response, err, renderContext, request.Locked)
+		u.Renderer.Render(response, err, root, request.Locked)
 	}
 	sendUIResponse(response, w)
 }
