@@ -701,6 +701,10 @@ func simplifyCallWithNoArguments(expression b6.Expression, functions SymbolArgCo
 			if n, ok := functions.ArgCount(*symbol); ok && n > 0 {
 				return call.Function, true
 			}
+		} else if lambda, ok := call.Function.AnyExpression.(*b6.LambdaExpression); ok {
+			if len(lambda.Args) == 0 {
+				return lambda.Expression, true
+			}
 		}
 	}
 	return expression, false
@@ -911,4 +915,33 @@ func unparseLambda(l *b6.LambdaExpression) (string, bool) {
 	} else {
 		return fmt.Sprintf("{-> %s}", body), true
 	}
+}
+
+func AddPipelines(e b6.Expression) b6.Expression {
+	switch e := e.AnyExpression.(type) {
+	case *b6.CallExpression:
+		if len(e.Args) > 0 {
+			if _, ok := e.Args[0].AnyExpression.(*b6.CallExpression); ok {
+				args := make([]b6.Expression, len(e.Args))
+				for i := range e.Args {
+					args[i] = AddPipelines(e.Args[i])
+				}
+				return b6.Expression{
+					AnyExpression: &b6.CallExpression{
+						Function:  AddPipelines(e.Function),
+						Args:      args,
+						Pipelined: true,
+					},
+				}
+			}
+		}
+	case *b6.LambdaExpression:
+		return b6.Expression{
+			AnyExpression: &b6.LambdaExpression{
+				Args:       e.Args,
+				Expression: AddPipelines(e.Expression),
+			},
+		}
+	}
+	return e
 }
