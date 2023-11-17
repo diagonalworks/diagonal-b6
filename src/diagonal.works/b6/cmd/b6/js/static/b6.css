@@ -176,6 +176,14 @@ form.shell > input {
     fill-opacity: 0;
 }
 
+.palette > .road-label {
+    stroke: #ffffff;
+    stroke-width: 2px;
+    fill: #192939;
+    font-family: "Unica 77", sans-serif;
+    font-size: 11px;
+}
+
 .palette > .highlighted-road-fill {
     stroke: #37589f;
     fill-opacity: 0;

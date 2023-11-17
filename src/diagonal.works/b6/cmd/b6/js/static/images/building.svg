@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg version="1.1" id="building" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15">
-  <path d="M3,2v11h5v-3h3v3h1V2H3z M7,12H4v-2h3V12z M7,9H4V7h3V9z M7,6H4V4h3V6z M11,9H8V7h3V9z M11,6H8V4h3V6z" fill="#515a7a"/>
+<svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="8" cy="10" r="7.5" fill="#4F5A7D" stroke="white"/>
+<path d="M4 5V14.7778H8.44444V12.1111H11.1111V14.7778H12V5H4ZM7.55556 13.8889H4.88889V12.1111H7.55556V13.8889ZM7.55556 11.2222H4.88889V9.44444H7.55556V11.2222ZM7.55556 8.55556H4.88889V6.77778H7.55556V8.55556ZM11.1111 11.2222H8.44444V9.44444H11.1111V11.2222ZM11.1111 8.55556H8.44444V6.77778H11.1111V8.55556Z" fill="white"/>
 </svg>

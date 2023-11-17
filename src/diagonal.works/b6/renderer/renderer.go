@@ -70,6 +70,7 @@ type RenderRule struct {
 	MinZoom uint
 	MaxZoom uint
 	Layer   BasemapLayer
+	Label   bool
 }
 
 func (r *RenderRule) ToQuery(zoom uint) (b6.Query, bool) {
@@ -113,13 +114,13 @@ var BasemapRenderRules = RenderRules{
 	{Tag: b6.Tag{Key: "#highway", Value: "motorway"}, MinZoom: 12, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#highway", Value: "path"}, MinZoom: 16, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#highway", Value: "pedestrian"}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "primary"}, MinZoom: 12, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: "primary"}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
 	{Tag: b6.Tag{Key: "#highway", Value: "residential"}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "secondary"}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: "secondary"}, MinZoom: 16, Layer: BasemapLayerRoad, Label: true},
 	{Tag: b6.Tag{Key: "#highway", Value: "service"}, MinZoom: 14, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#highway", Value: "street"}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "tertiary"}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "trunk"}, MinZoom: 12, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: "tertiary"}, MinZoom: 14, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: "trunk"}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
 	{Tag: b6.Tag{Key: "#highway", Value: "unclassified"}, MinZoom: 14, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#landuse", Value: "cemetary"}, MinZoom: 14, Layer: BasemapLayerLandUse},
 	{Tag: b6.Tag{Key: "#landuse", Value: "forest"}, MinZoom: 14, Layer: BasemapLayerLandUse},
@@ -171,7 +172,7 @@ func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs 
 	for _, rule := range b.RenderRules {
 		if t := f.Get(rule.Tag.Key); t.IsValid() && (rule.Tag.Value == "" || t.Value == rule.Tag.Value) {
 			tags[0] = b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value}
-			fs = FillFeaturesFromFeature(f, tags[0:], fs)
+			fs = FillFeaturesFromFeature(f, tags[0:], fs, &rule)
 			layers[rule.Layer].AddFeatures(fs)
 			break
 		}
@@ -179,53 +180,55 @@ func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs 
 	return fs
 }
 
-func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature) []*Feature {
+func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature, rule *RenderRule) []*Feature {
 	switch f := f.(type) {
 	case b6.PointFeature:
-		tfs = fillFeaturesFromPoint(f, tags, tfs)
+		tfs = fillFeaturesFromPoint(f, tags, tfs, rule)
 	case b6.PathFeature:
-		tfs = fillFeaturesFromPath(f, tags, tfs)
+		tfs = fillFeaturesFromPath(f, tags, tfs, rule)
 	case b6.AreaFeature:
-		tfs = fillFeaturesFromArea(f, tags, tfs)
+		tfs = fillFeaturesFromArea(f, tags, tfs, rule)
 	}
 	return tfs
 }
 
-func fillFeaturesFromPoint(point b6.PointFeature, tags []b6.Tag, fs []*Feature) []*Feature {
+func fillFeaturesFromPoint(point b6.PointFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
 	f := NewFeature(NewPoint(point.Point()))
 	f.ID = api.TileFeatureID(point.FeatureID())
 	for _, t := range tags {
 		f.Tags[t.Key] = t.Value
 	}
-	fillTagsFromTags(f, point)
+	fillTagsFromTags(f, point, rule)
 	return append(fs, f)
 }
 
-func fillFeaturesFromPath(path b6.PathFeature, tags []b6.Tag, fs []*Feature) []*Feature {
+func fillFeaturesFromPath(path b6.PathFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
 	f := NewFeature(NewLineString(path.Polyline()))
 	f.ID = api.TileFeatureID(path.FeatureID())
 	for _, t := range tags {
 		f.Tags[t.Key] = t.Value
 	}
-	fillTagsFromTags(f, path)
+	fillTagsFromTags(f, path, rule)
 	return append(fs, f)
 }
 
-func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature) []*Feature {
+func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
 	for i := 0; i < area.Len(); i++ {
 		f := NewFeature(NewPolygon(area.Polygon(i)))
 		f.ID = api.TileFeatureIDForPolygon(area.FeatureID(), i)
 		for _, t := range tags {
 			f.Tags[t.Key] = t.Value
 		}
-		fillTagsFromTags(f, area)
+		fillTagsFromTags(f, area, rule)
 		fs = append(fs, f)
 	}
 	return fs
 }
 
-func fillTagsFromTags(tf *Feature, f b6.Feature) {
-	fillNameFromFeature(tf, f)
+func fillTagsFromTags(tf *Feature, f b6.Feature, rule *RenderRule) {
+	if rule.Label {
+		fillNameFromFeature(tf, f)
+	}
 	fillColourFromFeature(tf, f)
 	fillIDFromFeature(tf, f)
 }

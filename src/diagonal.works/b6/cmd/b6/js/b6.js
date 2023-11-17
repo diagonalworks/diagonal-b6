@@ -236,6 +236,18 @@ function setupMap(state, styles, mapCenter, mapZoom) {
         },
     });
 
+    const roadLabels = new VectorTileLayer({
+        source: baseSource,
+        declutter: true,
+        style: function(feature, resolution) {
+            if (feature.get("layer") == "road") {
+                if (feature.get("name")) {
+                    return styles.lookupLineTextWithText("road-label", feature.get("name"));
+                }
+            }
+        },
+    });
+
     const buildingFill = new Style({
         fill: new Fill({color: "#ffffff"}),
         stroke: new Stroke({color: "#4f5a7d", width: 0.3})
@@ -317,7 +329,18 @@ function setupMap(state, styles, mapCenter, mapZoom) {
 
     const map = new Map({
         target: "map",
-        layers: [background, boundaries, water, landuse, roadOutlines, roadFills, buildings, points, labels],
+        layers: [
+            background,
+            boundaries,
+            water,
+            landuse,
+            roadOutlines,
+            roadFills,
+            roadLabels,
+            buildings,
+            points,
+            labels
+        ],
         interactions: InteractionDefaults(),
         controls: [zoom],
         view: view,
@@ -1347,6 +1370,7 @@ const StyleClasses = [
     "query-boundary",
     "road-fill",
     "road-outline",
+    "road-label",
 ];
 
 class Styles {
@@ -1364,6 +1388,7 @@ class Styles {
         this.fills = {};
         this.circles = {};
         this.icons = {};
+        this.texts = {};
 
         this.missingStroke = new Stroke({color: "#ff0000", width: 1});
         this.missingFill = new Fill({color: "#ff0000"});
@@ -1452,6 +1477,32 @@ class Styles {
             })
         }
         return this.icons[name];
+    }
+
+    lookupLineTextWithText(name, text) {
+        if (!this.texts[name]) {
+            const options = {
+                font: "11px sans-serif",
+                placement: "line",
+            };
+            if (this.css[name]) {
+                if (this.css[name].font) {
+                    options.font = this.css[name].font;
+                }
+                if (this.css[name].fill) {
+                    options.fill = this.lookupFill(name);
+                }
+                if (this.css[name].stroke) {
+                    options.stroke = this.lookupStroke(name);
+                }
+            }
+            this.texts[name] = new Style({
+                text: new Text(options),
+            });
+        }
+        const style = this.texts[name].clone();
+        style.getText().setText(text);
+        return style;
     }
 }
 
