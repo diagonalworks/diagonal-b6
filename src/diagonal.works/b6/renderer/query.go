@@ -93,12 +93,12 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 				case fmt.Stringer:
 					tags = append(tags, b6.Tag{Key: "v", Value: v.String()})
 				}
-				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered)
+				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{})
 			} else {
-				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered)
+				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{})
 			}
 		} else {
-			rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered)
+			rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{})
 		}
 		n++
 		if n > QueryRendererMaxFeaturesPerTile {
