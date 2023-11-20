@@ -159,7 +159,7 @@ func (b *UIResponseProtoJSON) UnmarshalJSON(buffer []byte) error {
 
 type UIResponseJSON struct {
 	Proto   *UIResponseProtoJSON `json:"proto,omitempty"`
-	GeoJSON geojson.GeoJSON      `json:"geojson,omitempty"`
+	GeoJSON []geojson.GeoJSON    `json:"geoJSON,omitempty"`
 }
 
 func NewUIResponseJSON() *UIResponseJSON {
@@ -168,6 +168,13 @@ func NewUIResponseJSON() *UIResponseJSON {
 			Stack: &pb.StackProto{},
 		},
 	}
+}
+
+func (u *UIResponseJSON) AddGeoJSON(g geojson.GeoJSON) {
+	u.GeoJSON = append(u.GeoJSON, g)
+	u.Proto.GeoJSON = append(u.Proto.GeoJSON, &pb.GeoJSONProto{
+		Index: int32(len(u.GeoJSON) - 1),
+	})
 }
 
 type UIHandler struct {
@@ -209,7 +216,7 @@ func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var root b6.CollectionFeature
-	if request.Context != nil && request.Context.Type == pb.FeatureType_FeatureTypeRelation {
+	if request.Context != nil && request.Context.Type == pb.FeatureType_FeatureTypeCollection {
 		root = b6.FindCollectionByID(b6.NewFeatureIDFromProto(request.Context).ToCollectionID(), u.World)
 	}
 
@@ -694,7 +701,7 @@ func (d *DefaultUIRenderer) fillResponseFromResult(response *UIResponseJSON, res
 		var substack pb.SubstackProto
 		fillSubstackFromAtom(&substack, atom)
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-		response.GeoJSON = r.ToGeoJSON()
+		response.AddGeoJSON(r.ToGeoJSON())
 	case b6.Path:
 		dimension := b6.AngleToMeters(r.Polyline().Length())
 		atom := &pb.AtomProto{
@@ -705,7 +712,7 @@ func (d *DefaultUIRenderer) fillResponseFromResult(response *UIResponseJSON, res
 		var substack pb.SubstackProto
 		fillSubstackFromAtom(&substack, atom)
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-		response.GeoJSON = r.ToGeoJSON()
+		response.AddGeoJSON(r.ToGeoJSON())
 	case *geojson.FeatureCollection:
 		var label string
 		if n := len(r.Features); n == 1 {
@@ -721,7 +728,7 @@ func (d *DefaultUIRenderer) fillResponseFromResult(response *UIResponseJSON, res
 		var substack pb.SubstackProto
 		fillSubstackFromAtom(&substack, atom)
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-		response.GeoJSON = r
+		response.AddGeoJSON(r)
 	case *geojson.Feature:
 		atom := &pb.AtomProto{
 			Atom: &pb.AtomProto_Download{
@@ -731,7 +738,7 @@ func (d *DefaultUIRenderer) fillResponseFromResult(response *UIResponseJSON, res
 		var substack pb.SubstackProto
 		fillSubstackFromAtom(&substack, atom)
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-		response.GeoJSON = r
+		response.AddGeoJSON(r)
 	case *geojson.Geometry:
 		atom := &pb.AtomProto{
 			Atom: &pb.AtomProto_Download{
@@ -741,7 +748,7 @@ func (d *DefaultUIRenderer) fillResponseFromResult(response *UIResponseJSON, res
 		var substack pb.SubstackProto
 		fillSubstackFromAtom(&substack, atom)
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-		response.GeoJSON = geojson.NewFeatureWithGeometry(*r)
+		response.AddGeoJSON(geojson.NewFeatureWithGeometry(*r))
 	default:
 		substack := &pb.SubstackProto{
 			Lines: []*pb.LineProto{{
