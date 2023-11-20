@@ -21,16 +21,18 @@ func fillResponseFromHistogram(response *pb.UIResponseProto, c *api.HistogramCol
 	}
 
 	values := make([]int, len(buckets))
+	bucketed := []*pb.FeatureIDsProto{}
 	for _, kv := range kvs {
 		if index, err := buckets.bucket(kv.key); err == nil {
 			if index >= 0 {
 				values[index] += kv.value
 				if kv.features != nil {
-					for len(response.Bucketed) <= index {
-						response.Bucketed = append(response.Bucketed, &pb.FeatureIDsProto{})
+					ids := &pb.FeatureIDsProto{}
+					for len(bucketed) <= index {
+						bucketed = append(bucketed, ids)
 					}
 					for _, id := range kv.features {
-						addToFeatureIDs(response.Bucketed[index], id)
+						addToFeatureIDs(bucketed[index], id)
 					}
 				}
 			}
@@ -38,6 +40,9 @@ func fillResponseFromHistogram(response *pb.UIResponseProto, c *api.HistogramCol
 			return err
 		}
 	}
+	response.Bucketed = append(response.Bucketed, &pb.BucketedProto{
+		Buckets: bucketed,
+	})
 
 	substack := &pb.SubstackProto{}
 	total := 0

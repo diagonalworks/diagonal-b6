@@ -223,26 +223,28 @@ func TestHistogramWithFeatures(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	expected := []*pb.FeatureIDsProto{
-		{
-			Namespaces: []string{
-				"/point/openstreetmap.org/node",
-				"/area/openstreetmap.org/way",
+	expected := []*pb.BucketedProto{{
+		Buckets: []*pb.FeatureIDsProto{
+			{
+				Namespaces: []string{
+					"/point/openstreetmap.org/node",
+					"/area/openstreetmap.org/way",
+				},
+				Ids: []*pb.IDsProto{
+					{Ids: []uint64{camden.VermuteriaID.Value}},
+					{Ids: []uint64{camden.LightermanID.Value}},
+				},
 			},
-			Ids: []*pb.IDsProto{
-				{Ids: []uint64{camden.VermuteriaID.Value}},
-				{Ids: []uint64{camden.LightermanID.Value}},
+			{
+				Namespaces: []string{
+					"/area/openstreetmap.org/way",
+				},
+				Ids: []*pb.IDsProto{
+					{Ids: []uint64{camden.GranarySquareID.Value}},
+				},
 			},
 		},
-		{
-			Namespaces: []string{
-				"/area/openstreetmap.org/way",
-			},
-			Ids: []*pb.IDsProto{
-				{Ids: []uint64{camden.GranarySquareID.Value}},
-			},
-		},
-	}
+	}}
 
 	if diff := cmp.Diff(expected, response.Bucketed, protocmp.Transform()); diff != "" {
 		t.Errorf("Unexpected diff: %s", diff)
