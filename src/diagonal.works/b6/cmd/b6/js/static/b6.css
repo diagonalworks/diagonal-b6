@@ -400,11 +400,12 @@ form.shell > input {
     display: flex;
     flex-direction: row;
     overflow: clip;
+    width: 100%;
 }
 
 .line-left-right-value > span {
     flex-basis: auto;
-    flex-grow: 1;
+    flex-grow: 0;
     flex-shrink: 1;
     overflow: clip;
     height: 20px;
@@ -414,7 +415,8 @@ form.shell > input {
 }
 
 .line-left-right-value > :last-child {
-    flex: 0 1 auto;
+    flex-grow: 1;
+    flex-shrink: 1;
     padding-right: 0px;
     text-align: end;
     color: #528dff; /* Ultramarine 60 */

@@ -377,26 +377,45 @@ function elementPosition(element) {
 
 class Stack {
     constructor(response, target, ui) {
-        this.expressionContext = response.proto.node;
-        this.locked = response.proto.locked;
-        this.chipValues = response.proto.chipValues;
+        this.response = response;
         this.target = target;
         this.ui = ui;
+        this.chipValues = {};
+        for (const i in response.proto.chipValues) {
+            this.chipValues[i] = response.proto.chipValues[i];
+        }
+        this.setup();
+        this.onMap = false;
+    }
+
+    setup() {
         this.layers = [];
-        if (response.proto.highlighted) {
-            this.highlighted = response.proto.highlighted;
+        this.setupGeoJSON(this.response.proto.geoJSON, this.response.geoJSON);
+        const queryLayers = this.response.proto.layers;
+        for (const i in queryLayers) {
+            this.layers.push(ui.createQueryLayer(queryLayers[i].query, queryLayers[i].before));
         }
-        if (response.proto.bucketed) {
-            this.bucketed = response.proto.bucketed;
-        }
-        if (response.geojson) {
-            this.initGeoJSON(response.geojson);
-        }
-        if (response.proto.layers) {
-            for (const i in response.proto.layers) {
-                this.layers.push(ui.createQueryLayer(response.proto.layers[i].query, response.proto.layers[i].before));
+    }
+
+    render() {
+        const substacks = this.target.selectAll(".substack").data(d => d.proto.stack.substacks).join(
+            enter => {
+                const div = enter.append("div").attr("class", "substack");
+                div.append("div").attr("class", "scrollable");
+                return div;
             }
-        }
+        );
+        substacks.classed("collapsable", d => d.collapsable);
+        this.target.selectAll(".collapsable").on("click", function(e) {
+            e.preventDefault();
+            const substack = d3.select(this);
+            substack.classed("collapsable-open", !substack.classed("collapsable-open"));
+        });
+
+        const scrollables = substacks.select(".scrollable");
+        const lines = scrollables.selectAll(".line").data(d => d.lines ? d.lines : []).join("div");
+        lines.attr("class", "line");
+        renderFromProto(lines, "line", this);
     }
 
     isLocked() {
@@ -407,33 +426,45 @@ class Stack {
         return this.blobURL;
     }
 
-    initGeoJSON(geojson) {
-        const source = new VectorSource({
-            features: [],
-         })
-         const layer = new VectorLayer({
-             source: source,
-             style: this.ui.getGeoJSONStyle(),
-         })
-        const features = new GeoJSONFormat().readFeatures(geojson, {
-            dataProjection: "EPSG:4326",
-            featureProjection: this.ui.getProjection(),
-        });
-        source.addFeatures(features);
-        this.layers.push(layer);
+    getChipValue(index) {
+        return this.chipValues[index] || 0;
+    }
 
-        const blob = new Blob([JSON.stringify(geojson, null, 2)], {
-            type: "application/json",
-        });
-        this.blobURL = URL.createObjectURL(blob);
+    setupGeoJSON(indices, data) {
+        for (const i in indices) {
+            if (!this.stateMatchesCondition(indices[i].condition)) {
+                continue;
+            }
+            const geojson = data[indices[i].index || 0];
+            const source = new VectorSource({
+                features: [],
+             })
+             const layer = new VectorLayer({
+                 source: source,
+                 style: this.ui.getGeoJSONStyle(),
+             })
+            const features = new GeoJSONFormat().readFeatures(geojson, {
+                dataProjection: "EPSG:4326",
+                featureProjection: this.ui.getProjection(),
+            });
+            source.addFeatures(features);
+            this.layers.push(layer);
+
+            // TODO: We could potentially be creating multiple links
+            const blob = new Blob([JSON.stringify(geojson, null, 2)], {
+                type: "application/json",
+            });
+            this.blobURL = URL.createObjectURL(blob);
+        }
     }
 
     addBucketed() {
-        for (const i in this.bucketed) {
-            if (!this._chipValuesMatch(this.bucketed[i].chipValues)) {
+        const bucketed = this.response.proto.bucketed;
+        for (const i in bucketed) {
+            if (!this.stateMatchesCondition(bucketed[i].condition)) {
                 continue;
             }
-            const buckets = this.bucketed[i].buckets;
+            const buckets = bucketed[i].buckets;
             for (const j in buckets) {
                 for (const k in buckets[j].namespaces) {
                     const namespace = buckets[j].namespaces[k];
@@ -446,15 +477,12 @@ class Stack {
         }
     }
 
-    _chipValuesMatch(other) {
-        if (!this.chipValues || !other) {
+    stateMatchesCondition(condition) {
+        if (!this.chipValues || !condition) {
             return true;
         }
-        if (this.chipValues.length != other.length) {
-            return false
-        }
-        for (var i = 0; i < this.chipValues.length; i++) {
-            if (this.chipValues[i] != other[i]) {
+        for (const i in condition.indices) {
+            if (this.chipValues[condition.indices[i]] != condition.values[i]) {
                 return false;
             }
         }
@@ -468,14 +496,16 @@ class Stack {
     }
 
     addToMap() {
+        this.onMap = true;
         for (const i in this.layers) {
             this.ui.addLayer(this.layers[i]);
         }
 
-        if (this.highlighted) {
-            for (const i in this.highlighted.namespaces) {
-                const namespace = this.highlighted.namespaces[i];
-                const values = this.highlighted.ids[i].ids;
+        const highlighted = this.response.proto.highlighted;
+        if (highlighted) {
+            for (const i in highlighted.namespaces) {
+                const namespace = highlighted.namespaces[i];
+                const values = highlighted.ids[i].ids;
                 for (const j in values) {
                     this.ui.addHighlight(namespace + "/" + values[j]);
                 }
@@ -484,10 +514,12 @@ class Stack {
     }
 
     removeFromMap() {
+        this.onMap = false;
         for (const i in this.layers) {
             this.ui.removeLayer(this.layers[i]);
         }
-        if (this.highlighted) {
+        const highlighted = this.response.proto.highlighted;
+        if (highlighted) {
             for (const i in this.highlighted.namespaces) {
                 const namespace = this.highlighted.namespaces[i];
                 const values = this.highlighted.ids[i].ids;
@@ -502,11 +534,11 @@ class Stack {
     }
 
     evaluateNode(node) {
-        this.ui.evaluateExpressionInNewStack("", node, this.locked);
+        this.ui.evaluateExpressionInNewStack("", node, this.response.proto.locked);
     }
 
     evaluateExpressionInContext(expression) {
-        this.ui.evaluateExpression(expression, this.expressionContext, this.locked, this.target);
+        this.ui.evaluateExpression(expression, this.response.proto.node, this.response.proto.locked, this.target);
     }
 
     handleDragStart(event, clickAction) {
@@ -514,17 +546,25 @@ class Stack {
     }
 
     handleChipValueChanged() {
-        const chipValues = [];
+        const chipValues = this.chipValues;
         this.target.selectAll(".atom-chip-clickable").each(function() {
             while (chipValues.length <= this.__chip_index__) {
                 chipValues.push(0);
             }
             chipValues[this.__chip_index__] = this.__chip_value__;
         });
-        this.chipValues = chipValues;
-        this.ui.clearBucketed();
-        this.addBucketed();
-        this.ui.basemapHighlightChanged();
+        const onMap = this.onMap;
+        if (onMap) {
+            this.removeFromMap();
+        }
+        this.render();
+        this.setupGeoJSON();
+        if (onMap) {
+            this.ui.clearBucketed();
+            this.addBucketed();
+            this.addToMap();
+            this.ui.basemapHighlightChanged();
+        }
     }
 }
 
@@ -585,10 +625,10 @@ class ChipAtomRenderer {
 
     update(atom, stack) {
         const chip = atom.select("span").classed("atom-chip-clickable", true);
-        chip.text(d => d.chip.options[0]);
+        chip.text(d => d.chip.labels[stack.getChipValue(d.chip.index || 0)]);
         chip.each(function(d) { // Only expects one chip
             this.__chip_index__ = d.chip.index || 0;
-            this.__chip_value__ = 0;
+            this.__chip_value__ = stack.getChipValue(d.chip.index);
         });
         chip.on("click", function(e, d) {
             e.stopPropagation();
@@ -597,14 +637,15 @@ class ChipAtomRenderer {
             const nav = d3.select("body").append("nav").classed("atom-chip-nav", true);
             nav.node().style.top = `${bounds.y + bounds.height}px`;
             nav.node().style.left = `${bounds.x}px`;
-            const options = Array.from(d.chip.options.entries()).map(e => {return {index: e[0], label: e[1]}});
-            const chips = nav.selectAll("span").data(options).join("div");
+            const labels = Array.from(d.chip.labels.entries()).map(l => {return {value: l[0], label: l[1]}});
+            const chips = nav.selectAll("span").data(labels).join("div");
             chips.classed("atom-chip-clickable", true);
             chips.text(d => d.label);
             chips.on("click", function(e, d) {
                 chip.classed("open", false);
                 chip.text(d.label);
-                chip.node().__chip_value__ = d.index;
+                chip.node().__chip_value__ = d.value;
+                console.log("change: ", chip.node().__chip_index__, d.value);
                 nav.remove();
                 stack.handleChipValueChanged();
             });
@@ -612,6 +653,24 @@ class ChipAtomRenderer {
     }
 }
 
+class ConditionalAtomRenderer {
+    getCSSClass() {
+        return "atom-conditional";
+    }
+
+    enter(atom) {}
+
+    update(atom, stack) {
+        const conditional = atom.datum().conditional;
+        for (const i in conditional.conditions) {
+            if (stack.stateMatchesCondition(conditional.conditions[i])) {
+                const atoms = atom.selectAll("span").data([conditional.atoms[i]]).join("span");
+                renderFromProto(atoms, "atom", stack);
+                return;
+            }
+        }
+    }
+}
 
 function atomTextToCopy(atom) {
     if (atom) {
@@ -894,6 +953,7 @@ const Renderers = {
         "labelledIcon": new LabelledIconAtomRenderer(),
         "download": new DownloadAtomRenderer(),
         "chip": new ChipAtomRenderer(),
+        "conditional": new ConditionalAtomRenderer(),
     },
     "line": {
         "value": new ValueLineRenderer(),
@@ -1113,29 +1173,11 @@ class UI {
 
     _renderStack(response, target, addToMap, recenterMap) {
         target = target.datum(response);
-        const substacks = target.selectAll(".substack").data(d => d.proto.stack.substacks).join(
-            enter => {
-                const div = enter.append("div").attr("class", "substack");
-                div.append("div").attr("class", "scrollable");
-                return div;
-            }
-        );
-        substacks.classed("collapsable", d => d.collapsable);
-        target.selectAll(".collapsable").on("click", function(e) {
-            e.preventDefault();
-            const substack = d3.select(this);
-            substack.classed("collapsable-open", !substack.classed("collapsable-open"));
-        });
-
-        const scrollables = substacks.select(".scrollable");
-        const lines = scrollables.selectAll(".line").data(d => d.lines ? d.lines : []).join("div");
-        lines.attr("class", "line");
-
         this.removeStack(target.node());
         const stack = new Stack(response, target, this);
         target.node().__stack__ = stack;
         this.stacks.push(stack);
-        renderFromProto(lines, "line", stack);
+        stack.render();
 
         if (addToMap) {
             stack.addToMap();

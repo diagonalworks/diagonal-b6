@@ -19,11 +19,12 @@ message UIResponseProto {
     api.NodeProto node = 2;
     string expression = 3;
     FeatureIDsProto highlighted = 4;
-    repeated BucketedProto bucketed = 5;
-    repeated MapLayerProto layers = 6;
-    geometry.PointProto mapCenter = 7;
-    bool locked = 8;
-    repeated int32 chipValues = 9;
+    repeated GeoJSONProto geoJSON = 5; // References geojson array in response
+    repeated BucketedProto bucketed = 6;
+    repeated MapLayerProto layers = 7;
+    geometry.PointProto mapCenter = 8;
+    bool locked = 9;
+    repeated int32 chipValues = 10;
 }
 
 enum MapLayerPosition {
@@ -126,8 +127,8 @@ message AtomProto {
         LabelledIconProto labelledIcon = 2;
         string download = 3;
         ChipProto chip = 4;
+        ConditionalProto conditional = 5;
     }
-    repeated int32 geojson = 6; // References geojson array in response
 }
 
 message LabelledIconProto {
@@ -137,11 +138,28 @@ message LabelledIconProto {
 
 message ChipProto {
     int32 index = 1;
-    repeated string options = 2;
+    repeated string labels = 2;
+}
+
+message ConditionProto {
+    // The value of the chips specified in indices need to match
+    // the respective value for the element to be rendered.
+    repeated int32 indices = 1;
+    repeated int32 values = 2;
+}
+
+message ConditionalProto {
+    repeated ConditionProto conditions = 1;
+    repeated AtomProto atoms = 2;
+}
+
+message GeoJSONProto {
+    ConditionProto condition = 1;
+    int32 index = 2;
 }
 
 message BucketedProto {
-    repeated int32 chipValues = 1;
+    ConditionProto condition = 1;
     repeated FeatureIDsProto buckets = 2;
 }
 
