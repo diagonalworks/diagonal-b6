@@ -379,6 +379,7 @@ class Stack {
     constructor(response, target, ui) {
         this.expressionContext = response.proto.node;
         this.locked = response.proto.locked;
+        this.chipValues = response.proto.chipValues;
         this.target = target;
         this.ui = ui;
         this.layers = [];
@@ -428,17 +429,36 @@ class Stack {
     }
 
     addBucketed() {
-        if (this.bucketed) {
-            for (const i in this.bucketed) {
-                for (const j in this.bucketed[i].namespaces) {
-                    const namespace = this.bucketed[i].namespaces[j];
-                    const values = this.bucketed[i].ids[j].ids;
-                    for (const k in values) {
-                        this.ui.addBucketed(namespace + "/" + values[k], i);
+        for (const i in this.bucketed) {
+            if (!this._chipValuesMatch(this.bucketed[i].chipValues)) {
+                continue;
+            }
+            const buckets = this.bucketed[i].buckets;
+            for (const j in buckets) {
+                for (const k in buckets[j].namespaces) {
+                    const namespace = buckets[j].namespaces[k];
+                    const values = buckets[j].ids[k].ids;
+                    for (const l in values) {
+                        this.ui.addBucketed(namespace + "/" + values[l], j);
                     }
                 }
             }
         }
+    }
+
+    _chipValuesMatch(other) {
+        if (!this.chipValues || !other) {
+            return true;
+        }
+        if (this.chipValues.length != other.length) {
+            return false
+        }
+        for (var i = 0; i < this.chipValues.length; i++) {
+            if (this.chipValues[i] != other[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     redrawHighlights() {
@@ -492,6 +512,20 @@ class Stack {
     handleDragStart(event, clickAction) {
         this.ui.handleDragStart(event, this.target, clickAction);
     }
+
+    handleChipValueChanged() {
+        const chipValues = [];
+        this.target.selectAll(".atom-chip-clickable").each(function() {
+            while (chipValues.length <= this.__chip_index__) {
+                chipValues.push(0);
+            }
+            chipValues[this.__chip_index__] = this.__chip_value__;
+        });
+        this.chipValues = chipValues;
+        this.ui.clearBucketed();
+        this.addBucketed();
+        this.ui.basemapHighlightChanged();
+    }
 }
 
 class ValueAtomRenderer {
@@ -539,6 +573,45 @@ class DownloadAtomRenderer {
         a.text(d => d.download);
     }    
 }
+
+class ChipAtomRenderer {
+    getCSSClass() {
+        return "atom-chip";
+    }
+
+    enter(atom) {
+        atom.append("span");
+    }
+
+    update(atom, stack) {
+        const chip = atom.select("span").classed("atom-chip-clickable", true);
+        chip.text(d => d.chip.options[0]);
+        chip.each(function(d) { // Only expects one chip
+            this.__chip_index__ = d.chip.index || 0;
+            this.__chip_value__ = 0;
+        });
+        chip.on("click", function(e, d) {
+            e.stopPropagation();
+            chip.classed("open", true);
+            const bounds = this.getBoundingClientRect();
+            const nav = d3.select("body").append("nav").classed("atom-chip-nav", true);
+            nav.node().style.top = `${bounds.y + bounds.height}px`;
+            nav.node().style.left = `${bounds.x}px`;
+            const options = Array.from(d.chip.options.entries()).map(e => {return {index: e[0], label: e[1]}});
+            const chips = nav.selectAll("span").data(options).join("div");
+            chips.classed("atom-chip-clickable", true);
+            chips.text(d => d.label);
+            chips.on("click", function(e, d) {
+                chip.classed("open", false);
+                chip.text(d.label);
+                chip.node().__chip_value__ = d.index;
+                nav.remove();
+                stack.handleChipValueChanged();
+            });
+        });
+    }
+}
+
 
 function atomTextToCopy(atom) {
     if (atom) {
@@ -685,6 +758,23 @@ class HistogramBarLineRenderer {
     }
 }
 
+class SwatchLineRenderer {
+    getCSSClass() {
+        return "line-swatch";
+    }
+
+    enter(line) {
+        line.append("div").attr("class", "range-icon");
+        line.append("span").attr("class", "label");
+    }
+
+    update(line, stack) {
+        line.select(".range-icon").attr("class", d => `range-icon index-${d.swatch.index ? d.swatch.index : 0}`);
+        renderFromProto(line.select(".label").datum(d => d.swatch.label), "atom", stack);
+    }
+}
+
+
 class ShellLineRenderer {
     getCSSClass() {
         return "line-shell";
@@ -766,15 +856,23 @@ class ShellLineRenderer {
     }
 }
 
-class QuestionLineRenderer {
+class ChoiceLineRenderer {
     getCSSClass() {
-        return "line-question";
+        return "line-choice";
     }
 
     enter(line) {}
 
-    update(line) {
-        line.text(d => d.question.question);
+    update(line, stack) {
+        const atoms = line.selectAll("span").data(d => this._mergeAtoms(d)).join("span");
+        renderFromProto(atoms, "atom", stack);
+    }
+
+    _mergeAtoms(d) {
+        if (d.choice.chips) {
+            return [d.choice.label].concat(d.choice.chips);
+        }
+        return [d.choice.label];
     }
 }
 
@@ -795,6 +893,7 @@ const Renderers = {
         "value": new ValueAtomRenderer(),
         "labelledIcon": new LabelledIconAtomRenderer(),
         "download": new DownloadAtomRenderer(),
+        "chip": new ChipAtomRenderer(),
     },
     "line": {
         "value": new ValueLineRenderer(),
@@ -802,8 +901,9 @@ const Renderers = {
         "expression": new ExpressionLineRenderer(),
         "tags": new TagsLineRenderer(),
         "histogramBar": new HistogramBarLineRenderer(),
+        "swatch": new SwatchLineRenderer(),
         "shell": new ShellLineRenderer(),
-        "question": new QuestionLineRenderer(),
+        "choice": new ChoiceLineRenderer(),
         "error": new ErrorLineRenderer(),
     }
 }
@@ -1092,6 +1192,10 @@ class UI {
             this.stacks[i].redrawHighlights();
         }
         this.basemapHighlightChanged();
+    }
+
+    clearBucketed() {
+        this.state.bucketed = {};
     }
 
     addBucketed(idKey, bucket) {

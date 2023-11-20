@@ -19,10 +19,11 @@ message UIResponseProto {
     api.NodeProto node = 2;
     string expression = 3;
     FeatureIDsProto highlighted = 4;
-    repeated FeatureIDsProto bucketed = 5;
+    repeated BucketedProto bucketed = 5;
     repeated MapLayerProto layers = 6;
     geometry.PointProto mapCenter = 7;
     bool locked = 8;
+    repeated int32 chipValues = 9;
 }
 
 enum MapLayerPosition {
@@ -52,9 +53,10 @@ message LineProto {
         ExpressionLineProto expression = 3;
         TagsLineProto tags = 4;
         HistogramBarLineProto histogramBar = 5;
-        ShellLineProto shell = 6;
-        QuestionLineProto question = 8;
-        ErrorLineProto error = 7;
+        SwatchLineProto swatch = 6;
+        ShellLineProto shell = 7;
+        ChoiceLineProto choice = 8;
+        ErrorLineProto error = 9;
     }
 }
 
@@ -95,12 +97,23 @@ message HistogramBarLineProto {
     int32 index = 4;
 }
 
+message SwatchLineProto {
+    AtomProto label = 1;
+    int32 index = 2;
+}
+
 message ShellLineProto {
     repeated string functions = 1;
 }
 
-message QuestionLineProto {
-    string question = 1;
+message ChoiceLineProto {
+    AtomProto label = 1;
+    repeated AtomProto chips = 2;
+}
+
+message ChoiceProto {
+    repeated int32 chipValues = 1;
+    AtomProto label = 2;
 }
 
 message ErrorLineProto {
@@ -112,7 +125,9 @@ message AtomProto {
         string value = 1;
         LabelledIconProto labelledIcon = 2;
         string download = 3;
+        ChipProto chip = 4;
     }
+    repeated int32 geojson = 6; // References geojson array in response
 }
 
 message LabelledIconProto {
@@ -120,9 +135,19 @@ message LabelledIconProto {
     string label = 2;    
 }
 
+message ChipProto {
+    int32 index = 1;
+    repeated string options = 2;
+}
+
+message BucketedProto {
+    repeated int32 chipValues = 1;
+    repeated FeatureIDsProto buckets = 2;
+}
+
 message FeatureIDsProto {
-    repeated string namespaces = 1;
-    repeated IDsProto ids = 2;
+    repeated string namespaces = 3;
+    repeated IDsProto ids = 4;
 }
 
 message IDsProto {
