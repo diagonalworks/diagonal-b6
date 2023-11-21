@@ -23,7 +23,7 @@ import (
 )
 
 type DefaultUIRenderer struct {
-	RenderRules     renderer.RenderRules
+	BasemapRules    renderer.RenderRules
 	FunctionSymbols api.FunctionSymbols
 	World           b6.World
 }
@@ -668,7 +668,7 @@ func (d *DefaultUIRenderer) fillResponseFromResult(response *UIResponseJSON, res
 		var substack pb.SubstackProto
 		fillSubstackFromAtom(&substack, AtomFromValue(r, d.World))
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-		if !d.RenderRules.IsRendered(r) {
+		if !d.BasemapRules.IsRendered(r) {
 			if q, ok := api.UnparseQuery(b6.Tagged(r)); ok {
 				before := pb.MapLayerPosition_MapLayerPositionEnd
 				if r.Key == "#boundary" {

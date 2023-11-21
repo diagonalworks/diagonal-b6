@@ -261,6 +261,40 @@ form.shell > input {
     fill-opacity: 0;
 }
 
+.palette > .landuse-urban {
+    fill: #c5cadd;
+}
+
+.palette > .landuse-greenspace {
+    fill: #e1e1ee;
+}
+
+.palette > .landuse-nature {
+    fill: #dbdeeb;
+}
+
+.palette > .landuse-forest {
+    fill: #c5cadd;
+}
+
+.palette > .water-area {
+    fill: #b2bfe5;
+}
+
+.palette > .water-line {
+    stroke: #b2bfe5;
+}
+
+.palette > .coastline {
+    stroke: #4f5a7d;
+    stroke-width: 0.3;
+}
+
+.palette > .contour {
+    stroke: #e1e1ed;
+    stroke-width: 1.0;
+}
+
 .palette > .outliner-rose {
     fill: #ff8465; /* Rose 50 */
     stroke: #ffffff;

@@ -115,10 +115,6 @@ function setupMap(state, styles, mapCenter, mapZoom) {
         }
     });
 
-    const coastlineStyle = new Style({
-        stroke: new Stroke({color: "#4f5a7d", width: 0.3}),
-    });
-
     const boundaries = new VectorTileLayer({
         source: baseSource,
         style: function(feature, resolution) {
@@ -133,56 +129,28 @@ function setupMap(state, styles, mapCenter, mapZoom) {
                     }
                 }
                 if (feature.get("natural") == "coastline") {
-                    return coastlineStyle;
+                    return styles.lookupStyle("coastline");
                 }
             }
         },
     });
-
-    const waterFill = new Style({
-        fill: new Fill({color: "#b2bfe5"}),
-    })
 
     const water = new VectorTileLayer({
         source: baseSource,
         style: function(feature, resolution) {
             if (feature.get("layer") == "water") {
                 if (feature.getType() == "Polygon") {
-                    return waterFill;
+                    return styles.lookupStyle("water-area");
                 } else {
                     const width = waterwayWidth(resolution);
                     if (width > 0) {
-                        return new Style({
-                            stroke: new Stroke({
-                                color: "#b2bfe5",
-                                width: width
-                            })
-                        });
+                        return styles.lookupStyleWithStokeWidth("water-line", width );
                     }
                 }
             }
         }
     });
     water.set("clickable", true);
-
-    const parkFill = new Style({
-        fill: new Fill({color: "#e1e1ee"}),
-    });
-
-    const meadowFill = new Style({
-        fill: new Fill({color: "#dbdeeb"}),
-    });
-
-    const forestFill = new Style({
-        fill: new Fill({color: "#c5cadd"}),
-    });
-
-    const contourStroke = new Style({
-        stroke: new Stroke({
-            color: "#e1e1ed",
-            width: 1.0,
-        }),
-    });
 
     const landuse = new VectorTileLayer({
         source: baseSource,
@@ -192,14 +160,16 @@ function setupMap(state, styles, mapCenter, mapZoom) {
             const natural = feature.get("natural");
             if (feature.get("layer") == "landuse") {
                 if (landuse == "park" || landuse == "grass" || leisure == "pitch" || leisure == "park" || leisure == "garden" || leisure == "playground" || leisure == "nature_reserve") {
-                    return parkFill;
+                    return styles.lookupStyle("landuse-greenspace");
                 } else if (landuse == "forest") {
-                    return forestFill;
+                    return styles.lookupStyle("landuse-forest");
                 } else if (landuse == "meadow" || natural == "heath") {
-                    return meadowFill;
+                    return styles.lookupStyle("landuse-nature");
+                } else if (landuse == "commercial" || landuse == "residential" || landuse == "industrial") {
+                    return styles.lookupStyle("landuse-urban");
                 }
             } else if (feature.get("layer") == "contour") {
-                return contourStroke;
+                return styles.lookupStyle("contour");
             }
         },
     });
@@ -1526,6 +1496,14 @@ const StyleClasses = [
     "road-fill",
     "road-outline",
     "road-label",
+    "landuse-urban", // #landuse=commercial, #landuse=residential etc
+    "landuse-greenspace", // #landuse=park etc
+    "landuse-nature", // #natural=heath, #landuse=meadow etc
+    "landuse-forest", // #landuse=forest etc
+    "contour",
+    "water-area",
+    "water-line",
+    "coastline",
 ];
 
 class Styles {
@@ -1578,7 +1556,7 @@ class Styles {
     lookupStroke(name) {
         if (!this.strokes[name]) {
             if (this.css[name]) {
-                if (this.css[name]["stroke"]) {
+                if (this.css[name]["stroke"] != "none") {
                     this.strokes[name] = new Stroke({
                         color: this.css[name]["stroke"],
                         width: +this.css[name]["stroke-width"].replace("px", ""),

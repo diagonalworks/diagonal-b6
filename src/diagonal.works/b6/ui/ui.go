@@ -21,6 +21,7 @@ import (
 type Options struct {
 	StaticPath        string
 	JavaScriptPath    string
+	BasemapRules      renderer.RenderRules
 	Renderer          UIRenderer
 	Cores             int
 	World             ingest.MutableWorld
@@ -74,12 +75,16 @@ func NewDefaultUIRenderer(w b6.World) UIRenderer {
 	return &DefaultUIRenderer{
 		World:           w,
 		FunctionSymbols: functions.Functions(),
-		RenderRules:     renderer.BasemapRenderRules,
+		BasemapRules:    renderer.BasemapRenderRules,
 	}
 }
 
 func RegisterTiles(root *http.ServeMux, options *Options) {
-	base := http.Handler(&renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: renderer.BasemapRenderRules, World: options.World}})
+	rules := renderer.BasemapRenderRules
+	if options.BasemapRules != nil {
+		rules = options.BasemapRules
+	}
+	base := http.Handler(&renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: rules, World: options.World}})
 	if options.InstrumentHandler != nil {
 		base = options.InstrumentHandler(base, "tiles_base")
 	}

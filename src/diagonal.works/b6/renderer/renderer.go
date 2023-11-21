@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 
@@ -50,27 +51,62 @@ const (
 	BasemapLayerEnd   = BasemapLayerInvalid
 )
 
+func (b BasemapLayer) String() string {
+	switch b {
+	case BasemapLayerBoundary:
+		return "boundary"
+	case BasemapLayerContour:
+		return "contour"
+	case BasemapLayerWater:
+		return "water"
+	case BasemapLayerRoad:
+		return "road"
+	case BasemapLayerLandUse:
+		return "landuse"
+	case BasemapLayerBuilding:
+		return "building"
+	case BasemapLayerPoint:
+		return "point"
+	case BasemapLayerLabel:
+		return "label"
+	}
+	return "invalid"
+}
+
+func (b BasemapLayer) MarshalYAML() (interface{}, error) {
+	return b.String(), nil
+}
+
+func (b *BasemapLayer) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	for l := BasemapLayerBegin; l <= BasemapLayerEnd; l++ {
+		if l.String() == s {
+			*b = l
+			return nil
+		}
+	}
+	return fmt.Errorf("bad layer value: %s", s)
+}
+
 type BasemapLayers [BasemapLayerEnd]*Layer
 
 func NewLayers() *BasemapLayers {
-	var l BasemapLayers
-	l[BasemapLayerBoundary] = NewLayer("boundary")
-	l[BasemapLayerContour] = NewLayer("contour")
-	l[BasemapLayerWater] = NewLayer("water")
-	l[BasemapLayerRoad] = NewLayer("road")
-	l[BasemapLayerLandUse] = NewLayer("landuse")
-	l[BasemapLayerBuilding] = NewLayer("building")
-	l[BasemapLayerPoint] = NewLayer("point")
-	l[BasemapLayerLabel] = NewLayer("label")
-	return &l
+	var ls BasemapLayers
+	for l := BasemapLayerBegin; l < BasemapLayerEnd; l++ {
+		ls[l] = NewLayer(l.String())
+	}
+	return &ls
 }
 
 type RenderRule struct {
 	Tag     b6.Tag
-	MinZoom uint
-	MaxZoom uint
+	MinZoom uint `yaml:"min,omitempty"`
+	MaxZoom uint `yaml:"max,omitempty"`
 	Layer   BasemapLayer
-	Label   bool
+	Label   bool `yaml:",omitempty"`
 }
 
 func (r *RenderRule) ToQuery(zoom uint) (b6.Query, bool) {
