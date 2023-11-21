@@ -458,25 +458,6 @@ class Stack {
         }
     }
 
-    addBucketed() {
-        const bucketed = this.response.proto.bucketed;
-        for (const i in bucketed) {
-            if (!this.stateMatchesCondition(bucketed[i].condition)) {
-                continue;
-            }
-            const buckets = bucketed[i].buckets;
-            for (const j in buckets) {
-                for (const k in buckets[j].namespaces) {
-                    const namespace = buckets[j].namespaces[k];
-                    const values = buckets[j].ids[k].ids;
-                    for (const l in values) {
-                        this.ui.addBucketed(namespace + "/" + values[l], j);
-                    }
-                }
-            }
-        }
-    }
-
     stateMatchesCondition(condition) {
         if (!this.chipValues || !condition) {
             return true;
@@ -495,12 +476,26 @@ class Stack {
         }
     }
 
-    addToMap() {
-        this.onMap = true;
-        for (const i in this.layers) {
-            this.ui.addLayer(this.layers[i]);
+    _addBucketed() {
+        const bucketed = this.response.proto.bucketed;
+        for (const i in bucketed) {
+            if (!this.stateMatchesCondition(bucketed[i].condition)) {
+                continue;
+            }
+            const buckets = bucketed[i].buckets;
+            for (const j in buckets) {
+                for (const k in buckets[j].namespaces) {
+                    const namespace = buckets[j].namespaces[k];
+                    const values = buckets[j].ids[k].ids;
+                    for (const l in values) {
+                        this.ui.addBucketed(namespace + "/" + values[l], j);
+                    }
+                }
+            }
         }
+    }
 
+    _addHighlighted() {
         const highlighted = this.response.proto.highlighted;
         if (highlighted) {
             for (const i in highlighted.namespaces) {
@@ -513,24 +508,43 @@ class Stack {
         }
     }
 
-    removeFromMap() {
-        this.onMap = false;
-        for (const i in this.layers) {
-            this.ui.removeLayer(this.layers[i]);
-        }
+    _removeHighlighted() {
         const highlighted = this.response.proto.highlighted;
         if (highlighted) {
-            for (const i in this.highlighted.namespaces) {
-                const namespace = this.highlighted.namespaces[i];
-                const values = this.highlighted.ids[i].ids;
+            for (const i in highlighted.namespaces) {
+                const namespace = highlighted.namespaces[i];
+                const values = highlighted.ids[i].ids;
                 for (const j in values) {
                     this.ui.removeHighlight(namespace + "/" + values[j])
                 }
             }
         }
+    }
+
+    addToMap() {
+        this.onMap = true;
+        for (const i in this.layers) {
+            this.ui.addLayer(this.layers[i]);
+        }
+        this._addHighlighted();
+        this._addBucketed();
+        this.ui.basemapHighlightChanged();
+    }
+
+    removeFromMap() {
+        if (!this.onMap) {
+            return;
+        }
+        this.onMap = false;
         for (const i in this.layers) {
             this.ui.removeLayer(this.layers[i]);
         }
+        this._removeHighlighted();
+        this.ui.clearBucketed();
+        for (const i in this.layers) {
+            this.ui.removeLayer(this.layers[i]);
+        }
+        this.ui.basemapHighlightChanged();
     }
 
     evaluateNode(node) {
@@ -561,9 +575,7 @@ class Stack {
         this.setupGeoJSON();
         if (onMap) {
             this.ui.clearBucketed();
-            this.addBucketed();
             this.addToMap();
-            this.ui.basemapHighlightChanged();
         }
     }
 }
@@ -645,7 +657,6 @@ class ChipAtomRenderer {
                 chip.classed("open", false);
                 chip.text(d.label);
                 chip.node().__chip_value__ = d.value;
-                console.log("change: ", chip.node().__chip_index__, d.value);
                 nav.remove();
                 stack.handleChipValueChanged();
             });
@@ -1029,7 +1040,7 @@ class UI {
             this._renderDock(response.docked);
         }
         if (response.openDockIndex !== undefined) {
-            this.toggleDockAtIndex(response.openDockIndex);
+            this.toggleDockedAtIndex(response.openDockIndex);
         }
         if (response.expression) {
             const locked = this.uiContext !== undefined;
@@ -1049,33 +1060,31 @@ class UI {
 
         target.on("click", function(e) {
             e.preventDefault();
-            ui.toggleDockAtIndex(this.__dock_index__);
+            ui.toggleDockedAtIndex(this.__dock_index__);
         });
     }
 
-    toggleDockAtIndex(index) {
+    toggleDockedAtIndex(index) {
         if (index === undefined || index < 0 || index >= this.docked.length) {
             return;
         }
         const docked = this.docked[index];
         if (d3.select(docked).classed("closed")) {
-            this.closeDock();
+            this.closeAllDocked();
             this.removeFeaturedStack();
             d3.select(docked).classed("closed", false);
             this.openDockIndex = index;
             if (docked.__stack__) {
                 this.state.bucketed = {};
                 docked.__stack__.addToMap();
-                docked.__stack__.addBucketed();
-                this.basemapHighlightChanged();
             }
         } else {
-            this.closeDock();
+            this.closeAllDocked();
         }
         this._updateBrowserState();
     }
 
-    closeDock() {
+    closeAllDocked() {
         const docked = d3.select("#dock").selectAll(".stack");
         const ui = this;
         docked.each(function() {
@@ -1167,6 +1176,7 @@ class UI {
             target.style("top", `${StackOffset[1] + dockRect.bottom}px`);
         }
         target.each(function(response) {
+            ui.closeAllDocked();
             ui._renderStack(response, d3.select(this), true, !position);
         });
     }
@@ -1181,7 +1191,6 @@ class UI {
 
         if (addToMap) {
             stack.addToMap();
-            stack.addBucketed();
         }
 
         if (response.proto.expression) {
