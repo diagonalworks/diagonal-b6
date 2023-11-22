@@ -57,7 +57,8 @@ message LineProto {
         SwatchLineProto swatch = 6;
         ShellLineProto shell = 7;
         ChoiceLineProto choice = 8;
-        ErrorLineProto error = 9;
+        HeaderLineProto header = 9;
+        ErrorLineProto error = 10;
     }
 }
 
@@ -115,6 +116,10 @@ message ChoiceLineProto {
 message ChoiceProto {
     repeated int32 chipValues = 1;
     AtomProto label = 2;
+}
+
+message HeaderLineProto {
+    AtomProto title = 1;
 }
 
 message ErrorLineProto {

@@ -643,6 +643,22 @@ form.shell-form > input {
     flex: 1 0 auto;
 }
 
+.line-header {
+    display: flex;
+    flex-direction: row;
+}
+
+.line-header > span {
+    flex-grow: 1;
+}
+
+.line-header-close {
+    display: inline-block;
+    text-align: end;
+    width: 16px;
+    height: 20px;
+}
+
 .line-error {
     background: #ed968a;   
 }

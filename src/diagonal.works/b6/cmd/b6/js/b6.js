@@ -388,8 +388,16 @@ class Stack {
         renderFromProto(lines, "line", this);
     }
 
+    remove() {
+        this.ui.removeStack(this);
+    }
+
     isLocked() {
         return this.locked;
+    }
+
+    getElement() {
+        return this.target.node();
     }
 
     getBlobURL() {
@@ -916,6 +924,32 @@ class ChoiceLineRenderer {
     }
 }
 
+class HeaderLineRenderer {
+    getCSSClass() {
+        return "line-header";
+    }
+
+    enter(line, stack) {
+        line.append("span");
+        const close = line.append("img");
+        close.attr("class", "line-header-close");
+        close.attr("src", "/images/close.svg");
+        close.on("click", function(e) {
+            e.stopPropagation();
+            stack.remove();
+        });
+        line.on("mousedown", (e) => {
+            e.stopPropagation();
+            stack.handleDragStart(e);
+        });
+    }
+
+    update(line, stack) {
+        renderFromProto(line.select("span").datum(d => d.header.title), "atom", stack);
+    }
+}
+
+
 class ErrorLineRenderer {
     getCSSClass() {
         return "line-error";
@@ -945,6 +979,7 @@ const Renderers = {
         "swatch": new SwatchLineRenderer(),
         "shell": new ShellLineRenderer(),
         "choice": new ChoiceLineRenderer(),
+        "header": new HeaderLineRenderer(),
         "error": new ErrorLineRenderer(),
     }
 }
@@ -970,7 +1005,7 @@ function renderFromProto(targets, uiElement, stack) {
             }
             target.classed(uiElement, true);
             target.classed(renderer.getCSSClass(), true);
-            renderer.enter(target);
+            renderer.enter(target, stack);
        }
        renderer.update(target, stack);
     }
@@ -1132,7 +1167,9 @@ class UI {
             update => update,
             exit => {
                 exit.each(function() {
-                    ui.removeStack(this);
+                    if (this.__stack__) {
+                        ui.removeStack(this.__stack__, true);
+                    }
                 });
                 return exit.remove();
             },
@@ -1154,7 +1191,9 @@ class UI {
 
     _renderStack(response, target, addToMap, recenterMap) {
         target = target.datum(response);
-        this.removeStack(target.node());
+        if (target.node().__stack__) {
+            this.removeStack(target.node().__stack__, true);
+        }
         const stack = new Stack(response, target, this);
         target.node().__stack__ = stack;
         this.stacks.push(stack);
@@ -1267,10 +1306,11 @@ class UI {
         this.map.removeLayer(layer);
     }
 
-    removeStack(node) {
-        if (node.__stack__) {
-            node.__stack__.removeFromMap();
-            this.stacks = this.stacks.filter(r => r != node.__stack__);
+    removeStack(stack, keepElement) {
+        stack.removeFromMap();
+        this.stacks = this.stacks.filter(r => r != stack);
+        if (!keepElement) {
+            stack.getElement().remove();
         }
     }
 
