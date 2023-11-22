@@ -29,7 +29,6 @@ type Options struct {
 	JavaScriptPath    string
 	BasemapRules      renderer.RenderRules
 	UI                UI
-	Cores             int
 	World             ingest.MutableWorld
 	APIOptions        api.Options
 	InstrumentHandler func(handler http.Handler, name string) http.Handler
@@ -59,7 +58,13 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	if options.UI != nil {
 		ui = options.UI
 	} else {
-		ui = NewDefaultUI(options.World)
+		ui = &OpenSourceUI{
+			World:           options.World,
+			Options:         options.APIOptions,
+			FunctionSymbols: functions.Functions(),
+			Adaptors:        functions.Adaptors(),
+			BasemapRules:    renderer.BasemapRenderRules,
+		}
 	}
 	startup := http.Handler(&StartupHandler{UI: ui})
 	if options.InstrumentHandler != nil {
@@ -75,15 +80,6 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	return nil
 }
 
-func NewDefaultUI(w b6.World) UI {
-	return &OpenSourceUI{
-		World:           w,
-		FunctionSymbols: functions.Functions(),
-		Adaptors:        functions.Adaptors(),
-		BasemapRules:    renderer.BasemapRenderRules,
-	}
-}
-
 func RegisterTiles(root *http.ServeMux, options *Options) {
 	rules := renderer.BasemapRenderRules
 	if options.BasemapRules != nil {
@@ -94,7 +90,7 @@ func RegisterTiles(root *http.ServeMux, options *Options) {
 		base = options.InstrumentHandler(base, "tiles_base")
 	}
 	root.Handle("/tiles/base/", base)
-	query := http.Handler(&renderer.TileHandler{Renderer: renderer.NewQueryRenderer(options.World, options.Cores)})
+	query := http.Handler(&renderer.TileHandler{Renderer: renderer.NewQueryRenderer(options.World, options.APIOptions.Cores)})
 	if options.InstrumentHandler != nil {
 		query = options.InstrumentHandler(query, "tiles_query")
 	}
@@ -404,7 +400,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 	if err != nil {
 		ui.Render(response, err, root, request.Locked, ui)
 	}
-	return err
+	return nil
 }
 
 func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, context b6.CollectionFeature, locked bool, ui UI) error {

@@ -388,6 +388,17 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 	}
 	substacks = append(substacks, substack)
 
+	if point, ok := f.(b6.PointFeature); ok {
+		paths := b6.AllPaths(w.FindPathsByPoint(point.PointID()))
+		substack := &pb.SubstackProto{Collapsable: true}
+		line := leftRightValueLineFromValues("Paths", len(paths), w)
+		substack.Lines = append(substack.Lines, line)
+		for _, path := range paths {
+			substack.Lines = append(substack.Lines, ValueLineFromValue(path, w))
+		}
+		substacks = append(substacks, substack)
+	}
+
 	if path, ok := f.(b6.PathFeature); ok {
 		substack := &pb.SubstackProto{Collapsable: true}
 		line := leftRightValueLineFromValues("Points", path.Len(), w)

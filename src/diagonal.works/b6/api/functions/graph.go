@@ -193,12 +193,28 @@ func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable
 		os = append(os, i.Value().FeatureID())
 	}
 
-	mode := "walk"
-	if m := tags.Get("mode"); m.IsValid() {
-		mode = m.Value
+	walking := graph.WalkingTimeWeights{
+		Speed: graph.WalkingMetersPerSecond,
 	}
-	weights, err := weightsFromMode(mode)
-	if err != nil {
+
+	if speed := tags.Get("speed"); speed.IsValid() {
+		if f, ok := speed.FloatValue(); ok {
+			walking.Speed = f
+		}
+	}
+
+	var weights graph.Weights
+	switch m := tags.Get("mode").Value; m {
+	case "", "walk":
+		weights = walking
+	case "transit":
+		if p := tags.Get("peak"); p.Value == "no" {
+			weights = graph.TransitTimeWeights{PeakTraffic: false, Weights: walking}
+		} else {
+			weights = graph.TransitTimeWeights{PeakTraffic: true, Weights: walking}
+		}
+	default:
+		err := fmt.Errorf("Expected mode=walk or mode=transit, found %s", m)
 		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
 
@@ -215,7 +231,6 @@ func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable
 			return nil
 		})
 	}
-
 done:
 	for i := range os {
 		select {
