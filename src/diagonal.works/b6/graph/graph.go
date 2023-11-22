@@ -3,6 +3,7 @@ package graph
 import (
 	"container/heap"
 	"math"
+	"strings"
 
 	"diagonal.works/b6"
 
@@ -15,7 +16,7 @@ type OD struct {
 	Destination b6.FeatureID
 }
 
-const WalkingMetersPerSecond = 5000.0 / (60.0 * 60.0)
+const WalkingMetersPerSecond = 4500.0 / (60.0 * 60.0)
 
 func weightFromSegment(segment b6.Segment) float64 {
 	weight := b6.AngleToMeters(segment.Polyline().Length())
@@ -208,6 +209,53 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 	}
 
 	return weight
+}
+
+type WalkingTimeWeights struct {
+	Speed float64 // Meters per second
+}
+
+func (_ WalkingTimeWeights) IsUseable(segment b6.Segment) bool {
+	if highway := segment.Feature.Get("#highway"); highway.IsValid() {
+		return true
+	}
+	return segment.Feature.Get("diagonal").Value == "connection"
+}
+
+func (w WalkingTimeWeights) Weight(segment b6.Segment) float64 {
+	return weightFromSegment(segment) * w.Speed
+}
+
+type TransitTimeWeights struct {
+	PeakTraffic bool
+	Weights     Weights
+}
+
+func (t TransitTimeWeights) IsUseable(segment b6.Segment) bool {
+	if strings.HasPrefix(segment.Feature.PathID().Namespace.String(), b6.NamespaceGTFS.String()) {
+		return segment.Last > segment.First // Respect direction.
+	}
+
+	return t.Weights.IsUseable(segment)
+}
+
+func (t TransitTimeWeights) Weight(segment b6.Segment) float64 {
+	if strings.HasPrefix(segment.Feature.PathID().Namespace.String(), b6.NamespaceGTFS.String()) {
+		var tag string
+		if t.PeakTraffic {
+			tag = "gtfs:peak"
+		} else {
+			tag = "gtfs:off-peak"
+		}
+
+		if time := segment.Feature.Get(tag); time.IsValid() {
+			if f, ok := time.FloatValue(); ok {
+				return f
+			}
+		}
+	}
+
+	return t.Weights.Weight(segment)
 }
 
 func interpolateShortestPathDistances(segment b6.Segment, firstDistance s1.Angle, lastDistance s1.Angle) []s1.Angle {

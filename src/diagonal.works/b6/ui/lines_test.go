@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"testing"
 
+	"diagonal.works/b6/api"
+	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/test/camden"
 
@@ -41,10 +43,17 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 	w := ingest.NewMutableOverlayWorld(base)
 
 	handler := StackHandler{
-		UI: NewDefaultUI(w),
+		UI: &OpenSourceUI{
+			World:           w,
+			FunctionSymbols: functions.Functions(),
+			Adaptors:        functions.Adaptors(),
+			Options: api.Options{
+				Cores: 2,
+			},
+		},
 	}
 
-	url := fmt.Sprintf("http://b6.diagonal.works/blocks?e=%s", url.QueryEscape(e))
+	url := fmt.Sprintf("http://b6.diagonal.works/stack?e=%s", url.QueryEscape(e))
 	request := httptest.NewRequest("GET", url, nil)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
