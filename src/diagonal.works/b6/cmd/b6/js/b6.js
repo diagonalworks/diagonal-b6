@@ -88,7 +88,7 @@ function newGeoJSONStyle(state, styles) {
     }
 }
 
-function setupMap(state, styles, mapCenter, mapZoom) {
+function setupMap(target, state, styles, mapCenter, mapZoom) {
     const zoom = new Zoom({
         zoomInLabel: "",
         zoomOutLabel: "",
@@ -298,7 +298,7 @@ function setupMap(state, styles, mapCenter, mapZoom) {
     });
 
     const map = new Map({
-        target: "map",
+        target: target.node(),
         layers: [
             background,
             boundaries,
@@ -978,8 +978,9 @@ function renderFromProto(targets, uiElement, stack) {
 }
 
 class UI {
-    constructor(map, state, queryStyle, geojsonStyle, highlightChanged) {
+    constructor(map, dockTarget, state, queryStyle, geojsonStyle, highlightChanged) {
         this.map = map;
+        this.dockTarget = dockTarget,
         this.state = state;
         this.queryStyle = queryStyle;
         this.geojsonStyle = geojsonStyle;
@@ -1019,7 +1020,7 @@ class UI {
     }
 
     _renderDock(docked) {
-        const target = d3.select("#dock").selectAll(".stack").data(docked).join("div");
+        const target = this.dockTarget.selectAll(".stack").data(docked).join("div");
         target.attr("class", "stack closed");
         const ui = this;
         target.each(function(response, i) {
@@ -1055,7 +1056,7 @@ class UI {
     }
 
     closeAllDocked() {
-        const docked = d3.select("#dock").selectAll(".stack");
+        const docked = this.dockTarget.selectAll(".stack");
         const ui = this;
         docked.each(function() {
             if (this.__stack__) {
@@ -1115,7 +1116,7 @@ class UI {
                 "Content-type": "application/json; charset=UTF-8"
             }
         }
-        return d3.json("/ui", post);
+        return d3.json("/stack", post);
     }
 
     _renderNewStack(response, position) {
@@ -1136,7 +1137,7 @@ class UI {
                 return exit.remove();
             },
         );
-        const dockRect = d3.select("#dock").node().getBoundingClientRect();
+        const dockRect = this.dockTarget.node().getBoundingClientRect();
         target.attr("class", "stack stack-featured");
         if (position) {
             target.style("left",  `${StackOffset[0] + position[0]}px`);
@@ -1374,7 +1375,7 @@ function idTokenFromProto(p) {
 function setupShell(target, ui) {
     target.selectAll("form").data([1]).join(
         enter => {
-            const form = enter.append("form").attr("class", "shell");
+            const form = enter.append("form").attr("class", "shell-form");
             form.append("div").attr("class", "prompt").text("b6");
             form.append("input").attr("type", "text");
             return form;
@@ -1639,7 +1640,11 @@ class Styles {
     }
 }
 
-function setup(startupResponse) {
+function setup(selector, startupResponse) {
+    const target = d3.select(selector).classed("b6", true);
+    const mapTarget = target.append("div").classed("map", true);
+    const shellTarget = target.append("div").classed("shell", true).classed("closed", true);
+    const dockTarget = target.append("div").classed("dock", true);
     if (startupResponse.error) {
         console.log(startupResponse.error); // TODO: show a banner
         return;
@@ -1648,10 +1653,10 @@ function setup(startupResponse) {
     const styles = new Styles(StyleClasses);
     const mapCenter = startupResponse.mapCenter || InitialCenter;
     const mapZoom = startupResponse.mapZoom || InitalZoom;
-    const [map, highlightChanged] = setupMap(state, styles, mapCenter, mapZoom);
+    const [map, highlightChanged] = setupMap(mapTarget, state, styles, mapCenter, mapZoom);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
-    const ui = new UI(map, state, queryStyle, geojsonStyle, highlightChanged);
+    const ui = new UI(map, dockTarget, state, queryStyle, geojsonStyle, highlightChanged);
     const html = d3.select("html");
     html.on("pointermove", e => {
         ui.handlePointerMove(e);
@@ -1660,7 +1665,7 @@ function setup(startupResponse) {
         ui.handleDragEnd(e);
     });
 
-    setupShell(d3.select("#shell"), ui);
+    setupShell(shellTarget, ui);
     ui.handleStartupResponse(startupResponse);
 
     map.on("singleclick", e => {
@@ -1675,9 +1680,9 @@ function setup(startupResponse) {
     });
 }
 
-function main() {
+function main(selector) {
     const params = new URLSearchParams(window.location.search);
-    d3.json("/startup?" + params.toString()).then(response => setup(response));
+    d3.json("/startup?" + params.toString()).then(response => setup(selector, response));
 }
 
 export default main;

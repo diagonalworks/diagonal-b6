@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"testing"
 
-	"diagonal.works/b6/api"
-	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/test/camden"
 
@@ -42,14 +40,8 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 	base := camden.BuildGranarySquareForTests(t)
 	w := ingest.NewMutableOverlayWorld(base)
 
-	handler := UIHandler{
-		World:    w,
-		Renderer: NewDefaultUIRenderer(w),
-		Options: api.Options{
-			Cores: 1,
-		},
-		FunctionSymbols: functions.Functions(),
-		Adaptors:        functions.Adaptors(),
+	handler := StackHandler{
+		UI: NewDefaultUI(w),
 	}
 
 	url := fmt.Sprintf("http://b6.diagonal.works/blocks?e=%s", url.QueryEscape(e))

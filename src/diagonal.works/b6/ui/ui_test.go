@@ -11,8 +11,7 @@ import (
 
 func TestStateFilledFromStartupQuery(t *testing.T) {
 	handler := StartupHandler{
-		World:    b6.EmptyWorld{},
-		Renderer: NewDefaultUIRenderer(b6.EmptyWorld{}),
+		UI: NewDefaultUI(b6.EmptyWorld{}),
 	}
 
 	url := "http://b6.diagonal.works/startup?ll=51.5321489,-0.1253271&z=18&d=2&e=find-feature+/n/3501612811"
