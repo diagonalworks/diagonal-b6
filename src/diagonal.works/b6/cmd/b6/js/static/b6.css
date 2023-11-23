@@ -342,31 +342,31 @@ form.shell-form > input {
 }
 
 .palette > .bucketed-1 {
-    fill: #f4d4e1;
+    fill: #a9aec5;
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-2 {
-    fill: #eab5c8;
+    fill: #9ccdeb;
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-3 {
-    fill: #e09bb5;
+    fill: #bce6ee;
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-4 {
-    fill: #cf7c9d;
+    fill: #d6f5e6;
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-5 {
-    fill: #ad5577;
+    fill: #f4fde5;
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
@@ -543,23 +543,28 @@ form.shell-form > input {
 }
 
 .range-icon.index-1 {
-    background-color: #f4d4e1;
+    background-color: #a9aec5;
+    border: 1px solid #dbdeec; /* Graphite 30 */;
 }
 
 .range-icon.index-2 {
-    background-color: #eab5c8;
+    background-color: #9ccdeb;
+    border: 1px solid #dbdeec; /* Graphite 30 */;
 }
 
 .range-icon.index-3 {
-    background-color: #e09bb5;
+    background-color: #bce6ee;
+    border: 1px solid #dbdeec; /* Graphite 30 */;
 }
 
 .range-icon.index-4 {
-    background-color: #cf7c9d;
+    background-color: #f4fde5;
+    border: 1px solid #dbdeec; /* Graphite 30 */;
 }
 
 .range-icon.index-5 {
     background-color: #ad5577;
+    border: 1px solid #dbdeec; /* Graphite 30 */;
 }
 
 .line-histogram-bar .range-icon {
