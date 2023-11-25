@@ -717,10 +717,9 @@ class LeftRightValueLineRenderer {
         }
         values.push(line.datum().leftRightValue.right);
 
-        let atoms = line.selectAll("span").data(values).join("span");
+        let atoms = line.selectAll(".line-leftrightvalue-atom").data(values).join("span").attr("class", "line-leftrightvalue-atom");
         renderFromProto(atoms.datum(d => d.atom), "atom", stack);
 
-        atoms = line.selectAll("span").data(values);
         const clickables = atoms.datum(d => d.clickExpression).filter(d => d);
         clickables.classed("clickable", true);
         clickables.on("mousedown", (e, d) => {
