@@ -50,6 +50,9 @@ func (m MightIntersect) Equal(other Query) bool {
 	if mm, ok := other.(MightIntersect); ok {
 		return reflect.DeepEqual(m.Region, mm.Region)
 	}
+	if mm, ok := other.(*MightIntersect); ok {
+		return reflect.DeepEqual(m.Region, mm.Region)
+	}
 	return false
 }
 
@@ -96,7 +99,14 @@ func (i IntersectsCells) ToProto() (*pb.QueryProto, error) {
 }
 
 func (i IntersectsCells) Equal(other Query) bool {
-	if ii, ok := other.(IntersectsCells); ok {
+	var ii IntersectsCells
+	switch iii := other.(type) {
+	case IntersectsCells:
+		ii = iii
+	case *IntersectsCells:
+		ii = *iii
+	}
+	if ii.Cells != nil {
 		if len(i.Cells) != len(ii.Cells) {
 			return false
 		}
