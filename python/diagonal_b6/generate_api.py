@@ -248,6 +248,8 @@ def main():
             print("    return %s(Call(Symbol(%s), args))" % (name_for_result(f["Result"]), repr(f["Name"])))
         print("")
 
+    print("name = diagonal_b6.expression._name")
+
     for type, result in BUILTIN_RESULTS.items():
         print("register_builtin_result(%s,%s)" % (type.__name__, result))
 

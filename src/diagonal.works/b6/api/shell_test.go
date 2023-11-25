@@ -8,9 +8,11 @@ import (
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/test/camden"
+	"github.com/google/go-cmp/cmp"
 
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func zeroBeginAndEndLocations(e *b6.Expression) {
@@ -985,6 +987,267 @@ func TestToFeatureIDExpression(t *testing.T) {
 		if id, err := ParseFeatureIDToken(test.Token); err != nil || id != test.ID {
 			t.Errorf("Expected id %s for %q, found %s", test.ID, test.Token, id)
 		}
+	}
+}
+
+func TestSimplifyAndOrQueries(t *testing.T) {
+	q := &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "and",
+					},
+				},
+				Args: []*pb.NodeProto{
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_QueryValue{
+									QueryValue: &pb.QueryProto{
+										Query: &pb.QueryProto_Tagged{
+											Tagged: &pb.TagProto{
+												Key:   "#building",
+												Value: "yes",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Node: &pb.NodeProto_Call{
+							Call: &pb.CallNodeProto{
+								Function: &pb.NodeProto{
+									Node: &pb.NodeProto_Symbol{
+										Symbol: "or",
+									},
+								},
+								Args: []*pb.NodeProto{
+									{
+										Node: &pb.NodeProto_Literal{
+											Literal: &pb.LiteralNodeProto{
+												Value: &pb.LiteralNodeProto_QueryValue{
+													QueryValue: &pb.QueryProto{
+														Query: &pb.QueryProto_Tagged{
+															Tagged: &pb.TagProto{
+																Key:   "#amenity",
+																Value: "restaurant",
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+									{
+										Node: &pb.NodeProto_Literal{
+											Literal: &pb.LiteralNodeProto{
+												Value: &pb.LiteralNodeProto_QueryValue{
+													QueryValue: &pb.QueryProto{
+														Query: &pb.QueryProto_Tagged{
+															Tagged: &pb.TagProto{
+																Key:   "#amenity",
+																Value: "cafe",
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var e b6.Expression
+	if err := e.FromProto(q); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	simplified := Simplify(e, testFunctionArgCounts{})
+
+	expected := &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_QueryValue{
+					QueryValue: &pb.QueryProto{
+						Query: &pb.QueryProto_Intersection{
+							Intersection: &pb.QueriesProto{
+								Queries: []*pb.QueryProto{
+									&pb.QueryProto{
+										Query: &pb.QueryProto_Tagged{
+											Tagged: &pb.TagProto{
+												Key:   "#building",
+												Value: "yes",
+											},
+										},
+									},
+									&pb.QueryProto{
+										Query: &pb.QueryProto_Union{
+											Union: &pb.QueriesProto{
+												Queries: []*pb.QueryProto{
+													&pb.QueryProto{
+														Query: &pb.QueryProto_Tagged{
+															Tagged: &pb.TagProto{
+																Key:   "#amenity",
+																Value: "restaurant",
+															},
+														},
+													},
+													&pb.QueryProto{
+														Query: &pb.QueryProto_Tagged{
+															Tagged: &pb.TagProto{
+																Key:   "#amenity",
+																Value: "cafe",
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p, err := simplified.ToProto()
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if diff := cmp.Diff(expected, p, protocmp.Transform()); diff != "" {
+		t.Errorf("Unexpected (-want, +got): %s", diff)
+	}
+}
+
+func TestSimplifyKeyedQuery(t *testing.T) {
+	q := &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "keyed",
+					},
+				},
+				Args: []*pb.NodeProto{
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_StringValue{
+									StringValue: "#building",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var e b6.Expression
+	if err := e.FromProto(q); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	simplified := Simplify(e, testFunctionArgCounts{})
+
+	expected := &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_QueryValue{
+					QueryValue: &pb.QueryProto{
+						Query: &pb.QueryProto_Keyed{
+							Keyed: "#building",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p, err := simplified.ToProto()
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if diff := cmp.Diff(expected, p, protocmp.Transform()); diff != "" {
+		t.Errorf("Unexpected (-want, +got): %s", diff)
+	}
+}
+
+func TestSimplifyTaggedQuery(t *testing.T) {
+	q := &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "tagged",
+					},
+				},
+				Args: []*pb.NodeProto{
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_StringValue{
+									StringValue: "#amenity",
+								},
+							},
+						},
+					},
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_StringValue{
+									StringValue: "restaurant",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var e b6.Expression
+	if err := e.FromProto(q); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	simplified := Simplify(e, testFunctionArgCounts{})
+
+	expected := &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_QueryValue{
+					QueryValue: &pb.QueryProto{
+						Query: &pb.QueryProto_Tagged{
+							Tagged: &pb.TagProto{
+								Key:   "#amenity",
+								Value: "restaurant",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p, err := simplified.ToProto()
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if diff := cmp.Diff(expected, p, protocmp.Transform()); diff != "" {
+		t.Errorf("Unexpected (-want, +got): %s", diff)
 	}
 }
 

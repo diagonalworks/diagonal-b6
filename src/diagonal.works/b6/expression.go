@@ -35,6 +35,7 @@ type AnyExpression interface {
 
 type Expression struct {
 	AnyExpression
+	Name  string
 	Begin int
 	End   int
 }
@@ -61,15 +62,29 @@ type expressionChoices struct {
 
 func (e Expression) MarshalYAML() (interface{}, error) {
 	// Fast track types that are handled natively by YAML
-	switch e := e.AnyExpression.(type) {
-	case *IntExpression:
-		return int(*e), nil
-	case *FloatExpression:
-		return float64(*e), nil
-	case *StringExpression:
-		return string(*e), nil
+	if e.Name == "" {
+		switch e := e.AnyExpression.(type) {
+		case *IntExpression:
+			return int(*e), nil
+		case *FloatExpression:
+			return float64(*e), nil
+		case *StringExpression:
+			return string(*e), nil
+		}
 	}
-	return marshalChoiceYAML(&expressionChoices{}, e.AnyExpression)
+
+	y := expressionYAML{
+		Name:  e.Name,
+		Begin: e.Begin,
+		End:   e.End,
+	}
+	return marshalChoiceYAML(&expressionChoices{}, e.AnyExpression, &y)
+}
+
+type expressionYAML struct {
+	Name  string `yaml:"name,omitempty"`
+	Begin int    `yaml:"begin,omitempty"`
+	End   int    `yaml:"end,omitempty"`
 }
 
 func (e *Expression) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -96,11 +111,18 @@ func (e *Expression) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err == nil {
 		e.AnyExpression = choice.(AnyExpression)
 	}
+	y := expressionYAML{}
+	if err := unmarshal(&y); err == nil {
+		e.Name = y.Name
+		e.Begin = y.Begin
+		e.End = y.End
+	}
 	return err
 }
 
 func (e Expression) ToProto() (*pb.NodeProto, error) {
 	p, err := e.AnyExpression.ToProto()
+	p.Name = e.Name
 	p.Begin = int32(e.Begin)
 	p.End = int32(e.End)
 	return p, err
@@ -148,13 +170,19 @@ func (e *Expression) FromProto(node *pb.NodeProto) error {
 	default:
 		return fmt.Errorf("Can't convert expression from proto %T", node.Node)
 	}
+	if err := e.AnyExpression.FromProto(node); err != nil {
+		return err
+	}
+	e.Name = node.Name
 	e.Begin = int(node.Begin)
 	e.End = int(node.End)
-	return e.AnyExpression.FromProto(node)
+	return nil
 }
 
 func (e Expression) Clone() Expression {
-	return e.AnyExpression.Clone()
+	clone := e
+	clone.AnyExpression = e.AnyExpression.Clone().AnyExpression
+	return clone
 }
 
 func (e Expression) Equal(other Expression) bool {

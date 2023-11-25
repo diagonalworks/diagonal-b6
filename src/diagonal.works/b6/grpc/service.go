@@ -52,7 +52,8 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 	if err := expression.FromProto(request.Request); err != nil {
 		return nil, err
 	}
-	v, err := api.Evaluate(expression, &context)
+	simplified := api.Simplify(expression, context.FunctionSymbols)
+	v, err := api.Evaluate(simplified, &context)
 	if err != nil {
 		return nil, err
 	}
