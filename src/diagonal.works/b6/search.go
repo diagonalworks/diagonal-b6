@@ -116,7 +116,10 @@ func (t Tagged) ToProto() (*pb.QueryProto, error) {
 }
 
 func (t Tagged) Equal(other Query) bool {
-	if tt, ok := other.(Tagged); ok {
+	switch tt := other.(type) {
+	case Tagged:
+		return t.Key == tt.Key && t.Value == tt.Value
+	case *Tagged:
 		return t.Key == tt.Key && t.Value == tt.Value
 	}
 	return false
@@ -152,7 +155,10 @@ func (k Keyed) ToProto() (*pb.QueryProto, error) {
 }
 
 func (k Keyed) Equal(other Query) bool {
-	if kk, ok := other.(Keyed); ok {
+	switch kk := other.(type) {
+	case Keyed:
+		return k.Key == kk.Key
+	case *Keyed:
 		return k.Key == kk.Key
 	}
 	return false
@@ -212,7 +218,10 @@ func (t Typed) ToProto() (*pb.QueryProto, error) {
 }
 
 func (t Typed) Equal(other Query) bool {
-	if tt, ok := other.(Typed); ok {
+	switch tt := other.(type) {
+	case Typed:
+		return t.Type == tt.Type && t.Query.Equal(tt.Query)
+	case *Typed:
 		return t.Type == tt.Type && t.Query.Equal(tt.Query)
 	}
 	return false
@@ -399,8 +408,8 @@ type queryChoices struct {
 	Tagged         *Tagged
 	Keyed          *Keyed
 	Typed          *Typed
-	Intersection   *Intersection
-	Union          *Union
+	Intersection   Intersection
+	Union          Union
 	MightIntersect *MightIntersect
 	Cells          *IntersectsCells
 	Cap            *IntersectsCap
@@ -421,14 +430,7 @@ func (q queryYAML) MarshalYAML() (interface{}, error) {
 func (q *queryYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	choice, err := unmarshalChoiceYAML(&queryChoices{}, unmarshal)
 	if err == nil {
-		switch choice := choice.(type) {
-		case *Query:
-			q.Query = *choice
-		case Query:
-			q.Query = choice
-		default:
-			panic("choice wasn't a query")
-		}
+		q.Query = choice.(Query)
 	}
 	return err
 }
