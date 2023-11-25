@@ -10,6 +10,7 @@ import (
 	"diagonal.works/b6/test"
 	"github.com/golang/geo/s2"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestExportModificationsAsYAML(t *testing.T) {
@@ -98,17 +99,25 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.536627, -0.127205)), b6.MetersToAngle(100.0))
 	var expression ExpressionFeature
 	expression.ExpressionID = b6.MakeExpressionID(b6.Namespace("diagonal.works/test"), 6)
 	expression.Expression = b6.Expression{
 		AnyExpression: &b6.CallExpression{
 			Function: b6.NewSymbolExpression("find"),
 			Args: []b6.Expression{
-				b6.NewQueryExpression(b6.Intersection{
-					b6.Tagged{Key: "#highway", Value: "cycleway"},
-					b6.NewIntersectsCap(cap),
-				}),
+				{
+					AnyExpression: &b6.QueryExpression{
+						Query: b6.Intersection{
+							b6.Tagged{Key: "#highway", Value: "cycleway"},
+							b6.IntersectsFeature{
+								ID: AreaIDFromOSMWayID(222021571).FeatureID(),
+							},
+						},
+					},
+					Name:  "bike paths",
+					Begin: 36,
+					End:   42,
+				},
 			},
 		},
 	}
@@ -210,6 +219,12 @@ func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
 		a := actual.(b6.PhysicalFeature)
 		coverer := s2.RegionCoverer{MaxLevel: 18, MaxCells: 10} // 18 implies 3cm accuracy
 		diffs += cmp.Diff(e.Covering(coverer), a.Covering(coverer))
+	} else if e, ok := expected.(b6.ExpressionFeature); ok {
+		a := actual.(b6.ExpressionFeature)
+		ae, _ := a.Expression().ToProto()
+		ee, _ := e.Expression().ToProto()
+		// TODO: implement a cmp.Diff transformer for expressions
+		diffs += cmp.Diff(ee, ae, protocmp.Transform())
 	}
 	diffs += cmp.Diff(expected.AllTags(), actual.AllTags())
 	return diffs

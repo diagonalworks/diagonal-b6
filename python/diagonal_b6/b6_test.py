@@ -578,6 +578,15 @@ class B6Test(unittest.TestCase):
         # TODO: Test expression behaviour in Python, once it exists.
         self.assertIsNotNone(expression)
 
+    def test_name_expression(self):
+        origin = b6.name(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)), "bridge")
+        query = b6.name(b6.keyed("#amenity"), "amenities")
+        distance = b6.name(200.0, "200m")
+        count = b6.count(b6.reachable(origin, "walk", distance, query))
+        # The functionality of name itself is tested at the UI level. Here
+        # we're just verifying that the API works.
+        self.assertGreater(self.connection(count), 0)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")

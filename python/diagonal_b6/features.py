@@ -18,6 +18,7 @@ NAMESPACE_DIAGONAL_ACCESS_POINTS = "diagonal.works/ns/access-point"
 class FeatureID(expression.Literal):
 
     def __init__(self, type, namespace, value):
+        expression.Literal.__init__(self)
         self.type = type
         self.namespace = namespace
         self.value = value
@@ -60,6 +61,9 @@ class FeatureID(expression.Literal):
         query.spatial.area.id.value = self.value
 
 class Feature(expression.Node):
+
+    def __init__(self):
+        expression.Node.__init__(self)
 
     def is_point(self):
         return self.id.is_point()
@@ -122,12 +126,14 @@ class Feature(expression.Node):
 class PointFeature(Feature):
 
     def __init__(self, p):
+        Feature.__init__(self)
         self.id = from_id_proto(p.point.id)
         self._pb = p.point
 
 class PathFeature(Feature):
 
     def __init__(self, pb):
+        Feature.__init__(self)
         self.id = from_id_proto(pb.path.id)
         self._pb = pb.path
 
@@ -137,12 +143,14 @@ class PathFeature(Feature):
 class AreaFeature(Feature):
 
     def __init__(self, pb):
+        Feature.__init__(self)
         self.id = from_id_proto(pb.area.id)
         self._pb = pb.area
 
 class RelationFeature(Feature):
 
     def __init__(self, pb):
+        Feature.__init__(self)
         self.id = from_id_proto(pb.relation.id)
         self._pb = pb.relation
 
@@ -173,6 +181,7 @@ class RelationMember:
 class CollectionFeature(Feature):
 
     def __init__(self, pb):
+        Feature.__init__(self)
         self.id = from_id_proto(pb.collection.id)
         self._pb = pb.collection
 
@@ -186,6 +195,7 @@ class CollectionFeature(Feature):
 class ExpressionFeature(Feature):
 
     def __init__(self, pb):
+        Feature.__init__(self)
         self.id = from_id_proto(pb.expression.id)
         self._pb = pb.expression
 

@@ -6,15 +6,26 @@ from diagonal_b6 import api_pb2
 
 class Node:
 
+    def __init__(self):
+        self.name = None
+
+    def set_name(self, name):
+        self.name = name
+
     def to_node_proto(self):
         raise NotImplementedError()
 
 class Literal(Node):
 
+    def __init__(self):
+        Node.__init__(self)
+
     def to_node_proto(self):
-        node = api_pb2.NodeProto()
-        node.literal.CopyFrom(self.to_literal_proto())
-        return node
+        n = api_pb2.NodeProto()
+        if self.name is not None:
+            n.name = self.name     
+        n.literal.CopyFrom(self.to_literal_proto())
+        return n
 
     def to_literal_proto(self):
         raise NotImplementedError()
@@ -22,6 +33,7 @@ class Literal(Node):
 class LiteralInt(Literal):
 
     def __init__(self, v):
+        Literal.__init__(self)
         self.v = v
 
     def to_literal_proto(self):
@@ -32,6 +44,7 @@ class LiteralInt(Literal):
 class LiteralFloat(Literal):
 
     def __init__(self, v):
+        Literal.__init__(self)
         self.v = v
 
     def to_literal_proto(self):
@@ -42,6 +55,7 @@ class LiteralFloat(Literal):
 class LiteralString(Literal):
 
     def __init__(self, v):
+        Literal.__init__(self)
         self.v = v
 
     def to_literal_proto(self):
@@ -51,22 +65,28 @@ class LiteralString(Literal):
 
 class Symbol(Node):
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, symbol):
+        Node.__init__(self)
+        self.symbol = symbol
 
     def to_node_proto(self):
         n = api_pb2.NodeProto()
-        n.symbol = self.name
+        if self.name is not None:
+            n.name = self.name
+        n.symbol = self.symbol
         return n
 
 class Call(Node):
 
     def __init__(self, function, args):
+        Node.__init__(self)
         self.function = function
         self.args = args
 
     def to_node_proto(self):
         n = api_pb2.NodeProto()
+        if self.name is not None:
+            n.name = self.name
         n.call.function.CopyFrom(self.function.to_node_proto())
         for arg in self.args:
             node = to_node(arg)
@@ -76,6 +96,7 @@ class Call(Node):
 class Lambda(Node):
 
     def __init__(self, function, arg_types):
+        Node.__init__(self)
         self.function = function
         self.arg_types = arg_types
 
@@ -87,6 +108,8 @@ class Lambda(Node):
 
     def to_node_proto(self):
         n = api_pb2.NodeProto()
+        if self.name is not None:
+            n.name = self.name
         args = ["_%s_%d" % (name, id(n)) for name in inspect.signature(self.function).parameters]
         for arg in args:
             n.lambda_.args.append(arg)
@@ -120,6 +143,9 @@ class Result(Node):
 
     def __init__(self, node):
         self.node = node
+
+    def set_name(self, name):
+        self.node.set_name(name)
 
     def to_node_proto(self):
         return self.node.to_node_proto()
@@ -211,5 +237,10 @@ def _map(collection, f):
 def _filter(collection, f):
     collection = to_node(collection)
     return type(collection)(Call(Symbol("filter"), [collection, to_lambda(f).with_arg_types((collection._values(),))]))
+
+def _name(expression, name):
+    expression = to_node(expression)
+    expression.set_name(name)
+    return expression
 
 

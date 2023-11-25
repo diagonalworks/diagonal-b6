@@ -415,7 +415,7 @@ type queryYAML struct {
 }
 
 func (q queryYAML) MarshalYAML() (interface{}, error) {
-	return marshalChoiceYAML(&queryChoices{}, q.Query)
+	return marshalChoiceYAML(&queryChoices{}, q.Query, nil)
 }
 
 func (q *queryYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {

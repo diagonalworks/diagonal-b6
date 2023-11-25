@@ -671,11 +671,17 @@ func Simplify(expression b6.Expression, functions SymbolArgCounts) b6.Expression
 	if expression.AnyExpression == nil {
 		return expression
 	}
-	switch expression.AnyExpression.(type) {
+	switch e := expression.AnyExpression.(type) {
 	case *b6.CallExpression:
 		return simplifyCall(expression, functions)
 	case *b6.LambdaExpression:
 		return simplifyLambda(expression, functions)
+	case *b6.QueryExpression:
+		simplified := expression
+		simplified.AnyExpression = &b6.QueryExpression{
+			Query: simplifyQuery(e.Query),
+		}
+		return simplified
 	}
 	return expression
 }
@@ -689,6 +695,9 @@ func simplifyCall(expression b6.Expression, functions SymbolArgCounts) b6.Expres
 	if e, ok := simplifyCallWithNoArguments(expression, functions); ok {
 		return e
 	}
+	if e, ok := simplifyCallBuildingQuery(expression, functions); ok {
+		return e
+	}
 	return expression
 }
 
@@ -699,20 +708,96 @@ func simplifyCallWithNoArguments(expression b6.Expression, functions SymbolArgCo
 	if len(call.Args) == 0 {
 		if symbol, ok := call.Function.AnyExpression.(*b6.SymbolExpression); ok {
 			if n, ok := functions.ArgCount(*symbol); ok && n > 0 {
-				return call.Function, true
+				return Simplify(call.Function, functions), true
 			}
 		} else if lambda, ok := call.Function.AnyExpression.(*b6.LambdaExpression); ok {
 			if len(lambda.Args) == 0 {
-				return lambda.Expression, true
+				return Simplify(lambda.Expression, functions), true
 			}
 		}
 	}
 	return expression, false
 }
 
+func simplifyCallBuildingQuery(expression b6.Expression, functions SymbolArgCounts) (b6.Expression, bool) {
+	call := expression.AnyExpression.(*b6.CallExpression)
+	symbol, ok := call.Function.AnyExpression.(*b6.SymbolExpression)
+	if !ok {
+		return b6.Expression{}, false
+	}
+	switch s := string(*symbol); s {
+	case "and", "or":
+		if e, ok := simplifyCallBuildingAndOrOrQuery(s, call); ok {
+			simplified := expression
+			simplified.AnyExpression = e
+			return Simplify(simplified, functions), true
+		}
+	case "keyed", "tagged":
+		if e, ok := simplifyCallBuildingKeyedTaggedQuery(s, call); ok {
+			simplified := expression
+			simplified.AnyExpression = e
+			return Simplify(simplified, functions), true
+		}
+	}
+	return b6.Expression{}, false
+}
+
+func simplifyCallBuildingAndOrOrQuery(symbol string, call *b6.CallExpression) (b6.AnyExpression, bool) {
+	args := make([]*b6.QueryExpression, 0, 2)
+	for _, arg := range call.Args {
+		if q, ok := arg.AnyExpression.(*b6.QueryExpression); ok {
+			args = append(args, q)
+		} else {
+			return nil, false
+		}
+	}
+	switch symbol {
+	case "and":
+		q := make(b6.Intersection, len(args))
+		for i := range args {
+			q[i] = args[i].Query
+		}
+		return &b6.QueryExpression{Query: q}, true
+	case "or":
+		q := make(b6.Union, len(args))
+		for i := range args {
+			q[i] = args[i].Query
+		}
+		return &b6.QueryExpression{Query: q}, true
+	}
+	return nil, false
+}
+
+func simplifyCallBuildingKeyedTaggedQuery(symbol string, call *b6.CallExpression) (b6.AnyExpression, bool) {
+	args := make([]string, 0, 2)
+	for _, arg := range call.Args {
+		if s, ok := arg.AnyExpression.(*b6.StringExpression); ok {
+			args = append(args, string(*s))
+		} else {
+			return nil, false
+		}
+	}
+	switch symbol {
+	case "keyed":
+		if len(args) == 1 {
+			return &b6.QueryExpression{
+				Query: b6.Keyed{Key: args[0]},
+			}, true
+		}
+	case "tagged":
+		if len(args) == 2 {
+			return &b6.QueryExpression{
+				Query: b6.Tagged{Key: args[0], Value: args[1]},
+			}, true
+		}
+	}
+	return nil, false
+}
+
 func simplifyLambda(expression b6.Expression, functions SymbolArgCounts) b6.Expression {
-	// '{a -> area a}' is semantically equivalent to 'area'
 	lambda := expression.AnyExpression.(*b6.LambdaExpression)
+	lambda.Expression = Simplify(lambda.Expression, functions)
+	// '{a -> area a}' is semantically equivalent to 'area'
 	if call, ok := lambda.Expression.AnyExpression.(*b6.CallExpression); ok && len(lambda.Args) > 0 {
 		i := 0
 		for i < len(lambda.Args) && i < len(call.Args) {
@@ -727,19 +812,49 @@ func simplifyLambda(expression b6.Expression, functions SymbolArgCounts) b6.Expr
 		}
 		if i > 0 {
 			if i == len(call.Args) {
-				return call.Function
+				return Simplify(call.Function, functions)
 			}
-			return simplifyCall(b6.Expression{
-				AnyExpression: &b6.CallExpression{
-					Function: call.Function,
-					Args:     call.Args[i:len(call.Args)],
-				},
-				Begin: expression.Begin,
-				End:   expression.End,
-			}, functions)
+			s := expression
+			s.AnyExpression = &b6.CallExpression{
+				Function: call.Function,
+				Args:     call.Args[i:len(call.Args)],
+			}
+			return simplifyCall(s, functions)
 		}
 	}
 	return expression
+}
+
+func simplifyQuery(query b6.Query) b6.Query {
+	switch q := query.(type) {
+	case b6.Intersection:
+		simplified := make(b6.Intersection, 0, len(q))
+		for i := range q {
+			qq := simplifyQuery(q[i])
+			if intersection, ok := qq.(b6.Intersection); ok {
+				for _, qqq := range intersection {
+					simplified = append(simplified, qqq)
+				}
+			} else {
+				simplified = append(simplified, qq)
+			}
+		}
+		return simplified
+	case b6.Union:
+		simplified := make(b6.Union, 0, len(q))
+		for i := range q {
+			qq := simplifyQuery(q[i])
+			if union, ok := qq.(b6.Union); ok {
+				for _, qqq := range union {
+					simplified = append(simplified, qqq)
+				}
+			} else {
+				simplified = append(simplified, qq)
+			}
+		}
+		return simplified
+	}
+	return query
 }
 
 func EscapeTagKey(v string) string {

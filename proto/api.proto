@@ -110,6 +110,7 @@ message NodeProto {
         CallNodeProto call = 3;
         LambdaNodeProto lambda_ = 4;
     }
+    string name = 5;
     int32 begin = 6;
     int32 end = 7;
 }
