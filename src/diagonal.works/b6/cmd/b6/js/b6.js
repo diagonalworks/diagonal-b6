@@ -811,12 +811,18 @@ class SwatchLineRenderer {
     }
 
     enter(line) {
-        line.append("div").attr("class", "range-icon");
+        const index = line.datum().swatch.index || 0;
+        if (index >= 0) {
+            line.append("div").attr("class", "range-icon");
+        }
         line.append("span").attr("class", "label");
     }
 
     update(line, stack) {
-        line.select(".range-icon").attr("class", d => `range-icon index-${d.swatch.index ? d.swatch.index : 0}`);
+        const index = line.datum().swatch.index || 0;
+        if (index >= 0) {
+            line.select(".range-icon").attr("class", d => `range-icon index-${d.swatch.index ? d.swatch.index : 0}`);
+        }
         renderFromProto(line.select(".label").datum(d => d.swatch.label), "atom", stack);
     }
 }
