@@ -930,13 +930,24 @@ class HeaderLineRenderer {
 
     enter(line, stack) {
         line.append("span");
-        const close = line.append("img");
-        close.attr("class", "line-header-close");
-        close.attr("src", "/images/close.svg");
-        close.on("click", function(e) {
-            e.stopPropagation();
-            stack.remove();
-        });
+        if (line.datum().header.close) {
+            const close = line.append("img");
+            close.attr("class", "line-header-close");
+            close.attr("src", "/images/close.svg");
+            close.on("click", function(e) {
+                e.stopPropagation();
+                stack.remove();
+            });
+        }
+        if (line.datum().header.share) {
+            const close = line.append("img");
+            close.attr("class", "line-header-share");
+            close.attr("src", "/images/share.svg");
+            close.on("click", function(e) {
+                e.stopPropagation();
+                navigator.clipboard.writeText(window.location.href);
+            });
+        }
         line.on("mousedown", (e) => {
             e.stopPropagation();
             stack.handleDragStart(e);

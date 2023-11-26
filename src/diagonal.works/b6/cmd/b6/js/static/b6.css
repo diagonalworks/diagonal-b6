@@ -664,6 +664,13 @@ form.shell-form > input {
     height: 20px;
 }
 
+.line-header-share {
+    display: inline-block;
+    text-align: end;
+    width: 16px;
+    height: 20px;
+}
+
 .line-error {
     background: #ed968a;   
 }
