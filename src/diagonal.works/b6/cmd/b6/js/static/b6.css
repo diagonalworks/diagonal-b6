@@ -397,6 +397,7 @@ form.shell-form > input {
     padding-right: 4px; /* Inset squish XXS */
     border-radius: 2px;
     background: #eceff8;
+    cursor: pointer;
 }
 
 .atom-chip-chip.open {
@@ -779,3 +780,28 @@ form.shell-form > input {
 .dock > .stack > .substack > .scrollable {
     max-height: 282px;
 }
+
+.message {
+    position: absolute;
+    z-index: 1;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #528dff;
+    background: #4f5a7d;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    max-width: 282px;
+    overflow: clip;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message.exiting {
+    background: #4f5a7d00;
+    color: #ffffff00;
+    border: 1px solid #528dff00;
+    transition: all 0.7s;
+}
+
