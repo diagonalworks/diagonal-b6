@@ -382,7 +382,7 @@ form.shell-form > input {
 }
 
 .atom-chip > .atom-chip-clickable {
-    max-width: 60px;
+    max-width: 75px;
     overflow: clip;
     text-overflow: ellipsis;
 }
