@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -218,13 +220,7 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	}
 
-	output, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(output))
+	sendJSON(response, w, r)
 }
 
 type StackHandler struct {
@@ -262,17 +258,35 @@ func (s *StackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.UI.ServeStack(request, response, s.UI); err == nil {
-		output, err := json.Marshal(response)
-		if err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(output))
+		sendJSON(response, w, r)
 	} else {
 		log.Println(err.Error())
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+}
+
+func sendJSON(value interface{}, w http.ResponseWriter, r *http.Request) {
+	var output bytes.Buffer
+	var encoder *json.Encoder
+	var toClose io.Closer
+	if strings.Index(r.Header.Get("Accept-Encoding"), "gzip") >= 0 {
+		compresor := gzip.NewWriter(&output)
+		encoder = json.NewEncoder(compresor)
+		w.Header().Set("Content-Encoding", "gzip")
+		toClose = compresor
+	} else {
+		encoder = json.NewEncoder(&output)
+	}
+	err := encoder.Encode(value)
+	if err == nil && toClose != nil {
+		err = toClose.Close()
+	}
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(output.Bytes())
 }
 
 type OpenSourceUI struct {
