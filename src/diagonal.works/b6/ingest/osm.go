@@ -148,6 +148,7 @@ var osmTagMapping = map[string]string{
 	"railway":   "#railway",
 	"route":     "#route",
 	"shop":      "#shop",
+	"tourism":   "#tourism",
 	"water":     "#water",
 	"waterway":  "#waterway",
 	"fhrs:id":   "@fhrs:id",
