@@ -622,6 +622,7 @@ class ChipAtomRenderer {
         });
         chip.on("click", function(e, d) {
             e.stopPropagation();
+            d3.select(".atom-chip-nav").remove();
             chip.classed("open", true);
             const bounds = this.getBoundingClientRect();
             const nav = d3.select("body").append("nav").classed("atom-chip-nav", true);

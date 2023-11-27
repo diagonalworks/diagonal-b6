@@ -381,6 +381,12 @@ form.shell-form > input {
     display: inline-block;
 }
 
+.atom-chip > .atom-chip-clickable {
+    max-width: 60px;
+    overflow: clip;
+    text-overflow: ellipsis;
+}
+
 .atom-chip > span {
     margin-left: 4px; /* Inset squish XXS */
 }

@@ -707,7 +707,9 @@ func simplifyCallWithNoArguments(expression b6.Expression, functions SymbolArgCo
 	call := expression.AnyExpression.(*b6.CallExpression)
 	if len(call.Args) == 0 {
 		if symbol, ok := call.Function.AnyExpression.(*b6.SymbolExpression); ok {
-			if n, ok := functions.ArgCount(*symbol); ok && n > 0 {
+			n, ok := functions.ArgCount(*symbol)
+			v, _ := functions.IsVariadic(*symbol)
+			if ok && n > 0 && !v {
 				return Simplify(call.Function, functions), true
 			}
 		} else if lambda, ok := call.Function.AnyExpression.(*b6.LambdaExpression); ok {
