@@ -18,6 +18,10 @@ import VectorTileSource from "ol/source/VectorTile";
 import View from "ol/View";
 import Zoom from "ol/control/Zoom";
 
+const LineHeight = 20 + (2 * 12);
+const LineBorderWidth = 1;
+const InsetSquishXS = 8;
+
 const InitialCenter = {latE7: 515361156, lngE7: -1255161};
 const InitalZoom = 16;
 const RoadWidths = {
@@ -238,8 +242,9 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
         style: function(feature, resolution) {
             if (feature.get("layer") == "building") {
                 const id = idKeyFromFeature(feature);
-                if (state.bucketed[id]) {
-                    return bucketedBuildingFill[state.bucketed[id]];
+                const bucket = state.bucketed[id];
+                if (bucket && (state.showBucket < 0 || state.showBucket == bucket)) {
+                    return bucketedBuildingFill[bucket];
                 }
                 if (state.highlighted[id]) {
                     return highlightedBuildingFill;
@@ -256,8 +261,9 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
         style: function(feature, resolution) {
             if (feature.get("layer") == "point") {
                 const id = idKeyFromFeature(feature);
-                if (state.bucketed[id]) {
-                    return bucketedPoint[state.bucketed[id]];
+                const bucket = state.bucketed[id];
+                if (bucket && (state.showBucket < 0 || state.showBucket == bucket)) {
+                    return bucketedPoint[bucket];
                 }
                 if (state.highlighted[id]) {
                     return styles.lookupStyle("highlighted-point");
@@ -556,6 +562,17 @@ class Stack {
             this.addToMap();
         }
     }
+
+    showMessage(message, position) {
+        const rect = this.target.node().getBoundingClientRect();
+        const x = rect.x + rect.width + InsetSquishXS;
+        const y = rect.y + (Math.floor((position[1] - rect.y) / (LineHeight + LineBorderWidth)) * LineHeight);
+        this.ui.showMessage(message, [x, y]);
+    }
+
+    toggleShowBucket(bucket) {
+        this.ui.toggleShowBucket(bucket);
+    }
 }
 
 class ValueAtomRenderer {
@@ -697,7 +714,9 @@ class ValueLineRenderer {
         notClickable.on("mousedown", (e, d) => {
             e.stopPropagation();
             const clickHandler = () => {
-                navigator.clipboard.writeText(atomTextToCopy(d.value));
+                const copy = atomTextToCopy(d.value);
+                navigator.clipboard.writeText(copy);
+                stack.showMessage(`Copied ${copy}`, d3.pointer(e, d3.select("body")));
             }
             stack.handleDragStart(e, clickHandler);
         });
@@ -823,6 +842,10 @@ class SwatchLineRenderer {
         const index = line.datum().swatch.index || 0;
         if (index >= 0) {
             line.select(".range-icon").attr("class", d => `range-icon index-${d.swatch.index ? d.swatch.index : 0}`);
+            line.on("click", function(e) {
+                e.stopPropagation();
+                stack.toggleShowBucket(index);
+            });
         }
         renderFromProto(line.select(".label").datum(d => d.swatch.label), "atom", stack);
     }
@@ -953,6 +976,7 @@ class HeaderLineRenderer {
             close.on("click", function(e) {
                 e.stopPropagation();
                 navigator.clipboard.writeText(window.location.href);
+                stack.showMessage("Copied link to clipboard", d3.pointer(e, d3.select("body")));
             });
         }
         line.on("mousedown", (e) => {
@@ -1371,6 +1395,32 @@ class UI {
             this.dragging = null;
         }
     }
+
+    showMessage(message, position) {
+        showMessage(message, position);
+    }
+
+    toggleShowBucket(bucket) {
+        if (this.state.showBucket == bucket) {
+            this.state.showBucket = -1;
+        } else {
+            this.state.showBucket = bucket;
+        }
+        this.basemapHighlightChanged();
+    }
+}
+
+function showMessage(message, position) {
+    d3.select(".message").remove();
+    const div = d3.select("body").append("div").classed("message", true);
+    div.node().style.top = `${position[1]}px`;
+    div.node().style.left = `${position[0]}px`;
+    div.text(message);
+    const exit = () => {
+        div.classed("exiting", true);
+        setTimeout(() => div.remove(), 700);
+    };
+    setTimeout(exit, 700);
 }
 
 const ShellMaxSuggestions = 6;
@@ -1703,10 +1753,10 @@ function setup(selector, startupResponse) {
     const shellTarget = target.append("div").classed("shell", true).classed("closed", true);
     const dockTarget = target.append("div").classed("dock", true);
     if (startupResponse.error) {
-        console.log(startupResponse.error); // TODO: show a banner
+        showMessage(startupResponse.error, [10, 10]);
         return;
     }
-    const state = {highlighted: {}, bucketed: {}};
+    const state = {highlighted: {}, bucketed: {}, showBucket: -1};
     const styles = new Styles(StyleClasses);
     const mapCenter = startupResponse.mapCenter || InitialCenter;
     const mapZoom = startupResponse.mapZoom || InitalZoom;
