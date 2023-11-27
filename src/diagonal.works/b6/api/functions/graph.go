@@ -257,6 +257,34 @@ done:
 	}, err
 }
 
+func filterAccessible(context *api.Context, accessible b6.Collection[b6.FeatureID, b6.FeatureID], filter b6.Query) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+	filtered := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}
+	i := accessible.Begin()
+	last := b6.FeatureIDInvalid
+	empty := true
+	for {
+		ok, err := i.Next()
+		if err != nil || !ok {
+			return filtered.Collection(), err
+		}
+		if last != i.Key() {
+			if last.IsValid() && empty {
+				filtered.Keys = append(filtered.Keys, last)
+				filtered.Values = append(filtered.Values, b6.FeatureIDInvalid)
+			}
+			last = i.Key()
+			empty = true
+		}
+		if f := context.World.FindFeatureByID(i.Value()); f != nil {
+			if filter.Matches(f, context.World) {
+				empty = false
+				filtered.Keys = append(filtered.Keys, i.Key())
+				filtered.Values = append(filtered.Values, i.Value())
+			}
+		}
+	}
+}
+
 func accessibleFromOrigin(ds []b6.FeatureID, origin b6.Feature, destinations b6.Query, weights graph.Weights, distance float64, w b6.World) []b6.FeatureID {
 	s := graph.NewShortestPathSearchFromFeature(origin, weights, w)
 	s.ExpandSearch(distance, weights, graph.PointsAndAreas, w)
