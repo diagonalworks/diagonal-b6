@@ -635,7 +635,7 @@ class ChipAtomRenderer {
         chip.text(d => d.chip.labels[stack.getChipValue(d.chip.index || 0)]);
         chip.each(function(d) { // Only expects one chip
             this.__chip_index__ = d.chip.index || 0;
-            this.__chip_value__ = stack.getChipValue(d.chip.index);
+            this.__chip_value__ = stack.getChipValue(this.__chip_index__);
         });
         chip.on("click", function(e, d) {
             e.stopPropagation();
