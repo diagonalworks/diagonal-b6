@@ -9,6 +9,7 @@ var iconsForTag = []struct {
 	Icon string
 }{
 	{b6.Tag{Key: "#highway", Value: "bus_stop"}, "bus"},
+	{b6.Tag{Key: "#gtfs", Value: "stop"}, "bus"},
 	{b6.Tag{Key: "#railway", Value: "tram_stop"}, "rail-metro"},
 	{b6.Tag{Key: "#railway", Value: "train_station"}, "rail"},
 	// The most frequent amenity tag values from: https://taginfo.openstreetmap.org/keys/amenity#values
