@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -181,6 +182,8 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 			if _, err := tr.Change.Apply(m); err != nil {
 				return nil, fmt.Errorf("%s: %w", tr.Filename, err)
 			}
+			tr.Change = nil
+			runtime.GC()
 		}
 	}
 
