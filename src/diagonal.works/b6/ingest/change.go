@@ -35,6 +35,8 @@ func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 			allocated := allocateID(WrapFeature(point, w), ns, w)
 			newIDs[point.PointID.FeatureID()] = allocated
 			point.PointID = allocated.ToPointID()
+		} else {
+			newIDs[point.PointID.FeatureID()] = point.PointID.FeatureID()
 		}
 		if err := w.AddPoint(point); err != nil {
 			return empty, err
@@ -56,6 +58,9 @@ func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 				path.PathID = allocated.ToPathID()
 			}
 		}
+		if _, ok := a.IDsToReplace[path.PathID.Namespace]; !ok {
+			newIDs[path.PathID.FeatureID()] = path.PathID.FeatureID()
+		}
 		if err := w.AddPath(path); err != nil {
 			return empty, err
 		}
@@ -76,6 +81,8 @@ func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 				allocated := allocateID(WrapFeature(area, w), ns, w)
 				newIDs[area.AreaID.FeatureID()] = allocated
 				area.AreaID = allocated.ToAreaID()
+			} else {
+				newIDs[area.AreaID.FeatureID()] = area.AreaID.FeatureID()
 			}
 		}
 		if err := w.AddArea(area); err != nil {
@@ -93,6 +100,8 @@ func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 		}
 		if _, ok := a.IDsToReplace[relation.RelationID.Namespace]; ok {
 			return empty, fmt.Errorf("Can't allocate new IDs for relations: %s", relation.RelationID)
+		} else {
+			newIDs[relation.RelationID.FeatureID()] = relation.RelationID.FeatureID()
 		}
 		if err := w.AddRelation(relation); err != nil {
 			return empty, err
@@ -105,12 +114,14 @@ func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 		if err := w.AddCollection(collection); err != nil {
 			return empty, err
 		}
+		newIDs[collection.CollectionID.FeatureID()] = collection.CollectionID.FeatureID()
 	}
 
 	for _, expression := range a.Expressions {
 		if err := w.AddExpression(expression); err != nil {
 			return empty, err
 		}
+		newIDs[expression.ExpressionID.FeatureID()] = expression.ExpressionID.FeatureID()
 	}
 
 	c := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{
