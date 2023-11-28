@@ -474,3 +474,28 @@ func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error)
 	strategy.Finish()
 	return strategy.Connections.Change(c.World), nil
 }
+
+func connectAllToNetwork(c *api.Context, features b6.Collection[any, b6.FeatureID]) (ingest.Change, error) {
+	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
+	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
+	connections := graph.NewConnections()
+	strategy := graph.InsertNewPointsIntoPaths{
+		Connections:      connections,
+		World:            c.World,
+		ClusterThreshold: b6.MetersToAngle(4.0),
+	}
+	i := features.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		if f := c.World.FindFeatureByID(i.Value()); f != nil {
+			graph.ConnectFeature(f, network, b6.MetersToAngle(500.0), c.World, strategy)
+		}
+	}
+	strategy.Finish()
+	return strategy.Connections.Change(c.World), nil
+}

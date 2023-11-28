@@ -408,7 +408,7 @@ func (c *Connections) Change(w b6.World) ingest.Change {
 	}
 	c.EachInsertedPoint(f, w)
 	ff := func(f ingest.Feature, _ int) error {
-		change.Paths = append(change.Paths, f.(*ingest.PathFeature))
+		change.Paths = append(change.Paths, f.(*ingest.PathFeature).ClonePathFeature())
 		return nil
 	}
 	c.EachAddedPath(ff)
