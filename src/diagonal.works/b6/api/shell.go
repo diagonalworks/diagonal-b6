@@ -745,6 +745,9 @@ func simplifyCallBuildingQuery(expression b6.Expression, functions SymbolArgCoun
 }
 
 func simplifyCallBuildingAndOrOrQuery(symbol string, call *b6.CallExpression) (b6.AnyExpression, bool) {
+	if len(call.Args) != 2 {
+		return nil, false
+	}
 	args := make([]*b6.QueryExpression, 0, 2)
 	for _, arg := range call.Args {
 		if q, ok := arg.AnyExpression.(*b6.QueryExpression); ok {

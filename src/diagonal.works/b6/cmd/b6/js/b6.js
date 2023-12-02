@@ -182,7 +182,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
     const roadOutlines = new VectorTileLayer({
         source: baseSource,
         style: function(feature, resolution) {
-            if (feature.get("layer") == "road") {
+            if (feature.get("layer") == "road" && feature.get("highway")) {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
                     return styles.lookupStyleWithStokeWidth("road-outline", width + 2.0);
@@ -196,7 +196,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
     const roadFills = new VectorTileLayer({
         source: baseSource,
         style: function(feature, resolution) {
-            if (feature.get("layer") == "road") {
+            if (feature.get("layer") == "road" && feature.get("highway")) {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
                     const id = idKeyFromFeature(feature);
@@ -217,6 +217,20 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
             if (feature.get("layer") == "road") {
                 if (feature.get("name")) {
                     return styles.lookupLineTextWithText("road-label", feature.get("name"));
+                }
+            }
+        },
+    });
+
+    const rails = new VectorTileLayer({
+        source: baseSource,
+        style: function(feature, resolution) {
+            if (feature.get("layer") == "road" && feature.get("railway")) {
+                const id = idKeyFromFeature(feature);
+                if (state.highlighted[id]) {
+                    return styles.lookupStyle("highlighted-rail");
+                } else {
+                    return styles.lookupStyle("rail");
                 }
             }
         },
@@ -310,6 +324,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
             boundaries,
             water,
             landuse,
+            rails,
             roadOutlines,
             roadFills,
             roadLabels,
@@ -369,7 +384,7 @@ class Stack {
         this.setupGeoJSON(this.response.proto.geoJSON, this.response.geoJSON);
         const queryLayers = this.response.proto.layers;
         for (const i in queryLayers) {
-            this.layers.push(ui.createQueryLayer(queryLayers[i].query, queryLayers[i].before));
+            this.layers.push(this.ui.createQueryLayer(queryLayers[i].query, queryLayers[i].before));
         }
     }
 
@@ -1050,6 +1065,9 @@ function renderFromProto(targets, uiElement, stack) {
        }
        renderer.update(target, stack);
     }
+    for (const e of ["click", "mousedown", "focusin", "focusout"]) {
+        targets.on(e, null);
+    }
     targets.each(f);
 }
 
@@ -1192,7 +1210,9 @@ class UI {
                 "Content-type": "application/json; charset=UTF-8"
             }
         }
-        return d3.json("/stack", post);
+        const promise = d3.json("/stack", post);
+        promise.catch((error) => showMessage(error.message));
+        return promise;
     }
 
     _renderNewStack(response, position) {
@@ -1413,8 +1433,10 @@ class UI {
 function showMessage(message, position) {
     d3.select(".message").remove();
     const div = d3.select("body").append("div").classed("message", true);
-    div.node().style.top = `${position[1]}px`;
-    div.node().style.left = `${position[0]}px`;
+    if (position) {
+        div.node().style.top = `${position[1]}px`;
+        div.node().style.left = `${position[0]}px`;
+    }
     div.text(message);
     const exit = () => {
         div.classed("exiting", true);
@@ -1587,6 +1609,7 @@ const StyleClasses = [
     "highlighted-area",
     "highlighted-path",
     "highlighted-point",
+    "highlighted-rail",
     "highlighted-road-fill",
     "highlighted-boundary",
     "outliner-blue",
@@ -1601,6 +1624,7 @@ const StyleClasses = [
     "query-path",
     "query-point",
     "query-boundary",
+    "rail",
     "road-fill",
     "road-outline",
     "road-label",
@@ -1753,7 +1777,7 @@ function setup(selector, startupResponse) {
     const shellTarget = target.append("div").classed("shell", true).classed("closed", true);
     const dockTarget = target.append("div").classed("dock", true);
     if (startupResponse.error) {
-        showMessage(startupResponse.error, [10, 10]);
+        showMessage(startupResponse.error);
         return;
     }
     const state = {highlighted: {}, bucketed: {}, showBucket: -1};

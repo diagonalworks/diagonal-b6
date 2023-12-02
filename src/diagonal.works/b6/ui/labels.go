@@ -23,7 +23,6 @@ var labelsForTag = []struct {
 	{b6.Tag{Key: "#building", Value: "residential"}, []Label{{"Residential", "Residences"}}},
 	{b6.Tag{Key: "#building", Value: "garage"}, []Label{{"Garage", "Garages"}}},
 	{b6.Tag{Key: "#building", Value: "church"}, []Label{{"Church", "Churches"}}},
-	{b6.Tag{Key: "#building", Value: "detached"}, []Label{{"Detached house", "Detached houses"}}},
 	{b6.Tag{Key: "#building", Value: "school"}, []Label{{"School", "Schools"}}},
 	{b6.Tag{Key: "#building", Value: "apartments"}, []Label{{"Apartments", "Apartments"}}},
 	{b6.Tag{Key: "#building", Value: "commercial"}, []Label{{"Commercial", "Commercial"}}},

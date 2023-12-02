@@ -11,6 +11,7 @@ import (
 	"diagonal.works/b6/geometry"
 	pb "diagonal.works/b6/proto"
 	"github.com/golang/geo/s2"
+	"gopkg.in/yaml.v2"
 )
 
 // TODO: Use constraints.Integer etc?
@@ -79,6 +80,14 @@ func (e Expression) MarshalYAML() (interface{}, error) {
 		End:   e.End,
 	}
 	return marshalChoiceYAML(&expressionChoices{}, e.AnyExpression, &y)
+}
+
+func (e Expression) Format() string {
+	if j, err := yaml.Marshal(e); err == nil {
+		return string(j)
+	} else {
+		return err.Error()
+	}
 }
 
 type expressionYAML struct {

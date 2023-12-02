@@ -18,12 +18,12 @@ class Connection:
         request.request.CopyFrom(node.to_node_proto())
         return expression.from_node_proto(self.stub.Evaluate(request).result)
 
-def connect_insecure(address):
-    channel = grpc.insecure_channel(address)
+def connect_insecure(address, channel_arguments=None):
+    channel = grpc.insecure_channel(address, options=channel_arguments)
     return Connection(api_pb2_grpc.B6Stub(channel))
 
-def connect(address, token, root_certificates=None):
+def connect(address, token, root_certificates=None, channel_arguments=None):
     channel_credentials = grpc.ssl_channel_credentials(root_certificates=root_certificates)
     credentials = grpc.composite_channel_credentials(channel_credentials, grpc.access_token_call_credentials(token))
-    channel = grpc.secure_channel(address, credentials)
+    channel = grpc.secure_channel(address, credentials, options=channel_arguments)
     return Connection(api_pb2_grpc.B6Stub(channel))

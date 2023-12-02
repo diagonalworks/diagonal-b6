@@ -144,6 +144,7 @@ func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 }
 
 var BasemapRenderRules = RenderRules{
+	{Tag: b6.Tag{Key: "#building", Value: "train_station"}, MinZoom: 12, Layer: BasemapLayerBuilding},
 	{Tag: b6.Tag{Key: "#building"}, MinZoom: 14, Layer: BasemapLayerBuilding},
 	{Tag: b6.Tag{Key: "#highway", Value: "cycleway"}, MinZoom: 16, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#highway", Value: "footway"}, MinZoom: 16, Layer: BasemapLayerRoad},
@@ -174,6 +175,7 @@ var BasemapRenderRules = RenderRules{
 	{Tag: b6.Tag{Key: "#natural", Value: "coastline"}, MinZoom: 12, Layer: BasemapLayerBoundary},
 	{Tag: b6.Tag{Key: "#natural", Value: "heath"}, MinZoom: 14, Layer: BasemapLayerLandUse},
 	{Tag: b6.Tag{Key: "#outline", Value: "contour"}, MinZoom: 14, Layer: BasemapLayerContour},
+	{Tag: b6.Tag{Key: "#railway", Value: "rail"}, MinZoom: 12, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#water"}, MinZoom: 12, Layer: BasemapLayerWater},
 	{Tag: b6.Tag{Key: "#waterway"}, MinZoom: 14, Layer: BasemapLayerWater},
 	{Tag: b6.Tag{Key: "#place", Value: "city"}, MaxZoom: 11, Layer: BasemapLayerLabel},

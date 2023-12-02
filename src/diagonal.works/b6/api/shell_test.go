@@ -1251,6 +1251,134 @@ func TestSimplifyTaggedQuery(t *testing.T) {
 	}
 }
 
+func TestSimplifyAndQuery(t *testing.T) {
+	p := &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "and",
+					},
+				},
+				Args: []*pb.NodeProto{
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_QueryValue{
+									QueryValue: &pb.QueryProto{
+										Query: &pb.QueryProto_Keyed{
+											Keyed: "#building",
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_QueryValue{
+									QueryValue: &pb.QueryProto{
+										Query: &pb.QueryProto_Keyed{
+											Keyed: "#boundary",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var e b6.Expression
+	if err := e.FromProto(p); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	simplified := Simplify(e, testFunctionArgCounts{})
+
+	expected := &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_QueryValue{
+					QueryValue: &pb.QueryProto{
+						Query: &pb.QueryProto_Intersection{
+							Intersection: &pb.QueriesProto{
+								Queries: []*pb.QueryProto{
+									&pb.QueryProto{
+										Query: &pb.QueryProto_Keyed{
+											Keyed: "#building",
+										},
+									},
+									&pb.QueryProto{
+										Query: &pb.QueryProto_Keyed{
+											Keyed: "#boundary",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	p, err := simplified.ToProto()
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if diff := cmp.Diff(expected, p, protocmp.Transform()); diff != "" {
+		t.Errorf("Unexpected (-want, +got): %s", diff)
+	}
+}
+
+func TestSimplifyingPartiallyAppliedAndQueryLeavesExpressionUnchanged(t *testing.T) {
+	p := &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "and",
+					},
+				},
+				Args: []*pb.NodeProto{
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_QueryValue{
+									QueryValue: &pb.QueryProto{
+										Query: &pb.QueryProto_Keyed{
+											Keyed: "#building",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var e b6.Expression
+	if err := e.FromProto(p); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	simplified := Simplify(e, testFunctionArgCounts{})
+
+	sp, err := simplified.ToProto()
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if diff := cmp.Diff(p, sp, protocmp.Transform()); diff != "" {
+		t.Errorf("Unexpected (-want, +got): %s", diff)
+	}
+}
+
 func TestUnparseExpression(t *testing.T) {
 	tests := []string{
 		"42",

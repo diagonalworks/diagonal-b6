@@ -166,6 +166,11 @@ form.shell-form > input {
     display: none;
 }
 
+.palette > .rail {
+    stroke: #9aa4cc;
+    stroke-width: 2px;
+}
+
 .palette > .road-outline {
     stroke: #9aa4cc;
     fill-opacity: 0;
@@ -211,6 +216,11 @@ form.shell-form > input {
     stroke: #37589f;
     stroke-width: 1;
     fill: #93acf6;
+}
+
+.palette > .highlighted-rail {
+    stroke: #37589f;
+    stroke-width: 2px;
 }
 
 .palette > .highlighted-boundary {
@@ -783,6 +793,8 @@ form.shell-form > input {
 
 .message {
     position: absolute;
+    left: 10px;
+    top: 42px;
     z-index: 1;
     padding: 12px;
     border-radius: 4px;
