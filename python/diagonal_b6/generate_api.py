@@ -22,8 +22,8 @@ EXTRA_TRAITS = {
     "QueryResult": ["QueryConversionTraits"],
 }
 
-def name_for_function(name):
-    if name in ["or", "and"]:
+def escape_name(name):
+    if name in ["or", "and", "from"]:
         return name + "_"
     return name.replace("-", "_")
 
@@ -81,13 +81,13 @@ def output_traits(t, functions, collections, hints, parents):
         print("class %s:" % name_for_traits(t))
     methods = 0
     for f in functions:            
-        if len(f["Args"]) > 0 and f["Args"][0] == t:
+        if len(f["ArgTypes"]) > 0 and f["ArgTypes"][0] == t:
             if methods == 0:
                 print("")
-            signature = ", ".join(["self"] + ["a%d: %s" % (i, hints[a]) for (i, a) in enumerate(f["Args"][1:])])
-            print("    def %s(%s) -> %s:" % (name_for_function(f["Name"]), signature, hints[f["Result"]]))
-            args = ", ".join(["self"] + ["a%d" % i for i in range(0, len(f["Args"][1:]))])
-            print("        return %s(%s)" % (name_for_function(f["Name"]), args))
+            signature = ", ".join(["self"] + ["%s: %s" % (escape_name(name), hints[a]) for (name, a) in zip(f["ArgNames"][1:], f["ArgTypes"][1:])])
+            print("    def %s(%s) -> %s:" % (escape_name(f["Name"]), signature, hints[f["Result"]]))
+            args = ", ".join(["self"] + [escape_name(name) for name in f["ArgNames"][1:]])
+            print("        return %s(%s)" % (escape_name(f["Name"]), args))
             print("")
             methods += 1
     print("    @classmethod")
@@ -103,16 +103,16 @@ def output_collection_values_traits(t, functions, collections, hints, parents):
         print("class %s:" % name_for_traits(n))
     methods = 0
     for f in functions:            
-        if len(f["Args"]) > 0 and f["Args"][0] == t:
+        if len(f["ArgTypes"]) > 0 and f["ArgTypes"][0] == t:
             if methods == 0:
                 print("")
-            signature = ", ".join(["self"] + ["a%d: %s" % (i, hints[a]) for (i, a) in enumerate(f["Args"][1:])])
-            print("    def %s(%s) -> %s:" % (name_for_function(f["Name"]), signature, name_for_collection_of_traits(f["Result"], collections)))
-            args = ", ".join(["a%d" % i for i in range(0, len(f["Args"][1:]))])
+            signature = ", ".join(["self"] + ["%s: %s" % (escape_name(name), hints[a]) for (name, a) in zip(f["ArgNames"][1:], f["ArgTypes"][1:])])
+            print("    def %s(%s) -> %s:" % (escape_name(f["Name"]), signature, name_for_collection_of_traits(f["Result"], collections)))
+            args = ", ".join([escape_name(name) for name in f["ArgNames"][1:]])
             if len(args) > 0:
-                print("        return self.map(Lambda(lambda x: %s(x, %s), [self._values()]))" % (name_for_function(f["Name"]), args))
+                print("        return self.map(Lambda(lambda x: %s(x, %s), [self._values()]))" % (escape_name(f["Name"]), args))
             else:
-                print("        return self.map(Lambda(%s, [self._values()]))" % name_for_function(f["Name"]))
+                print("        return self.map(Lambda(%s, [self._values()]))" % escape_name(f["Name"]))
             print("")
             methods += 1
     if methods == 0:
@@ -135,7 +135,7 @@ def output_function_arg_result(t, hints):
     print("    def __init__(self, node):")
     print("        Result.__init__(self, node)")
     print("")
-    args = ", ".join(["a%d : %s" % (i, hints[at]) for (i, at) in enumerate(t["Args"])])
+    args = ", ".join(["a%d : %s" % (i, hints[at]) for (i, at) in enumerate(t["ArgTypes"])])
     print("    def __call__(self, %s) -> %s:" % (args, hints[t["Result"]]))
     print("        raise NotImplementedError()")
     print("")
@@ -200,7 +200,7 @@ def main():
             else:
                 parents[t["Name"]] = ["AnyAnyCollection", name_for_collection_values(t["Value"])]
     for t in api["FunctionArgs"]:
-        hints[t["Name"]] = "Callable[[%s],%s]" % (",".join([hints[a] for a in t["Args"]]), hints[t["Result"]])
+        hints[t["Name"]] = "Callable[[%s],%s]" % (",".join([hints[a] for a in t["ArgTypes"]]), hints[t["Result"]])
 
     for t in traits:
         for a in ancestors(t, parents):
@@ -234,17 +234,19 @@ def main():
         if f["Name"] in SPECIAL_FUNCTIONS:
             print("%s = diagonal_b6.expression._%s" % (f["Name"], f["Name"]))
         else:
-            signature_args = ["a%d: %s" % (i, hints[a]) for (i, a) in enumerate(f["Args"])]
+            signature_args = ["%s: %s" % (escape_name(name), hints[a]) for (name, a) in zip(f["ArgNames"], f["ArgTypes"])]
             if f["IsVariadic"]:
                 signature_args[-1] = "*" + signature_args[-1]
             signature = ", ".join(signature_args)
-            print("def %s(%s) -> %s:" % (name_for_function(f["Name"]), signature, hints[f["Result"]]))
-            n = len(f["Args"])
+            print("def %s(%s) -> %s:" % (escape_name(f["Name"]), signature, hints[f["Result"]]))
+            if len(f["Doc"]) > 0:
+                print("    \"\"\"%s\"\"\"" % (f["Doc"],))
+            n = len(f["ArgTypes"])
             if f["IsVariadic"]:
                 n -= 1
-            print("    args = [%s]" % ", ".join(["a%d" % i for i in range(0, n)]))
+            print("    args = [%s]" % ", ".join([escape_name(name) for name in f["ArgNames"][0:n]]))
             if f["IsVariadic"]:
-                print("    args.extend(a%d)" % (len(f["Args"]) - 1))
+                print("    args.extend(%s)" % (escape_name(f["ArgNames"][-1],)))
             print("    return %s(Call(Symbol(%s), args))" % (name_for_result(f["Result"]), repr(f["Name"])))
         print("")
 

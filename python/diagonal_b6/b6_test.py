@@ -2,13 +2,13 @@
 
 import argparse
 import json
-from operator import ge
 import os
 import s2sphere
 import subprocess
 import time
 import urllib.request
 import unittest
+import sys
 
 import diagonal_b6 as b6
 
@@ -618,9 +618,13 @@ def main():
             if method.startswith("test_"):
                 suite.addTest(B6Test(method, connection))
     runner = unittest.TextTestRunner()
-    runner.run(suite)
+    result = runner.run(suite)
     p.terminate()
     p.wait()
+    if result.wasSuccessful():
+        sys.exit(0)
+    else:
+        sys.exit(1)
 
 def wait_until_ready(p, http_address):
     max_attempts = 20
