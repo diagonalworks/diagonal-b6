@@ -39,6 +39,9 @@ b6-connect:
 
 b6-api:
 	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	bin/${TARGETPLATFORM}/b6-api --docs > src/diagonal.works/b6/api/functions/docs.generated
+	mv src/diagonal.works/b6/api/functions/docs.generated src/diagonal.works/b6/api/functions/docs.go
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
 proto: proto-go proto-python
 
@@ -82,7 +85,7 @@ python/diagonal_b6/%_pb2_grpc.py: proto/%.proto
 	mv $@.modified $@
 
 python/diagonal_b6/api_generated.py: proto-python b6-api
-	bin/${TARGETPLATFORM}/b6-api | python/diagonal_b6/generate_api.py > $@
+	bin/${TARGETPLATFORM}/b6-api --functions | python/diagonal_b6/generate_api.py > $@
 
 python/pyproject.toml: python/pyproject.toml.template python/VERSION
 	sed -e s/VERSION/`cat python/VERSION`/ $< > $@

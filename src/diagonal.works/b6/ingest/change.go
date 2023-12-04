@@ -56,9 +56,10 @@ func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 				allocated := allocateID(WrapFeature(path, w), ns, w)
 				newIDs[path.PathID.FeatureID()] = allocated
 				path.PathID = allocated.ToPathID()
+			} else {
+				newIDs[path.PathID.FeatureID()] = path.PathID.FeatureID()
 			}
-		}
-		if _, ok := a.IDsToReplace[path.PathID.Namespace]; !ok {
+		} else {
 			newIDs[path.PathID.FeatureID()] = path.PathID.FeatureID()
 		}
 		if err := w.AddPath(path); err != nil {
@@ -84,6 +85,8 @@ func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 			} else {
 				newIDs[area.AreaID.FeatureID()] = area.AreaID.FeatureID()
 			}
+		} else {
+			newIDs[area.AreaID.FeatureID()] = area.AreaID.FeatureID()
 		}
 		if err := w.AddArea(area); err != nil {
 			return empty, err

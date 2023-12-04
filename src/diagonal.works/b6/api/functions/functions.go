@@ -4,11 +4,20 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
 )
+
+func (d Doc) ToGoLiteral() string {
+	argNames := make([]string, len(d.ArgNames))
+	for i := range d.ArgNames {
+		argNames[i] = fmt.Sprintf("%q", d.ArgNames[i])
+	}
+	return fmt.Sprintf("Doc{Doc: %q, ArgNames: []string{%s}}", d.Doc, strings.Join(argNames, ","))
+}
 
 var functions = api.FunctionSymbols{
 	// map
@@ -156,6 +165,15 @@ var functions = api.FunctionSymbols{
 
 func Functions() api.FunctionSymbols {
 	return functions // Validated in init()
+}
+
+type Doc struct {
+	Doc      string
+	ArgNames []string
+}
+
+func FunctionDocs() map[string]Doc {
+	return functionDocs
 }
 
 var functionAdaptors = []interface{}{
