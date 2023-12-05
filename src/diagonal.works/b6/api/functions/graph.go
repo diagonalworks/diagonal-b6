@@ -41,6 +41,7 @@ func newShortestPathSearch(origin b6.Feature, mode string, distance float64, fea
 	return s, nil
 }
 
+// Deprecated.
 func reachablePoints(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, b6.PointFeature], error) {
 	points := b6.ArrayFeatureCollection[b6.PointFeature](make([]b6.PointFeature, 0))
 	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
@@ -101,6 +102,9 @@ func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature
 	return features.Collection(), err
 }
 
+// Return the a collection of the features reachable from the given origin via the given mode, within the given distance in meters, that match the given query.
+// Mode can be 'bus', 'car' or 'walk'.
+// Deprecated. Use accessible.
 func reachable(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, b6.Feature], error) {
 	return FindReachableFeaturesWithPathStates(context, origin, mode, distance, query, nil)
 }
@@ -175,7 +179,23 @@ func (o *odCollection) Less(i, j int) bool {
 	return o.origins[i].FeatureID().Less(o.origins[j].FeatureID())
 }
 
-func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable], destinations b6.Query, distance float64, options b6.UntypedCollection) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+// Return the a collection of the features reachable from the given origins, within the given duration in seconds, that match the given query.
+// Keys of the collection are origins, values are reachable destinations.
+// Options are passed as tags containing the mode, and mode specific values. Examples include:
+// Walking, with the default speed of 4.5kmh⁻¹:
+// mode=walk
+// Walking, a speed of 4.5kmh⁻¹:
+// mode=walk, speed=3.0
+// Transit at peak times:
+// mode=transit
+// Transit at off-peak times:
+// mode=transit, peak=no
+// Walking, with the resulting collection flipped such that keys are
+// destinations and values are origins. Useful for efficiency if you assume
+// symmetry, and the number of destinations is considerably smaller than the
+// number of origins:
+// mode=walk, flip=yes
+func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable], destinations b6.Query, duration float64, options b6.UntypedCollection) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 	tags, err := api.CollectionToTags(options)
 	if err != nil {
 		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
@@ -225,7 +245,7 @@ func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable
 		g.Go(func() error {
 			for j := range c {
 				if origin := context.World.FindFeatureByID(os[j]); origin != nil {
-					ds[j] = accessibleFromOrigin(ds[j], origin, destinations, weights, distance, context.World)
+					ds[j] = accessibleFromOrigin(ds[j], origin, destinations, weights, duration, context.World)
 				}
 			}
 			return nil
@@ -257,9 +277,14 @@ done:
 	}, err
 }
 
-func filterAccessible(context *api.Context, accessible b6.Collection[b6.FeatureID, b6.FeatureID], filter b6.Query) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+// Return a collection containing only the values of the given collection that match the given query.
+// If no values for a key match the query, emit a single invalid feature ID
+// for that key, allowing callers to count the number of keys with no valid
+// values.
+// Keys are taken from the given collection.
+func filterAccessible(context *api.Context, collection b6.Collection[b6.FeatureID, b6.FeatureID], filter b6.Query) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 	filtered := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}
-	i := accessible.Begin()
+	i := collection.Begin()
 	last := b6.FeatureIDInvalid
 	empty := true
 	for {
@@ -323,16 +348,15 @@ func weightsFromMode(mode string) (graph.Weights, error) {
 	return nil, fmt.Errorf("Unknown travel mode %q", mode)
 }
 
+// Return the closest feature from the given origin via the given mode, within the given distance in meters, matching the given query.
+// See reachable for mode values.
 func closestFeature(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Feature, error) {
 	feature, _, err := findClosest(context, origin, mode, distance, query)
 	return feature, err
 }
 
-// findClosestFeatureDistance returns the distance to the closest matching feature.
-// Ideally, we'd either return the distance along with the feature as a pair from, or
-// return a new primitive Route instance that described the route to that feature,
-// allowing distance to be derived. Neither are possible right now, so this is a
-// stopgap. TODO: Improve this API.
+// Return the distance through the graph of the closest feature from the given origin via the given mode, within the given distance in meters, matching the given query.
+// See reachable for mode values.
 func closestFeatureDistance(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (float64, error) {
 	_, distance, err := findClosest(context, origin, mode, distance, query)
 	return distance, err
@@ -372,6 +396,9 @@ func findClosest(context *api.Context, origin b6.Feature, mode string, distance 
 	return nil, 0.0, err
 }
 
+// Return a collection of the paths used to reach all features matching the given query from the given origin via the given mode, within the given distance in meters.
+// Keys are the paths used, values are the number of times that path was used during traversal.
+// See reachable for mode values.
 func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, int], error) {
 	features := &b6.ArrayCollection[b6.FeatureID, int]{
 		Keys:   make([]b6.FeatureID, 0),
@@ -422,6 +449,7 @@ func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, 
 	return features.Collection(), err
 }
 
+// Return the area formed by the convex hull of the features matching the given query reachable from the given origin via the given mode, within the given distance in meters.
 func reachableArea(context *api.Context, origin b6.Feature, mode string, distance float64) (float64, error) {
 	area := 0.0
 	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
@@ -438,6 +466,7 @@ func reachableArea(context *api.Context, origin b6.Feature, mode string, distanc
 	return area, err
 }
 
+// Add a path that connects the two given points, if they're not already directly connected.
 func connect(c *api.Context, a b6.PointFeature, b b6.PointFeature) (ingest.Change, error) {
 	add := &ingest.AddFeatures{
 		IDsToReplace: map[b6.Namespace]b6.Namespace{b6.NamespacePrivate: b6.NamespaceDiagonalAccessPoints},
@@ -461,6 +490,11 @@ func connect(c *api.Context, a b6.PointFeature, b b6.PointFeature) (ingest.Chang
 	return add, nil
 }
 
+// Add a path and point to connect given feature to the street network.
+// The street network is defined at the set of paths tagged #highway that
+// allow traversal of more than 500m. A point is added to the closest
+// network path at the projection of the origin point on that path, unless
+// that point is within 4m of an existing path point.
 func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error) {
 	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
@@ -475,6 +509,10 @@ func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error)
 	return strategy.Connections.Change(c.World), nil
 }
 
+// Add paths and points to connect the given collection of features to the
+// network. See connect-to-network for connection details.
+// More efficient than using map with connect-to-network, as the street
+// network is only computed once.
 func connectAllToNetwork(c *api.Context, features b6.Collection[any, b6.FeatureID]) (ingest.Change, error) {
 	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)

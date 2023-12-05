@@ -44,9 +44,11 @@ func (v *mapCollection) Value() interface{} {
 	return v.v
 }
 
-func map_(context *api.Context, collection b6.UntypedCollection, f func(*api.Context, interface{}) (interface{}, error)) (b6.Collection[any, any], error) {
+// Return a collection with the result of applying the given function to each value.
+// Keys are unmodified.
+func map_(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, interface{}) (interface{}, error)) (b6.Collection[any, any], error) {
 	return b6.Collection[any, any]{
-		AnyCollection: &mapCollection{c: collection, f: f, context: context},
+		AnyCollection: &mapCollection{c: collection, f: function, context: context},
 	}, nil
 }
 
@@ -93,20 +95,25 @@ func (v *mapItemsCollection) Value() interface{} {
 	return v.v
 }
 
-func mapItems(context *api.Context, collection b6.UntypedCollection, f func(*api.Context, api.Pair) (interface{}, error)) (b6.Collection[any, any], error) {
+// Return a collection of the result of applying the given function to each pair(key, value).
+// Keys are unmodified.
+func mapItems(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, api.Pair) (interface{}, error)) (b6.Collection[any, any], error) {
 	return b6.Collection[any, any]{
-		AnyCollection: &mapItemsCollection{c: collection, f: f, context: context},
+		AnyCollection: &mapItemsCollection{c: collection, f: function, context: context},
 	}, nil
 }
 
+// Return a pair containing the given values.
 func pair(c *api.Context, first interface{}, second interface{}) (api.Pair, error) {
 	return api.AnyAnyPair{first, second}, nil
 }
 
+// Return the first value of the given pair.
 func first(c *api.Context, pair api.Pair) (interface{}, error) {
 	return pair.First(), nil
 }
 
+// Return the second value of the given pair.
 func second(c *api.Context, pair api.Pair) (interface{}, error) {
 	return pair.Second(), nil
 }
@@ -220,11 +227,14 @@ func (m *mapParallelCollection) run() {
 	}
 }
 
-func mapParallel(context *api.Context, collection b6.UntypedCollection, f func(*api.Context, interface{}) (interface{}, error)) (b6.Collection[any, any], error) {
+// Return a collection with the result of applying the given function to each value.
+// Keys are unmodified, and function application occurs in parallel, bounded
+// by the number of CPU cores allocated to b6.
+func mapParallel(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, interface{}) (interface{}, error)) (b6.Collection[any, any], error) {
 	if context.Cores < 2 {
-		return map_(context, collection, f)
+		return map_(context, collection, function)
 	}
 	return b6.Collection[any, any]{
-		AnyCollection: &mapParallelCollection{c: collection, f: f, context: context},
+		AnyCollection: &mapParallelCollection{c: collection, f: function, context: context},
 	}, nil
 }

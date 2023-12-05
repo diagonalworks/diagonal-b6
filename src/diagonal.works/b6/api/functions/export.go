@@ -8,6 +8,10 @@ import (
 	"diagonal.works/b6/ingest/compact"
 )
 
+// Write the current world to the given filename in the b6 compact index format.
+// As the file is written by the b6 server process, the filename it relative
+// to the filesystems it sees. Writing files to cloud storage is
+// supported.
 func exportWorld(c *api.Context, filename string) (int, error) {
 	// TODO: Shouldn't return anything
 	if !c.FileIOAllowed {

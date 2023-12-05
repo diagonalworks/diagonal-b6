@@ -8,10 +8,12 @@ import (
 	"diagonal.works/b6/api"
 )
 
+// Deprecated
 func emptyPointCollection(context *api.Context) (b6.Collection[int, b6.Point], error) {
 	return b6.ArrayValuesCollection[b6.Point]{}.Collection(), nil
 }
 
+// Deprecated
 func addPoint(context *api.Context, p b6.Point, c b6.Collection[int, b6.Point]) (b6.Collection[int, b6.Point], error) {
 	// TODO: We can potentially fast-path this if c is an arrayPointCollection by
 	// modifying the underlying slices, and if not, then add a wrapper that
@@ -36,6 +38,7 @@ func addPoint(context *api.Context, p b6.Point, c b6.Collection[int, b6.Point]) 
 	return values.Collection(), nil
 }
 
+// Return a collection of the given key value pairs.
 func collection(_ *api.Context, pairs ...interface{}) (b6.Collection[any, any], error) {
 	c := &b6.ArrayCollection[interface{}, interface{}]{
 		Keys:   make([]interface{}, len(pairs)),
@@ -92,8 +95,9 @@ func (t *takeCollection) Count() (int, bool) {
 
 var _ b6.AnyCollection[any, any] = &takeCollection{}
 
-func take(_ *api.Context, c b6.UntypedCollection, n int) (b6.Collection[any, any], error) {
-	return b6.Collection[any, any]{AnyCollection: &takeCollection{c: c, n: n}}, nil
+// Return a collection with the first n entries of the given collection.
+func take(_ *api.Context, collection b6.UntypedCollection, n int) (b6.Collection[any, any], error) {
+	return b6.Collection[any, any]{AnyCollection: &takeCollection{c: collection, n: n}}, nil
 }
 
 // TODO: Don't just use anyanypair, use an int.
@@ -129,8 +133,10 @@ func (h *topIntHeap) Pop() any {
 	return x
 }
 
-func top(_ *api.Context, c b6.UntypedCollection, n int) (b6.Collection[any, any], error) {
-	i := c.BeginUntyped()
+// Return a collection with the n entries from the given collection with the greatest values.
+// Requires the values of the given collection to be integers or floats.
+func top(_ *api.Context, collection b6.UntypedCollection, n int) (b6.Collection[any, any], error) {
+	i := collection.BeginUntyped()
 	var err error
 	first := true
 	float := false
@@ -223,10 +229,13 @@ func (f *filterCollection) Count() (int, bool) {
 
 var _ b6.AnyCollection[any, any] = &filterCollection{}
 
-func filter(context *api.Context, c b6.UntypedCollection, f func(*api.Context, interface{}) (bool, error)) (b6.Collection[any, any], error) {
-	return b6.Collection[any, any]{AnyCollection: &filterCollection{c: c, f: f, context: context}}, nil
+// Return a collection of the items of the given collection for which the value of the given function applied to each value is true.
+func filter(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, interface{}) (bool, error)) (b6.Collection[any, any], error) {
+	return b6.Collection[any, any]{AnyCollection: &filterCollection{c: collection, f: function, context: context}}, nil
 }
 
+// Return a collection of the result of summing the values of each item with the same key.
+// Requires values to be integers.
 func sumByKey(_ *api.Context, c b6.Collection[any, int]) (b6.Collection[any, int], error) {
 	counts := make(map[interface{}]int)
 	i := c.Begin()
@@ -251,9 +260,10 @@ func sumByKey(_ *api.Context, c b6.Collection[any, int]) (b6.Collection[any, int
 	return r.Collection(), nil
 }
 
-func countValues(_ *api.Context, c b6.Collection[any, any]) (b6.Collection[any, int], error) {
+// Return a collection of the number of occurances of each value in the given collection.
+func countValues(_ *api.Context, collection b6.Collection[any, any]) (b6.Collection[any, int], error) {
 	counts := make(map[interface{}]int)
-	i := c.Begin()
+	i := collection.Begin()
 	for {
 		ok, err := i.Next()
 		if err != nil {
@@ -318,12 +328,14 @@ func (f *flattenCollection) Count() (int, bool) {
 
 var _ b6.AnyCollection[any, any] = &flattenCollection{}
 
-func flatten(_ *api.Context, c b6.Collection[any, b6.UntypedCollection]) (b6.Collection[any, any], error) {
+// Return a collection with keys and values taken from the collections that form the values of the given collection.
+func flatten(_ *api.Context, collection b6.Collection[any, b6.UntypedCollection]) (b6.Collection[any, any], error) {
 	return b6.Collection[any, any]{
-		AnyCollection: &flattenCollection{c: c},
+		AnyCollection: &flattenCollection{c: collection},
 	}, nil
 }
 
-func histogram(co *api.Context, c b6.UntypedCollection) (b6.UntypedCollection, error) {
-	return &api.HistogramCollection{UntypedCollection: c}, nil
+// Cause the given collection to be rendered as a histogram in the b6 UI, returning the same collection.
+func histogram(c *api.Context, collection b6.UntypedCollection) (b6.UntypedCollection, error) {
+	return &api.HistogramCollection{UntypedCollection: collection}, nil
 }

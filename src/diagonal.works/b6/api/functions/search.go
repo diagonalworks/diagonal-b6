@@ -47,12 +47,16 @@ func (s *searchFeatureCollection) Count() (int, bool) {
 
 var _ b6.AnyCollection[b6.FeatureID, b6.Feature] = &searchFeatureCollection{}
 
+// Return a collection of the features present in the world that match the given query.
+// Keys are IDs, and values are features.
 func find(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.Feature], error) {
 	return b6.Collection[b6.FeatureID, b6.Feature]{
 		AnyCollection: &searchFeatureCollection{query: query, w: context.World},
 	}, nil
 }
 
+// Return a collection of the point features present in the world that match the given query.
+// Keys are IDs, and values are features.
 func findPointFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.PointFeature], error) {
 	tq := b6.Typed{Type: b6.FeatureTypePoint, Query: query}
 	c := b6.Collection[b6.FeatureID, b6.Feature]{
@@ -61,6 +65,8 @@ func findPointFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.F
 	return b6.AdaptCollection[b6.FeatureID, b6.PointFeature](c), nil
 }
 
+// Return a collection of the path features present in the world that match the given query.
+// Keys are IDs, and values are features.
 func findPathFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.PathFeature], error) {
 	tq := b6.Typed{Type: b6.FeatureTypePath, Query: query}
 	c := b6.Collection[b6.FeatureID, b6.Feature]{
@@ -69,6 +75,8 @@ func findPathFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.Fe
 	return b6.AdaptCollection[b6.FeatureID, b6.PathFeature](c), nil
 }
 
+// Return a collection of the area features present in the world that match the given query.
+// Keys are IDs, and values are features.
 func findAreaFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.AreaFeature], error) {
 	tq := b6.Typed{Type: b6.FeatureTypeArea, Query: query}
 	c := b6.Collection[b6.FeatureID, b6.Feature]{
@@ -77,6 +85,8 @@ func findAreaFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.Fe
 	return b6.AdaptCollection[b6.FeatureID, b6.AreaFeature](c), nil
 }
 
+// Return a collection of the relation features present in the world that match the given query.
+// Keys are IDs, and values are features.
 func findRelationFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.RelationFeature], error) {
 	tq := b6.Typed{Type: b6.FeatureTypeRelation, Query: query}
 	c := b6.Collection[b6.FeatureID, b6.Feature]{
@@ -85,8 +95,9 @@ func findRelationFeatures(context *api.Context, query b6.Query) (b6.Collection[b
 	return b6.AdaptCollection[b6.FeatureID, b6.RelationFeature](c), nil
 }
 
-func intersecting(context *api.Context, g b6.Geometry) (b6.Query, error) {
-	switch g := g.(type) {
+// Return a query that will match features that intersect the given geometry.
+func intersecting(context *api.Context, geometry b6.Geometry) (b6.Query, error) {
+	switch g := geometry.(type) {
 	case b6.Point:
 		return b6.IntersectsPoint{Point: g.Point()}, nil
 	case b6.Path:
@@ -97,10 +108,12 @@ func intersecting(context *api.Context, g b6.Geometry) (b6.Query, error) {
 	return b6.Empty{}, nil
 }
 
+// Return a query that will match features that intersect a spherical cap centred on the given point, with the given radius in meters.
 func intersectingCap(context *api.Context, center b6.Point, radius float64) (b6.Query, error) {
 	return b6.NewIntersectsCap(s2.CapFromCenterAngle(center.Point(), b6.MetersToAngle(radius))), nil
 }
 
+// Return a query that will match point features.
 func typePoint(context *api.Context) (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_Typed{
@@ -116,6 +129,7 @@ func typePoint(context *api.Context) (*pb.QueryProto, error) {
 	}, nil
 }
 
+// Return a query that will match path features.
 func typePath(context *api.Context) (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_Typed{
@@ -131,6 +145,7 @@ func typePath(context *api.Context) (*pb.QueryProto, error) {
 	}, nil
 }
 
+// Return a query that will match area features.
 func typeArea(context *api.Context) (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_Typed{
@@ -146,30 +161,39 @@ func typeArea(context *api.Context) (*pb.QueryProto, error) {
 	}, nil
 }
 
+// Return a query that will match features that intersect the given area.
+// Deprecated. Use intersecting.
 func within(context *api.Context, a b6.Area) (b6.Query, error) {
 	return b6.IntersectsMultiPolygon{MultiPolygon: a.MultiPolygon()}, nil
 }
 
+// Return a query that will match features that intersect a spherical cap centred on the given point, with the given radius in meters.
+// Deprecated. Use intersecting-cap.
 func withinCap(context *api.Context, p b6.Point, radius float64) (b6.Query, error) {
 	return b6.NewIntersectsCap(s2.CapFromCenterAngle(p.Point(), b6.MetersToAngle(radius))), nil
 }
 
+// Return a query that will match features tagged with the given key and value.
 func tagged(context *api.Context, key string, value string) (b6.Query, error) {
 	return b6.Tagged{Key: key, Value: value}, nil
 }
 
+// Return a query that will match features tagged with the given key independent of value.
 func keyed(context *api.Context, key string) (b6.Query, error) {
 	return b6.Keyed{Key: key}, nil
 }
 
+// Return a query that will match features that match both the given queries.
 func and(context *api.Context, a b6.Query, b b6.Query) (b6.Query, error) {
 	return b6.Intersection{a, b}, nil
 }
 
+// Return a query that will match features that match either of the given queries.
 func or(context *api.Context, a b6.Query, b b6.Query) (b6.Query, error) {
 	return b6.Union{a, b}, nil
 }
 
+// Return a query that will match any feature.
 func all(context *api.Context) (b6.Query, error) {
 	return b6.All{}, nil
 }

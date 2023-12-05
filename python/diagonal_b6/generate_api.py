@@ -240,7 +240,7 @@ def main():
             signature = ", ".join(signature_args)
             print("def %s(%s) -> %s:" % (escape_name(f["Name"]), signature, hints[f["Result"]]))
             if len(f["Doc"]) > 0:
-                print("    \"\"\"%s\"\"\"" % (f["Doc"],))
+                print("    \"\"\"%s\"\"\"" % (f["Doc"].strip(),))
             n = len(f["ArgTypes"])
             if f["IsVariadic"]:
                 n -= 1

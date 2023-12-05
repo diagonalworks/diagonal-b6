@@ -9,6 +9,7 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+// Deprecated
 func tileIDs(c *api.Context, feature b6.Feature) (b6.Collection[b6.FeatureID, int], error) {
 	ids := b6.ArrayCollection[b6.FeatureID, int]{}
 	if a, ok := feature.(b6.AreaFeature); ok {
@@ -27,6 +28,7 @@ func tileIDs(c *api.Context, feature b6.Feature) (b6.Collection[b6.FeatureID, in
 	return ids.Collection(), nil
 }
 
+// Deprecated
 func tileIDsHex(c *api.Context, feature b6.Feature) (b6.Collection[b6.FeatureID, string], error) {
 	ids := b6.ArrayCollection[b6.FeatureID, string]{}
 	if a, ok := feature.(b6.AreaFeature); ok {
@@ -45,10 +47,11 @@ func tileIDsHex(c *api.Context, feature b6.Feature) (b6.Collection[b6.FeatureID,
 	return ids.Collection(), nil
 }
 
-func tilePaths(c *api.Context, g b6.Geometry, zoom int) (b6.Collection[int, string], error) {
+// Return the URL paths for the tiles containing the given geometry at the given zoom level.
+func tilePaths(c *api.Context, geometry b6.Geometry, zoom int) (b6.Collection[int, string], error) {
 	coverer := s2.RegionCoverer{MaxLevel: 20, MinLevel: 0}
 	paths := make([]string, 0)
-	for _, t := range b6.CoverCellUnionWithTiles(g.Covering(coverer), uint(zoom)) {
+	for _, t := range b6.CoverCellUnionWithTiles(geometry.Covering(coverer), uint(zoom)) {
 		paths = append(paths, t.String())
 	}
 	return b6.ArrayValuesCollection[string](paths).Collection(), nil
