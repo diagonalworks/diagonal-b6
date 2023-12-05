@@ -8,6 +8,7 @@ import (
 	"diagonal.works/b6/api"
 )
 
+// Return a divided by b.
 func divide(context *api.Context, a b6.Number, b b6.Number) (b6.Number, error) {
 	if a, ok := a.(b6.IntNumber); ok {
 		if b, ok := b.(b6.IntNumber); ok {
@@ -21,10 +22,12 @@ func divide(context *api.Context, a b6.Number, b b6.Number) (b6.Number, error) {
 	return b6.FloatNumber(float64(a.(b6.FloatNumber)) / float64(b.(b6.FloatNumber))), nil
 }
 
+// Deprecated.
 func divideInt(context *api.Context, a int, b float64) (float64, error) {
 	return float64(a) / b, nil
 }
 
+// Return a added to b.
 func add(context *api.Context, a b6.Number, b b6.Number) (b6.Number, error) {
 	if a, ok := a.(b6.IntNumber); ok {
 		if b, ok := b.(b6.IntNumber); ok {
@@ -38,10 +41,12 @@ func add(context *api.Context, a b6.Number, b b6.Number) (b6.Number, error) {
 	return b6.FloatNumber(float64(a.(b6.FloatNumber)) + float64(b.(b6.FloatNumber))), nil
 }
 
+// Deprecated.
 func addInts(context *api.Context, a int, b int) (int, error) {
 	return a + b, nil
 }
 
+// Return the given value, unless it falls outside the given inclusive bounds, in which case return the boundary.
 func clamp(context *api.Context, v int, low int, high int) (int, error) {
 	if v < low {
 		return low, nil
@@ -51,6 +56,7 @@ func clamp(context *api.Context, v int, low int, high int) (int, error) {
 	return v, nil
 }
 
+// Return true if a is greater than b.
 func gt(context *api.Context, a interface{}, b interface{}) (bool, error) {
 	return api.Greater(a, b)
 }
@@ -68,9 +74,9 @@ func (b byIndex) Less(i, j int) bool {
 	return b.values[b.indices[i]] < b.values[b.indices[j]]
 }
 
-// TODO: percentiles inefficiently calculates the exact percentile by sorting the entire
-// collection. We could use a histogram sketch instead, maybe constructed in the
-// background with Collection
+// Return a collection where values represent the perentile of the corresponding value in the given collection.
+// The returned collection is ordered by percentile, with keys drawn from the
+// given collection.
 func percentiles(context *api.Context, collection b6.Collection[interface{}, float64]) (b6.Collection[interface{}, float64], error) {
 	keys := make([]interface{}, 0)
 	values := make([]float64, 0)
@@ -103,6 +109,9 @@ func percentiles(context *api.Context, collection b6.Collection[interface{}, flo
 	return b6.ArrayCollection[interface{}, float64]{Keys: keys, Values: values}.Collection(), nil
 }
 
+// Return the number of items in the given collection.
+// The function will not evaluate and traverse the entire collection if it's possible to count
+// the collection efficiently.
 func count(context *api.Context, collection b6.Collection[any, any]) (int, error) {
 	if n, ok := collection.Count(); ok {
 		return n, nil

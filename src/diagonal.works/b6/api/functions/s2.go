@@ -9,6 +9,7 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+// Return a collection of points representing the centroids of s2 cells that cover the given area between the given levels.
 func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (b6.Collection[string, b6.Point], error) {
 	coverer := s2.RegionCoverer{MinLevel: minLevel, MaxLevel: maxLevel}
 	cells := make(map[s2.CellID]struct{})
@@ -26,6 +27,7 @@ func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (b
 	return b6.ArrayCollection[string, b6.Point]{Keys: keys, Values: values}.Collection(), nil
 }
 
+// Return a collection of points representing the centroids of s2 cells that cover the given area at the given level.
 func s2Grid(context *api.Context, area b6.Area, level int) (b6.Collection[int, string], error) {
 	coverer := s2.RegionCoverer{MinLevel: level, MaxLevel: level}
 	cells := make(map[s2.CellID]struct{})
@@ -42,6 +44,7 @@ func s2Grid(context *api.Context, area b6.Area, level int) (b6.Collection[int, s
 	return b6.ArrayValuesCollection[string](tokens).Collection(), nil
 }
 
+// Return a collection of of s2 cells tokens that cover the given area at the given level.
 func s2Covering(context *api.Context, area b6.Area, minLevel int, maxLevel int) (b6.Collection[int, string], error) {
 	coverer := s2.RegionCoverer{MinLevel: minLevel, MaxLevel: maxLevel}
 	cells := make(s2.CellUnion, 0, 4)
@@ -55,10 +58,12 @@ func s2Covering(context *api.Context, area b6.Area, minLevel int, maxLevel int) 
 	return b6.ArrayValuesCollection[string](tokens).Collection(), nil
 }
 
+// Return a collection the center of the s2 cell with the given token.
 func s2Center(context *api.Context, token string) (b6.Point, error) {
 	return b6.PointFromS2Point(s2.CellIDFromToken(token).Point()), nil
 }
 
+// Return the bounding area of the s2 cell with the given token.
 func s2Polygon(context *api.Context, token string) (b6.Area, error) {
 	cell := s2.CellFromCellID(s2.CellIDFromToken(token))
 	points := make([]s2.Point, 4)

@@ -57,6 +57,7 @@ func (s *sequentialIDFactory) AllocateForPoint(t b6.FeatureType, p s2.Point) b6.
 	return b6.FeatureID{Type: t, Namespace: b6.NamespacePrivate, Value: value}
 }
 
+// Return the geojson represented by the given string.
 func parseGeoJSON(c *api.Context, s string) (geojson.GeoJSON, error) {
 	g, err := geojson.Unmarshal([]byte(s))
 	if err != nil {
@@ -65,6 +66,10 @@ func parseGeoJSON(c *api.Context, s string) (geojson.GeoJSON, error) {
 	return g, nil
 }
 
+// Return the geojson contained in the given file.
+// As the file is read by the b6 server process, the filename it relative
+// to the filesystems it sees. Reading from files on cloud storage is
+// supported.
 func parseGeoJSONFile(c *api.Context, filename string) (geojson.GeoJSON, error) {
 	if !c.FileIOAllowed {
 		return nil, fmt.Errorf("File IO is not allowed")
@@ -93,16 +98,25 @@ func parseGeoJSONFile(c *api.Context, filename string) (geojson.GeoJSON, error) 
 	return g, nil
 }
 
-func importGeoJSON(c *api.Context, g geojson.GeoJSON, namespace string) (ingest.Change, error) {
+// Add features from the given geojson to the world.
+// IDs are formed from the given namespace, and the index of the feature
+// within the geojson collection (or 0, if a single feature is used).
+func importGeoJSON(c *api.Context, features geojson.GeoJSON, namespace string) (ingest.Change, error) {
 	add := &ingest.AddFeatures{
 		IDsToReplace: map[b6.Namespace]b6.Namespace{
 			b6.NamespacePrivate: b6.Namespace(namespace),
 		},
 	}
-	add.FillFromGeoJSON(g)
+	add.FillFromGeoJSON(features)
 	return add, nil
 }
 
+// Add features from the given geojson file to the world.
+// IDs are formed from the given namespace, and the index of the feature
+// within the geojson collection (or 0, if a single feature is used).
+// As the file is read by the b6 server process, the filename it relative
+// to the filesystems it sees. Reading from files on cloud storage is
+// supported.
 func importGeoJSONFile(c *api.Context, filename string, namespace string) (ingest.Change, error) {
 	if !c.FileIOAllowed {
 		return nil, fmt.Errorf("File IO is not allowed")
@@ -134,6 +148,7 @@ func importGeoJSONFile(c *api.Context, filename string, namespace string) (inges
 	return add, nil
 }
 
+// Return the areas present in the given geojson.
 func geojsonAreas(c *api.Context, g geojson.GeoJSON) (b6.Collection[int, b6.Area], error) {
 	polygons := g.ToS2Polygons()
 	collection := b6.ArrayValuesCollection[b6.Area]{}
@@ -148,6 +163,7 @@ func geojsonAreas(c *api.Context, g geojson.GeoJSON) (b6.Collection[int, b6.Area
 	return collection.Collection(), nil
 }
 
+// Wrap the given function such that it will only be called when passed a point.
 func applyToPoint(context *api.Context, f func(*api.Context, b6.Point) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
 	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if point, ok := g.(b6.Point); ok {
@@ -157,6 +173,7 @@ func applyToPoint(context *api.Context, f func(*api.Context, b6.Point) (b6.Geome
 	}
 }
 
+// Wrap the given function such that it will only be called when passed a path.
 func applyToPath(context *api.Context, f func(*api.Context, b6.Path) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
 	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if path, ok := g.(b6.Path); ok {
@@ -166,6 +183,7 @@ func applyToPath(context *api.Context, f func(*api.Context, b6.Path) (b6.Geometr
 	}
 }
 
+// Wrap the given function such that it will only be called when passed an area.
 func applyToArea(context *api.Context, f func(*api.Context, b6.Area) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
 	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if area, ok := g.(b6.Area); ok {
@@ -201,6 +219,7 @@ func mapGeometry(g b6.Geometry, f func(*api.Context, b6.Geometry) (b6.Geometry, 
 	return nil, fmt.Errorf("Can't map geometry of type %T", g)
 }
 
+// Return a geojson representing the result of applying the given function to each geometry in the given geojson.
 func mapGeometries(c *api.Context, g geojson.GeoJSON, f func(*api.Context, b6.Geometry) (b6.Geometry, error)) (geojson.GeoJSON, error) {
 	m := func(cs geojson.Coordinates) (geojson.Coordinates, error) {
 		switch cs := cs.(type) {

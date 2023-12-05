@@ -8,12 +8,16 @@ import (
 	"diagonal.works/b6/ingest"
 )
 
-func materialise(context *api.Context, id b6.CollectionID, c api.Callable) (ingest.Change, error) {
-	if c.NumArgs() != 0 {
-		return nil, fmt.Errorf("Expected a function with no arguments, found %d", c.NumArgs())
+// Return a change that adds a collection feature to the world with the given ID, containing the result of calling the given function.
+// The given function isn't passed any arguments.
+// Also adds an expression feature (with the same namespace and value)
+// representing the given function.
+func materialise(context *api.Context, id b6.CollectionID, function api.Callable) (ingest.Change, error) {
+	if function.NumArgs() != 0 {
+		return nil, fmt.Errorf("Expected a function with no arguments, found %d", function.NumArgs())
 	}
 
-	result, _, err := c.CallWithArgs(context, []interface{}{}, nil)
+	result, _, err := function.CallWithArgs(context, []interface{}{}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +39,7 @@ func materialise(context *api.Context, id b6.CollectionID, c api.Callable) (inge
 	}
 
 	var expressions []*ingest.ExpressionFeature
-	if expression, ok := c.Expression(); ok {
+	if expression, ok := function.Expression(); ok {
 		expressions = append(expressions, &ingest.ExpressionFeature{
 			ExpressionID: b6.ExpressionID{Namespace: id.Namespace, Value: id.Value},
 			Expression:   expression,

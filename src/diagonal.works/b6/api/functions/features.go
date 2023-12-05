@@ -11,10 +11,12 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+// Return the feature with the given ID.
 func findFeature(context *api.Context, id b6.FeatureID) (b6.Feature, error) {
 	return context.World.FindFeatureByID(id), nil
 }
 
+// Return the point feature with the given ID.
 func findPointFeature(context *api.Context, id b6.FeatureID) (b6.PointFeature, error) {
 	if id.Type == b6.FeatureTypePoint {
 		return b6.FindPointByID(id.ToPointID(), context.World), nil
@@ -22,6 +24,7 @@ func findPointFeature(context *api.Context, id b6.FeatureID) (b6.PointFeature, e
 	return nil, fmt.Errorf("%s isn't a point", id)
 }
 
+// Return the path feature with the given ID.
 func findPathFeature(context *api.Context, id b6.FeatureID) (b6.PathFeature, error) {
 	if id.Type == b6.FeatureTypePath {
 		return b6.FindPathByID(id.ToPathID(), context.World), nil
@@ -29,6 +32,7 @@ func findPathFeature(context *api.Context, id b6.FeatureID) (b6.PathFeature, err
 	return nil, fmt.Errorf("%s isn't a path", id)
 }
 
+// Return the area feature with the given ID.
 func findAreaFeature(context *api.Context, id b6.FeatureID) (b6.AreaFeature, error) {
 	if id.Type == b6.FeatureTypeArea {
 		return b6.FindAreaByID(id.ToAreaID(), context.World), nil
@@ -36,6 +40,7 @@ func findAreaFeature(context *api.Context, id b6.FeatureID) (b6.AreaFeature, err
 	return nil, fmt.Errorf("%s isn't a area", id)
 }
 
+// Return the relation feature with the given ID.
 func findRelationFeature(context *api.Context, id b6.FeatureID) (b6.RelationFeature, error) {
 	if id.Type == b6.FeatureTypeRelation {
 		return b6.FindRelationByID(id.ToRelationID(), context.World), nil
@@ -95,24 +100,32 @@ func findAreasContainingPoints(context *api.Context, points b6.Collection[any, b
 	return collection.Collection(), nil
 }
 
+// Return a tag with the given key and value.
 func tag(context *api.Context, key string, value string) (b6.Tag, error) {
 	return b6.Tag{Key: key, Value: value}, nil
 }
 
+// Return the value of the given tag as a string.
 func value(context *api.Context, tag b6.Tag) (string, error) {
 	return tag.Value, nil
 }
 
+// Return the value of the given tag as an integer.
+// Returns 0 if the value isn't a valid integer.
 func intValue(context *api.Context, tag b6.Tag) (int, error) {
 	i, _ := tag.IntValue()
 	return i, nil
 }
 
+// Return the value of the given tag as a float.
+// Returns 0.0 if the value isn't a valid float.
 func floatValue(context *api.Context, tag b6.Tag) (float64, error) {
 	f, _ := tag.FloatValue()
 	return f, nil
 }
 
+// Return the tag with the given key on the given feature.
+// Returns a tag. To return the string value of a tag, use get-string.
 func get(context *api.Context, id b6.Identifiable, key string) (b6.Tag, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		return feature.Get(key), nil
@@ -120,6 +133,8 @@ func get(context *api.Context, id b6.Identifiable, key string) (b6.Tag, error) {
 	return b6.InvalidTag(), nil
 }
 
+// Return the value of tag with the given key on the given feature as a string.
+// Returns an empty string if there isn't a tag with that key.
 func getString(context *api.Context, id b6.Identifiable, key string) (string, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		return feature.Get(key).Value, nil
@@ -127,6 +142,8 @@ func getString(context *api.Context, id b6.Identifiable, key string) (string, er
 	return "", nil
 }
 
+// Return the value of tag with the given key on the given feature as an integer.
+// Returns 0 if there isn't a tag with that key, or if the value isn't a valid integer.
 func getInt(context *api.Context, id b6.Identifiable, key string) (int, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		if i, ok := feature.Get(key).IntValue(); ok {
@@ -136,6 +153,8 @@ func getInt(context *api.Context, id b6.Identifiable, key string) (int, error) {
 	return 0, nil
 }
 
+// Return the value of tag with the given key on the given feature as a float.
+// Returns 0.0 if there isn't a tag with that key, or if the value isn't a valid float.
 func getFloat(context *api.Context, id b6.Identifiable, key string) (float64, error) {
 	if feature := api.Resolve(id, context.World); feature != nil {
 		if f, ok := feature.Get(key).FloatValue(); ok {
@@ -145,6 +164,7 @@ func getFloat(context *api.Context, id b6.Identifiable, key string) (float64, er
 	return 0.0, nil
 }
 
+// Deprecated.
 func countTagValue(context *api.Context, id b6.Identifiable, key string) (b6.Collection[interface{}, int], error) {
 	c := &b6.ArrayCollection[interface{}, int]{
 		Keys:   make([]interface{}, 0, 1),
@@ -159,6 +179,8 @@ func countTagValue(context *api.Context, id b6.Identifiable, key string) (b6.Col
 	return c.Collection(), nil
 }
 
+// Return a collection of all the tags on the given feature.
+// Keys are ordered integers from 0, values are tags.
 func allTags(c *api.Context, id b6.Identifiable) (b6.Collection[int, b6.Tag], error) {
 	var tags []b6.Tag
 	if f := api.Resolve(id, c.World); f != nil {
@@ -167,6 +189,7 @@ func allTags(c *api.Context, id b6.Identifiable) (b6.Collection[int, b6.Tag], er
 	return b6.ArrayValuesCollection[b6.Tag](tags).Collection(), nil
 }
 
+// Return true if the given feature matches the given query.
 func matches(c *api.Context, id b6.Identifiable, query b6.Query) (bool, error) {
 	if f := api.Resolve(id, c.World); f != nil {
 		return query.Matches(f, c.World), nil
@@ -174,6 +197,9 @@ func matches(c *api.Context, id b6.Identifiable, query b6.Query) (bool, error) {
 	return false, nil
 }
 
+// Return the number of paths connected to the given point.
+// A single path will be counted twice if the point isn't at one of its
+// two ends - once in one direction, and once in the other.
 func pointDegree(context *api.Context, point b6.PointFeature) (int, error) {
 	segments := context.World.Traverse(point.PointID())
 	n := 0
@@ -183,6 +209,7 @@ func pointDegree(context *api.Context, point b6.PointFeature) (int, error) {
 	return n, nil
 }
 
+// Return the length of the given path in meters.
 func pathLengthMeters(context *api.Context, path b6.PathFeature) (float64, error) {
 	return b6.AngleToMeters(path.Polyline().Length()), nil
 }
@@ -286,8 +313,10 @@ func (a *areaPointCollection) Value() b6.Point {
 
 var _ b6.AnyCollection[int, b6.Point] = &areaPointCollection{}
 
-func points(context *api.Context, g b6.Geometry) (b6.Collection[int, b6.Point], error) {
-	switch g := g.(type) {
+// Return a collection of the points of the given geometry.
+// Keys are ordered integers from 0, values are points.
+func points(context *api.Context, geometry b6.Geometry) (b6.Collection[int, b6.Point], error) {
+	switch g := geometry.(type) {
 	case b6.Point:
 		return b6.ArrayValuesCollection[b6.Point]([]b6.Point{g}).Collection(), nil
 	case b6.Path:
@@ -302,6 +331,9 @@ func points(context *api.Context, g b6.Geometry) (b6.Collection[int, b6.Point], 
 	return b6.ArrayValuesCollection[b6.Point]([]b6.Point{}).Collection(), nil
 }
 
+// Return a collection of the point features referenced by the given feature.
+// Keys are ids of the respective value, values are point features. Area
+// features return the points referenced by their path features.
 func pointFeatures(context *api.Context, f b6.Feature) (b6.Collection[b6.FeatureID, b6.PointFeature], error) {
 	points := b6.ArrayFeatureCollection[b6.PointFeature](make([]b6.PointFeature, 0))
 	switch f := f.(type) {
@@ -327,6 +359,8 @@ func pointFeatures(context *api.Context, f b6.Feature) (b6.Collection[b6.Feature
 	return points.Collection(), nil
 }
 
+// Return a collection of the path features referencing the given point.
+// Keys are the ids of the respective paths.
 func pointPaths(context *api.Context, id b6.IdentifiablePoint) (b6.Collection[b6.FeatureID, b6.PathFeature], error) {
 	p := api.ResolvePoint(id, context.World)
 	if p == nil {
@@ -340,6 +374,8 @@ func pointPaths(context *api.Context, id b6.IdentifiablePoint) (b6.Collection[b6
 	return collection.Collection(), nil
 }
 
+// Return a collection of points along the given paths, with the given distance in meters between them.
+// Keys are the id of the respective path, values are points.
 func samplePointsAlongPaths(context *api.Context, paths b6.Collection[b6.FeatureID, b6.Path], distanceMeters float64) (b6.Collection[int, b6.Point], error) {
 	// TODO: We shouldn't need to special case this: we should be able to flatten the results of sample_points
 	// on a collection of paths.
@@ -359,6 +395,8 @@ func samplePointsAlongPaths(context *api.Context, paths b6.Collection[b6.Feature
 	return b6.ArrayValuesCollection[b6.Point](points).Collection(), nil
 }
 
+// Return a collection of points along the given path, with the given distance in meters between them.
+// Keys are ordered integers from 0, values are points.
 func samplePoints(context *api.Context, path b6.Path, distanceMeters float64) (b6.Collection[int, b6.Point], error) {
 	points := appendUnseenSampledPoints(path, distanceMeters, make(map[s2.Point]struct{}), make([]b6.Point, 0, 16))
 	return b6.ArrayValuesCollection[b6.Point](points).Collection(), nil
@@ -390,6 +428,7 @@ func appendUnseenSampledPoints(p b6.Path, distanceMeters float64, seen map[s2.Po
 	return points
 }
 
+// Return a path formed from the points of the two given paths, in the order they occur in those paths.
 func join(context *api.Context, a b6.Path, b b6.Path) (b6.Path, error) {
 	points := make([]s2.Point, 0, a.Len()+b.Len())
 	i := 0
@@ -408,9 +447,10 @@ func join(context *api.Context, a b6.Path, b b6.Path) (b6.Path, error) {
 	return b6.PathFromS2Points(points), nil
 }
 
-// orderedJoinPaths returns a new path formed by joining a and b, in that order, reversing
-// the order of the points to maintain a consistent order, determined by which points of
-// the paths are shared. Returns an error if the paths don't share an end point.
+// Returns a path formed by joining the two given paths.
+// If necessary to maintain consistency, the order of points is reversed,
+// determined by which points are shared between the paths. Returns an error
+// if no endpoints are shared.
 func orderedJoin(context *api.Context, a b6.Path, b b6.Path) (b6.Path, error) {
 	var reverseA, reverseB bool
 	if a.Point(a.Len()-1) == b.Point(0) {

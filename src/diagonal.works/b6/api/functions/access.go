@@ -6,6 +6,7 @@ import (
 	"diagonal.works/b6/graph"
 )
 
+// Deprecated. Use accessible.
 func buildingAccess(c *api.Context, origins b6.Collection[interface{}, b6.Feature], limit float64, mode string) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 	o := make(map[b6.FeatureID]b6.Feature)
 	i := origins.Begin()
