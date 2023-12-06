@@ -351,12 +351,13 @@ function lonLatToLiteral(ll) {
     return `${ll[1].toPrecision(8)}, ${ll[0].toPrecision(8)}`
 }
 
-function showFeature(feature, locked, position, ui) {
+function showFeature(feature, locked, position, ui, logEvent) {
     const ns = feature.get("ns");
     const id = feature.get("id");
     const types = {"Point": "point", "LineString": "path", "Polygon": "area", "MultiPolygon": "area"};
     if (ns && id && types[feature.getType()]) {
-        ui.evaluateExpressionInNewStack(`find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`, null, locked, position);
+        const expression = `find-feature /${types[feature.getType()]}/${ns}/${BigInt("0x" + id)}`;
+        ui.evaluateExpressionInNewStack(expression, null, locked, position, logEvent);
     }
 }
 
@@ -415,6 +416,10 @@ class Stack {
 
     isLocked() {
         return this.locked;
+    }
+
+    getLogDetail() {
+        return this.response.proto.logDetail;
     }
 
     getElement() {
@@ -546,12 +551,13 @@ class Stack {
         this.ui.basemapHighlightChanged();
     }
 
-    evaluateNode(node) {
-        this.ui.evaluateExpressionInNewStack("", node, this.response.proto.locked);
+    evaluateNode(node, logEvent) {
+        const position = null;
+        this.ui.evaluateExpressionInNewStack("", node, this.response.proto.locked, position, logEvent);
     }
 
-    evaluateExpressionInContext(expression) {
-        this.ui.evaluateExpression(expression, this.response.proto.node, this.response.proto.locked, this.target);
+    evaluateExpressionInContext(expression, logEvent) {
+        this.ui.evaluateExpression(expression, this.response.proto.node, this.response.proto.locked, logEvent, this.target);
     }
 
     handleDragStart(event, clickAction) {
@@ -721,7 +727,7 @@ class ValueLineRenderer {
         clickable.on("mousedown", (e, d) => {
             e.stopPropagation();
             const clickHandler = () => {
-                stack.evaluateNode(d.value.clickExpression);
+                stack.evaluateNode(d.value.clickExpression, EventTypeOutlinerClick);
             }
             stack.handleDragStart(e, clickHandler);
         });
@@ -761,7 +767,7 @@ class LeftRightValueLineRenderer {
             e.stopPropagation();
             if (d) {
                 const clickHandler = () => {
-                    stack.evaluateNode(d);
+                    stack.evaluateNode(d, EventTypeOutlinerClick);
                 }
                 stack.handleDragStart(e, clickHandler);
             }
@@ -810,7 +816,7 @@ class TagsLineRenderer {
         clickable.on("mousedown", (e, d) => {
             e.stopPropagation();
             const clickHandler = () => {
-                stack.evaluateNode(d.clickExpression);
+                stack.evaluateNode(d.clickExpression, EventTypeOutlinerClick);
             }
             stack.handleDragStart(e, clickHandler);
         });
@@ -921,7 +927,7 @@ class ShellLineRenderer {
             if (state.highlighted >= 0 && state.filtered[state.highlighted].length > expression.length) {
                 expression = state.filtered[state.highlighted];
             }
-            stack.evaluateExpressionInContext(expression);
+            stack.evaluateExpressionInContext(expression, EventTypeOutlinerShell);
             return;
         });    
     }
@@ -1072,13 +1078,15 @@ function renderFromProto(targets, uiElement, stack) {
 }
 
 class UI {
-    constructor(map, dockTarget, state, queryStyle, geojsonStyle, highlightChanged) {
+    constructor(map, dockTarget, state, queryStyle, geojsonStyle, highlightChanged, session, logger) {
         this.map = map;
         this.dockTarget = dockTarget,
         this.state = state;
         this.queryStyle = queryStyle;
         this.geojsonStyle = geojsonStyle;
         this.basemapHighlightChanged = highlightChanged;
+        this.session = session;
+        this.logger = logger;
         this.uiContext = null;
         this.dragging = null;
         this.shellHistory = [];
@@ -1109,7 +1117,8 @@ class UI {
         }
         if (response.expression) {
             const locked = this.uiContext !== undefined;
-            this.evaluateExpressionInNewStack(response.expression, null, locked, null);
+            const position = null;
+            this.evaluateExpressionInNewStack(response.expression, null, locked, position, EventTypeStartup);
         }
     }
 
@@ -1134,6 +1143,8 @@ class UI {
             return;
         }
         const docked = this.docked[index];
+        const logOptions = {ld: docked.__stack__.getLogDetail()};
+        this._logEvent(EventTypeDockOpen, logOptions);
         if (d3.select(docked).classed("closed")) {
             this.closeAllDocked();
             this.removeFeaturedStack();
@@ -1180,24 +1191,32 @@ class UI {
         history.replaceState(null, "", "/?" + query);
     }
 
-    evaluateExpressionInNewStack(expression, context, locked, position) {
+    evaluateExpressionInNewStack(expression, context, locked, position, logEvent) {
         const ui = this;
-        this._sendRequest(expression, context, locked).then(response => {
+        this._sendRequest(expression, context, locked, logEvent).then(response => {
             ui._renderNewStack(response, position);
         });
     }
 
-    evaluateExpression(expression, context, locked, target) {
-        this._sendRequest(expression, context, locked).then(response => {
+    evaluateExpression(expression, context, locked, logEvent, target) {
+        this._sendRequest(expression, context, locked, logEvent).then(response => {
             this._renderStack(response, target, true, false);
         });
     }
 
-    _sendRequest(expression, context, locked) {
+    _sendRequest(expression, context, locked, logEvent) {
+        const ll = toLonLat(this.map.getView().getCenter());
         const request = {
             node: context,
             expression: expression,
             locked: locked,
+            logEvent: logEvent,
+            logMapCenter: {
+                lat_e7: Math.round(ll[1] * 1e7),
+                lng_e7: Math.round(ll[0] * 1e7),
+            },
+            logMapZoom: this.map.getView().getZoom(),
+            session: this.session,
         }
         if (this.uiContext) {
             request.context = this.uiContext;
@@ -1211,7 +1230,10 @@ class UI {
             }
         }
         const promise = d3.json("/stack", post);
-        promise.catch((error) => showMessage(error.message));
+        promise.catch((error) => {
+            showMessage(error.message);
+            this._logEvent(EventTypeError, {ld: error.message});
+        });
         return promise;
     }
 
@@ -1375,6 +1397,18 @@ class UI {
         }
     }
 
+    handleMapClick(event) {
+        const position = d3.pointer(event.originalEvent, d3.select("html"));
+        if (event.originalEvent.shiftKey) {
+            showFeatureAtPixel(event.pixel, false, position, this.map, this, EventTypeMapFeatureClick);
+            event.stopPropagation();
+        } else {
+            const ll = lonLatToLiteral(toLonLat(this.map.getCoordinateFromPixel(event.pixel)));
+            this.evaluateExpressionInNewStack(ll, null, true, position, EventTypeMapLatLngClick);
+            event.stopPropagation();
+        }
+    }
+
     // Start dragging root. If the mouse button is raised without the
     // cursor moving, call clickHandler.
     handleDragStart(event, root, clickHandler) {
@@ -1428,6 +1462,17 @@ class UI {
         }
         this.basemapHighlightChanged();
     }
+
+    _logEvent(event, options) {
+        if (this.uiContext) {
+            options.r = idTokenFromProto(this.uiContext);
+        }
+        const ll = toLonLat(this.map.getView().getCenter());
+        options.lc = `${Number(ll[1].toFixed(7))},${Number(ll[0].toFixed(7))}`;
+        options.lz = d3.format(".3f")(this.map.getView().getZoom());
+        options.ls = this.session;
+        this.logger.logEvent(event, options);
+    }
 }
 
 function showMessage(message, position) {
@@ -1447,7 +1492,7 @@ function showMessage(message, position) {
 
 const ShellMaxSuggestions = 6;
 
-function showFeatureAtPixel(pixel, locked, position, map, ui) {
+function showFeatureAtPixel(pixel, locked, position, map, ui, logEvent) {
     const layers = map.getLayers();
     const search = (i, found) => {
         if (i >= 0) {
@@ -1465,10 +1510,11 @@ function showFeatureAtPixel(pixel, locked, position, map, ui) {
                 search(i - 1, found);
             }
         } else {
-            ui.evaluateExpressionInNewStack(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(pixel))), null, locked, position);
+            const ll = lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(pixel)));
+            ui.evaluateExpressionInNewStack(ll, null, locked, position, logEvent);
         }
     };
-    search(layers.getLength() - 1, f => showFeature(f, locked, position, ui));
+    search(layers.getLength() - 1, f => showFeature(f, locked, position, ui, logEvent));
 }
 
 function idKey(id) {
@@ -1543,7 +1589,9 @@ function setupShell(target, ui) {
         target.classed("closed", true);
         const expression = target.select("input").node().value;
         state.index = 0;
-        ui.evaluateExpressionInNewStack(expression, null, false);
+        const locked = false;
+        const position = null;
+        ui.evaluateExpressionInNewStack(expression, null, locked, position, EventTypeWorldShell);
         target.select("input").node().value = "";
     })
 }
@@ -1771,7 +1819,20 @@ class Styles {
     }
 }
 
-function setup(selector, startupResponse) {
+const EventTypeStartup = "s"
+const EventTypeDockOpen = "do";
+const EventTypeMapLatLngClick = "mlc";
+const EventTypeMapFeatureClick = "mfc";
+const EventTypeOutlinerClick  = "oc";
+const EventTypeOutlinerShell = "os";
+const EventTypeWorldShell = "ws";
+const EventTypeError = "err";
+
+class NullEventLogger {
+    logEvent(type, options) {}
+}
+
+function setup(selector, startupResponse, logger) {
     const target = d3.select(selector).classed("b6", true);
     const mapTarget = target.append("div").classed("map", true);
     const shellTarget = target.append("div").classed("shell", true).classed("closed", true);
@@ -1787,7 +1848,7 @@ function setup(selector, startupResponse) {
     const [map, highlightChanged] = setupMap(mapTarget, state, styles, mapCenter, mapZoom);
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
-    const ui = new UI(map, dockTarget, state, queryStyle, geojsonStyle, highlightChanged);
+    const ui = new UI(map, dockTarget, state, queryStyle, geojsonStyle, highlightChanged, startupResponse.session, logger);
     const html = d3.select("html");
     html.on("pointermove", e => {
         ui.handlePointerMove(e);
@@ -1800,20 +1861,16 @@ function setup(selector, startupResponse) {
     ui.handleStartupResponse(startupResponse);
 
     map.on("singleclick", e => {
-        const position = d3.pointer(e.originalEvent, html);
-        if (e.originalEvent.shiftKey) {
-            showFeatureAtPixel(e.pixel, false, position, map, ui);
-            e.stopPropagation();
-        } else {
-            ui.evaluateExpressionInNewStack(lonLatToLiteral(toLonLat(map.getCoordinateFromPixel(e.pixel))), null, true, position);
-            e.stopPropagation();
-        }
+        ui.handleMapClick(e);
     });
 }
 
-function main(selector) {
+function main(selector, logger) {
+    if (!logger) {
+        logger = new NullEventLogger();
+    }
     const params = new URLSearchParams(window.location.search);
-    d3.json("/startup?" + params.toString()).then(response => setup(selector, response));
+    d3.json("/startup?" + params.toString()).then(response => setup(selector, response, logger));
 }
 
 export default main;
