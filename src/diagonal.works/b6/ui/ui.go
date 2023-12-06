@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,6 +27,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+const MaxSafeJavaScriptInteger = (1 << 53) - 1
+
 type Options struct {
 	StaticPath        string
 	JavaScriptPath    string
@@ -36,10 +40,10 @@ type Options struct {
 	InstrumentHandler func(handler http.Handler, name string) http.Handler
 }
 
-type filesystem []string
+type MergedFilesystem []string
 
-func (f filesystem) Open(filename string) (http.File, error) {
-	for _, path := range f {
+func (m MergedFilesystem) Open(filename string) (http.File, error) {
+	for _, path := range m {
 		full := filepath.Join(path, filename)
 		if _, err := os.Stat(full); err == nil {
 			return os.Open(full)
@@ -50,7 +54,7 @@ func (f filesystem) Open(filename string) (http.File, error) {
 
 func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	staticPaths := strings.Split(options.StaticPath, ",")
-	root.Handle("/", http.FileServer(filesystem(staticPaths)))
+	root.Handle("/", http.FileServer(MergedFilesystem(staticPaths)))
 
 	root.Handle("/bundle.js", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(options.JavaScriptPath, "bundle.js"))
@@ -151,6 +155,7 @@ type StartupResponseJSON struct {
 	Context       *FeatureIDProtoJSON `json:"context,omitempty"`
 	Expression    string              `json:"expression,omitempty"`
 	Error         string              `json:"error,omitempty"`
+	Session       uint64              `json:"session,omitempty"`
 }
 
 type UIResponseProtoJSON pb.UIResponseProto
@@ -219,8 +224,7 @@ func (s *StartupHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := s.UI.ServeStartup(&request, &response, s.UI); err != nil {
 		response.Error = err.Error()
 	}
-
-	sendJSON(response, w, r)
+	SendJSON(response, w, r)
 }
 
 type StackHandler struct {
@@ -229,8 +233,21 @@ type StackHandler struct {
 
 func (s *StackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	request := &pb.UIRequestProto{}
+	if !FillStackRequest(request, w, r) {
+		return
+	}
+
 	response := NewUIResponseJSON()
 
+	if err := s.UI.ServeStack(request, response, s.UI); err == nil {
+		SendJSON(response, w, r)
+	} else {
+		log.Println(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func FillStackRequest(request *pb.UIRequestProto, w http.ResponseWriter, r *http.Request) bool {
 	if r.Method == "GET" {
 		request.Expression = r.URL.Query().Get("e")
 	} else if r.Method == "POST" {
@@ -243,29 +260,24 @@ func (s *StackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("Bad request body")
 			http.Error(w, "Bad request body", http.StatusBadRequest)
-			return
+			return false
 		}
 	} else {
 		log.Printf("Bad method")
 		http.Error(w, "Bad method", http.StatusMethodNotAllowed)
-		return
+		return false
 	}
 
 	if request.Expression == "" && request.Node == nil {
 		log.Printf("No expression")
 		http.Error(w, "No expression", http.StatusBadRequest)
-		return
+		return false
 	}
 
-	if err := s.UI.ServeStack(request, response, s.UI); err == nil {
-		sendJSON(response, w, r)
-	} else {
-		log.Println(err.Error())
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	return true
 }
 
-func sendJSON(value interface{}, w http.ResponseWriter, r *http.Request) {
+func SendJSON(value interface{}, w http.ResponseWriter, r *http.Request) {
 	var output bytes.Buffer
 	var encoder *json.Encoder
 	var toClose io.Closer
@@ -349,6 +361,7 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 		response.OpenDockIndex = request.OpenDockIndex
 	}
 	response.Expression = request.Expression
+	response.Session = uint64(rand.Int63n(MaxSafeJavaScriptInteger))
 	return nil
 }
 

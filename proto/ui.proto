@@ -12,6 +12,10 @@ message UIRequestProto {
     string expression = 2;
     api.FeatureIDProto context = 3;
     bool locked = 4;
+    string logEvent = 5;
+    geometry.PointProto logMapCenter = 6;
+    float logMapZoom = 7;
+    uint64 session = 8;
 }
 
 message UIResponseProto {
@@ -25,6 +29,7 @@ message UIResponseProto {
     geometry.PointProto mapCenter = 8;
     bool locked = 9;
     repeated int32 chipValues = 10;
+    string logDetail = 11;
 }
 
 enum MapLayerPosition {
