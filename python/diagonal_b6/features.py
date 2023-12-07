@@ -204,6 +204,31 @@ def from_id_proto(p):
 
 expression.register_literal_from_proto("featureIDValue", from_id_proto)
 
+class Route:
+
+    def __init__(self, pb):
+        self._pb = pb
+
+    def origin(self):
+        return from_id_proto(self._pb.origin)
+
+    def cost(self):
+        if len(self._pb.steps) == 0:
+            return 0.0
+        return self._pb.steps[-1].cost
+
+    def __len__(self):
+        return len(self._pb.steps)
+
+    def __iter__(self):
+        for step in self._pb.steps:
+            yield (from_id_proto(step.destination), from_id_proto(step.via), step.cost)
+
+def from_route_proto(route):
+    return Route(route)
+
+expression.register_literal_from_proto("routeValue", from_route_proto)
+
 def from_applied_change_proto(change):
     applied = {}
     for i in range(0, len(change.original)):

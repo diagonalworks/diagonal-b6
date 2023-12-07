@@ -100,14 +100,15 @@ var functions = api.FunctionSymbols{
 	"reachable-area":         reachableArea,
 	"reachable-points":       reachablePoints,
 	"reachable":              reachable,
-	"accessible":             accessible,
+	"accessible-all":         accessibleAll,
+	"accessible-routes":      accessibleRoutes,
 	"filter-accessible":      filterAccessible,
 	"closest":                closestFeature,
 	"closest-distance":       closestFeatureDistance,
 	"paths-to-reach":         pathsToReachFeatures,
 	"connect":                connect,
 	"connect-to-network":     connectToNetwork,
-	"connect-all-to-network": connectAllToNetwork,
+	"connect-to-network-all": connectToNetworkAll,
 	// access
 	"building-access": buildingAccess,
 	// geometry

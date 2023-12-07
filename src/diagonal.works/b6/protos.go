@@ -306,3 +306,33 @@ func LoopProtoToS2Points(loop *pb.LoopProto) []s2.Point {
 	}
 	return points
 }
+
+func NewProtoFromRoute(route Route) *pb.RouteProto {
+	p := &pb.RouteProto{
+		Origin: NewProtoFromFeatureID(route.Origin.FeatureID()),
+		Steps:  make([]*pb.StepProto, len(route.Steps)),
+	}
+	for i, step := range route.Steps {
+		p.Steps[i] = &pb.StepProto{
+			Destination: NewProtoFromFeatureID(step.Destination.FeatureID()),
+			Via:         NewProtoFromFeatureID(step.Via.FeatureID()),
+			Cost:        step.Cost,
+		}
+	}
+	return p
+}
+
+func NewRouteFromProto(p *pb.RouteProto) Route {
+	route := Route{
+		Origin: NewFeatureIDFromProto(p.Origin).ToPointID(),
+		Steps:  make([]Step, len(p.Steps)),
+	}
+	for i, step := range p.Steps {
+		route.Steps[i] = Step{
+			Destination: NewFeatureIDFromProto(step.Destination).ToPointID(),
+			Via:         NewFeatureIDFromProto(step.Via).ToPathID(),
+			Cost:        step.Cost,
+		}
+	}
+	return route
+}

@@ -1176,6 +1176,59 @@ func FindPathSegmentByKey(key SegmentKey, w World) Segment {
 	}
 }
 
+type Step struct {
+	Destination PointID
+	Via         PathID
+	Cost        float64
+}
+
+func (s *Step) ToSegment(previous PointID, w World) Segment {
+	// TODO: For long paths, it could be more efficient to use
+	// FindPathsByPoint
+	path := FindPathByID(s.Via, w)
+	if path == nil {
+		return SegmentInvalid
+	}
+
+	for i := 0; i < path.Len(); i++ {
+		if point := path.Feature(i); point != nil {
+			if point.PointID() == previous {
+				if point.PointID() == s.Destination {
+					return Segment{Feature: path, First: i, Last: i}
+				}
+				for j := i; j < path.Len(); j++ {
+					if next := path.Feature(j); next != nil && next.PointID() == s.Destination {
+						return Segment{Feature: path, First: i, Last: j}
+					}
+				}
+			} else if point.PointID() == s.Destination {
+				for j := i; j < path.Len(); j++ {
+					if next := path.Feature(j); next != nil && next.PointID() == previous {
+						return Segment{Feature: path, First: j, Last: i}
+					}
+				}
+			}
+		}
+	}
+
+	return SegmentInvalid
+}
+
+type Route struct {
+	Origin PointID
+	Steps  []Step
+}
+
+func (r *Route) ToSegments(w World) []Segment {
+	segments := make([]Segment, len(r.Steps))
+	previous := r.Origin
+	for i, step := range r.Steps {
+		segments[i] = step.ToSegment(previous, w)
+		previous = step.Destination
+	}
+	return segments
+}
+
 type LocationsByID interface {
 	FindLocationByID(id PointID) (s2.LatLng, bool)
 }

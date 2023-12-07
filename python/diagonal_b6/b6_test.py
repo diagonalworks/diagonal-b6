@@ -124,10 +124,19 @@ class B6Test(unittest.TestCase):
             self.assertGreaterEqual(count, 1)
             self.assertLess(count, 100)
 
-    def test_accessible(self):
+    def test_accessible_all(self):
         origins = [b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID))]
-        destinatations = list(self.connection(b6.accessible(origins, b6.keyed("entrance"), 500, {"mode": "walk"})))
+        destinatations = list(self.connection(b6.accessible_all(origins, b6.keyed("entrance"), 500, {"mode": "walk"})))
         self.assertGreater(len(destinatations), 2)
+
+    def test_accessible_routes(self):
+        origin = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID))
+        routes = list(self.connection(b6.accessible_routes(origin, b6.keyed("entrance"), 500, {"mode": "walk"})))
+        self.assertGreater(len(routes), 2)
+        for (_, route) in routes:
+            self.assertGreater(len(route), 4) # At least 4 steps
+            self.assertGreater(route.cost(), 100.0)
+            self.assertLess(route.cost(), 500.0)
 
     def test_closest_from_point(self):
         expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "pub"))

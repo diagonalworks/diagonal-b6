@@ -498,6 +498,27 @@ func (s *ShortestPathSearch) ExpandSearch(maxDistance float64, weights Weights, 
 	}
 }
 
+func (s *ShortestPathSearch) BuildRoute(destination b6.PointID) b6.Route {
+	route := b6.Route{}
+	point := destination
+	for {
+		if r, ok := s.byPoint[point]; ok && r.segment != b6.SegmentInvalid {
+			route.Steps = append(route.Steps, b6.Step{Destination: point, Via: r.segment.Feature.PathID(), Cost: r.distance})
+			point = r.segment.FirstFeature().PointID()
+		} else {
+			route.Origin = point
+			break
+		}
+	}
+
+	for i := 0; i < len(route.Steps)/2; i++ {
+		j := len(route.Steps) - 1 - i
+		route.Steps[i], route.Steps[j] = route.Steps[j], route.Steps[i]
+	}
+	return route
+}
+
+// TODO: Deprecate in favour of BuildRoute
 func (s *ShortestPathSearch) BuildPath(destination b6.PointID) []b6.Segment {
 	segments := make([]b6.Segment, 0, 16)
 	point := destination
@@ -531,6 +552,17 @@ func (s *ShortestPathSearch) AreaDistances() map[b6.AreaID]float64 {
 		distances[id] = r.distance
 	}
 	return distances
+}
+
+func (s *ShortestPathSearch) AllRoutes() map[b6.FeatureID]b6.Route {
+	routes := make(map[b6.FeatureID]b6.Route)
+	for id := range s.byPoint {
+		routes[id.FeatureID()] = s.BuildRoute(id)
+	}
+	for id, r := range s.byArea {
+		routes[id.FeatureID()] = routes[r.point.FeatureID()]
+	}
+	return routes
 }
 
 func (s *ShortestPathSearch) AreaEntrances() map[b6.AreaID]b6.PointID {

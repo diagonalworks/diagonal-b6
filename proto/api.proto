@@ -133,6 +133,7 @@ message LiteralNodeProto {
         AppliedChangeProto appliedChangeValue = 14;
         bytes geoJSONValue = 15; // gzipped
         TagProto tagValue = 16;
+        RouteProto routeValue = 17;
     }
 }
 
@@ -195,6 +196,17 @@ message QueryProto {
         S2CellIDsProto intersectsCells = 13;
         S2CellIDsProto mightIntersect = 14;
     }
+}
+
+message StepProto {
+    FeatureIDProto destination = 1;
+    FeatureIDProto via = 2;
+    double cost = 3;
+}
+
+message RouteProto {
+    FeatureIDProto origin = 1;
+    repeated StepProto steps = 2;
 }
 
 message FindFeatureByIDRequestProto {
