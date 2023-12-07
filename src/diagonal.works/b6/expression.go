@@ -171,6 +171,8 @@ func (e *Expression) FromProto(node *pb.NodeProto) error {
 			e.AnyExpression = new(NilExpression)
 		case *pb.LiteralNodeProto_GeoJSONValue:
 			e.AnyExpression = new(GeoJSONExpression)
+		case *pb.LiteralNodeProto_RouteValue:
+			e.AnyExpression = new(RouteExpression)
 		case *pb.LiteralNodeProto_CollectionValue:
 			e.AnyExpression = new(CollectionExpression)
 		default:
@@ -300,6 +302,9 @@ func FromLiteral(l interface{}) (Literal, error) {
 		return Literal{AnyLiteral: &AreaExpression{Area: l}}, nil
 	case geojson.GeoJSON:
 		return Literal{AnyLiteral: &GeoJSONExpression{GeoJSON: l}}, nil
+	case Route:
+		route := RouteExpression(l)
+		return Literal{AnyLiteral: &route}, nil
 	case UntypedCollection:
 		return Literal{AnyLiteral: &CollectionExpression{UntypedCollection: l}}, nil
 	}
@@ -712,6 +717,51 @@ func (g GeoJSONExpression) Equal(other AnyExpression) bool {
 		}
 	}
 	return false
+}
+
+type RouteExpression Route
+
+func (r *RouteExpression) ToProto() (*pb.NodeProto, error) {
+	return &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_RouteValue{
+					RouteValue: NewProtoFromRoute(Route(*r)),
+				},
+			},
+		},
+	}, nil
+}
+
+func (r *RouteExpression) FromProto(node *pb.NodeProto) error {
+	*r = RouteExpression(NewRouteFromProto(node.GetLiteral().GetRouteValue()))
+	return nil
+}
+
+func (r *RouteExpression) Clone() Expression {
+	clone := *r
+	return Expression{AnyExpression: &clone}
+}
+
+func (r *RouteExpression) Literal() interface{} {
+	return Route(*r)
+}
+
+func (r *RouteExpression) Equal(other AnyExpression) bool {
+	if rr, ok := other.(*RouteExpression); ok {
+		if r.Origin != rr.Origin {
+			return false
+		}
+		if len(r.Steps) != len(rr.Steps) {
+			return false
+		}
+		for i := range r.Steps {
+			if r.Steps[i] != rr.Steps[i] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 type FeatureExpression struct {

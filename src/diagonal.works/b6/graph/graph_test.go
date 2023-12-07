@@ -444,3 +444,37 @@ func TestElevationWeights(t *testing.T) {
 		t.Errorf("Didn't expect to find way %d", 502802551) // Shorter, but elevated way.
 	}
 }
+
+func TestBuildRoute(t *testing.T) {
+	camden := camden.BuildCamdenForTests(t)
+
+	fromPath := b6.FindPathByID(ingest.FromOSMWayID(687471322), camden)
+	if fromPath == nil {
+		t.Fatal("Failed to find way")
+	}
+	from := fromPath.Feature(0)
+	if from == nil {
+		t.Fatal("Expected a PointFeature")
+	}
+
+	toPath := b6.FindPathByID(ingest.FromOSMWayID(367808662), camden)
+	if toPath == nil {
+		t.Fatal("Failed to find way")
+	}
+	to := toPath.Feature(0)
+	if to == nil {
+		t.Fatal("Expected a PointFeature")
+	}
+
+	s := NewShortestPathSearchFromPoint(from.PointID())
+	s.ExpandSearchTo(to.PointID(), 1000.0, WalkingTimeWeights{Speed: WalkingMetersPerSecond}, camden)
+	route := s.BuildRoute(to.PointID())
+
+	if steps := len(route.Steps); steps < 35 || steps > 45 {
+		t.Errorf("Unexpected number of route steps %d", steps)
+	}
+
+	if cost := route.Steps[len(route.Steps)-1].Cost; cost < 850.0 || cost > 950.0 {
+		t.Errorf("Unexpected route cost %f", cost)
+	}
+}

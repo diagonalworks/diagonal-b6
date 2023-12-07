@@ -104,7 +104,7 @@ func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature
 
 // Return the a collection of the features reachable from the given origin via the given mode, within the given distance in meters, that match the given query.
 // Mode can be 'bus', 'car' or 'walk'.
-// Deprecated. Use accessible.
+// Deprecated. Use accessible-all.
 func reachable(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, b6.Feature], error) {
 	return FindReachableFeaturesWithPathStates(context, origin, mode, distance, query, nil)
 }
@@ -195,8 +195,12 @@ func (o *odCollection) Less(i, j int) bool {
 // symmetry, and the number of destinations is considerably smaller than the
 // number of origins:
 // mode=walk, flip=yes
-func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable], destinations b6.Query, duration float64, options b6.UntypedCollection) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+func accessibleAll(context *api.Context, origins b6.Collection[any, b6.Identifiable], destinations b6.Query, duration float64, options b6.UntypedCollection) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
 	tags, err := api.CollectionToTags(options)
+	if err != nil {
+		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
+	}
+	weights, err := optionsToWeights(tags)
 	if err != nil {
 		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
@@ -211,31 +215,6 @@ func accessible(context *api.Context, origins b6.Collection[any, b6.Identifiable
 			break
 		}
 		os = append(os, i.Value().FeatureID())
-	}
-
-	walking := graph.WalkingTimeWeights{
-		Speed: graph.WalkingMetersPerSecond,
-	}
-
-	if speed := tags.Get("speed"); speed.IsValid() {
-		if f, ok := speed.FloatValue(); ok {
-			walking.Speed = f
-		}
-	}
-
-	var weights graph.Weights
-	switch m := tags.Get("mode").Value; m {
-	case "", "walk":
-		weights = walking
-	case "transit":
-		if p := tags.Get("peak"); p.Value == "no" {
-			weights = graph.TransitTimeWeights{PeakTraffic: false, Weights: walking}
-		} else {
-			weights = graph.TransitTimeWeights{PeakTraffic: true, Weights: walking}
-		}
-	default:
-		err := fmt.Errorf("Expected mode=walk or mode=transit, found %s", m)
-		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
 
 	ds := make([][]b6.FeatureID, len(os))
@@ -275,6 +254,67 @@ done:
 	return b6.Collection[b6.FeatureID, b6.FeatureID]{
 		AnyCollection: ods,
 	}, err
+}
+
+func optionsToWeights(options b6.Taggable) (graph.Weights, error) {
+	walking := graph.WalkingTimeWeights{
+		Speed: graph.WalkingMetersPerSecond,
+	}
+
+	if speed := options.Get("speed"); speed.IsValid() {
+		if f, ok := speed.FloatValue(); ok {
+			walking.Speed = f
+		}
+	}
+
+	var weights graph.Weights
+	switch m := options.Get("mode").Value; m {
+	case "", "walk":
+		weights = walking
+	case "transit":
+		if p := options.Get("peak"); p.Value == "no" {
+			weights = graph.TransitTimeWeights{PeakTraffic: false, Weights: walking}
+		} else {
+			weights = graph.TransitTimeWeights{PeakTraffic: true, Weights: walking}
+		}
+	default:
+		return nil, fmt.Errorf("Expected mode=walk or mode=transit, found %s", m)
+	}
+
+	return weights, nil
+}
+
+func accessibleRoutes(context *api.Context, origin b6.Identifiable, destinations b6.Query, duration float64, options b6.UntypedCollection) (b6.Collection[b6.FeatureID, b6.Route], error) {
+	f := api.Resolve(origin, context.World)
+	if f == nil {
+		return b6.Collection[b6.FeatureID, b6.Route]{}, nil
+	}
+
+	tags, err := api.CollectionToTags(options)
+	if err != nil {
+		return b6.Collection[b6.FeatureID, b6.Route]{}, err
+	}
+	weights, err := optionsToWeights(tags)
+	if err != nil {
+		return b6.Collection[b6.FeatureID, b6.Route]{}, err
+	}
+
+	s := graph.NewShortestPathSearchFromFeature(f, weights, context.World)
+	s.ExpandSearch(duration, weights, graph.PointsAndAreas, context.World)
+	routes := s.AllRoutes()
+	c := b6.ArrayCollection[b6.FeatureID, b6.Route]{}
+	for id, route := range routes {
+		// TODO: This can be more efficient by only building routes for
+		// features that match a query.
+		if f := context.World.FindFeatureByID(id); f != nil {
+			if destinations.Matches(f, context.World) {
+				c.Keys = append(c.Keys, id)
+				c.Values = append(c.Values, route)
+			}
+		}
+
+	}
+	return c.Collection(), nil
 }
 
 // Return a collection containing only the values of the given collection that match the given query.
@@ -513,7 +553,7 @@ func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error)
 // network. See connect-to-network for connection details.
 // More efficient than using map with connect-to-network, as the street
 // network is only computed once.
-func connectAllToNetwork(c *api.Context, features b6.Collection[any, b6.FeatureID]) (ingest.Change, error) {
+func connectToNetworkAll(c *api.Context, features b6.Collection[any, b6.FeatureID]) (ingest.Change, error) {
 	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
 	connections := graph.NewConnections()

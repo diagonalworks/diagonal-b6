@@ -95,7 +95,7 @@ func accessibilityForGranarySquare(options []b6.Tag, w b6.World) (b6.Collection[
 		w.FindFeatureByID(camden.VermuteriaID.FeatureID()),
 	}
 	ids := b6.AdaptCollection[any, b6.Identifiable](origins.Collection())
-	return accessible(context, ids, b6.Keyed{Key: "entrance"}, 500, b6.ArrayValuesCollection[b6.Tag](options).Collection())
+	return accessibleAll(context, ids, b6.Keyed{Key: "entrance"}, 500, b6.ArrayValuesCollection[b6.Tag](options).Collection())
 }
 
 func fillODsFromCollection(ods map[graph.OD]struct{}, c b6.Collection[b6.FeatureID, b6.FeatureID]) error {
