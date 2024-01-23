@@ -398,17 +398,17 @@ func (c *Connections) Change(w b6.World) ingest.Change {
 		if insertion.PathID != id {
 			id = insertion.PathID
 			if existing := b6.FindPathByID(id, w); existing != nil {
-				change.Paths = append(change.Paths, c.ApplyToPath(existing))
+				*change = append(*change, c.ApplyToPath(existing))
 			}
 		}
 	}
 	f := func(id b6.PointID, ll s2.LatLng) error {
-		change.Points = append(change.Points, ingest.NewPointFeature(id, ll))
+		*change = append(*change, ingest.NewPointFeature(id, ll))
 		return nil
 	}
 	c.EachInsertedPoint(f, w)
 	ff := func(f ingest.Feature, _ int) error {
-		change.Paths = append(change.Paths, f.(*ingest.PathFeature).ClonePathFeature())
+		*change = append(*change, f.(*ingest.PathFeature).ClonePathFeature())
 		return nil
 	}
 	c.EachAddedPath(ff)

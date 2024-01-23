@@ -508,9 +508,7 @@ func reachableArea(context *api.Context, origin b6.Feature, mode string, distanc
 
 // Add a path that connects the two given points, if they're not already directly connected.
 func connect(c *api.Context, a b6.PointFeature, b b6.PointFeature) (ingest.Change, error) {
-	add := &ingest.AddFeatures{
-		IDsToReplace: map[b6.Namespace]b6.Namespace{b6.NamespacePrivate: b6.NamespaceDiagonalAccessPoints},
-	}
+	add := &ingest.AddFeatures{}
 	segments := c.World.Traverse(a.PointID())
 	connected := false
 	for segments.Next() {
@@ -522,10 +520,10 @@ func connect(c *api.Context, a b6.PointFeature, b b6.PointFeature) (ingest.Chang
 	}
 	if !connected {
 		path := ingest.NewPathFeature(2)
-		path.PathID = b6.MakePathID(b6.NamespacePrivate, 1)
+		path.PathID = b6.MakePathID(b6.NamespaceDiagonalAccessPoints, 1)
 		path.SetPointID(0, a.PointID())
 		path.SetPointID(1, b.PointID())
-		add.Paths = append(add.Paths, path)
+		*add = append(*add, path)
 	}
 	return add, nil
 }

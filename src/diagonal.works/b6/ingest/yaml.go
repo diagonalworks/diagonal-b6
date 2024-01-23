@@ -79,7 +79,7 @@ func ExportChangesAsYAML(m MutableWorld, w io.Writer) error {
 	features := func(f b6.Feature, goroutine int) error {
 		return encoder.Encode(NewFeatureFromWorld(f))
 	}
-	return m.EachModifiedFeature(features, &b6.EachFeatureOptions{Goroutines: 1})
+	return m.EachModifiedFeature(features, &b6.EachFeatureOptions{Goroutines: 1, FeedReferencesFirst: true})
 }
 
 func IngestChangesFromYAML(r io.Reader) Change {
@@ -105,32 +105,32 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 		if y.Point != nil {
 			var p *PointFeature
 			if p, err = newPointFromYAML(&y); err == nil {
-				err = m.AddPoint(p)
+				err = m.AddFeature(p)
 			}
 		} else if y.Path != nil {
 			var p *PathFeature
 			if p, err = newPathFromYAML(&y); err == nil {
-				err = m.AddPath(p)
+				err = m.AddFeature(p)
 			}
 		} else if y.Area != nil {
 			var a *AreaFeature
 			if a, err = newAreaFromYAML(&y); err == nil {
-				err = m.AddArea(a)
+				err = m.AddFeature(a)
 			}
 		} else if y.Relation != nil {
 			var r *RelationFeature
 			if r, err = newRelationFromYAML(&y); err == nil {
-				err = m.AddRelation(r)
+				err = m.AddFeature(r)
 			}
 		} else if y.Collection != nil {
 			var c *CollectionFeature
 			if c, err = newCollectionFeatureFromYAML(&y); err == nil {
-				err = m.AddCollection(c)
+				err = m.AddFeature(c)
 			}
 		} else if y.Expression != nil {
 			var e *ExpressionFeature
 			if e, err = newExpressionFromYAML(&y); err == nil {
-				err = m.AddExpression(e)
+				err = m.AddFeature(e)
 			}
 		}
 		if err != nil {

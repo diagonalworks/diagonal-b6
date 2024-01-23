@@ -13,125 +13,27 @@ type Change interface {
 	Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.FeatureID], error)
 }
 
-type AddFeatures struct {
-	Points       []*PointFeature
-	Paths        []*PathFeature
-	Areas        []*AreaFeature
-	Relations    []*RelationFeature
-	Collections  []*CollectionFeature
-	Expressions  []*ExpressionFeature
-	IDsToReplace map[b6.Namespace]b6.Namespace
-}
+type AddFeatures []Feature
 
 func (a *AddFeatures) String() string {
-	return fmt.Sprintf("added: points: %d paths: %d areas: %d relations: %d", len(a.Points), len(a.Paths), len(a.Areas), len(a.Relations))
+	return fmt.Sprintf("added %d features", len(*a))
 }
 
 func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
-	newIDs := make(map[b6.FeatureID]b6.FeatureID)
-	empty := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}.Collection()
-	for _, point := range a.Points {
-		if ns, ok := a.IDsToReplace[point.PointID.Namespace]; ok {
-			allocated := allocateID(WrapFeature(point, w), ns, w)
-			newIDs[point.PointID.FeatureID()] = allocated
-			point.PointID = allocated.ToPointID()
-		} else {
-			newIDs[point.PointID.FeatureID()] = point.PointID.FeatureID()
+	features := make(map[b6.FeatureID]b6.FeatureID)
+	for _, feature := range *a {
+		if err := w.AddFeature(feature); err != nil {
+			return b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{}.Collection(), err
 		}
-		if err := w.AddPoint(point); err != nil {
-			return empty, err
-		}
-	}
 
-	for _, path := range a.Paths {
-		if len(a.IDsToReplace) > 0 {
-			for i := 0; i < path.Len(); i++ {
-				if id, ok := path.PointID(i); ok {
-					if allocated, ok := newIDs[id.FeatureID()]; ok {
-						path.SetPointID(i, allocated.ToPointID())
-					}
-				}
-			}
-			if ns, ok := a.IDsToReplace[path.PathID.Namespace]; ok {
-				allocated := allocateID(WrapFeature(path, w), ns, w)
-				newIDs[path.PathID.FeatureID()] = allocated
-				path.PathID = allocated.ToPathID()
-			} else {
-				newIDs[path.PathID.FeatureID()] = path.PathID.FeatureID()
-			}
-		} else {
-			newIDs[path.PathID.FeatureID()] = path.PathID.FeatureID()
-		}
-		if err := w.AddPath(path); err != nil {
-			return empty, err
-		}
-	}
-
-	for _, area := range a.Areas {
-		if len(a.IDsToReplace) > 0 {
-			for i := 0; i < area.Len(); i++ {
-				if ids, ok := area.PathIDs(i); ok {
-					for j, id := range ids {
-						if allocated, ok := newIDs[id.FeatureID()]; ok {
-							area.SetPathID(i, j, allocated.ToPathID())
-						}
-					}
-				}
-			}
-			if ns, ok := a.IDsToReplace[area.AreaID.Namespace]; ok {
-				allocated := allocateID(WrapFeature(area, w), ns, w)
-				newIDs[area.AreaID.FeatureID()] = allocated
-				area.AreaID = allocated.ToAreaID()
-			} else {
-				newIDs[area.AreaID.FeatureID()] = area.AreaID.FeatureID()
-			}
-		} else {
-			newIDs[area.AreaID.FeatureID()] = area.AreaID.FeatureID()
-		}
-		if err := w.AddArea(area); err != nil {
-			return empty, err
-		}
-	}
-
-	for _, relation := range a.Relations {
-		if len(a.IDsToReplace) > 0 {
-			for i := range relation.Members {
-				if allocated, ok := newIDs[relation.Members[i].ID]; ok {
-					relation.Members[i].ID = allocated
-				}
-			}
-		}
-		if _, ok := a.IDsToReplace[relation.RelationID.Namespace]; ok {
-			return empty, fmt.Errorf("Can't allocate new IDs for relations: %s", relation.RelationID)
-		} else {
-			newIDs[relation.RelationID.FeatureID()] = relation.RelationID.FeatureID()
-		}
-		if err := w.AddRelation(relation); err != nil {
-			return empty, err
-		}
-	}
-
-	for _, collection := range a.Collections {
-		// ID replacement not supported for collections.
-		// TODO delete replacement for all features, no longer necessary.
-		if err := w.AddCollection(collection); err != nil {
-			return empty, err
-		}
-		newIDs[collection.CollectionID.FeatureID()] = collection.CollectionID.FeatureID()
-	}
-
-	for _, expression := range a.Expressions {
-		if err := w.AddExpression(expression); err != nil {
-			return empty, err
-		}
-		newIDs[expression.ExpressionID.FeatureID()] = expression.ExpressionID.FeatureID()
+		features[feature.FeatureID()] = feature.FeatureID()
 	}
 
 	c := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{
-		Keys:   make([]b6.FeatureID, 0, len(newIDs)),
-		Values: make([]b6.FeatureID, 0, len(newIDs)),
+		Keys:   make([]b6.FeatureID, 0, len(features)),
+		Values: make([]b6.FeatureID, 0, len(features)),
 	}
-	for k, v := range newIDs {
+	for k, v := range features {
 		c.Keys = append(c.Keys, k)
 		c.Values = append(c.Values, v)
 	}
@@ -152,10 +54,10 @@ func (a *AddFeatures) FillFromGeoJSON(g geojson.GeoJSON) {
 
 func (a *AddFeatures) fillFromFeature(f *geojson.Feature, id uint64) {
 	var feature Feature
+
 	switch geometry := f.Geometry.Coordinates.(type) {
 	case geojson.Point:
 		point := NewPointFeature(b6.MakePointID(b6.NamespacePrivate, id), geometry.ToS2LatLng())
-		a.Points = append(a.Points, point)
 		feature = point
 	case geojson.LineString:
 		path := NewPathFeature(len(geometry))
@@ -163,7 +65,6 @@ func (a *AddFeatures) fillFromFeature(f *geojson.Feature, id uint64) {
 		for j, point := range geometry {
 			path.SetLatLng(j, point.ToS2LatLng())
 		}
-		a.Paths = append(a.Paths, path)
 		feature = path
 	case geojson.Polygon:
 		area := NewAreaFeature(1)
@@ -180,7 +81,6 @@ func (a *AddFeatures) fillFromFeature(f *geojson.Feature, id uint64) {
 			}
 		}
 		area.SetPolygon(0, s2.PolygonFromLoops(loops))
-		a.Areas = append(a.Areas, area)
 		feature = area
 	case geojson.MultiPolygon:
 		area := NewAreaFeature(len(geometry))
@@ -199,42 +99,15 @@ func (a *AddFeatures) fillFromFeature(f *geojson.Feature, id uint64) {
 			}
 			area.SetPolygon(j, s2.PolygonFromLoops(loops))
 		}
-		a.Areas = append(a.Areas, area)
 		feature = area
 	}
+
 	if feature != nil {
+		*a = append(*a, feature)
+
 		for key, value := range f.Properties {
 			feature.AddTag(b6.Tag{Key: key, Value: value})
 		}
-	}
-}
-
-func allocateID(f b6.Feature, ns b6.Namespace, byID b6.FeaturesByID) b6.FeatureID {
-	var value s2.CellID
-	switch f := f.(type) {
-	case b6.PointFeature:
-		value = s2.CellIDFromLatLng(s2.LatLngFromPoint(f.Point()))
-	case b6.PathFeature:
-		value = s2.CellIDFromLatLng(s2.LatLngFromPoint(f.Polyline().Centroid()))
-	case b6.AreaFeature:
-		centroids := make([]s2.Point, f.Len())
-		for i := 0; i < f.Len(); i++ {
-			centroids[i] = f.Polygon(i).Loop(0).Centroid()
-		}
-		loop := s2.LoopFromPoints(centroids)
-		if loop.Area() > 2.0*math.Pi {
-			loop.Invert()
-		}
-		value = s2.CellIDFromLatLng(s2.LatLngFromPoint(loop.Centroid()))
-	default:
-		panic(fmt.Sprintf("Can't allocate ID for %s", f.FeatureID().Type))
-	}
-	for {
-		id := b6.FeatureID{Type: f.FeatureID().Type, Namespace: ns, Value: uint64(value)}
-		if !byID.HasFeatureWithID(id) {
-			return id
-		}
-		value = value.Advance(1)
 	}
 }
 

@@ -35,6 +35,7 @@ func main() {
 	jsFlag := flag.String("js", "src/diagonal.works/b6/cmd/b6/js", "Path to JS bundle")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	fileIOFlag := flag.Bool("file-io", true, "Is file IO allowed from the API?")
+
 	flag.Parse()
 
 	if *worldFlag == "" {
@@ -42,7 +43,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	base, err := compact.ReadWorld(*worldFlag, *coresFlag)
+	base, err := compact.ReadWorld(*worldFlag, &ingest.BuildOptions{Cores: *coresFlag})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)

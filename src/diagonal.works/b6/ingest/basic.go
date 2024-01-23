@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -41,16 +42,16 @@ func (f featureValues) Key(v search.Value) search.Key {
 
 type FeatureIndex struct {
 	search.ArrayIndex
-	byID b6.FeaturesByID
+	features b6.FeaturesByID
 }
 
-func NewFeatureIndex(byID b6.FeaturesByID) *FeatureIndex {
-	return &FeatureIndex{ArrayIndex: *search.NewArrayIndex(featureValues{}), byID: byID}
+func NewFeatureIndex(features b6.FeaturesByID) *FeatureIndex {
+	return &FeatureIndex{ArrayIndex: *search.NewArrayIndex(featureValues{}), features: features}
 }
 
 func (f *FeatureIndex) Feature(v search.Value) b6.Feature {
 	if feature, ok := v.(Feature); ok {
-		return WrapFeature(feature, f.byID)
+		return WrapFeature(feature, f.features)
 	}
 	panic("Not a feature")
 }
@@ -341,47 +342,42 @@ func NewPathFeatureIterator(paths []b6.PathFeature) b6.PathFeatures {
 	return &pathFeatureIterator{paths: paths}
 }
 
-func findPathsByPoint(p b6.PointID, byID b6.FeaturesByID, r *FeatureReferences, w b6.World) b6.PathFeatures {
-	byPoint, ok := r.PathsByPoint[p]
-	if !ok {
-		return b6.EmptyPathFeatures{}
-	}
-	paths := make([]b6.PathFeature, len(byPoint))
-	for i, p := range byPoint {
-		paths[i] = WrapPathFeature(p.Path, byID)
-	}
-	return NewPathFeatureIterator(paths)
-}
-
-func traverse(originID b6.PointID, byID b6.FeaturesByID, r *FeatureReferences, w b6.World) []b6.Segment {
+func traverse(originID b6.PointID, f b6.FeaturesByID, r *FeatureReferencesByID, w b6.World) []b6.Segment {
 	segments := make([]b6.Segment, 0, 2)
-	origin := b6.FindPointByID(originID, byID)
+	origin := b6.FindPointByID(originID, f)
 	if origin == nil {
 		return segments
 	}
-	byPoint, ok := r.PathsByPoint[originID]
-	if !ok {
-		return segments
-	}
-	for _, p := range byPoint {
+
+	references := r.FindReferences(originID.FeatureID(), b6.FeatureTypePath)
+	for _, reference := range references {
+		path := f.FindFeatureByID(reference.Source()).(b6.PathFeature)
+		members := path.(pathFeature).PathFeature.PathMembers // TODO(mari): get rid of these casts when cleaning up path features
+
+		reference, ok := reference.(IndexedReference)
+		if !ok {
+			continue
+		}
+		index := reference.Index()
+
 		traversals := []struct {
 			start int
 			delta int
 		}{
-			{p.Position + 1, 1},
-			{p.Position - 1, -1},
+			{index + 1, 1},
+			{index - 1, -1},
 		}
 		for _, traversal := range traversals {
-			for i := traversal.start; i >= 0 && i < p.Path.Len(); i += traversal.delta {
-				if id, ok := p.Path.PointID(i); ok {
-					isNode := i == 0 || i == p.Path.Len()-1 || len(r.PathsByPoint[id]) > 1
+			for i := traversal.start; i >= 0 && i < path.Len(); i += traversal.delta {
+				if pointID, ok := members.PointID(i); ok {
+					isNode := i == 0 || i == path.Len()-1 || len(r.FindReferences(pointID.FeatureID(), b6.FeatureTypePath)) > 1
 					if !isNode {
-						if point := byID.FindFeatureByID(id.FeatureID()); point != nil {
+						if point := f.FindFeatureByID(pointID.FeatureID()); point != nil {
 							isNode = len(point.AllTags()) > 0
 						}
 					}
 					if isNode {
-						segments = append(segments, b6.Segment{Feature: WrapPathFeature(p.Path, w), First: p.Position, Last: i})
+						segments = append(segments, b6.Segment{Feature: path, First: index, Last: i})
 						break
 					}
 				}
@@ -416,53 +412,44 @@ func (a *areaFeatures) Next() bool {
 	return false
 }
 
-func findAreasByPoint(r *FeatureReferences, p b6.PointID, w b6.World) b6.AreaFeatures {
-	areas := r.AreasForPoint(p, w)
-	features := make([]b6.AreaFeature, len(areas))
-	for i, area := range areas {
-		features[i] = WrapAreaFeature(area, w)
-	}
-	return NewAreaFeatureIterator(features)
+type iterator struct {
+	features []b6.Feature
+	i        int
 }
 
-func findRelationsByFeature(r *FeatureReferences, id b6.FeatureID, w b6.World) b6.RelationFeatures {
-	if relations, ok := r.RelationsByFeature[id]; ok {
-		wrapped := make([]b6.RelationFeature, len(relations))
-		for i, r := range relations {
-			wrapped[i] = relationFeature{r, w}
-		}
-		return NewRelationFeatureIterator(wrapped)
-	}
-	return NewRelationFeatureIterator([]b6.RelationFeature{})
+func NewFeatureIterator(features []b6.Feature) b6.Features {
+	return &iterator{features: features}
 }
 
-func findCollectionsByFeature(r *FeatureReferences, id b6.FeatureID, w b6.World) b6.CollectionFeatures {
-	if collections, ok := r.CollectionsByFeature[id]; ok {
-		wrapped := make([]b6.CollectionFeature, len(collections))
-		for i, c := range collections {
-			wrapped[i] = collectionFeature{c, w}
-		}
-		return NewCollectionFeatureIterator(wrapped)
-	}
-	return NewCollectionFeatureIterator([]b6.CollectionFeature{})
+func (i *iterator) Feature() b6.Feature {
+	return i.features[i.i-1]
+}
+
+func (i *iterator) FeatureID() b6.FeatureID {
+	return i.features[i.i-1].FeatureID()
+}
+
+func (i *iterator) Next() bool {
+	i.i++
+	return i.i <= len(i.features)
 }
 
 type basicWorld struct {
-	byID       *FeaturesByID
-	references *FeatureReferences
+	features   *FeaturesByID
+	references *FeatureReferencesByID
 	index      *FeatureIndex
 }
 
 func (b *basicWorld) FindFeatureByID(id b6.FeatureID) b6.Feature {
-	return b.byID.FindFeatureByID(id)
+	return b.features.FindFeatureByID(id)
 }
 
 func (b *basicWorld) HasFeatureWithID(id b6.FeatureID) bool {
-	return b.byID.HasFeatureWithID(id)
+	return b.features.HasFeatureWithID(id)
 }
 
 func (b *basicWorld) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
-	return b.byID.FindLocationByID(id)
+	return b.features.FindLocationByID(id)
 }
 
 func (b *basicWorld) FindFeatures(q b6.Query) b6.Features {
@@ -499,7 +486,13 @@ func (r *relationFeatures) RelationID() b6.RelationID {
 }
 
 func (b *basicWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
-	return findRelationsByFeature(b.references, id, b)
+	references := b.FindReferences(id, b6.FeatureTypeRelation)
+	var features []b6.RelationFeature
+	for references.Next() {
+		features = append(features, references.Feature().(b6.RelationFeature))
+	}
+
+	return NewRelationFeatureIterator(features)
 }
 
 type collectionFeatures struct {
@@ -533,23 +526,56 @@ func (c *collectionFeatures) CollectionID() b6.CollectionID {
 }
 
 func (b *basicWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
-	return findCollectionsByFeature(b.references, id, b)
+	references := b.FindReferences(id, b6.FeatureTypeCollection)
+	var features []b6.CollectionFeature
+	for references.Next() {
+		features = append(features, references.Feature().(b6.CollectionFeature))
+	}
+
+	return NewCollectionFeatureIterator(features)
 }
 
 func (b *basicWorld) FindPathsByPoint(p b6.PointID) b6.PathFeatures {
-	return findPathsByPoint(p, b.byID, b.references, b)
+	references := b.FindReferences(p.FeatureID(), b6.FeatureTypePath)
+	var features []b6.PathFeature
+	for references.Next() {
+		features = append(features, references.Feature().(b6.PathFeature))
+	}
+
+	return NewPathFeatureIterator(features)
 }
 
 func (b *basicWorld) FindAreasByPoint(p b6.PointID) b6.AreaFeatures {
-	return findAreasByPoint(b.references, p, b)
+	references := b.FindReferences(p.FeatureID(), b6.FeatureTypeArea)
+	var features []b6.AreaFeature
+	for references.Next() {
+		features = append(features, references.Feature().(b6.AreaFeature))
+	}
+
+	return NewAreaFeatureIterator(features)
+}
+
+func (b *basicWorld) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
+	references := b.references.FindReferences(id, typed...)
+
+	features := make([]b6.Feature, 0, len(references))
+	for _, reference := range references {
+		if feature := b.FindFeatureByID(reference.Source()); feature != nil {
+			if !slices.Contains(features, feature) {
+				features = append(features, feature)
+			}
+		}
+	}
+
+	return NewFeatureIterator(features)
 }
 
 func (b *basicWorld) Traverse(origin b6.PointID) b6.Segments {
-	return NewSegmentIterator(traverse(origin, b.byID, b.references, b))
+	return NewSegmentIterator(traverse(origin, b.features, b.references, b))
 }
 
 func (b *basicWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
-	return b.byID.EachFeature(each, options)
+	return EachFeature(each, b.features, b.references, options)
 }
 
 func (b *basicWorld) Tokens() []string {
@@ -566,36 +592,15 @@ type BuildOptions struct {
 }
 
 type BasicWorldBuilder struct {
-	byID *FeaturesByID
+	features *FeaturesByID
 }
 
-func NewBasicWorldBuilder() *BasicWorldBuilder {
-	b := &BasicWorldBuilder{byID: NewFeaturesByID()}
-	return b
+func NewBasicWorldBuilder(o *BuildOptions) *BasicWorldBuilder {
+	return &BasicWorldBuilder{features: NewFeaturesByID()}
 }
 
-func (b *BasicWorldBuilder) AddSimplePoint(id b6.PointID, ll s2.LatLng) {
-	b.byID.AddSimplePoint(id, ll)
-}
-
-func (b *BasicWorldBuilder) AddPoint(p *PointFeature) {
-	b.byID.Points[p.PointID] = p
-}
-
-func (b *BasicWorldBuilder) AddPath(p *PathFeature) {
-	b.byID.Paths[p.PathID] = p
-}
-
-func (b *BasicWorldBuilder) AddArea(a *AreaFeature) {
-	b.byID.Areas[a.AreaID] = a
-}
-
-func (b *BasicWorldBuilder) AddRelation(r *RelationFeature) {
-	b.byID.Relations[r.RelationID] = r
-}
-
-func (b *BasicWorldBuilder) AddCollection(c *CollectionFeature) {
-	b.byID.Collections[c.CollectionID] = c
+func (b *BasicWorldBuilder) AddFeature(f Feature) {
+	b.features.AddFeature(f)
 }
 
 type BrokenFeatures []BrokenFeature
@@ -611,28 +616,8 @@ func (b BrokenFeatures) Error() string {
 func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 	stages := []func(toIndex chan<- Feature, byID *FeaturesByID){
 		func(c chan<- Feature, byID *FeaturesByID) {
-			for _, point := range byID.Points {
-				c <- point
-			}
-		},
-		func(c chan<- Feature, byID *FeaturesByID) {
-			for _, path := range byID.Paths {
-				c <- path
-			}
-		},
-		func(c chan<- Feature, byID *FeaturesByID) {
-			for _, area := range byID.Areas {
-				c <- area
-			}
-		},
-		func(c chan<- Feature, byID *FeaturesByID) {
-			for _, relation := range byID.Relations {
-				c <- relation
-			}
-		},
-		func(c chan<- Feature, byID *FeaturesByID) {
-			for _, collection := range byID.Collections {
-				c <- collection
+			for _, feature := range *byID {
+				c <- feature
 			}
 		},
 	}
@@ -643,21 +628,7 @@ func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 	validate := func(c <-chan Feature) {
 		defer wg.Done()
 		for feature := range c {
-			var err error
-			switch f := feature.(type) {
-			case *PointFeature:
-				err = ValidatePoint(f)
-			case *PathFeature:
-				vo := ValidateOptions{InvertClockwisePaths: !o.FailClockwisePaths}
-				err = ValidatePath(f, &vo, b.byID)
-			case *AreaFeature:
-				err = ValidateArea(f, b.byID)
-			case *RelationFeature:
-				err = ValidateRelation(f)
-			case *CollectionFeature:
-				err = ValidateCollection(f)
-			}
-			if err != nil {
+			if err := ValidateFeature(feature, &ValidateOptions{InvertClockwisePaths: !o.FailClockwisePaths}, b.features); err != nil {
 				lock.Lock()
 				broken = append(broken, BrokenFeature{ID: feature.FeatureID(), Err: err})
 				lock.Unlock()
@@ -675,7 +646,7 @@ func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 		for i := 0; i < cores; i++ {
 			go validate(toValidate)
 		}
-		feed(toValidate, b.byID)
+		feed(toValidate, b.features)
 		close(toValidate)
 		wg.Wait()
 		if len(broken) > 0 {
@@ -683,26 +654,15 @@ func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 				return nil, broken
 			}
 			for _, br := range broken {
-				switch br.ID.Type {
-				case b6.FeatureTypePoint:
-					delete(b.byID.Points, br.ID.ToPointID())
-				case b6.FeatureTypePath:
-					delete(b.byID.Paths, br.ID.ToPathID())
-				case b6.FeatureTypeArea:
-					delete(b.byID.Areas, br.ID.ToAreaID())
-				case b6.FeatureTypeRelation:
-					delete(b.byID.Relations, br.ID.ToRelationID())
-				case b6.FeatureTypeCollection:
-					delete(b.byID.Collections, br.ID.ToCollectionID())
-				}
+				delete(*b.features, br.ID)
 			}
 		}
 	}
 
 	w := &basicWorld{
-		byID:       b.byID,
-		references: NewFilledFeatureReferences(b.byID),
-		index:      NewFeatureIndex(b.byID),
+		features:   b.features,
+		references: NewFilledFeatureReferences(b.features),
+		index:      NewFeatureIndex(b.features),
 	}
 
 	index := func(toIndex <-chan Feature) {
@@ -721,7 +681,7 @@ func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 		for i := 0; i < cores; i++ {
 			go index(toIndex)
 		}
-		feed(toIndex, w.byID)
+		feed(toIndex, w.features)
 		close(toIndex)
 		wg.Wait()
 	}
@@ -736,23 +696,12 @@ type BrokenFeature struct {
 }
 
 func NewWorldFromSource(source FeatureSource, o *BuildOptions) (b6.World, error) {
-	b := NewBasicWorldBuilder()
+	b := NewBasicWorldBuilder(o)
 	var lock sync.Mutex
 	f := func(feature Feature, g int) error {
 		feature = feature.Clone()
 		lock.Lock()
-		switch f := feature.(type) {
-		case *PointFeature:
-			b.AddPoint(f)
-		case *PathFeature:
-			b.AddPath(f)
-		case *AreaFeature:
-			b.AddArea(f)
-		case *RelationFeature:
-			b.AddRelation(f)
-		case *CollectionFeature:
-			b.AddCollection(f)
-		}
+		b.AddFeature(feature)
 		lock.Unlock()
 		return nil
 	}

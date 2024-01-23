@@ -28,8 +28,7 @@ func makePointMap(points b6.PointFeatures) map[b6.PointID]b6.PointFeature {
 
 func TestIntersectsWithCap(t *testing.T) {
 	nodes, ways, relations, err := osm.ReadWholePBF(test.Data(test.GranarySquarePBF))
-	o := BuildOptions{Cores: 2}
-	w, err := BuildWorldFromOSM(nodes, ways, relations, &o)
+	w, err := BuildWorldFromOSM(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -54,8 +53,7 @@ func TestIntersectsWithCap(t *testing.T) {
 
 func TestIntersectsWithAreaFeature(t *testing.T) {
 	nodes, ways, relations, err := osm.ReadWholePBF(test.Data(test.GranarySquarePBF))
-	o := BuildOptions{Cores: 2}
-	w, err := BuildWorldFromOSM(nodes, ways, relations, &o)
+	w, err := BuildWorldFromOSM(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

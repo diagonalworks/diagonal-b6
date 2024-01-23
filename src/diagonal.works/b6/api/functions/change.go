@@ -92,9 +92,9 @@ func addRelation(c *api.Context, id b6.RelationID, tags b6.Collection[interface{
 		}
 		r.Members = append(r.Members, b6.RelationMember{ID: m.Key().FeatureID(), Role: m.Value()})
 	}
-	return &ingest.AddFeatures{
-		Relations: []*ingest.RelationFeature{r},
-	}, nil
+
+	add := ingest.AddFeatures([]ingest.Feature{r})
+	return &add, nil
 }
 
 // Add a collection feature with the given id, tags and items.
@@ -127,9 +127,8 @@ func addCollection(c *api.Context, id b6.CollectionID, tags b6.Collection[any, b
 		feature.Values = append(feature.Values, i.Value())
 	}
 
-	return &ingest.AddFeatures{
-		Collections: []*ingest.CollectionFeature{feature},
-	}, nil
+	add := ingest.AddFeatures([]ingest.Feature{feature})
+	return &add, nil
 }
 
 // Return a change that will apply all the changes in the given collection.

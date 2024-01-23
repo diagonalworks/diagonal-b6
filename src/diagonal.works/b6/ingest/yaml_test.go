@@ -33,8 +33,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	}
 	nodes = append(nodes, caravan)
 
-	o := BuildOptions{Cores: 2}
-	base, err := BuildWorldFromOSM(nodes, ways, relations, &o)
+	base, err := BuildWorldFromOSM(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -47,7 +46,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	ifo := NewPointFeature(FromOSMNodeID(osm.NodeID(3868276529)), s2.LatLngFromDegrees(51.5321749, -0.1250181))
 	ifo.AddTag(b6.Tag{Key: "name", Value: "Identified Flying Object"})
 	ifo.AddTag(b6.Tag{Key: "tourism", Value: "attraction"})
-	if err := m.AddPoint(ifo); err != nil {
+	if err := m.AddFeature(ifo); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -57,7 +56,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	footway.SetLatLng(1, s2.LatLngFromDegrees(51.535632, -0.126046))
 	footway.SetPointID(2, FromOSMNodeID(dishoom.ID))
 	footway.AddTag(b6.Tag{Key: "highway", Value: "footway"})
-	if err := m.AddPath(footway); err != nil {
+	if err := m.AddFeature(footway); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -68,14 +67,14 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	boundary.SetLatLng(2, s2.LatLngFromDegrees(51.535632, -0.126046))
 	boundary.SetPointID(3, FromOSMNodeID(caravan.ID))
 	boundary.AddTag(b6.Tag{Key: "highway", Value: "footway"})
-	if err := m.AddPath(boundary); err != nil {
+	if err := m.AddFeature(boundary); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
 	square := NewAreaFeature(1)
 	square.AreaID = b6.MakeAreaID(b6.Namespace("diagonal.works/test"), 3)
 	square.SetPathIDs(0, []b6.PathID{boundary.PathID})
-	if err := m.AddArea(square); err != nil {
+	if err := m.AddFeature(square); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -86,7 +85,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		{ID: FromOSMNodeID(dishoom.ID).FeatureID(), Role: "best"},
 	}
 	ranking.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
-	if err := m.AddRelation(ranking); err != nil {
+	if err := m.AddFeature(ranking); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -95,7 +94,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	analysis.Keys = []interface{}{FromOSMNodeID(caravan.ID).FeatureID(), FromOSMNodeID(dishoom.ID).FeatureID()}
 	analysis.Values = []interface{}{"good", "best"}
 	analysis.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
-	if err := m.AddCollection(&analysis); err != nil {
+	if err := m.AddFeature(&analysis); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -123,7 +122,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	}
 
 	expression.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
-	if err := m.AddExpression(&expression); err != nil {
+	if err := m.AddFeature(&expression); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 

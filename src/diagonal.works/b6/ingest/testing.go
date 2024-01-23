@@ -14,7 +14,7 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-type BuildOSMWorld func(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error)
+type BuildOSMWorld func(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, o *BuildOptions) (b6.World, error)
 
 func ValidateWorld(name string, buildWorld BuildOSMWorld, t *testing.T) {
 	tests := []struct {
@@ -68,7 +68,7 @@ func ValidateGranarySquareSeemsReasonable(buildWorld BuildOSMWorld, t *testing.T
 		t.Errorf("Failed to read world: %s", err)
 		return
 	}
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -218,7 +218,7 @@ func ValidateWaysWithMissingNodesArentIndexed(buildWorld BuildOSMWorld, t *testi
 			Nodes: []osm.NodeID{1447052073, 1540349979},
 		},
 	}
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -242,7 +242,7 @@ func ValidatePointsWithoutTagsArentIndexed(buildWorld BuildOSMWorld, t *testing.
 		osm.Node{ID: 1715968743, Location: osm.LatLng{Lat: 51.5351547, Lng: -0.1250628}},
 	}
 
-	w, err := buildWorld(nodes, []osm.Way{}, []osm.Relation{})
+	w, err := buildWorld(nodes, []osm.Way{}, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -269,7 +269,7 @@ func ValidateWaysFallingExactlyWithinSearchCellAreFound(buildWorld BuildOSMWorld
 		way.Nodes[i] = osm.NodeID(i)
 	}
 
-	w, err := buildWorld(nodes, []osm.Way{way}, []osm.Relation{})
+	w, err := buildWorld(nodes, []osm.Way{way}, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -298,7 +298,7 @@ func ValidateClockwisePolygonsAreIndexedCorrectly(buildWorld BuildOSMWorld, t *t
 		Nodes: []osm.NodeID{2309943870, 2309943869, 2309943825, 2309943835, 2309943870},
 	}
 
-	w, err := buildWorld(nodes, []osm.Way{way}, []osm.Relation{})
+	w, err := buildWorld(nodes, []osm.Way{way}, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -327,7 +327,7 @@ func ValidatePolygonsWithInvalidGeometryAreSkipped(buildWorld BuildOSMWorld, t *
 		Tags:  []osm.Tag{{Key: "building", Value: "yes"}},
 	}
 
-	w, err := buildWorld(nodes, []osm.Way{way}, []osm.Relation{})
+	w, err := buildWorld(nodes, []osm.Way{way}, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -366,7 +366,7 @@ func ValidateWaysAsAreas(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -404,7 +404,7 @@ func ValidateRelationsAsAreas(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -444,7 +444,7 @@ func ValidateRelationsAsAreasWithMultipleLoopsAreArrangedCorrectly(buildWorld Bu
 		t.Errorf("Failed to read world: %s", err)
 		return
 	}
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -482,7 +482,7 @@ func ValidateAllQueryOnATokenThatDoesntExistReturnsNothing(buildWorld BuildOSMWo
 			Nodes: []osm.NodeID{5266979317, 5266979315, 5266979313, 5266979317},
 		},
 	}
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -519,7 +519,7 @@ func ValidatePointsNotOnAPathDoesntReturnPaths(buildWorld BuildOSMWorld, t *test
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -547,7 +547,7 @@ func ValidateFindFeatureWithInvalidIDReturnsNil(buildWorld BuildOSMWorld, t *tes
 		},
 	}
 
-	w, err := buildWorld(nodes, []osm.Way{}, []osm.Relation{})
+	w, err := buildWorld(nodes, []osm.Way{}, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -603,7 +603,7 @@ func ValidateFindWithIntersectionQuery(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, []osm.Way{}, []osm.Relation{})
+	w, err := buildWorld(nodes, []osm.Way{}, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -642,7 +642,7 @@ func ValidateTraverseReturnsSegmentsWithCorrectOrigin(buildWorld BuildOSMWorld, 
 		{ID: 807925586, Nodes: []osm.NodeID{7555184307, 1715968755, 5378333625}},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -686,7 +686,7 @@ func ValidateTraverseAlongWaysThatHaveBeenInverted(buildWorld BuildOSMWorld, t *
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -713,7 +713,7 @@ func ValidateFindPathsWithTwoJoinedPaths(buildWorld BuildOSMWorld, t *testing.T)
 		{ID: 558345054, Nodes: []osm.NodeID{5384190494, 5384190476}},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -747,7 +747,7 @@ func ValidateTraverseByIntersectionsAtEndNodes(buildWorld BuildOSMWorld, t *test
 		{ID: 140633010, Nodes: []osm.NodeID{1447052073, 1540349979}},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -803,7 +803,7 @@ func ValidateTraverseWithoutIntersectionsAtEndNodes(buildWorld BuildOSMWorld, t 
 		{ID: 140633010, Nodes: []osm.NodeID{1447052073, 1540349979}},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -856,7 +856,7 @@ func ValidateTraverseByIntersectionsBetweenEndNodes(buildWorld BuildOSMWorld, t 
 		{ID: 558345068, Nodes: []osm.NodeID{5384190491, 4966136655}},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -916,7 +916,7 @@ func ValidateSegmentsAreOnlyReturnedForWaysWithAllNodesPresent(buildWorld BuildO
 		{ID: 558345068, Nodes: []osm.NodeID{5384190491, 4966136655}},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -959,7 +959,7 @@ func ValidateTraversalCanEndAtTaggedNodes(buildWorld BuildOSMWorld, t *testing.T
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -993,7 +993,7 @@ func ValidateFindAreasByPoint(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1039,7 +1039,7 @@ func ValidateFindRelationsByFeature(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1085,7 +1085,7 @@ func ValidateFindRelationWithMissingWay(buildWorld BuildOSMWorld, t *testing.T) 
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1110,7 +1110,7 @@ func ValidateFindRelationWithMissingWay(buildWorld BuildOSMWorld, t *testing.T) 
 }
 
 func ValidateSpatialQueriesOnAnEmptyIndexReturnNothing(buildWorld BuildOSMWorld, t *testing.T) {
-	w, err := buildWorld([]osm.Node{}, []osm.Way{}, []osm.Relation{})
+	w, err := buildWorld([]osm.Node{}, []osm.Way{}, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1148,7 +1148,7 @@ func ValidateSpatialQueriesRecallParentCells(buildWorld BuildOSMWorld, t *testin
 	ways := []osm.Way{
 		{ID: 1, Nodes: []osm.NodeID{1, 2, 3, 4, 1}, Tags: osm.Tags{{Key: "building", Value: "yes"}}},
 	}
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1197,7 +1197,7 @@ func ValidatePathsAreExplicityClosedLoopsArent(buildWorld BuildOSMWorld, t *test
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1278,7 +1278,7 @@ func ValidatePolygonForAreaWithAHole(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1320,7 +1320,7 @@ func ValidateTagsAreSearchable(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, []osm.Way{}, []osm.Relation{})
+	w, err := buildWorld(nodes, []osm.Way{}, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1376,7 +1376,7 @@ func ValidateMultipolygonsWithLoopsThatSharePoints(buildWorld BuildOSMWorld, t *
 		{ID: 7367847759, Location: osm.LatLng{Lat: 41.3653772, Lng: 2.1139749}},
 	}
 
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1426,7 +1426,7 @@ func ValidateThinBuilding(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1474,7 +1474,7 @@ func ValidateBrokenOSMWayForArea(buildWorld BuildOSMWorld, t *testing.T) {
 		},
 	}
 
-	w, err := buildWorld(nodes, ways, []osm.Relation{})
+	w, err := buildWorld(nodes, ways, []osm.Relation{}, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1505,7 +1505,7 @@ func ValidateSearchableRelationsNotReferencedByAFeature(buildWorld BuildOSMWorld
 		},
 	}
 
-	_, err := buildWorld(nodes, []osm.Way{}, relations)
+	_, err := buildWorld(nodes, []osm.Way{}, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return
@@ -1518,7 +1518,7 @@ func ValidateEachFeature(buildWorld BuildOSMWorld, t *testing.T) {
 		t.Errorf("Failed to read world: %s", err)
 		return
 	}
-	w, err := buildWorld(nodes, ways, relations)
+	w, err := buildWorld(nodes, ways, relations, &BuildOptions{Cores: 2})
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err)
 		return

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -16,13 +17,9 @@ import (
 
 type MutableWorld interface {
 	b6.World
-	AddSimplePoint(id b6.PointID, ll s2.LatLng) error
-	AddPoint(p *PointFeature) error
-	AddPath(p *PathFeature) error
-	AddArea(a *AreaFeature) error
-	AddRelation(a *RelationFeature) error
-	AddCollection(c *CollectionFeature) error
-	AddExpression(e *ExpressionFeature) error
+
+	AddFeature(f Feature) error
+
 	AddTag(id b6.FeatureID, tag b6.Tag) error
 	RemoveTag(id b6.FeatureID, key string) error
 	EachModifiedFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error
@@ -96,6 +93,10 @@ func (r ReadOnlyWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 	return r.World.FindAreasByPoint(id)
 }
 
+func (r ReadOnlyWorld) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
+	return r.World.FindReferences(id, typed...)
+}
+
 func (r ReadOnlyWorld) Traverse(id b6.PointID) b6.Segments {
 	return r.World.Traverse(id)
 }
@@ -116,31 +117,7 @@ func (r ReadOnlyWorld) Tokens() []string {
 	return r.World.Tokens()
 }
 
-func (r ReadOnlyWorld) AddSimplePoint(id b6.PointID, ll s2.LatLng) error {
-	return errors.New("World is read-only")
-}
-
-func (r ReadOnlyWorld) AddPoint(p *PointFeature) error {
-	return errors.New("World is read-only")
-}
-
-func (r ReadOnlyWorld) AddPath(p *PathFeature) error {
-	return errors.New("World is read-only")
-}
-
-func (r ReadOnlyWorld) AddArea(a *AreaFeature) error {
-	return errors.New("World is read-only")
-}
-
-func (r ReadOnlyWorld) AddRelation(a *RelationFeature) error {
-	return errors.New("World is read-only")
-}
-
-func (r ReadOnlyWorld) AddCollection(c *CollectionFeature) error {
-	return errors.New("World is read-only")
-}
-
-func (r ReadOnlyWorld) AddExpression(e *ExpressionFeature) error {
+func (r ReadOnlyWorld) AddFeature(f Feature) error {
 	return errors.New("World is read-only")
 }
 
@@ -154,16 +131,16 @@ func (r ReadOnlyWorld) RemoveTag(id b6.FeatureID, key string) error {
 
 type mutableFeatureIndex struct {
 	search.TreeIndex
-	byID b6.FeaturesByID
+	features b6.FeaturesByID
 }
 
-func newMutableFeatureIndex(byID b6.FeaturesByID) *mutableFeatureIndex {
-	return &mutableFeatureIndex{TreeIndex: *search.NewTreeIndex(featureValues{}), byID: byID}
+func newMutableFeatureIndex(features b6.FeaturesByID) *mutableFeatureIndex {
+	return &mutableFeatureIndex{TreeIndex: *search.NewTreeIndex(featureValues{}), features: features}
 }
 
 func (f *mutableFeatureIndex) Feature(v search.Value) b6.Feature {
 	if feature, ok := v.(Feature); ok {
-		return WrapFeature(feature, f.byID)
+		return WrapFeature(feature, f.features)
 	}
 	panic("Not a feature")
 }
@@ -187,31 +164,31 @@ func (f *mutableFeatureIndex) ID(v search.Value) b6.FeatureID {
 }
 
 type BasicMutableWorld struct {
-	byID       *FeaturesByID
-	references *FeatureReferences
+	features   *FeaturesByID
+	references *FeatureReferencesByID
 	index      *mutableFeatureIndex
 }
 
 func NewBasicMutableWorld() *BasicMutableWorld {
-	byID := NewFeaturesByID()
+	features := NewFeaturesByID()
 	w := &BasicMutableWorld{
-		byID:       byID,
+		features:   features,
 		references: NewFeatureReferences(),
-		index:      newMutableFeatureIndex(byID),
+		index:      newMutableFeatureIndex(features),
 	}
 	return w
 }
 
 func (m *BasicMutableWorld) FindFeatureByID(id b6.FeatureID) b6.Feature {
-	return m.byID.FindFeatureByID(id)
+	return m.features.FindFeatureByID(id)
 }
 
 func (m *BasicMutableWorld) HasFeatureWithID(id b6.FeatureID) bool {
-	return m.byID.HasFeatureWithID(id)
+	return m.features.HasFeatureWithID(id)
 }
 
 func (m *BasicMutableWorld) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
-	return m.byID.FindLocationByID(id)
+	return m.features.FindLocationByID(id)
 }
 
 func (m *BasicMutableWorld) FindFeatures(q b6.Query) b6.Features {
@@ -222,19 +199,58 @@ func (m *BasicMutableWorld) FindFeatures(q b6.Query) b6.Features {
 }
 
 func (m *BasicMutableWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
-	return findRelationsByFeature(m.references, id, m)
+	var features []b6.RelationFeature
+	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeRelation)
+	for references.Next() {
+		features = append(features, references.Feature().(b6.RelationFeature))
+	}
+
+	return NewRelationFeatureIterator(features)
 }
 
 func (m *BasicMutableWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
-	return findCollectionsByFeature(m.references, id, m)
+	var features []b6.CollectionFeature
+	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeCollection)
+	for references.Next() {
+		features = append(features, references.Feature().(b6.CollectionFeature))
+	}
+
+	return NewCollectionFeatureIterator(features)
 }
 
 func (m *BasicMutableWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
-	return findPathsByPoint(id, m, m.references, m)
+	references := m.FindReferences(id.FeatureID(), b6.FeatureTypePath)
+	var features []b6.PathFeature
+	for references.Next() {
+		features = append(features, references.Feature().(b6.PathFeature))
+	}
+
+	return NewPathFeatureIterator(features)
 }
 
 func (m *BasicMutableWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
-	return findAreasByPoint(m.references, id, m)
+	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeArea)
+	var features []b6.AreaFeature
+	for references.Next() {
+		features = append(features, references.Feature().(b6.AreaFeature))
+	}
+
+	return NewAreaFeatureIterator(features)
+}
+
+func (m *BasicMutableWorld) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
+	references := m.references.FindReferences(id, typed...)
+
+	features := make([]b6.Feature, 0, len(references))
+	for _, reference := range references {
+		if feature := m.FindFeatureByID(reference.Source()); feature != nil {
+			if !slices.Contains(features, feature) {
+				features = append(features, feature)
+			}
+		}
+	}
+
+	return NewFeatureIterator(features)
 }
 
 func (m *BasicMutableWorld) Traverse(origin b6.PointID) b6.Segments {
@@ -242,7 +258,7 @@ func (m *BasicMutableWorld) Traverse(origin b6.PointID) b6.Segments {
 }
 
 func (m *BasicMutableWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
-	return m.byID.EachFeature(each, options)
+	return EachFeature(each, m.features, m.references, options)
 }
 
 func (m *BasicMutableWorld) EachModifiedFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
@@ -257,83 +273,31 @@ func (m *BasicMutableWorld) Tokens() []string {
 	return search.AllTokens(m.index.Tokens())
 }
 
-func (m *BasicMutableWorld) AddSimplePoint(id b6.PointID, ll s2.LatLng) error {
-	if !id.IsValid() {
-		return fmt.Errorf("%s: invalid ID", id)
+func (m *BasicMutableWorld) AddFeature(f Feature) error {
+	if err := ValidateFeature(f, &ValidateOptions{InvertClockwisePaths: false}, m); err != nil {
+		return err
 	}
-	m.byID.AddSimplePoint(id, ll)
-	return nil
-}
 
-func (m *BasicMutableWorld) AddPoint(p *PointFeature) error {
-	if err := ValidatePoint(p); err != nil {
-		return err
+	existing := (*m.features)[f.FeatureID()]
+	references := allReferences(f, m)
+	if existing != nil {
+		(*m.features)[f.FeatureID()] = f
+		for _, reference := range references {
+			if err := ValidateFeature(NewFeatureFromWorld(reference), &ValidateOptions{InvertClockwisePaths: false}, m); err != nil {
+				return err
+			}
+		}
+		(*m.features)[f.FeatureID()] = existing
 	}
-	if err := validatePathsWithNewPoint(p, m.byID, m.references, m); err != nil {
-		return err
-	}
-	if err := validateAreasWithNewPoint(p, m.byID, m.references, m); err != nil {
-		return err
-	}
-	features := listFeaturesReferencedByPoint(p, m)
-	modified := NewModifiedFeatures(p, features, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	return nil
-}
 
-func (m *BasicMutableWorld) AddPath(p *PathFeature) error {
-	o := ValidateOptions{InvertClockwisePaths: false}
-	if err := ValidatePath(p, &o, m); err != nil {
-		return err
-	}
-	if err := validateAreasWithNewPath(p, m.byID, m.references, m); err != nil {
-		return err
-	}
-	features := listFeaturesReferencedByPath(p, m)
-	modified := NewModifiedFeatures(p, features, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	return nil
-}
-
-func (m *BasicMutableWorld) AddArea(a *AreaFeature) error {
-	if err := ValidateArea(a, m); err != nil {
-		return err
-	}
-	modified := NewModifiedFeatures(a, []b6.PhysicalFeature{}, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	return nil
-}
-
-func (m *BasicMutableWorld) AddRelation(r *RelationFeature) error {
-	if err := ValidateRelation(r); err != nil {
-		return err
-	}
-	modified := NewModifiedFeatures(r, []b6.PhysicalFeature{}, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	return nil
-}
-
-func (m *BasicMutableWorld) AddCollection(c *CollectionFeature) error {
-	if err := ValidateCollection(c); err != nil {
-		return err
-	}
-	modified := NewModifiedFeatures(c, []b6.PhysicalFeature{}, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	return nil
-}
-
-func (m *BasicMutableWorld) AddExpression(e *ExpressionFeature) error {
-	if err := ValidateExpression(e); err != nil {
-		return err
-	}
-	modified := NewModifiedFeatures(e, []b6.PhysicalFeature{}, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
+	modified := NewModifiedFeatures(f, references, m.features, m)
+	modified.Update(m.features, m.references, m.index, m)
 	return nil
 }
 
 func (m *BasicMutableWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 	tokenAfter, indexedAfter := b6.TokenForTag(tag)
-	if f := m.byID.FindMutableFeatureByID(id); f != nil {
+	if f := m.features.FindMutableFeatureByID(id); f != nil {
 		var tokenBefore string
 		var indexedBefore bool
 		if before := f.Get(tag.Key); before.IsValid() {
@@ -351,7 +315,7 @@ func (m *BasicMutableWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 }
 
 func (m *BasicMutableWorld) RemoveTag(id b6.FeatureID, key string) error {
-	if f := m.byID.FindMutableFeatureByID(id); f != nil {
+	if f := m.features.FindMutableFeatureByID(id); f != nil {
 		if tag := f.Get(key); tag.IsValid() {
 			if token, indexed := b6.TokenForTag(tag); indexed {
 				m.index.Remove(f, []string{token})
@@ -362,30 +326,17 @@ func (m *BasicMutableWorld) RemoveTag(id b6.FeatureID, key string) error {
 	return nil
 }
 
-func NewMutableWorldFromSource(source FeatureSource, cores int) (b6.World, error) {
+func NewMutableWorldFromSource(o *BuildOptions, source FeatureSource) (b6.World, error) {
 	w := NewBasicMutableWorld()
 	var lock sync.Mutex
 	f := func(feature Feature, g int) error {
 		feature = feature.Clone()
 		lock.Lock()
-		switch f := feature.(type) {
-		case *PointFeature:
-			w.AddPoint(f)
-		case *PathFeature:
-			w.AddPath(f)
-		case *AreaFeature:
-			w.AddArea(f)
-		case *RelationFeature:
-			w.AddRelation(f)
-		case *CollectionFeature:
-			w.AddCollection(f)
-		case *ExpressionFeature:
-			w.AddExpression(f)
-		}
+		w.AddFeature(feature)
 		lock.Unlock()
 		return nil
 	}
-	options := ReadOptions{Goroutines: cores}
+	options := ReadOptions{Goroutines: o.Cores}
 	err := source.Read(options, f, context.Background())
 	return w, err
 }
@@ -785,8 +736,8 @@ func (m *modifiedTagsSegments) Next() bool {
 }
 
 type MutableOverlayWorld struct {
-	byID       *FeaturesByID
-	references *FeatureReferences
+	features   *FeaturesByID
+	references *FeatureReferencesByID
 	index      *mutableFeatureIndex
 	base       b6.World
 	tags       ModifiedTags
@@ -795,7 +746,7 @@ type MutableOverlayWorld struct {
 
 func NewMutableOverlayWorld(base b6.World) *MutableOverlayWorld {
 	w := &MutableOverlayWorld{
-		byID:       NewFeaturesByID(),
+		features:   NewFeaturesByID(),
 		references: NewFeatureReferences(),
 		base:       base,
 		tags:       NewModifiedTags(),
@@ -835,123 +786,96 @@ func (f *mutableFeatureIterator) FeatureID() b6.FeatureID {
 func (m *MutableOverlayWorld) FindFeatures(q b6.Query) b6.Features {
 	overlay := b6.NewFeatureIterator(q.Compile(m.index, m), m.index)
 	return &mutableFeatureIterator{
-		i:     newOverlayFeatures(m.tags.WrapFeatures(m.base.FindFeatures(q)), overlay, m.byID),
+		i:     newOverlayFeatures(m.tags.WrapFeatures(m.base.FindFeatures(q)), overlay, m.features),
 		epoch: m.epoch,
 		w:     m,
 	}
 }
 
 func (m *MutableOverlayWorld) FindFeatureByID(id b6.FeatureID) b6.Feature {
-	if feature := m.findFeatureByID(id); feature != nil {
-		return feature
+	if feature, ok := (*m.features)[id]; ok {
+		return WrapFeature(feature, m)
 	}
+
 	return m.tags.WrapFeature(m.base.FindFeatureByID(id))
 }
 
 func (m *MutableOverlayWorld) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
-	if ll, ok := m.byID.FindLocationByID(id); ok {
+	if ll, ok := m.features.FindLocationByID(id); ok {
 		return ll, true
 	}
 	return m.base.FindLocationByID(id)
 }
 
 func (m *MutableOverlayWorld) HasFeatureWithID(id b6.FeatureID) bool {
-	return m.byID.HasFeatureWithID(id) || m.base.HasFeatureWithID(id)
-}
-
-func (m *MutableOverlayWorld) findFeatureByID(id b6.FeatureID) b6.Feature {
-	var feature Feature
-	switch id.Type {
-	case b6.FeatureTypePoint:
-		if p, ok := m.byID.Points[id.ToPointID()]; ok {
-			feature = p
-		}
-	case b6.FeatureTypePath:
-		if p, ok := m.byID.Paths[id.ToPathID()]; ok {
-			feature = p
-		}
-	case b6.FeatureTypeArea:
-		if a, ok := m.byID.Areas[id.ToAreaID()]; ok {
-			feature = a
-		}
-	case b6.FeatureTypeRelation:
-		if r, ok := m.byID.Relations[id.ToRelationID()]; ok {
-			feature = r
-		}
-	case b6.FeatureTypeCollection:
-		if c, ok := m.byID.Collections[id.ToCollectionID()]; ok {
-			feature = c
-		}
-	case b6.FeatureTypeExpression:
-		if e, ok := m.byID.Expressions[id.ToExpressionID()]; ok {
-			feature = e
-		}
-	}
-	if feature != nil {
-		return WrapFeature(feature, m)
-	}
-	return nil
+	return m.features.HasFeatureWithID(id) || m.base.HasFeatureWithID(id)
 }
 
 func (m *MutableOverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
-	result := make([]b6.RelationFeature, 0)
-	rs := m.base.FindRelationsByFeature(id)
-	for rs.Next() {
-		if _, ok := m.byID.Relations[rs.Feature().RelationID()]; !ok {
-			result = append(result, rs.Feature())
-		}
+	features := make([]b6.RelationFeature, 0)
+	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeRelation)
+	for references.Next() {
+		features = append(features, references.Feature().(b6.RelationFeature))
 	}
-	if rs, ok := m.references.RelationsByFeature[id]; ok {
-		for _, r := range rs {
-			result = append(result, relationFeature{r, m})
-		}
-	}
-	return &relationFeatures{relations: result, i: -1}
+
+	return NewRelationFeatureIterator(features)
 }
 
 func (m *MutableOverlayWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
-	result := make([]b6.CollectionFeature, 0)
-	cs := m.base.FindCollectionsByFeature(id)
-	for cs.Next() {
-		if _, ok := m.byID.Collections[cs.Feature().CollectionID()]; !ok {
-			result = append(result, cs.Feature())
-		}
+	var features []b6.CollectionFeature
+	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeCollection)
+	for references.Next() {
+		features = append(features, references.Feature().(b6.CollectionFeature))
 	}
-	if cs, ok := m.references.CollectionsByFeature[id]; ok {
-		for _, c := range cs {
-			result = append(result, collectionFeature{c, m})
-		}
-	}
-	return &collectionFeatures{collections: result, i: -1}
+
+	return NewCollectionFeatureIterator(features)
 }
 
 func (m *MutableOverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathFeatures {
-	paths := make([]b6.PathFeature, 0)
-	ps := m.base.FindPathsByPoint(id)
-	for ps.Next() {
-		if _, ok := m.byID.Paths[ps.FeatureID().ToPathID()]; !ok {
-			paths = append(paths, ps.Feature())
-		}
+	var features []b6.PathFeature
+	references := m.FindReferences(id.FeatureID(), b6.FeatureTypePath)
+	for references.Next() {
+		features = append(features, references.Feature().(b6.PathFeature))
 	}
-	ps = findPathsByPoint(id, m, m.references, m)
-	for ps.Next() {
-		paths = append(paths, ps.Feature())
-	}
-	return NewPathFeatureIterator(paths)
+
+	return NewPathFeatureIterator(features)
 }
 
 func (m *MutableOverlayWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
-	result := make([]b6.AreaFeature, 0)
-	as := m.base.FindAreasByPoint(id)
-	for as.Next() {
-		if !m.byID.HasFeatureWithID(as.FeatureID()) {
-			result = append(result, as.Feature())
+	var features []b6.AreaFeature
+	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeArea)
+	for references.Next() {
+		features = append(features, references.Feature().(b6.AreaFeature))
+	}
+
+	return NewAreaFeatureIterator(features)
+}
+
+func (m *MutableOverlayWorld) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
+	references := make(map[b6.FeatureID]bool)
+
+	baseReferences := m.base.FindReferences(id) // Not limiting by type in base search.
+	for baseReferences.Next() {
+		references[baseReferences.FeatureID()] = true
+		for _, reference := range m.references.FindReferences(baseReferences.FeatureID(), typed...) {
+			references[reference.Source()] = true
 		}
 	}
-	for _, a := range m.references.AreasForPoint(id, m) {
-		result = append(result, areaFeature{a, m})
+
+	for _, reference := range m.references.FindReferences(id, typed...) {
+		references[reference.Source()] = true
 	}
-	return &areaFeatures{features: result, i: -1}
+
+	features := make([]b6.Feature, 0, len(references))
+	for reference := range references {
+		if feature := m.FindFeatureByID(reference); feature != nil {
+			if !slices.Contains(features, feature) && (len(typed) == 0 || slices.Contains(typed, feature.FeatureID().Type)) {
+				features = append(features, feature)
+			}
+		}
+	}
+
+	return NewFeatureIterator(features)
 }
 
 func (m *MutableOverlayWorld) Traverse(id b6.PointID) b6.Segments {
@@ -959,7 +883,7 @@ func (m *MutableOverlayWorld) Traverse(id b6.PointID) b6.Segments {
 	ss := m.base.Traverse(id)
 	for ss.Next() {
 		s := ss.Segment()
-		if _, ok := m.byID.Paths[s.Feature.PathID()]; !ok {
+		if feature := m.features.FindFeatureByID(s.Feature.FeatureID()); feature == nil {
 			segments = append(segments, s)
 		}
 	}
@@ -971,15 +895,16 @@ func (m *MutableOverlayWorld) EachFeature(each func(f b6.Feature, goroutine int)
 	wrap := func(feature Feature, goroutine int) error {
 		return each(WrapFeature(feature, m), goroutine)
 	}
-	if err := m.byID.eachIngestFeature(wrap, options); err != nil {
+	if err := eachIngestFeature(wrap, m.features, m.references, options); err != nil {
 		return err
 	}
 	filter := func(feature b6.Feature, goroutine int) error {
-		if !m.byID.HasFeatureWithID(feature.FeatureID()) {
+		if !m.features.HasFeatureWithID(feature.FeatureID()) {
 			return each(m.tags.WrapFeature(feature), goroutine)
 		}
 		return nil
 	}
+
 	return m.base.EachFeature(filter, options)
 }
 
@@ -987,7 +912,7 @@ func (m *MutableOverlayWorld) EachModifiedFeature(each func(f b6.Feature, gorout
 	wrap := func(feature Feature, goroutine int) error {
 		return each(WrapFeature(feature, m), goroutine)
 	}
-	return m.byID.eachIngestFeature(wrap, options)
+	return eachIngestFeature(wrap, m.features, m.references, options)
 }
 
 func (m *MutableOverlayWorld) EachModifiedTag(each func(f ModifiedTag, goroutine int) error, options *b6.EachFeatureOptions) error {
@@ -1010,92 +935,35 @@ func (m *MutableOverlayWorld) Tokens() []string {
 	return all
 }
 
-func (m *MutableOverlayWorld) AddSimplePoint(id b6.PointID, ll s2.LatLng) error {
-	// TODO: This could be improved
-	return m.AddPoint(NewPointFeature(id, ll))
-}
+func (m *MutableOverlayWorld) AddFeature(f Feature) error {
+	if err := ValidateFeature(f, &ValidateOptions{InvertClockwisePaths: false}, m); err != nil {
+		return err
+	}
 
-func (m *MutableOverlayWorld) AddPoint(p *PointFeature) error {
-	if err := ValidatePoint(p); err != nil {
-		return err
-	}
-	features := listFeaturesReferencedByPoint(p, m)
-	modified := NewModifiedFeaturesWithCopies(p, features, m.byID, m)
-	if err := validatePathsWithNewPoint(p, m.byID, m.references, m); err != nil {
-		return err
-	}
-	if err := validateAreasWithNewPoint(p, m.byID, m.references, m); err != nil {
-		return err
-	}
-	modified.Update(m.byID, m.references, m.index, m)
-	delete(m.tags, p.FeatureID())
-	m.epoch++
-	return nil
-}
+	existing := (*m.features)[f.FeatureID()]
+	references := allReferences(f, m)
+	if existing != nil {
+		(*m.features)[f.FeatureID()] = f
 
-func (m *MutableOverlayWorld) AddPath(p *PathFeature) error {
-	o := ValidateOptions{InvertClockwisePaths: false}
-	if err := ValidatePath(p, &o, m); err != nil {
-		return err
-	}
-	features := listFeaturesReferencedByPath(p, m)
-	modified := NewModifiedFeaturesWithCopies(p, features, m.byID, m)
-	if err := validateAreasWithNewPath(p, m.byID, m.references, m); err != nil {
-		return err
-	}
-	modified.Update(m.byID, m.references, m.index, m)
-	delete(m.tags, p.FeatureID())
-	m.epoch++
-	return nil
-}
+		for _, reference := range references {
+			if err := ValidateFeature(NewFeatureFromWorld(reference), &ValidateOptions{InvertClockwisePaths: false}, m); err != nil {
+				return err
+			}
+		}
 
-func (m *MutableOverlayWorld) AddArea(a *AreaFeature) error {
-	if err := ValidateArea(a, m); err != nil {
-		return err
+		(*m.features)[f.FeatureID()] = existing
 	}
-	modified := NewModifiedFeatures(a, []b6.PhysicalFeature{}, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	delete(m.tags, a.FeatureID())
-	m.epoch++
-	return nil
-}
 
-func (m *MutableOverlayWorld) AddRelation(r *RelationFeature) error {
-	if err := ValidateRelation(r); err != nil {
-		return err
-	}
-	modified := NewModifiedFeatures(r, []b6.PhysicalFeature{}, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	delete(m.tags, r.FeatureID())
-	m.epoch++
-	return nil
-}
-
-func (m *MutableOverlayWorld) AddCollection(c *CollectionFeature) error {
-	if err := ValidateCollection(c); err != nil {
-		return err
-	}
-	modified := NewModifiedFeatures(c, []b6.PhysicalFeature{}, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	delete(m.tags, c.FeatureID())
-	m.epoch++
-	return nil
-}
-
-func (m *MutableOverlayWorld) AddExpression(e *ExpressionFeature) error {
-	if err := ValidateExpression(e); err != nil {
-		return err
-	}
-	modified := NewModifiedFeatures(e, []b6.PhysicalFeature{}, m.byID, m)
-	modified.Update(m.byID, m.references, m.index, m)
-	delete(m.tags, e.FeatureID())
+	modified := NewModifiedFeaturesWithCopies(f, references, m.features, m)
+	modified.Update(m.features, m.references, m.index, m)
+	delete(m.tags, f.FeatureID())
 	m.epoch++
 	return nil
 }
 
 func (m *MutableOverlayWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 	tokenAfter, indexedAfter := b6.TokenForTag(tag)
-	if f := m.byID.FindMutableFeatureByID(id); f != nil {
+	if f := m.features.FindMutableFeatureByID(id); f != nil {
 		var tokenBefore string
 		var indexedBefore bool
 		if before := f.Get(tag.Key); before.IsValid() {
@@ -1115,8 +983,8 @@ func (m *MutableOverlayWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 		if indexedAfter {
 			f = NewFeatureFromWorld(base)
 			f.ModifyOrAddTag(tag)
-			m.byID.AddFeature(f)
-			m.references.AddFeature(f, m)
+			m.features.AddFeature(f)
+			m.references.AddFeature(f)
 			m.index.Add(f, TokensForFeature(WrapFeature(f, m)))
 		} else {
 			m.tags.ModifyOrAddTag(id, tag)
@@ -1126,7 +994,7 @@ func (m *MutableOverlayWorld) AddTag(id b6.FeatureID, tag b6.Tag) error {
 }
 
 func (m *MutableOverlayWorld) RemoveTag(id b6.FeatureID, key string) error {
-	if f := m.byID.FindMutableFeatureByID(id); f != nil {
+	if f := m.features.FindMutableFeatureByID(id); f != nil {
 		if tag := f.Get(key); tag.IsValid() {
 			if token, indexed := b6.TokenForTag(tag); indexed {
 				m.index.Remove(f, []string{token})
@@ -1142,8 +1010,8 @@ func (m *MutableOverlayWorld) RemoveTag(id b6.FeatureID, key string) error {
 			if _, indexed := b6.TokenForTag(tag); indexed {
 				f = NewFeatureFromWorld(base)
 				f.RemoveTag(key)
-				m.byID.AddFeature(f)
-				m.references.AddFeature(f, m)
+				m.features.AddFeature(f)
+				m.references.AddFeature(f)
 				m.index.Add(f, TokensForFeature(WrapFeature(f, m)))
 			} else {
 				m.tags.RemoveTag(id, key)
@@ -1155,82 +1023,10 @@ func (m *MutableOverlayWorld) RemoveTag(id b6.FeatureID, key string) error {
 
 func (m *MutableOverlayWorld) MergeSource(source FeatureSource) error {
 	emit := func(f Feature, goroutine int) error {
-		switch f := f.(type) {
-		case *PointFeature:
-			return m.AddPoint(f)
-		case *PathFeature:
-			return m.AddPath(f)
-		case *AreaFeature:
-			return m.AddArea(f)
-		case *RelationFeature:
-			return m.AddRelation(f)
-		case *CollectionFeature:
-			return m.AddCollection(f)
-		case *ExpressionFeature:
-			return m.AddExpression(f)
-		}
+		m.AddFeature(f)
 		return nil
 	}
 	return source.Read(ReadOptions{}, emit, context.Background())
-}
-
-func validatePathsWithNewPoint(new *PointFeature, byID *FeaturesByID, references *FeatureReferences, w b6.World) error {
-	existing := byID.Points[new.PointID]
-	if existing == nil {
-		return nil
-	}
-	byID.Points[new.PointID] = new
-	err := validatePaths(references.PathsByPoint[existing.PointID], w)
-	if err == nil {
-		err = validateAreas(references.AreasForPoint(existing.PointID, w), w)
-	}
-	byID.Points[new.PointID] = existing
-	return err
-}
-
-func validatePaths(paths []PathPosition, w b6.World) error {
-	seen := make(map[b6.PathID]struct{})
-	o := ValidateOptions{InvertClockwisePaths: false}
-	for _, path := range paths {
-		if _, ok := seen[path.Path.PathID]; !ok {
-			if err := ValidatePath(path.Path, &o, w); err != nil {
-				return err
-			}
-			seen[path.Path.PathID] = struct{}{}
-		}
-	}
-	return nil
-}
-
-func validateAreasWithNewPoint(new *PointFeature, byID *FeaturesByID, references *FeatureReferences, w b6.World) error {
-	existing := byID.Points[new.PointID]
-	if existing == nil {
-		return nil
-	}
-	byID.Points[new.PointID] = new
-	err := validateAreas(references.AreasForPoint(existing.PointID, w), w)
-	byID.Points[new.PointID] = existing
-	return err
-}
-
-func validateAreasWithNewPath(new *PathFeature, byID *FeaturesByID, references *FeatureReferences, w b6.World) error {
-	existing := byID.Paths[new.PathID]
-	if existing == nil {
-		return nil
-	}
-	byID.Paths[new.PathID] = new
-	err := validateAreas(references.AreasForPath(existing.PathID), w)
-	byID.Paths[new.PathID] = existing
-	return err
-}
-
-func validateAreas(areas []*AreaFeature, w b6.World) error {
-	for _, area := range areas {
-		if err := ValidateArea(area, w); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // MergeInto adds the features from this world to other. Merging is not atomic.
@@ -1238,80 +1034,36 @@ func validateAreas(areas []*AreaFeature, w b6.World) error {
 // an existing feature in other), other will be left with only some features
 // added.
 func (m *MutableOverlayWorld) MergeInto(other MutableWorld) error {
+	for _, feature := range *m.features {
+		if err := other.AddFeature(feature); err != nil {
+			return err
+		}
+	}
 	// TODO: this could (perhaps) be made more efficient if necessary,
 	// since the features below have already been validated in the
 	// context of this world. Restricting merging to an original 'parent'
 	// would, and checking an epoch number for changes, could enable
 	// a simple copy.
-	for _, point := range m.byID.Points {
-		if err := other.AddPoint(point); err != nil {
-			return err
-		}
-	}
-	for _, path := range m.byID.Paths {
-		if err := other.AddPath(path); err != nil {
-			return err
-		}
-	}
-	for _, area := range m.byID.Areas {
-		if err := other.AddArea(area); err != nil {
-			return err
-		}
-	}
-	for _, relation := range m.byID.Relations {
-		if err := other.AddRelation(relation); err != nil {
-			return err
-		}
-	}
-	for _, collection := range m.byID.Collections {
-		if err := other.AddCollection(collection); err != nil {
-			return err
-		}
-	}
-	for _, expression := range m.byID.Expressions {
-		if err := other.AddExpression(expression); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
 func (m *MutableOverlayWorld) Snapshot() b6.World {
 	copy := *m
 	m.base = &copy
-	m.byID = NewFeaturesByID()
+	m.features = NewFeaturesByID()
 	m.references = NewFeatureReferences()
 	m.tags = NewModifiedTags()
 	m.index = newMutableFeatureIndex(m)
 	return m.base
 }
 
-func listFeaturesReferencedByPoint(p *PointFeature, w b6.World) []b6.PhysicalFeature {
-	features := make([]b6.PhysicalFeature, 0)
-	ps := w.FindPathsByPoint(p.PointID)
-	for ps.Next() {
-		features = append(features, ps.Feature())
+func allReferences(f Feature, w b6.World) []b6.Feature {
+	var features []b6.Feature
+	references := w.FindReferences(f.FeatureID())
+	for references.Next() {
+		features = append(features, references.Feature())
 	}
-	as := w.FindAreasByPoint(p.PointID)
-	for as.Next() {
-		features = append(features, as.Feature())
-	}
-	return features
-}
 
-func listFeaturesReferencedByPath(p *PathFeature, w b6.World) []b6.PhysicalFeature {
-	features := make([]b6.PhysicalFeature, 0)
-	if existing := b6.FindPathByID(p.PathID, w); existing != nil {
-		for i := 0; i < existing.Len(); i++ {
-			if point := existing.Feature(i); point != nil {
-				as := w.FindAreasByPoint(point.PointID())
-				for as.Next() {
-					features = append(features, as.Feature())
-				}
-				break
-			}
-		}
-	}
 	return features
 }
 
@@ -1322,7 +1074,7 @@ type ModifiedFeatures struct {
 	existing Feature
 }
 
-func NewModifiedFeatures(new Feature, features []b6.PhysicalFeature, byID *FeaturesByID, w b6.World) *ModifiedFeatures {
+func NewModifiedFeatures(new Feature, features []b6.Feature, byID *FeaturesByID, w b6.World) *ModifiedFeatures {
 	m := &ModifiedFeatures{
 		features: make([]Feature, 0, len(features)+1),
 		tokens:   make([][]string, 0, len(features)+1),
@@ -1345,7 +1097,7 @@ func NewModifiedFeatures(new Feature, features []b6.PhysicalFeature, byID *Featu
 	return m
 }
 
-func NewModifiedFeaturesWithCopies(new Feature, features []b6.PhysicalFeature, byID *FeaturesByID, w b6.World) *ModifiedFeatures {
+func NewModifiedFeaturesWithCopies(new Feature, features []b6.Feature, byID *FeaturesByID, w b6.World) *ModifiedFeatures {
 	m := &ModifiedFeatures{
 		features: make([]Feature, 0, len(features)+1),
 		tokens:   make([][]string, 0, len(features)+1),
@@ -1374,19 +1126,19 @@ func NewModifiedFeaturesWithCopies(new Feature, features []b6.PhysicalFeature, b
 	return m
 }
 
-func (m *ModifiedFeatures) RemoveReferences(byID b6.FeaturesByID, references *FeatureReferences) {
+func (m *ModifiedFeatures) RemoveReferences(references *FeatureReferencesByID) {
 	if m.existing != nil {
-		references.RemoveFeature(m.existing, byID)
+		references.RemoveFeature(m.existing)
 	}
 	for i, f := range m.features[1:] {
 		if !m.copied[i+1] {
-			references.RemoveFeature(f, byID)
+			references.RemoveFeature(f)
 		}
 	}
 }
 
-func (m *ModifiedFeatures) Update(features *FeaturesByID, references *FeatureReferences, index *mutableFeatureIndex, byID b6.FeaturesByID) {
-	m.RemoveReferences(byID, references)
+func (m *ModifiedFeatures) Update(features *FeaturesByID, references *FeatureReferencesByID, index *mutableFeatureIndex, byID b6.FeaturesByID) {
+	m.RemoveReferences(references)
 	var new Feature
 	if m.existing != nil {
 		switch existing := m.existing.(type) {
@@ -1409,13 +1161,13 @@ func (m *ModifiedFeatures) Update(features *FeaturesByID, references *FeatureRef
 		features.AddFeature(new)
 	}
 	m.features[0] = new
-	m.AddReferences(byID, references)
+	m.AddReferences(references)
 	m.UpdateIndex(index, byID)
 }
 
-func (m *ModifiedFeatures) AddReferences(byID b6.FeaturesByID, references *FeatureReferences) {
+func (m *ModifiedFeatures) AddReferences(references *FeatureReferencesByID) {
 	for _, f := range m.features {
-		references.AddFeature(f, byID)
+		references.AddFeature(f)
 	}
 }
 
@@ -1541,6 +1293,10 @@ func (m *MutableTagsOverlayWorld) FindPathsByPoint(id b6.PointID) b6.PathFeature
 
 func (m *MutableTagsOverlayWorld) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 	return m.tags.WrapAreas(m.base.FindAreasByPoint(id))
+}
+
+func (m *MutableTagsOverlayWorld) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
+	return m.tags.WrapFeatures(m.base.FindReferences(id, typed...))
 }
 
 func (m *MutableTagsOverlayWorld) Traverse(id b6.PointID) b6.Segments {

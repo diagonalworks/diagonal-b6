@@ -36,10 +36,10 @@ func TestSightline(t *testing.T) {
 		name string
 		f    func(from s2.Point, radius s1.Angle, w b6.World) *s2.Polygon
 	}{
-		{"SightlineDefault", Sightline},
-		{"SightlineUsingPolygonIntersection", SightlineUsingPolygonIntersection},
-		{"SightlineUsingPolarCoordinates", SightlineUsingPolarCoordinates},
-		{"SightlineUsingPolarCoordinates2", SightlineUsingPolarCoordinates2},
+		{"TestSightlineDefault", Sightline},
+		{"TestSightlineUsingPolygonIntersection", SightlineUsingPolygonIntersection},
+		{"TestSightlineUsingPolarCoordinates", SightlineUsingPolarCoordinates},
+		{"TestSightlineUsingPolarCoordinates2", SightlineUsingPolarCoordinates2},
 	}
 
 	for _, s := range sightlines {

@@ -71,8 +71,7 @@ func BuildCamdenForTests(t *testing.T) b6.World {
 
 func build(t *testing.T, filename string) b6.World {
 	t.Helper()
-	o := &ingest.BuildOptions{Cores: 2}
-	w, err := ingest.NewWorldFromPBFFile(filename, o)
+	w, err := ingest.NewWorldFromPBFFile(filename, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Fatalf("NewWorldFromPBFFile(%s) failed with: %v", filename, err)
 	}

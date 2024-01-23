@@ -52,7 +52,7 @@ type toRead struct {
 	Change ingest.Change
 }
 
-func (t *toRead) Read(w *World, status chan<- string, cores int, ctx context.Context) error {
+func (t *toRead) Read(w *World, status chan<- string, o *ingest.BuildOptions, ctx context.Context) error {
 	switch t.Format {
 	case readFormatCompact:
 		m, err := encoding.Mmap(t.Filename)
@@ -74,9 +74,8 @@ func (t *toRead) Read(w *World, status chan<- string, cores int, ctx context.Con
 			FS:       t.Filesystem,
 			Ctx:      ctx,
 		}
-		o := ingest.BuildOptions{Cores: cores}
 		var err error
-		t.World, err = ingest.NewWorldFromOSMSource(&pbf, &o)
+		t.World, err = ingest.NewWorldFromOSMSource(&pbf, o)
 		return err
 	case readFormatYAML:
 		status <- fmt.Sprintf("Read YAML %s", t.Filename)
@@ -93,7 +92,7 @@ func (t *toRead) Read(w *World, status chan<- string, cores int, ctx context.Con
 	return fmt.Errorf("bad read format for %s", t.Filename)
 }
 
-func ReadWorld(input string, cores int) (b6.World, error) {
+func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 	ctx := context.Background()
 	sources := strings.Split(input, ",")
 	trs := make([]*toRead, 0)
@@ -150,7 +149,7 @@ func ReadWorld(input string, cores int) (b6.World, error) {
 	for i := range trs {
 		tr := trs[i]
 		g.Go(func() error {
-			return tr.Read(cw, status, cores, ctx)
+			return tr.Read(cw, status, o, ctx)
 		})
 	}
 	go func() {

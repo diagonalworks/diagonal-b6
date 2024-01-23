@@ -194,6 +194,24 @@ func (o *OverlayWorld) FindAreasByPoint(p b6.PointID) b6.AreaFeatures {
 	return &areaFeatures{features: features, i: -1}
 }
 
+func (o *OverlayWorld) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
+	byID := make(map[b6.FeatureID]b6.Feature)
+	for _, w := range []b6.World{o.base, o.overlay} {
+		references := w.FindReferences(id, typed...)
+		for references.Next() {
+			byID[references.FeatureID()] = references.Feature()
+		}
+
+	}
+
+	features := make([]b6.Feature, 0, len(byID))
+	for _, feature := range byID {
+		features = append(features, feature)
+	}
+
+	return NewFeatureIterator(features)
+}
+
 func (o *OverlayWorld) Traverse(id b6.PointID) b6.Segments {
 	byKey := make(map[b6.SegmentKey]b6.Segment)
 	for _, w := range []b6.World{o.base, o.overlay} {

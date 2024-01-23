@@ -988,6 +988,10 @@ func (w *World) FindAreasByPoint(id b6.PointID) b6.AreaFeatures {
 	return w.byID.FindAreasByPoint(id)
 }
 
+func (w *World) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
+	return b6.EmptyFeatures{} // TODO(mari)
+}
+
 func (w *World) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
 	return w.byID.FindRelationsByFeature(id)
 }

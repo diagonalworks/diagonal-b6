@@ -307,6 +307,7 @@ func ValidateConnectInsertingNewPoints(features b6.Features, network PathIDSet, 
 	}
 	s.Finish()
 	source := s.Output()
+
 	connected, err := ingest.NewWorldFromSource(source, &ingest.BuildOptions{Cores: 2})
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)

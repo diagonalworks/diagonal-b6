@@ -264,15 +264,15 @@ func TestAccessibility(t *testing.T) {
 
 	bridge := ingest.FromOSMWayID(140633010)
 	key := b6.SegmentKey{ID: bridge, First: 0, Last: 1}
-	expectedCount := 130
-	if math.Abs(float64(counts[key]-expectedCount)) > 20.0 {
+	expectedCount := 132
+	if counts[key] != expectedCount {
 		t.Errorf("Expected count of around %d, found %d", expectedCount, counts[key])
 	}
 
 	footpath := ingest.FromOSMWayID(278159862)
-	key = b6.SegmentKey{ID: footpath, First: 5, Last: 6}
-	expectedCount = 5
-	if math.Abs(float64(counts[key]-expectedCount)) > 20.0 {
+	key = b6.SegmentKey{ID: footpath, First: 9, Last: 11}
+	expectedCount = 1
+	if counts[key] != expectedCount {
 		t.Errorf("Expected count of around %d, found %d", expectedCount, counts[key])
 	}
 

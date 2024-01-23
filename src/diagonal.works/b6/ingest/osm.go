@@ -203,7 +203,7 @@ func NewMutableWorldFromOSMSource(s OSMSource, o *BuildOptions) (b6.World, error
 	if err != nil {
 		return nil, err
 	}
-	return NewMutableWorldFromSource(source, o.Cores)
+	return NewMutableWorldFromSource(o, source)
 }
 
 func BuildMutableWorldFromOSM(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, o *BuildOptions) (b6.World, error) {
