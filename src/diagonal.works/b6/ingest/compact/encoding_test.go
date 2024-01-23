@@ -35,7 +35,7 @@ func TestStringEncoding(t *testing.T) {
 	for i := l; i < len(buffer); i++ {
 		buffer[i] = 'X'
 	}
-	vv, l := UnmarshalString(buffer[0:])
+	vv, _ := UnmarshalString(buffer[0:])
 	if v != vv {
 		t.Errorf("Expected %q, found %q", v, vv)
 	}
@@ -99,7 +99,7 @@ func TestLatLngsEncoding(t *testing.T) {
 	}
 }
 
-func TestTagEncoding(t *testing.T) {
+func TestStringTagEncoding(t *testing.T) {
 	s := map[int]string{
 		1:    "highway",
 		42:   "primary",
@@ -107,9 +107,11 @@ func TestTagEncoding(t *testing.T) {
 		2043: "designated",
 	}
 
+	highwayValue := Int(42)
+	bicycleValue := Int(2043)
 	ts := Tags{
-		{Key: 1, Value: 42},
-		{Key: 36, Value: 2043},
+		{Key: 1, Value: &highwayValue},
+		{Key: 36, Value: &bicycleValue},
 	}
 
 	var buffer [128]byte
@@ -129,13 +131,13 @@ func TestTagEncoding(t *testing.T) {
 	}
 
 	m := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}
-	expected := []b6.Tag{{Key: "highway", Value: "primary"}, {Key: "bicycle", Value: "designated"}}
+	expected := []b6.Tag{{Key: "highway", Value: b6.String("primary")}, {Key: "bicycle", Value: b6.String("designated")}}
 	if found := m.AllTags(); !reflect.DeepEqual(found, expected) {
 		t.Errorf("Expected %+v, found %+v", expected, found)
 	}
 
-	if highway := m.Get("highway"); highway.Value != "primary" {
-		t.Errorf("Expected to find highway=primary")
+	if highway := m.Get("highway"); highway.Value.String() != "primary" {
+		t.Errorf("Expected to find primary, got %s", highway.Value.String())
 	}
 
 	if building := m.Get("building"); building.IsValid() {
@@ -143,51 +145,53 @@ func TestTagEncoding(t *testing.T) {
 	}
 }
 
-func TestPointEncoding(t *testing.T) {
+func TestLatLngTagEncoding(t *testing.T) {
+	s := map[int]string{1: "latlng"}
 	ll := s2.LatLngFromDegrees(51.53532, -0.12521)
-	p := Point{
-		Location: LatLng{
-			LatE7: ll.Lat.E7(),
-			LngE7: ll.Lng.E7(),
-		},
-		Tags: []Tag{
-			{Key: 1, Value: 42},
-			{Key: 36, Value: 2043},
-		},
-	}
+	value := LatLng{LatE7: ll.Lat.E7(), LngE7: ll.Lng.E7()}
+	ts := Tags{{Key: 1, Value: &value, ValueType: b6.ValueTypeLatLng}}
 
 	var buffer [128]byte
-	n := p.Marshal(buffer[0:])
+	n := ts.Marshal(buffer[0:])
 
-	var pp Point
-	nn := pp.Unmarshal(buffer[0:n])
+	var tts Tags
+	nn := tts.Unmarshal(buffer[0:n])
 
-	if !reflect.DeepEqual(p, pp) {
-		t.Errorf("Expected %+v, found %+v", p, pp)
+	if !reflect.DeepEqual(ts, tts) {
+		t.Errorf("Expected %+v, found %+v", ts, tts)
 	}
 	if n != nn {
 		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
 	}
+	if l := (MarshalledTags{Tags: buffer[0:]}).Length(); l != n {
+		t.Errorf("Expected end at %d, found %d", n, l)
+	}
 
-	found := MarshalledPoint(buffer[0:]).Location()
-	if s2.PointFromLatLng(found).Distance(s2.PointFromLatLng(ll)) > b6.MetersToAngle(1) {
-		t.Errorf("Expected location %s, found %s", ll, found)
+	m := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}
+	expected := []b6.Tag{{Key: "latlng", Value: b6.LatLng(ll)}}
+	if found := m.AllTags(); !reflect.DeepEqual(found, expected) {
+		t.Errorf("Expected %+v, found %+v", expected, found)
+	}
+
+	location, err := m.Location()
+	if err != nil {
+		t.Errorf("Expected no error got %s", err.Error())
+	}
+
+	if location.Distance(ll) > b6.MetersToAngle(1) {
+		t.Errorf("Expected location %s, found %s", ll, location)
 	}
 }
 
 func TestCommonPointEncoding(t *testing.T) {
+	s := map[int]string{1: "latlng"}
+
 	nss, nt := newOSMNamespaces()
 	ll := s2.LatLngFromDegrees(51.53532, -0.12521)
+	value := LatLng{LatE7: ll.Lat.E7(), LngE7: ll.Lng.E7()}
 	p := CommonPoint{
-		Point: Point{
-			Location: LatLng{
-				LatE7: ll.Lat.E7(),
-				LngE7: ll.Lng.E7(),
-			},
-			Tags: []Tag{
-				{Key: 1, Value: 42},
-				{Key: 36, Value: 2043},
-			},
+		Tags: []Tag{
+			{Key: 1, Value: &value, ValueType: b6.ValueTypeLatLng},
 		},
 		Path: Reference{
 			Namespace: nt.Encode(b6.NamespaceOSMNode),
@@ -208,9 +212,13 @@ func TestCommonPointEncoding(t *testing.T) {
 		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
 	}
 
-	found := MarshalledPoint(buffer[0:]).Location()
-	if s2.PointFromLatLng(found).Distance(s2.PointFromLatLng(ll)) > b6.MetersToAngle(1) {
-		t.Errorf("Expected location %s, found %s", ll, found)
+	location, err := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}.Location()
+	if err != nil {
+		t.Errorf("Expected no error got %s", err.Error())
+	}
+
+	if location.Distance(ll) > b6.MetersToAngle(1) {
+		t.Errorf("Expected location %s, found %s", ll, location)
 	}
 }
 
@@ -407,16 +415,10 @@ func TestGeometryMixedEncoding(t *testing.T) {
 func TestFullPointEncoding(t *testing.T) {
 	nss, nt := newOSMNamespaces()
 	ll := s2.LatLngFromDegrees(51.53532, -0.12521)
+	value := LatLng{LatE7: ll.Lat.E7(), LngE7: ll.Lng.E7()}
 	p := FullPoint{
-		Point: Point{
-			Location: LatLng{
-				LatE7: ll.Lat.E7(),
-				LngE7: ll.Lng.E7(),
-			},
-			Tags: []Tag{
-				{Key: 1, Value: 42},
-				{Key: 36, Value: 2043},
-			},
+		Tags: []Tag{
+			{Key: 1, Value: &value, ValueType: b6.ValueTypeLatLng},
 		},
 		PointReferences: PointReferences{
 			Paths: References{
@@ -445,10 +447,6 @@ func TestFullPointEncoding(t *testing.T) {
 func TestPathEncoding(t *testing.T) {
 	nss, nt := newOSMNamespaces()
 	p := Path{
-		Tags: []Tag{
-			{Key: 1, Value: 42},
-			{Key: 36, Value: 2043},
-		},
 		Points: &PathGeometryReferences{
 			Points: References{
 				{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 5266980038},
@@ -487,10 +485,6 @@ func TestPathEncoding(t *testing.T) {
 func TestAreaEncoding(t *testing.T) {
 	nss, nt := newOSMNamespaces()
 	a := Area{
-		Tags: []Tag{
-			{Key: 1, Value: 42},
-			{Key: 36, Value: 2043},
-		},
 		Polygons: &AreaGeometryReferences{
 			Polygons: []int{1, 2},
 			Paths: References{
@@ -520,10 +514,6 @@ func TestAreaEncoding(t *testing.T) {
 func TestAreaEncodingLatLngs(t *testing.T) {
 	nss, _ := newOSMNamespaces()
 	a := Area{
-		Tags: []Tag{
-			{Key: 1, Value: 42},
-			{Key: 36, Value: 2043},
-		},
 		Polygons: &AreaGeometryLatLngs{
 			Polygons: []PolygonGeometryLatLngs{
 				{
@@ -573,10 +563,6 @@ func TestAreaEncodingMixed(t *testing.T) {
 	nss, nt := newOSMNamespaces()
 	ids := []uint64{4256245, 804447787}
 	a := Area{
-		Tags: []Tag{
-			{Key: 1, Value: 42},
-			{Key: 36, Value: 2043},
-		},
 		Polygons: &AreaGeometryMixed{
 			Polygons: []PolygonGeometryMixed{
 				{
@@ -641,10 +627,6 @@ func TestAreaEncodingMixed(t *testing.T) {
 func TestRelationEncoding(t *testing.T) {
 	nss, nt := newOSMNamespaces()
 	r := Relation{
-		Tags: []Tag{
-			{Key: 1, Value: 42},
-			{Key: 36, Value: 2043},
-		},
 		Members: Members{
 			{
 				Type: b6.FeatureTypePath,

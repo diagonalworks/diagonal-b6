@@ -15,45 +15,73 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-type Renderable interface {
-	ToGeoJSON() geojson.GeoJSON
+type ValueType int
+
+const (
+	ValueTypeString ValueType = iota
+	ValueTypeLatLng
+)
+
+type Value interface {
+	String() string
+	Type() ValueType
+}
+
+func ValueFromString(s string, t ValueType) Value {
+	switch t {
+	case ValueTypeString:
+		return String(s)
+	case ValueTypeLatLng:
+		if ll, err := LatLngFromString(s); err == nil {
+			return LatLng(ll)
+		}
+	}
+
+	return nil
+}
+
+type String string
+
+func (s String) String() string {
+	return string(s)
+}
+
+func (s String) Type() ValueType {
+	return ValueTypeString
+}
+
+type LatLng s2.LatLng
+
+func (ll LatLng) String() string {
+	return strconv.FormatFloat(ll.Lat.Degrees(), 'f', -1, 64) + "," + strconv.FormatFloat(ll.Lng.Degrees(), 'f', -1, 64)
+}
+
+func (ll LatLng) Type() ValueType {
+	return ValueTypeLatLng
 }
 
 type Tag struct {
 	Key   string
-	Value string
+	Value Value
 }
 
 func (t Tag) IsValid() bool {
 	return t.Key != ""
 }
 
-func (t Tag) IntValue() (int, bool) {
-	if i, err := strconv.Atoi(t.Value); err == nil {
-		return i, true
-	}
-	return 0, false
-}
-
-func (t Tag) FloatValue() (float64, bool) {
-	if f, err := strconv.ParseFloat(t.Value, 64); err == nil {
-		return f, true
-	}
-	return 0.0, false
-}
-
 func (t Tag) String() string {
-	return escapeTagPart(t.Key) + "=" + escapeTagPart(t.Value)
+	return escapeTagPart(t.Key) + "=" + escapeTagPart(t.Value.String())
 }
 
-func (t *Tag) FromString(s string) {
+func (t *Tag) FromString(s string, typ ValueType) {
 	var rest string
 	t.Key, rest = consumeTagPart(s)
-	t.Value, _ = consumeTagPart(rest)
+	value, _ := consumeTagPart(rest)
+	t.Value = ValueFromString(value, typ)
 }
 
 func (t Tag) MarshalYAML() (interface{}, error) {
-	return t.String(), nil
+	return fmt.Sprint(t.Value.Type()) + "|" + t.String(), nil
 }
 
 func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -61,7 +89,40 @@ func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&s); err != nil {
 		return err
 	}
-	t.FromString(s)
+
+	typ, tag := consumeTagPart(s)
+	valueType, _ := strconv.Atoi(typ)
+	t.FromString(tag, ValueType(valueType))
+
+	return nil
+}
+
+func (t Tags) MarshalYAML() (interface{}, error) {
+	tags := make([]interface{}, len(t))
+	for i, tag := range t {
+		if m, err := tag.MarshalYAML(); err != nil {
+			return tags, err
+		} else {
+			tags[i] = m
+		}
+	}
+
+	return tags, nil
+}
+
+func (t *Tags) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s []string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+
+	*t = make([]Tag, len(s))
+	for i, tag := range s {
+		typ, tag := consumeTagPart(tag)
+		valueType, _ := strconv.Atoi(typ)
+		(*t)[i].FromString(tag, ValueType(valueType))
+	}
+
 	return nil
 }
 
@@ -124,6 +185,8 @@ func consumeTagPart(s string) (string, string) {
 			} else {
 				if r == '=' {
 					return part, s[i+len("="):]
+				} else if r == '|' {
+					return part, s[i+len("|"):]
 				} else if !done && !unicode.IsSpace(r) {
 					part += string(r)
 				}
@@ -133,14 +196,8 @@ func consumeTagPart(s string) (string, string) {
 	return part, ""
 }
 
-func TagFromString(s string) Tag {
-	t := Tag{}
-	t.FromString(s)
-	return t
-}
-
 func InvalidTag() Tag {
-	return Tag{}
+	return Tag{Value: String("")}
 }
 
 type Taggable interface {
@@ -149,6 +206,10 @@ type Taggable interface {
 }
 
 type Tags []Tag
+
+func (t Tags) AllTags() []Tag {
+	return t
+}
 
 func (t Tags) Get(key string) Tag {
 	for _, tag := range t {
@@ -163,21 +224,20 @@ func (t Tags) TagOrFallback(key string, fallback string) Tag {
 	if value := t.Get(key); value.IsValid() {
 		return value
 	}
-	return Tag{Key: key, Value: fallback}
-}
-
-func (t *Tags) AddTag(tag Tag) {
-	*t = append(*t, tag)
+	return Tag{Key: key, Value: String(fallback)}
 }
 
 func (t *Tags) SetTags(tags []Tag) {
 	*t = tags
 }
 
+func (t *Tags) AddTag(tag Tag) {
+	*t = append(*t, tag)
+}
+
 // Modifies an existing tag value, or add it if it doesn't exist.
-// Returns (true, old value) if it modifies, or (false, undefined) if
-// added.
-func (t *Tags) ModifyOrAddTag(tag Tag) (bool, string) {
+// Returns (true, old value) if it modifies, or (false, undefined) if added.
+func (t *Tags) ModifyOrAddTag(tag Tag) (bool, Value) {
 	for i := range *t {
 		if (*t)[i].Key == tag.Key {
 			old := (*t)[i].Value
@@ -186,43 +246,29 @@ func (t *Tags) ModifyOrAddTag(tag Tag) (bool, string) {
 		}
 	}
 	t.AddTag(tag)
-	return false, ""
+	return false, String("")
 }
 
 func (t *Tags) RemoveTag(key string) {
-	w := 0
-	for r := range *t {
-		if (*t)[r].Key != key {
-			if w != r {
-				(*t)[w] = (*t)[r]
-			}
-			w++
+	for i, tag := range *t {
+		if tag.Key == key {
+			*t = append((*t)[:i], (*t)[i+1:]...)
 		}
 	}
-	*t = (*t)[0:w]
 }
 
 func (t *Tags) RemoveTags(keys []string) {
-	w := 0
-	for r := range *t {
-		var i int
-		for i = 0; i < len(keys); i++ {
-			if (*t)[r].Key == keys[i] {
-				break
+	for i, tag := range *t {
+		for _, key := range keys {
+			if tag.Key == key {
+				*t = append((*t)[:i], (*t)[i+1:]...)
 			}
-		}
-		if i == len(keys) {
-			if w != r {
-				(*t)[w] = (*t)[r]
-			}
-			w++
 		}
 	}
-	*t = (*t)[0:w]
 }
 
-func (t Tags) AllTags() []Tag {
-	return t
+func (t *Tags) RemoveAll() {
+	*t = []Tag{}
 }
 
 func (t Tags) Clone() Tags {
@@ -240,6 +286,21 @@ func (t *Tags) MergeFrom(other Tags) {
 	} else {
 		*t = (*t)[0:len(other)]
 	}
+}
+
+const LatLngTag = "latlng"
+
+func (t *Tags) Location() s2.LatLng {
+	ll, _ := LatLngFromString(t.Get(LatLngTag).Value.String())
+	return ll
+}
+
+func (t *Tags) GeometryType() GeometryType {
+	if t.Get(LatLngTag) != InvalidTag() {
+		return GeometryTypePoint
+	}
+
+	return GeometryTypeInvalid
 }
 
 type FeatureType int
@@ -349,10 +410,6 @@ type Identifiable interface {
 	FeatureID() FeatureID
 }
 
-type IdentifiablePoint interface {
-	PointID() PointID
-}
-
 type FeatureID struct {
 	Type      FeatureType
 	Namespace Namespace
@@ -413,17 +470,14 @@ func (f FeatureID) FeatureID() FeatureID {
 	return f
 }
 
+func (f *FeatureID) SetFeatureID(id FeatureID) {
+	*f = id
+}
+
 func (f *FeatureID) FromFeatureID(other FeatureID) {
 	f.Type = other.Type
 	f.Namespace = other.Namespace
 	f.Value = other.Value
-}
-
-func (f FeatureID) ToPointID() PointID {
-	if f.Type == FeatureTypePoint || f.Type == FeatureTypeInvalid {
-		return PointID{Namespace: f.Namespace, Value: f.Value}
-	}
-	panic("Not a point")
 }
 
 func (f FeatureID) ToPathID() PathID {
@@ -517,58 +571,7 @@ func (f FeatureIDs) Len() int           { return len(f) }
 func (f FeatureIDs) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }
 func (f FeatureIDs) Less(i, j int) bool { return f[i].Less(f[j]) }
 
-type PointID struct {
-	Namespace Namespace
-	Value     uint64
-}
-
-func MakePointID(ns Namespace, v uint64) PointID {
-	return PointID{Namespace: ns, Value: v}
-}
-
-func (p PointID) FeatureID() FeatureID {
-	return FeatureID{Type: FeatureTypePoint, Namespace: p.Namespace, Value: p.Value}
-}
-
-func (p PointID) IsValid() bool {
-	return p.Namespace != NamespaceInvalid
-}
-
-func (p PointID) String() string {
-	return p.FeatureID().String()
-}
-
-func (p PointID) Less(other PointID) bool {
-	if p.Namespace == other.Namespace {
-		return p.Value < other.Value
-	} else {
-		return p.Namespace < other.Namespace
-	}
-}
-
-func (p *PointID) FromFeatureID(other FeatureID) error {
-	if other.Type != FeatureTypePoint {
-		return errors.New("not a point ID")
-	}
-	p.Namespace = other.Namespace
-	p.Value = other.Value
-	return nil
-}
-
-func (p PointID) MarshalYAML() (interface{}, error) {
-	return p.FeatureID().MarshalYAML()
-}
-
-func (p *PointID) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var id FeatureID
-	err := unmarshal(&id)
-	if err == nil {
-		err = p.FromFeatureID(id)
-	}
-	return err
-}
-
-var PointIDInvalid = PointID{Namespace: NamespaceInvalid}
+type ID = FeatureID
 
 type PathID struct {
 	Namespace Namespace
@@ -697,7 +700,7 @@ func (r RelationID) String() string {
 	return r.FeatureID().String()
 }
 
-func (r RelationID) Less(other PointID) bool {
+func (r RelationID) Less(other RelationID) bool {
 	if r.Namespace == other.Namespace {
 		return r.Value < other.Value
 	} else {
@@ -831,35 +834,81 @@ func (e *ExpressionID) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
+type GeometryType int
+
+const (
+	GeometryTypeInvalid GeometryType = iota
+	GeometryTypePoint
+	GeometryTypePath
+	GeometryTypeArea
+)
+
 type Geometry interface {
-	Covering(coverer s2.RegionCoverer) s2.CellUnion
-	ToGeoJSON() geojson.GeoJSON
+	GeometryType() GeometryType
+	Location() s2.LatLng
+	ToGeoJSON() geojson.GeoJSON // TODO(mari): remove from interface / when u do wrapped generic feature
+}
+
+func Covering(g Geometry, coverer s2.RegionCoverer) s2.CellUnion {
+	switch g := g.(type) {
+	case Path:
+		return coverer.Covering(g.Polyline())
+	case Area:
+		covering := make(s2.CellUnion, 0)
+		for i := 0; i < g.Len(); i++ {
+			covering = s2.CellUnionFromUnion(covering, coverer.Covering(g.Polygon(i)))
+		}
+		return covering
+	default:
+		return coverer.Covering(s2.PointFromLatLng(g.Location()))
+	}
 }
 
 type Feature interface {
-	FeatureID() FeatureID
+	Identifiable
 	Taggable
+}
+
+type iterator struct {
+	features []Feature
+	i        int
+}
+
+func NewFeatureIterator(features []Feature) Features {
+	return &iterator{features: features}
+}
+
+func (i *iterator) Feature() Feature {
+	return i.features[i.i-1]
+}
+
+func (i *iterator) FeatureID() FeatureID {
+	return i.features[i.i-1].FeatureID()
+}
+
+func (i *iterator) Next() bool {
+	i.i++
+	return i.i <= len(i.features)
 }
 
 type PhysicalFeature interface {
 	Feature
 	Geometry
-	Renderable
 }
 
 func Centroid(geometry Geometry) s2.Point {
-	switch g := geometry.(type) {
-	case Point:
-		return g.Point()
-	case Path:
-		return s2.Point{Vector: g.Polyline().Centroid().Normalize()}
-	case Area:
-		if g.Len() == 1 {
-			return s2.Point{Vector: g.Polygon(0).Loop(0).Centroid().Normalize()}
+	switch geometry.GeometryType() {
+	case GeometryTypePoint:
+		return s2.PointFromLatLng(geometry.Location())
+	case GeometryTypePath:
+		return s2.Point{Vector: geometry.(Path).Polyline().Centroid().Normalize()}
+	case GeometryTypeArea:
+		if geometry.(Area).Len() == 1 {
+			return s2.Point{Vector: geometry.(Area).Polygon(0).Loop(0).Centroid().Normalize()}
 		} else {
 			query := s2.NewConvexHullQuery()
-			for i := 0; i < g.Len(); i++ {
-				query.AddPolygon(g.Polygon(i))
+			for i := 0; i < geometry.(Area).Len(); i++ {
+				query.AddPolygon(geometry.(Area).Polygon(i))
 			}
 			return s2.Point{Vector: query.ConvexHull().Centroid().Normalize()}
 		}
@@ -867,73 +916,34 @@ func Centroid(geometry Geometry) s2.Point {
 	return s2.Point{}
 }
 
-type Point interface {
-	Geometry
-	Point() s2.Point
-	CellID() s2.CellID
+type Geo struct {
+	ll s2.LatLng
 }
 
-type point struct {
-	p s2.Point
+func (g Geo) GeometryType() GeometryType {
+	return GeometryTypePoint
 }
 
-func (p point) Point() s2.Point {
-	return p.p
+func (g Geo) Location() s2.LatLng {
+	return g.ll
 }
 
-func (p point) CellID() s2.CellID {
-	return s2.CellIDFromLatLng(s2.LatLngFromPoint(p.p))
+func (g Geo) ToGeoJSON() geojson.GeoJSON {
+	return LocationToGeoJSON(g)
 }
 
-func (p point) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	return coverer.Covering(p.p)
+func GeometryFromLatLng(ll s2.LatLng) Geometry {
+	return Geo{ll: ll}
 }
 
-func (p point) ToGeoJSON() geojson.GeoJSON {
-	return PointToGeoJSON(p)
+func LocationToGeoJSON(g Geometry) *geojson.Feature {
+	return geojson.NewFeatureFromS2LatLng(g.Location())
 }
 
-func PointFromS2Point(p s2.Point) Point {
-	return point{p: p}
-}
-
-func PointFromLatLng(ll s2.LatLng) Point {
-	return point{p: s2.PointFromLatLng(ll)}
-}
-
-func PointFromLatLngDegrees(lat float64, lng float64) Point {
-	return point{p: s2.PointFromLatLng(s2.LatLngFromDegrees(lat, lng))}
-}
-
-type pointWithID struct {
-	point
-	id PointID
-}
-
-func (p pointWithID) FeatureID() FeatureID {
-	return p.id.FeatureID()
-}
-
-func (p pointWithID) PointID() PointID {
-	return p.id
-}
-
-func (p pointWithID) AllTags() []Tag {
-	return []Tag{}
-}
-
-func (p pointWithID) Get(string) Tag {
-	return Tag{}
-}
-
-func PointFromS2PointAndID(p s2.Point, id PointID) PointFeature {
-	return pointWithID{point: point{p: p}, id: id}
-}
-
-type PointFeature interface {
-	Feature
-	Point
-	PointID() PointID
+func PhysicalFeatureToGeoJSON(f PhysicalFeature) *geojson.Feature {
+	g := LocationToGeoJSON(f)
+	fillPropertiesFromTags(f, g)
+	return g
 }
 
 type Path interface {
@@ -951,16 +961,20 @@ func (p path) Len() int {
 	return len(p.ps)
 }
 
+func (p path) GeometryType() GeometryType {
+	return GeometryTypePath
+}
+
+func (p path) Location() s2.LatLng {
+	return s2.LatLng{}
+}
+
 func (p path) Point(i int) s2.Point {
 	return p.ps[i]
 }
 
 func (p path) Polyline() *s2.Polyline {
 	return (*s2.Polyline)(&p.ps)
-}
-
-func (p path) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	return coverer.Covering((*s2.Polyline)(&p.ps))
 }
 
 func (p path) ToGeoJSON() geojson.GeoJSON {
@@ -975,7 +989,7 @@ type PathFeature interface {
 	Feature
 	Path
 	PathID() PathID
-	Feature(i int) PointFeature
+	Feature(i int) PhysicalFeature
 }
 
 type Area interface {
@@ -1005,12 +1019,12 @@ func (a area) MultiPolygon() geometry.MultiPolygon {
 	return m
 }
 
-func (a area) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	covering := make(s2.CellUnion, 0)
-	for _, p := range a.ps {
-		covering = s2.CellUnionFromUnion(covering, coverer.Covering(p))
-	}
-	return covering
+func (a area) GeometryType() GeometryType {
+	return GeometryTypeArea
+}
+
+func (a area) Location() s2.LatLng {
+	return s2.LatLng{}
 }
 
 func (a area) ToGeoJSON() geojson.GeoJSON {
@@ -1054,13 +1068,11 @@ type RelationFeature interface {
 	RelationID() RelationID
 	Len() int
 	Member(i int) RelationMember
-	Covering(coverer s2.RegionCoverer) s2.CellUnion
 }
 
 type CollectionFeature interface {
 	Feature
 	UntypedCollection
-	FeatureID() FeatureID
 	CollectionID() CollectionID
 }
 
@@ -1129,15 +1141,15 @@ func (s Segment) SegmentPoint(i int) s2.Point {
 	return s.Feature.Point(s.pathIndex(i))
 }
 
-func (s Segment) SegmentFeature(i int) PointFeature {
+func (s Segment) SegmentFeature(i int) PhysicalFeature {
 	return s.Feature.Feature(s.pathIndex(i))
 }
 
-func (s Segment) FirstFeature() PointFeature {
+func (s Segment) FirstFeature() PhysicalFeature {
 	return s.Feature.Feature(s.First)
 }
 
-func (s Segment) LastFeature() PointFeature {
+func (s Segment) LastFeature() PhysicalFeature {
 	return s.Feature.Feature(s.Last)
 }
 
@@ -1191,12 +1203,12 @@ func FindPathSegmentByKey(key SegmentKey, w World) Segment {
 }
 
 type Step struct {
-	Destination PointID
+	Destination FeatureID
 	Via         PathID
 	Cost        float64
 }
 
-func (s *Step) ToSegment(previous PointID, w World) Segment {
+func (s *Step) ToSegment(previous FeatureID, w World) Segment {
 	// TODO: For long paths, it could be more efficient to use
 	// FindPathsByPoint
 	path := FindPathByID(s.Via, w)
@@ -1206,18 +1218,18 @@ func (s *Step) ToSegment(previous PointID, w World) Segment {
 
 	for i := 0; i < path.Len(); i++ {
 		if point := path.Feature(i); point != nil {
-			if point.PointID() == previous {
-				if point.PointID() == s.Destination {
+			if point.FeatureID() == previous {
+				if point.FeatureID() == s.Destination {
 					return Segment{Feature: path, First: i, Last: i}
 				}
 				for j := i; j < path.Len(); j++ {
-					if next := path.Feature(j); next != nil && next.PointID() == s.Destination {
+					if next := path.Feature(j); next != nil && next.FeatureID() == s.Destination {
 						return Segment{Feature: path, First: i, Last: j}
 					}
 				}
-			} else if point.PointID() == s.Destination {
+			} else if point.FeatureID() == s.Destination {
 				for j := i; j < path.Len(); j++ {
-					if next := path.Feature(j); next != nil && next.PointID() == previous {
+					if next := path.Feature(j); next != nil && next.FeatureID() == previous {
 						return Segment{Feature: path, First: j, Last: i}
 					}
 				}
@@ -1229,7 +1241,7 @@ func (s *Step) ToSegment(previous PointID, w World) Segment {
 }
 
 type Route struct {
-	Origin PointID
+	Origin FeatureID
 	Steps  []Step
 }
 
@@ -1244,7 +1256,7 @@ func (r *Route) ToSegments(w World) []Segment {
 }
 
 type LocationsByID interface {
-	FindLocationByID(id PointID) (s2.LatLng, bool)
+	FindLocationByID(id FeatureID) (s2.LatLng, error)
 }
 
 type FeaturesByID interface {
@@ -1285,15 +1297,15 @@ type World interface {
 	// TODO: Include transit once our use of it has stabalised
 	FindFeatureByID(id FeatureID) Feature
 	HasFeatureWithID(id FeatureID) bool
-	FindLocationByID(id PointID) (s2.LatLng, bool)
+	FindLocationByID(id FeatureID) (s2.LatLng, error)
 	// TODO: make the query type more specific to Features, similar to the level in api.proto
 	FindFeatures(query Query) Features
 	FindRelationsByFeature(id FeatureID) RelationFeatures
 	FindCollectionsByFeature(id FeatureID) CollectionFeatures
-	FindPathsByPoint(id PointID) PathFeatures
-	FindAreasByPoint(id PointID) AreaFeatures
+	FindPathsByPoint(id FeatureID) PathFeatures
+	FindAreasByPoint(id FeatureID) AreaFeatures
 	FindReferences(id FeatureID, typed ...FeatureType) Features
-	Traverse(id PointID) Segments
+	Traverse(id FeatureID) Segments
 	EachFeature(each func(f Feature, goroutine int) error, options *EachFeatureOptions) error
 
 	// Returns a copy of all tokens known to this world's search index. The
@@ -1311,8 +1323,8 @@ func (EmptyWorld) HasFeatureWithID(id FeatureID) bool {
 	return false
 }
 
-func (EmptyWorld) FindLocationByID(id PointID) (s2.LatLng, bool) {
-	return s2.LatLng{}, false
+func (EmptyWorld) FindLocationByID(id FeatureID) (s2.LatLng, error) {
+	return s2.LatLng{}, fmt.Errorf("world is empty")
 }
 
 func (EmptyWorld) FindFeatures(query Query) Features {
@@ -1327,11 +1339,11 @@ func (EmptyWorld) FindCollectionsByFeature(id FeatureID) CollectionFeatures {
 	return EmptyCollectionFeatures{}
 }
 
-func (EmptyWorld) FindPathsByPoint(id PointID) PathFeatures {
+func (EmptyWorld) FindPathsByPoint(id FeatureID) PathFeatures {
 	return EmptyPathFeatures{}
 }
 
-func (EmptyWorld) FindAreasByPoint(id PointID) AreaFeatures {
+func (EmptyWorld) FindAreasByPoint(id FeatureID) AreaFeatures {
 	return EmptyAreaFeatures{}
 }
 
@@ -1339,7 +1351,7 @@ func (EmptyWorld) FindReferences(id FeatureID, typed ...FeatureType) Features {
 	return EmptyFeatures{}
 }
 
-func (EmptyWorld) Traverse(id PointID) Segments {
+func (EmptyWorld) Traverse(id FeatureID) Segments {
 	return EmptySegments{}
 }
 
@@ -1371,52 +1383,6 @@ func AllFeatures(f Features) []Feature {
 		features = append(features, f.Feature())
 	}
 	return features
-}
-
-func FindPointByID(id PointID, features FeaturesByID) PointFeature {
-	if point := features.FindFeatureByID(id.FeatureID()); point != nil {
-		return point.(PointFeature)
-	}
-	return nil
-}
-
-type pointFeatures struct {
-	features Features
-}
-
-func (p pointFeatures) Next() bool {
-	return p.features.Next()
-}
-
-func (p pointFeatures) Feature() PointFeature {
-	if point, ok := p.features.Feature().(PointFeature); ok {
-		return point
-	}
-	panic(fmt.Sprintf("Not a PointFeature: %T", p.features.Feature()))
-}
-
-func (p pointFeatures) FeatureID() FeatureID {
-	return p.features.FeatureID()
-}
-
-type PointFeatures interface {
-	Feature() PointFeature
-	FeatureID() FeatureID
-	Next() bool
-}
-
-func AllPoints(p PointFeatures) []PointFeature {
-	features := make([]PointFeature, 0, 8)
-	if p != nil {
-		for p.Next() {
-			features = append(features, p.Feature())
-		}
-	}
-	return features
-}
-
-func NewPointFeatures(features Features) PointFeatures {
-	return pointFeatures{features: features}
 }
 
 func FindPathByID(id PathID, features FeaturesByID) PathFeature {
@@ -1644,11 +1610,6 @@ func FindExpressionByID(id ExpressionID, features FeaturesByID) ExpressionFeatur
 	return nil
 }
 
-func FindPoints(q Query, w World) PointFeatures {
-	q = Typed{Type: FeatureTypePoint, Query: q}
-	return NewPointFeatures(w.FindFeatures(q))
-}
-
 func FindPaths(q Query, w World) PathFeatures {
 	q = Typed{Type: FeatureTypePath, Query: q}
 	return NewPathFeatures(w.FindFeatures(q))
@@ -1705,18 +1666,8 @@ func FindCollections(q Query, w World) CollectionFeatures {
 
 func fillPropertiesFromTags(t Taggable, feature *geojson.Feature) {
 	for _, tag := range t.AllTags() {
-		feature.Properties[tag.Key] = tag.Value
+		feature.Properties[tag.Key] = tag.Value.String()
 	}
-}
-
-func PointToGeoJSON(point Point) *geojson.Feature {
-	return geojson.NewFeatureFromS2LatLng(s2.LatLngFromPoint(point.Point()))
-}
-
-func PointFeatureToGeoJSON(point PointFeature) *geojson.Feature {
-	g := PointToGeoJSON(point)
-	fillPropertiesFromTags(point, g)
-	return g
 }
 
 func PathToGeoJSON(path Path) *geojson.Feature {
@@ -1756,7 +1707,7 @@ func RelationFeatureToGeoJSON(relation RelationFeature, byID FeaturesByID) *geoj
 	collection := geojson.NewFeatureCollection()
 	for i := 0; i < relation.Len(); i++ {
 		if f := byID.FindFeatureByID(relation.Member(i).ID); f != nil {
-			if r, ok := f.(Renderable); ok {
+			if r, ok := f.(Geometry); ok {
 				collection.Add(r.ToGeoJSON())
 			}
 		}
@@ -1776,7 +1727,7 @@ func CollectionFeatureToGeoJSON(collection CollectionFeature, byID FeaturesByID)
 
 		if id, ok := i.Key().(Identifiable); ok {
 			if f := byID.FindFeatureByID(id.FeatureID()); f != nil {
-				if r, ok := f.(Renderable); ok {
+				if r, ok := f.(Geometry); ok {
 					geojson.Add(r.ToGeoJSON())
 				}
 			}

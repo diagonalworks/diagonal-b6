@@ -8,36 +8,6 @@ import (
 	"diagonal.works/b6/api"
 )
 
-// Deprecated
-func emptyPointCollection(context *api.Context) (b6.Collection[int, b6.Point], error) {
-	return b6.ArrayValuesCollection[b6.Point]{}.Collection(), nil
-}
-
-// Deprecated
-func addPoint(context *api.Context, p b6.Point, c b6.Collection[int, b6.Point]) (b6.Collection[int, b6.Point], error) {
-	// TODO: We can potentially fast-path this if c is an arrayPointCollection by
-	// modifying the underlying slices, and if not, then add a wrapper that
-	// returns the new point when Next() returns false.
-	n, ok := c.Count()
-	if !ok {
-		n = 0
-	}
-	values := b6.ArrayValuesCollection[b6.Point](make([]b6.Point, 0, n+1))
-	i := c.Begin()
-	for {
-		ok, err := i.Next()
-		if err != nil {
-			return b6.Collection[int, b6.Point]{}, err
-		}
-		if !ok {
-			break
-		}
-		values = append(values, i.Value())
-	}
-	values = append(values, p)
-	return values.Collection(), nil
-}
-
 // Return a collection of the given key value pairs.
 func collection(_ *api.Context, pairs ...interface{}) (b6.Collection[any, any], error) {
 	c := &b6.ArrayCollection[interface{}, interface{}]{

@@ -24,7 +24,6 @@ import (
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/renderer"
-	"github.com/golang/geo/s2"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -355,11 +354,10 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 				}
 				if i.Key() == "centroid" {
 					if centroid := o.World.FindFeatureByID(i.Value()); centroid != nil {
-						if p, ok := centroid.(b6.PhysicalFeature); ok {
-							ll := s2.LatLngFromPoint(b6.Centroid(p))
+						if p, ok := centroid.(b6.Geometry); ok {
 							response.MapCenter = &LatLngJSON{
-								LatE7: int(ll.Lat.E7()),
-								LngE7: int(ll.Lng.E7()),
+								LatE7: int(p.Location().Lat.E7()),
+								LngE7: int(p.Location().Lng.E7()),
 							}
 							response.MapZoom = DefaultMapZoom
 						}

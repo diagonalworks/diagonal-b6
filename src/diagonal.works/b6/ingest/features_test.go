@@ -9,15 +9,15 @@ import (
 
 func TestRemoveTags(t *testing.T) {
 	tags := b6.Tags{
-		{Key: "startNode", Value: "23A9FC0E-CBAB-425C-A7C9-B3356F17AF52"},
-		{Key: "roadNumber", Value: "A5202"},
-		{Key: "endNode", Value: "541F7F78-ED83-40D9-9488-3FD36D169B69"},
-		{Key: "class", Value: "A Road"},
+		{Key: "startNode", Value: b6.String("23A9FC0E-CBAB-425C-A7C9-B3356F17AF52")},
+		{Key: "roadNumber", Value: b6.String("A5202")},
+		{Key: "endNode", Value: b6.String("541F7F78-ED83-40D9-9488-3FD36D169B69")},
+		{Key: "class", Value: b6.String("A Road")},
 	}
 	tags.RemoveTags([]string{"startNode", "endNode"})
 	expected := b6.Tags{
-		{Key: "roadNumber", Value: "A5202"},
-		{Key: "class", Value: "A Road"},
+		{Key: "roadNumber", Value: b6.String("A5202")},
+		{Key: "class", Value: b6.String("A Road")},
 	}
 	if !reflect.DeepEqual(expected, tags) {
 		t.Errorf("Expected %+v, found %+v", expected, tags)
@@ -26,7 +26,7 @@ func TestRemoveTags(t *testing.T) {
 
 func TestClonePoint(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 
 	if !reflect.DeepEqual(caravan, caravan.Clone()) {
 		t.Errorf("Expected cloned point to be equal")
@@ -38,9 +38,9 @@ func TestClonePath(t *testing.T) {
 	b := osmPoint(6384669830, 51.5342291, -0.1262792)
 
 	// Goods Way, South of Granary Square
-	ab := osmPath(807924986, []*PointFeature{a, b})
-	ab.AddTag(b6.Tag{Key: "highway", Value: "tertiary"})
-	ab.AddTag(b6.Tag{Key: "lit", Value: "no"})
+	ab := osmPath(807924986, []Feature{a, b})
+	ab.AddTag(b6.Tag{Key: "highway", Value: b6.String("tertiary")})
+	ab.AddTag(b6.Tag{Key: "lit", Value: b6.String("no")})
 
 	if !reflect.DeepEqual(ab, ab.Clone()) {
 		t.Errorf("Expected cloned path to be equal")
@@ -51,8 +51,8 @@ func TestCloneArea(t *testing.T) {
 	lighterman := NewAreaFeature(1)
 	lighterman.AreaID = AreaIDFromOSMWayID(427900370)
 	lighterman.SetPathIDs(0, []b6.PathID{FromOSMWayID(427900370)})
-	lighterman.AddTag(b6.Tag{Key: "name", Value: "The Lighterman"})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: "no"})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
 	if !reflect.DeepEqual(lighterman, lighterman.Clone()) {
 		t.Errorf("Expected cloned area to be equal")
@@ -64,7 +64,7 @@ func TestCloneRelation(t *testing.T) {
 	c6.RelationID = FromOSMRelationID(11502000)
 	c6.Members[0] = b6.RelationMember{ID: FromOSMWayID(673447480).FeatureID()}
 	c6.Members[1] = b6.RelationMember{ID: FromOSMWayID(39035445).FeatureID()}
-	c6.Tags = []b6.Tag{{Key: "type", Value: "route"}, {Key: "ref", Value: "C6"}}
+	c6.Tags = []b6.Tag{{Key: "type", Value: b6.String("route")}, {Key: "ref", Value: b6.String("C6")}}
 
 	if !reflect.DeepEqual(c6, c6.Clone()) {
 		t.Errorf("Expected cloned relation to be equal")
@@ -76,7 +76,7 @@ func TestCloneCollection(t *testing.T) {
 		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
 		Keys:         []interface{}{b6.PathID{Namespace: b6.NamespaceDiagonalEntrances, Value: 777}},
 		Values:       []interface{}{"i wanna be the one to walk in the sun"},
-		Tags:         []b6.Tag{{Key: "by", Value: "chromatics"}},
+		Tags:         []b6.Tag{{Key: "by", Value: b6.String("chromatics")}},
 	}
 
 	clone := collection.Clone()
@@ -96,11 +96,11 @@ func TestCloneCollection(t *testing.T) {
 
 func TestMergePoint(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 
 	lighterman := osmPoint(427900370, 51.5353986, -0.1243711)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: "The Lighterman"})
-	lighterman.AddTag(b6.Tag{Key: "amenity", Value: "restaurant"})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
 
 	m := caravan.Clone()
 	m.MergeFrom(lighterman)
@@ -120,17 +120,17 @@ func TestMergePath(t *testing.T) {
 	b := osmPoint(6384669830, 51.5342291, -0.1262792)
 
 	// Goods Way, South of Granary Square
-	ab := osmPath(807924986, []*PointFeature{a, b})
-	ab.AddTag(b6.Tag{Key: "highway", Value: "tertiary"})
-	ab.AddTag(b6.Tag{Key: "lit", Value: "no"})
+	ab := osmPath(807924986, []Feature{a, b})
+	ab.AddTag(b6.Tag{Key: "highway", Value: b6.String("tertiary")})
+	ab.AddTag(b6.Tag{Key: "lit", Value: b6.String("no")})
 
 	c := osmPoint(1715968738, 51.5351015, -0.1248611)
 	d := osmPoint(1540349977, 51.5350763, -0.1248251)
 	e := osmPoint(1447052073, 51.5350326, -0.1247915)
 
 	// Stable Street, South of Granary Square
-	cde := osmPath(642639442, []*PointFeature{c, d, e})
-	cde.AddTag(b6.Tag{Key: "highway", Value: "service"})
+	cde := osmPath(642639442, []Feature{c, d, e})
+	cde.AddTag(b6.Tag{Key: "highway", Value: b6.String("service")})
 
 	m := ab.Clone()
 	m.MergeFrom(cde)
@@ -149,22 +149,22 @@ func TestMergeArea(t *testing.T) {
 	lighterman := NewAreaFeature(1)
 	lighterman.AreaID = AreaIDFromOSMWayID(427900370)
 	lighterman.SetPathIDs(0, []b6.PathID{FromOSMWayID(427900370)})
-	lighterman.AddTag(b6.Tag{Key: "name", Value: "The Lighterman"})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: "no"})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
 	gasholders := NewAreaFeature(3)
 	gasholders.AreaID = AreaIDFromOSMRelationID(7972217)
 	gasholders.SetPathIDs(0, []b6.PathID{FromOSMWayID(544908184)})
 	gasholders.SetPathIDs(1, []b6.PathID{FromOSMWayID(544908185)})
 	gasholders.SetPathIDs(2, []b6.PathID{FromOSMWayID(54490818)})
-	gasholders.AddTag(b6.Tag{Key: "name", Value: "Gasholder Apartments"})
+	gasholders.AddTag(b6.Tag{Key: "name", Value: b6.String("Gasholder Apartments")})
 
 	openreach := NewAreaFeature(1)
 	openreach.AreaID = AreaIDFromOSMWayID(11095199)
 	openreach.SetPathIDs(0, []b6.PathID{FromOSMWayID(803234786), FromOSMWayID(802221851)})
-	openreach.AddTag(b6.Tag{Key: "name", Value: "BT Openreach"})
-	openreach.AddTag(b6.Tag{Key: "building", Value: "commercial"})
-	openreach.AddTag(b6.Tag{Key: "building:levels", Value: "5"})
+	openreach.AddTag(b6.Tag{Key: "name", Value: b6.String("BT Openreach")})
+	openreach.AddTag(b6.Tag{Key: "building", Value: b6.String("commercial")})
+	openreach.AddTag(b6.Tag{Key: "building:levels", Value: b6.String("5")})
 
 	comparisons := []struct {
 		a *AreaFeature
@@ -190,14 +190,14 @@ func TestMergeRelation(t *testing.T) {
 	c6.RelationID = FromOSMRelationID(11502000)
 	c6.Members[0] = b6.RelationMember{ID: FromOSMWayID(673447480).FeatureID()}
 	c6.Members[1] = b6.RelationMember{ID: FromOSMWayID(39035445).FeatureID()}
-	c6.Tags = []b6.Tag{{Key: "type", Value: "route"}, {Key: "ref", Value: "C6"}}
+	c6.Tags = []b6.Tag{{Key: "type", Value: b6.String("route")}, {Key: "ref", Value: b6.String("C6")}}
 
 	cs3 := NewRelationFeature(3)
 	cs3.RelationID = FromOSMRelationID(12564854)
 	cs3.Members[0] = b6.RelationMember{ID: FromOSMWayID(416112693).FeatureID()}
 	cs3.Members[1] = b6.RelationMember{ID: FromOSMWayID(431794370).FeatureID()}
 	cs3.Members[2] = b6.RelationMember{ID: FromOSMWayID(416815340).FeatureID()}
-	cs3.Tags = []b6.Tag{{Key: "type", Value: "route"}, {Key: "ref", Value: "CS3"}, {Key: "name", Value: "East-West Cycle Superhighway"}}
+	cs3.Tags = []b6.Tag{{Key: "type", Value: b6.String("route")}, {Key: "ref", Value: b6.String("CS3")}, {Key: "name", Value: b6.String("East-West Cycle Superhighway")}}
 
 	m := c6.Clone()
 	m.MergeFrom(cs3)
@@ -223,7 +223,7 @@ func TestMergeCollection(t *testing.T) {
 		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
 		Keys:         []interface{}{b6.PathID{Namespace: b6.NamespaceDiagonalEntrances, Value: 11}},
 		Values:       []interface{}{"i must have lost it"},
-		Tags:         []b6.Tag{{Key: "carpenter", Value: "nonsense"}},
+		Tags:         []b6.Tag{{Key: "carpenter", Value: b6.String("nonsense")}},
 	}
 
 	m := before.Clone()

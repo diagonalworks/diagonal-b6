@@ -191,16 +191,16 @@ func (s *elevationSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx
 	points := uint64(0)
 	elevations := uint64(0)
 	each := func(f b6.Feature, goroutine int) error {
-		if f, ok := f.(b6.PointFeature); ok && !options.SkipTags {
+		if f, ok := f.(b6.PhysicalFeature); ok && f.GeometryType() == b6.GeometryTypePoint && !options.SkipTags {
 			atomic.AddUint64(&points, 1)
-			point := ingest.NewPointFeatureFromWorld(f)
-			paths := s.World.FindPathsByPoint(f.PointID())
+			point := ingest.NewGenericFeatureFromWorld(f)
+			paths := s.World.FindPathsByPoint(f.FeatureID())
 			for paths.Next() {
 				path := paths.Feature()
 				if path.Get("#highway").IsValid() {
-					if e, ok := s.Elevations.Elevation(f.Point()); ok {
+					if e, ok := s.Elevations.Elevation(s2.PointFromLatLng(f.Location())); ok {
 						atomic.AddUint64(&elevations, 1)
-						point.AddTag(b6.Tag{Key: "ele", Value: strconv.Itoa(int(math.Round(e)))})
+						point.AddTag(b6.Tag{Key: "ele", Value: b6.String(strconv.Itoa(int(math.Round(e))))})
 					}
 					break
 				}

@@ -272,8 +272,6 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case FeatureID:
 		id := FeatureIDExpression(l)
 		return Literal{AnyLiteral: &id}, nil
-	case PointID:
-		return FromLiteral(l.FeatureID())
 	case PathID:
 		return FromLiteral(l.FeatureID())
 	case AreaID:
@@ -290,8 +288,8 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case Feature:
 		f := FeatureExpression{Feature: l}
 		return Literal{AnyLiteral: &f}, nil
-	case Point:
-		ll := PointExpression(s2.LatLngFromPoint(l.Point()))
+	case Geo:
+		ll := PointExpression(l.Location())
 		return Literal{AnyLiteral: &ll}, nil
 	case s2.LatLng:
 		ll := PointExpression(l)
@@ -568,7 +566,7 @@ func (t *TagExpression) ToProto() (*pb.NodeProto, error) {
 				Value: &pb.LiteralNodeProto_TagValue{
 					TagValue: &pb.TagProto{
 						Key:   Tag(*t).Key,
-						Value: Tag(*t).Value,
+						Value: Tag(*t).Value.String(),
 					},
 				},
 			},
@@ -578,7 +576,7 @@ func (t *TagExpression) ToProto() (*pb.NodeProto, error) {
 
 func (t *TagExpression) FromProto(node *pb.NodeProto) error {
 	tt := node.GetLiteral().GetTagValue()
-	*t = TagExpression(Tag{Key: tt.Key, Value: tt.Value})
+	*t = TagExpression(Tag{Key: tt.Key, Value: String(tt.Value)})
 	return nil
 }
 
@@ -861,7 +859,7 @@ func (p *PointExpression) Clone() Expression {
 }
 
 func (p PointExpression) Literal() interface{} {
-	return PointFromLatLng(s2.LatLng(p))
+	return GeometryFromLatLng(s2.LatLng(p))
 }
 
 func (p PointExpression) Equal(other AnyExpression) bool {

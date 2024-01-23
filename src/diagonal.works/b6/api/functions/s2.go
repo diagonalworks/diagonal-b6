@@ -10,7 +10,7 @@ import (
 )
 
 // Return a collection of points representing the centroids of s2 cells that cover the given area between the given levels.
-func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (b6.Collection[string, b6.Point], error) {
+func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (b6.Collection[string, b6.Geometry], error) {
 	coverer := s2.RegionCoverer{MinLevel: minLevel, MaxLevel: maxLevel}
 	cells := make(map[s2.CellID]struct{})
 	for i := 0; i < area.Len(); i++ {
@@ -19,12 +19,12 @@ func s2Points(context *api.Context, area b6.Area, minLevel int, maxLevel int) (b
 		}
 	}
 	keys := make([]string, 0, len(cells))
-	values := make([]b6.Point, 0, len(cells))
+	values := make([]b6.Geometry, 0, len(cells))
 	for cell := range cells {
 		keys = append(keys, cell.ToToken())
-		values = append(values, b6.PointFromS2Point(cell.Point()))
+		values = append(values, b6.GeometryFromLatLng(s2.LatLngFromPoint(cell.Point())))
 	}
-	return b6.ArrayCollection[string, b6.Point]{Keys: keys, Values: values}.Collection(), nil
+	return b6.ArrayCollection[string, b6.Geometry]{Keys: keys, Values: values}.Collection(), nil
 }
 
 // Return a collection of points representing the centroids of s2 cells that cover the given area at the given level.
@@ -59,8 +59,8 @@ func s2Covering(context *api.Context, area b6.Area, minLevel int, maxLevel int) 
 }
 
 // Return a collection the center of the s2 cell with the given token.
-func s2Center(context *api.Context, token string) (b6.Point, error) {
-	return b6.PointFromS2Point(s2.CellIDFromToken(token).Point()), nil
+func s2Center(context *api.Context, token string) (b6.Geometry, error) {
+	return b6.GeometryFromLatLng(s2.LatLngFromPoint(s2.CellIDFromToken(token).Point())), nil
 }
 
 // Return the bounding area of the s2 cell with the given token.

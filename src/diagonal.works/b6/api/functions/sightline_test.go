@@ -20,7 +20,7 @@ func TestSightlineFunction(t *testing.T) {
 		World: granarySquare,
 	}
 
-	from := b6.PointFromLatLngDegrees(51.53545, -0.12561)
+	from := b6.GeometryFromLatLng(s2.LatLngFromDegrees(51.53545, -0.12561))
 	area, err := sightline(context, from, 250.0)
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)

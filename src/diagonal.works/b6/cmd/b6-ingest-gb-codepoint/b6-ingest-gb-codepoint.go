@@ -61,17 +61,18 @@ func (p *Postcodes) Read(options ingest.ReadOptions, emit ingest.Emit, ctx conte
 	if options.SkipPoints {
 		return nil
 	}
-	point := ingest.PointFeature{
-		Tags: []b6.Tag{{Key: "#place", Value: "postal_code"}},
+	feature := ingest.GenericFeature{
+		Tags: []b6.Tag{{Key: "#place", Value: b6.String("postal_code")}},
 	}
 	for i := range p.Postcode {
-		point.PointID = b6.PointIDFromGBPostcode(p.Postcode[i])
-		if point.PointID == b6.PointIDInvalid {
+		if id := b6.PointIDFromGBPostcode(p.Postcode[i]); id == b6.FeatureIDInvalid {
 			return fmt.Errorf("invalid postcode: %q", p.Postcode[i])
-		}
-		point.Location = s2.LatLngFromDegrees(p.Lat[i], p.Lng[i])
-		if err := emit(&point, 0); err != nil {
-			return err
+		} else {
+			feature.SetFeatureID(id)
+			feature.ModifyOrAddTag(b6.Tag{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(p.Lat[i], p.Lng[i]))})
+			if err := emit(&feature, 0); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

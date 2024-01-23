@@ -151,7 +151,7 @@ func idFromGBCodePoint(a *NamespaceAlias, token string) (b6.FeatureID, error) {
 }
 
 func idToGBCodePoint(a *NamespaceAlias, id b6.FeatureID) string {
-	postcode, _ := b6.PostcodeFromPointID(id.ToPointID())
+	postcode, _ := b6.PostcodeFromPointID(id)
 	return a.Prefix + strings.ToLower(postcode)
 }
 
@@ -403,7 +403,7 @@ func reduceTag(key b6.Expression, value b6.Expression, l *lexer) b6.Expression {
 	return b6.Expression{
 		AnyExpression: &b6.TagExpression{
 			Key:   expressionToString(key),
-			Value: expressionToString(value),
+			Value: b6.String(expressionToString(value)),
 		},
 		Begin: key.Begin,
 		End:   value.End,
@@ -576,7 +576,7 @@ func reduceTagKeyValue(key b6.Expression, value b6.Expression) b6.Expression {
 		AnyExpression: &b6.QueryExpression{
 			Query: b6.Tagged{
 				Key:   expressionToString(key),
-				Value: expressionToString(value),
+				Value: b6.String(expressionToString(value)),
 			},
 		},
 		Begin: key.Begin,
@@ -792,7 +792,7 @@ func simplifyCallBuildingKeyedTaggedQuery(symbol string, call *b6.CallExpression
 	case "tagged":
 		if len(args) == 2 {
 			return &b6.QueryExpression{
-				Query: b6.Tagged{Key: args[0], Value: args[1]},
+				Query: b6.Tagged{Key: args[0], Value: b6.String(args[1])},
 			}, true
 		}
 	}
@@ -901,7 +901,7 @@ func EscapeTagValue(v string) string {
 }
 
 func UnparseTag(t b6.Tag) string {
-	return EscapeTagKey(t.Key) + "=" + EscapeTagValue(t.Value)
+	return EscapeTagKey(t.Key) + "=" + EscapeTagValue(t.Value.String())
 }
 
 func UnparseQuery(q b6.Query) (string, bool) {

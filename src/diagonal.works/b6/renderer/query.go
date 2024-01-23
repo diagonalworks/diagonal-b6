@@ -84,7 +84,7 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 		f := features.Feature()
 		tags = tags[0:0]
 		for _, rule := range r.rules {
-			if t := f.Get(rule.Tag.Key); t.IsValid() && (rule.Tag.Value == "" || t.Value == rule.Tag.Value) {
+			if t := f.Get(rule.Tag.Key); t.IsValid() && t.Value == rule.Tag.Value {
 				tags = append(tags, b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value})
 				break
 			}
@@ -93,11 +93,11 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 			if v, err := fv(&context, f); err == nil {
 				switch v := v.(type) {
 				case int:
-					tags = append(tags, b6.Tag{Key: "v", Value: fmt.Sprintf("%d", v)})
+					tags = append(tags, b6.Tag{Key: "v", Value: b6.String(fmt.Sprintf("%d", v))})
 				case string:
-					tags = append(tags, b6.Tag{Key: "v", Value: v})
+					tags = append(tags, b6.Tag{Key: "v", Value: b6.String(v)})
 				case fmt.Stringer:
-					tags = append(tags, b6.Tag{Key: "v", Value: v.String()})
+					tags = append(tags, b6.Tag{Key: "v", Value: b6.String(v.String())})
 				}
 				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{Label: true})
 			} else {

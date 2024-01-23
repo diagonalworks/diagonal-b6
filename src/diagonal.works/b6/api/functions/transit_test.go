@@ -9,48 +9,11 @@ import (
 	"diagonal.works/b6/test/camden"
 )
 
-func TestFindReachablePoints(t *testing.T) {
-	w := camden.BuildCamdenForTests(t)
-	m := ingest.NewMutableOverlayWorld(w)
-
-	origin := b6.FindPointByID(camden.StableStreetBridgeSouthEndID, m)
-	if origin == nil {
-		t.Error("Failed to find origin")
-	}
-
-	context := api.Context{
-		World: m,
-	}
-
-	query := b6.Tagged{Key: "#barrier", Value: "gate"}
-	collection, err := reachablePoints(&context, origin, "walk", 1000.0, query)
-	if err != nil {
-		t.Fatalf("Expected no error, found: %s", err)
-	}
-
-	barriers := make(map[b6.PointID]bool)
-	i := collection.Begin()
-	for {
-		ok, err := i.Next()
-		if err != nil {
-			t.Fatalf("Expected no error, found: %s", err)
-		}
-		if !ok {
-			break
-		}
-		barriers[i.Value().(b6.PointFeature).PointID()] = true
-	}
-
-	if _, ok := barriers[camden.SomersTownBridgeEastGateID]; !ok {
-		t.Errorf("Expected to find %s", camden.SomersTownBridgeEastGateID)
-	}
-}
-
 func TestFindReachableFeatures(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
 	m := ingest.NewMutableOverlayWorld(w)
 
-	origin := b6.FindPointByID(camden.StableStreetBridgeSouthEndID, m)
+	origin := m.FindFeatureByID(camden.StableStreetBridgeSouthEndID)
 	if origin == nil {
 		t.Fatal("Failed to find origin")
 	}
@@ -85,7 +48,7 @@ func TestPathsToReachFeatures(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
 	m := ingest.NewMutableOverlayWorld(w)
 
-	origin := b6.FindPointByID(camden.StableStreetBridgeSouthEndID, m)
+	origin := m.FindFeatureByID(camden.StableStreetBridgeSouthEndID)
 	if origin == nil {
 		t.Errorf("Failed to find origin")
 	}

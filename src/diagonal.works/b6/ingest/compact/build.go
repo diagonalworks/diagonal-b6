@@ -169,17 +169,17 @@ func emitPoints(source ingest.FeatureSource, o *Options, s *encoding.StringTable
 	for i := range buffers {
 		buffers[i] = make([]byte, maxEncodedFeatureSize)
 	}
-	points := make([]Point, goroutines)
+	points := make([]Tags, goroutines)
 	var seen Counts
 	emitFeature := func(feature ingest.Feature, g int) error {
 		switch f := feature.(type) {
-		case *ingest.PointFeature:
+		case *ingest.GenericFeature:
 			if n := atomic.AddUint64(&seen.Points, 1); n%10000000 == 0 {
 				log.Printf("  %d points", n)
 			}
 			points[g].FromFeature(f, s)
 			n := points[g].Marshal(buffers[g])
-			eid := FeatureID{Namespace: nt.Encode(f.PointID.Namespace), Type: b6.FeatureTypePoint, Value: f.PointID.Value}
+			eid := FeatureID{Namespace: nt.Encode(f.FeatureID().Namespace), Type: b6.FeatureTypePoint, Value: f.FeatureID().Value}
 			emit(eid, PointTag, buffers[g][0:n])
 		case *ingest.PathFeature:
 			if n := atomic.AddUint64(&seen.Paths, 1); n%1000000 == 0 {
@@ -365,7 +365,7 @@ func combinePoints(points *encoding.Uint64Map, nss *Namespaces, goroutines int, 
 	return nil
 }
 
-func writePoints(o *Options, points FeatureBlocks, strings *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, offset encoding.Offset, w io.WriterAt) (encoding.Offset, error) {
+func writePoints(o *Options, points FeatureBlocks, nt *NamespaceTable, summary *Summary, offset encoding.Offset, w io.WriterAt) (encoding.Offset, error) {
 	builders := newFeatureBlockBuilders(nt, summary)
 	log.Printf("writePoints: reserve")
 	var ns Namespace
@@ -420,9 +420,9 @@ type overlayLocationsByID struct {
 	base    b6.LocationsByID
 }
 
-func (o *overlayLocationsByID) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
-	if ll, ok := o.overlay.FindLocationByID(id); ok {
-		return ll, ok
+func (o *overlayLocationsByID) FindLocationByID(id b6.FeatureID) (s2.LatLng, error) {
+	if ll, err := o.overlay.FindLocationByID(id); err == nil {
+		return ll, nil
 	}
 	return o.base.FindLocationByID(id)
 }
@@ -759,32 +759,34 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 	emit := func(feature ingest.Feature, _ int) error {
 		for _, tag := range feature.AllTags() {
 			strings.Add(tag.Key)
-			strings.Add(tag.Value)
+			if tag.Value.Type() == b6.ValueTypeString {
+				strings.Add(tag.Value.String())
+			}
 		}
 		counts := summary.Counts.Namespace(feature.FeatureID().Namespace)
-		switch f := feature.(type) {
-		case *ingest.PointFeature:
+		switch feature.FeatureID().Type {
+		case b6.FeatureTypePoint:
 			atomic.AddUint64(&counts.Points, 1)
-		case *ingest.PathFeature:
+		case b6.FeatureTypePath:
 			atomic.AddUint64(&counts.Paths, 1)
-			for i := 0; i < f.Len(); i++ {
-				if id, ok := f.PointID(i); ok {
+			for i := 0; i < feature.(*ingest.PathFeature).Len(); i++ {
+				if id, ok := feature.(*ingest.PathFeature).PointID(i); ok {
 					c := summary.Counts.Namespace(id.Namespace)
 					atomic.AddUint64(&c.PathPoints, 1)
 				}
 			}
-			if f.Len() > 2 && f.IsClosed() {
+			if feature.(*ingest.PathFeature).Len() > 2 && feature.(*ingest.PathFeature).IsClosed() {
 				closedPathsLock.Lock()
-				summary.ClosedPaths[f.PathID] = struct{}{}
+				summary.ClosedPaths[feature.(*ingest.PathFeature).PathID] = struct{}{}
 				closedPathsLock.Unlock()
 			}
-		case *ingest.AreaFeature:
+		case b6.FeatureTypeArea:
 			atomic.AddUint64(&counts.Areas, 1)
-			for i := 0; i < f.Len(); i++ {
-				if ids, ok := f.PathIDs(i); ok {
+			for i := 0; i < feature.(*ingest.AreaFeature).Len(); i++ {
+				if ids, ok := feature.(*ingest.AreaFeature).PathIDs(i); ok {
 					relationshipsLock.Lock()
 					for _, id := range ids {
-						summary.PathAreas = append(summary.PathAreas, Relationship{id.FeatureID(), f.FeatureID()})
+						summary.PathAreas = append(summary.PathAreas, Relationship{id.FeatureID(), feature.FeatureID()})
 					}
 					relationshipsLock.Unlock()
 					for _, id := range ids {
@@ -793,19 +795,19 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 					}
 				}
 			}
-		case *ingest.RelationFeature:
+		case b6.FeatureTypeRelation:
 			atomic.AddUint64(&counts.Relations, 1)
-			for _, member := range f.Members {
+			for _, member := range feature.(*ingest.RelationFeature).Members {
 				strings.Add(member.Role)
 			}
 			relationshipsLock.Lock()
-			for _, member := range f.Members {
+			for _, member := range feature.(*ingest.RelationFeature).Members {
 				if member.ID.Type != b6.FeatureTypePoint { // Points are handled separately
-					summary.RelationMembers = append(summary.RelationMembers, Relationship{member.ID, f.FeatureID()})
+					summary.RelationMembers = append(summary.RelationMembers, Relationship{member.ID, feature.FeatureID()})
 				}
 			}
 			relationshipsLock.Unlock()
-			for _, member := range f.Members {
+			for _, member := range feature.(*ingest.RelationFeature).Members {
 				c := summary.Counts.Namespace(member.ID.Namespace)
 				atomic.AddUint64(&c.AreaPaths, 1)
 			}
@@ -828,22 +830,23 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 type LocationsByID struct {
 	bs FeatureBlocks
 	nt *NamespaceTable
+	s  encoding.Strings
 }
 
-func NewLocationsByID(bs FeatureBlocks, nt *NamespaceTable) *LocationsByID {
-	return &LocationsByID{bs: bs, nt: nt}
+func NewLocationsByID(bs FeatureBlocks, nt *NamespaceTable, s encoding.Strings) *LocationsByID {
+	return &LocationsByID{bs: bs, nt: nt, s: s}
 }
 
-func (l LocationsByID) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
+func (l LocationsByID) FindLocationByID(id b6.FeatureID) (s2.LatLng, error) {
 	for _, b := range l.bs {
 		ns := l.nt.Encode(id.Namespace)
 		if b.Namespaces[b6.FeatureTypePoint] == ns {
 			if p := b.Map.FindFirstWithTag(id.Value, PointTag); p != nil {
-				return MarshalledPoint(p).Location(), true
+				return MarshalledTags{p, l.s}.Location()
 			}
 		}
 	}
-	return s2.LatLng{}, false
+	return s2.LatLng{}, fmt.Errorf("location for feature with %s id not found", id.String())
 }
 
 func fillNamespaceTableFromSummary(summary *Summary, nt *NamespaceTable) {
@@ -861,7 +864,7 @@ func fillNamespaceTableFromSummary(summary *Summary, nt *NamespaceTable) {
 	nt.FillFromNamespaces(nss)
 }
 
-func buildFeatures(source ingest.FeatureSource, o *Options, sb *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, header *Header, base b6.LocationsByID, w io.WriterAt) (encoding.Offset, error) {
+func buildFeatures(source ingest.FeatureSource, o *Options, sb *encoding.StringTableBuilder, strings []byte, nt *NamespaceTable, summary *Summary, header *Header, base b6.LocationsByID, w io.WriterAt) (encoding.Offset, error) {
 	work := o.PointsWorkOutput()
 	workW, err := work.Write()
 	if err != nil {
@@ -884,13 +887,13 @@ func buildFeatures(source ingest.FeatureSource, o *Options, sb *encoding.StringT
 	points := make(FeatureBlocks, 0)
 	points.Unmarshal(data)
 
-	offset, err := writePoints(o, points, sb, nt, summary, header.BlockOffset, w)
+	offset, err := writePoints(o, points, nt, summary, header.BlockOffset, w)
 	log.Printf("writePoints: %d", offset)
 	if err != nil {
 		return 0, err
 	}
 
-	locations := overlayLocationsByID{overlay: NewLocationsByID(points, nt), base: base}
+	locations := overlayLocationsByID{overlay: NewLocationsByID(points, nt, encoding.NewStringTable(strings[header.StringsOffset:])), base: base}
 	offset, err = writePathsAreasAndRelations(source, o, sb, nt, &locations, summary, offset, w)
 	log.Printf("writePathsAreasAndRelations: %d", offset)
 	if err != nil {
@@ -903,7 +906,7 @@ func fillIndex(byID *FeaturesByID, nt *NamespaceTable, index map[string]*Feature
 	allTokens := make([]string, 0)
 	var lock sync.RWMutex
 	emit := func(feature b6.Feature, goroutine int) error {
-		tokens := ingest.TokensForFeature(feature.(b6.PhysicalFeature))
+		tokens := ingest.TokensForFeature(feature)
 		for _, token := range tokens {
 			var ids *FeatureIDs
 			var ok bool
@@ -1078,7 +1081,13 @@ func buildIndexWithFeaturesOnly(source ingest.FeatureSource, base b6.FeaturesByI
 	log.Printf("build: write strings")
 	header.BlockOffset, err = sb.Write(w, header.StringsOffset)
 
-	_, err = buildFeatures(source, o, sb, &nt, summary, &header, base, w)
+	data, _, err := output.Bytes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, err = buildFeatures(source, o, sb, data, &nt, summary, &header, base, w)
+
 	if err != nil {
 		return nil, nil, err
 	}

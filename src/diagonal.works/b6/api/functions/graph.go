@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -29,32 +30,19 @@ func newShortestPathSearch(origin b6.Feature, mode string, distance float64, fea
 	}
 
 	var s *graph.ShortestPathSearch
-	switch origin := origin.(type) {
-	case b6.PointFeature:
-		s = graph.NewShortestPathSearchFromPoint(origin.PointID())
-	case b6.AreaFeature:
-		s = graph.NewShortestPathSearchFromBuilding(origin, weights, w)
-	default:
-		return nil, fmt.Errorf("Can't find paths from feature type %s", origin.FeatureID().Type)
-	}
-	s.ExpandSearch(distance, weights, features, w)
-	return s, nil
-}
-
-// Deprecated.
-func reachablePoints(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, b6.PointFeature], error) {
-	points := b6.ArrayFeatureCollection[b6.PointFeature](make([]b6.PointFeature, 0))
-	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
-	if err == nil {
-		for id := range s.PointDistances() {
-			if point := b6.FindPointByID(id, context.World); point != nil {
-				if query.Matches(point, context.World) {
-					points = append(points, point)
-				}
-			}
+	if origin, ok := origin.(b6.PhysicalFeature); ok {
+		switch origin.GeometryType() {
+		case b6.GeometryTypePoint:
+			s = graph.NewShortestPathSearchFromPoint(origin.FeatureID())
+		case b6.GeometryTypeArea:
+			s = graph.NewShortestPathSearchFromBuilding(origin.(b6.AreaFeature), weights, w)
 		}
+
+		s.ExpandSearch(distance, weights, features, w)
+		return s, nil
 	}
-	return points.Collection(), err
+
+	return nil, fmt.Errorf("Can't find paths from feature type %s", origin.FeatureID().Type)
 }
 
 func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (b6.Collection[b6.FeatureID, b6.Feature], error) {
@@ -62,7 +50,7 @@ func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature
 	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		for id := range s.PointDistances() {
-			if point := b6.FindPointByID(id, context.World); point != nil {
+			if point := context.World.FindFeatureByID(id); point != nil {
 				if query.Matches(point, context.World) {
 					features = append(features, point)
 				}
@@ -241,7 +229,7 @@ done:
 	close(c)
 	err = g.Wait()
 	ods := &odCollection{origins: os, destinations: ds}
-	if flip := tags.Get("flip"); flip.Value == "yes" {
+	if flip := tags.Get("flip"); flip.Value.String() == "yes" {
 		ods.Flip()
 	} else {
 		for i := range ods.destinations {
@@ -262,17 +250,17 @@ func optionsToWeights(options b6.Taggable) (graph.Weights, error) {
 	}
 
 	if speed := options.Get("speed"); speed.IsValid() {
-		if f, ok := speed.FloatValue(); ok {
+		if f, err := strconv.ParseFloat(speed.Value.String(), 64); err == nil {
 			walking.Speed = f
 		}
 	}
 
 	var weights graph.Weights
-	switch m := options.Get("mode").Value; m {
+	switch m := options.Get("mode").Value.String(); m {
 	case "", "walk":
 		weights = walking
 	case "transit":
-		if p := options.Get("peak"); p.Value == "no" {
+		if p := options.Get("peak"); p.Value.String() == "no" {
 			weights = graph.TransitTimeWeights{PeakTraffic: false, Weights: walking}
 		} else {
 			weights = graph.TransitTimeWeights{PeakTraffic: true, Weights: walking}
@@ -411,7 +399,7 @@ func findClosest(context *api.Context, origin b6.Feature, mode string, distance 
 		var closest b6.Feature
 		for id, d := range s.PointDistances() {
 			if d < distance {
-				if point := b6.FindPointByID(id, context.World); point != nil {
+				if point := context.World.FindFeatureByID(id); point != nil {
 					if query.Matches(point, context.World) {
 						distance = d
 						closest = point
@@ -449,7 +437,7 @@ func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, 
 		points := 0
 		counts := make(map[b6.PathID]int)
 		for id := range s.PointDistances() {
-			if point := b6.FindPointByID(id, context.World); point != nil {
+			if point := context.World.FindFeatureByID(id); point != nil {
 				if query.Matches(point, context.World) {
 					points++
 					last := b6.PathIDInvalid
@@ -468,7 +456,7 @@ func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, 
 			if area := b6.FindAreaByID(areaID, context.World); area != nil {
 				if query.Matches(area, context.World) {
 					areas++
-					if point := b6.FindPointByID(pointID, context.World); point != nil {
+					if point := context.World.FindFeatureByID(pointID); point != nil {
 						last := b6.PathIDInvalid
 						for _, segment := range s.BuildPath(pointID) {
 							if segment.Feature.PathID() != last {
@@ -497,8 +485,10 @@ func reachableArea(context *api.Context, origin b6.Feature, mode string, distanc
 		distances := s.PointDistances()
 		query := s2.NewConvexHullQuery()
 		for id := range distances {
-			if point := b6.FindPointByID(id, context.World); point != nil {
-				query.AddPoint(point.Point())
+			if point := context.World.FindFeatureByID(id); point != nil {
+				if p, ok := point.(b6.Geometry); ok && p.GeometryType() == b6.GeometryTypePoint {
+					query.AddPoint(s2.PointFromLatLng(p.Location()))
+				}
 			}
 		}
 		area = query.ConvexHull().Area()
@@ -507,13 +497,13 @@ func reachableArea(context *api.Context, origin b6.Feature, mode string, distanc
 }
 
 // Add a path that connects the two given points, if they're not already directly connected.
-func connect(c *api.Context, a b6.PointFeature, b b6.PointFeature) (ingest.Change, error) {
+func connect(c *api.Context, a b6.Feature, b b6.Feature) (ingest.Change, error) {
 	add := &ingest.AddFeatures{}
-	segments := c.World.Traverse(a.PointID())
+	segments := c.World.Traverse(a.FeatureID())
 	connected := false
 	for segments.Next() {
 		segment := segments.Segment()
-		if segment.LastFeature().PointID() == b.PointID() {
+		if segment.LastFeature().FeatureID() == b.FeatureID() {
 			connected = true
 			break
 		}
@@ -521,8 +511,8 @@ func connect(c *api.Context, a b6.PointFeature, b b6.PointFeature) (ingest.Chang
 	if !connected {
 		path := ingest.NewPathFeature(2)
 		path.PathID = b6.MakePathID(b6.NamespaceDiagonalAccessPoints, 1)
-		path.SetPointID(0, a.PointID())
-		path.SetPointID(1, b.PointID())
+		path.SetPointID(0, a.FeatureID())
+		path.SetPointID(1, b.FeatureID())
 		*add = append(*add, path)
 	}
 	return add, nil

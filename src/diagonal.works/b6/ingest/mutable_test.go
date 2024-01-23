@@ -30,18 +30,17 @@ var mutableWorldCreators = []struct {
 	}},
 }
 
-func osmPoint(id osm.NodeID, lat float64, lng float64) *PointFeature {
-	return &PointFeature{
-		PointID:  FromOSMNodeID(id),
-		Location: s2.LatLngFromDegrees(lat, lng),
-	}
+func osmPoint(id osm.NodeID, lat float64, lng float64) Feature {
+	return &GenericFeature{
+		ID:   FromOSMNodeID(id).FeatureID(),
+		Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(lat, lng))}}}
 }
 
-func osmPath(id osm.WayID, points []*PointFeature) *PathFeature {
+func osmPath(id osm.WayID, points []Feature) *PathFeature {
 	path := NewPathFeature(len(points))
 	path.PathID = FromOSMWayID(id)
 	for i, point := range points {
-		path.SetPointID(i, point.PointID)
+		path.SetPointID(i, point.FeatureID())
 	}
 	return path
 }
@@ -120,26 +119,26 @@ func TestMutableWorlds(t *testing.T) {
 func ValidateReplaceFeatureWithAdditionalTag(w MutableWorld, t *testing.T) {
 	start := osmPoint(5384190463, 51.5358664, -0.1272493)
 	end := osmPoint(5384190494, 51.5362126, -0.1270125)
-	path := osmPath(558345071, []*PointFeature{start, end})
-	path.Tags = []b6.Tag{{Key: "#highway", Value: "footway"}}
+	path := osmPath(558345071, []Feature{start, end})
+	path.Tags = []b6.Tag{{Key: "#highway", Value: b6.String("footway")}}
 
 	if err := addFeatures(w, start, end, path); err != nil {
 		t.Fatal(err)
 	}
 
-	paths := b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#highway", Value: "footway"}, w))
+	paths := b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#highway", Value: b6.String("footway")}, w))
 	if len(paths) != 1 || paths[0].PathID() != path.PathID {
 		t.Error("Expected to find one path")
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#bridge", Value: "yes"}, w))
+	paths = b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#bridge", Value: b6.String("yes")}, w))
 	if len(paths) != 0 {
 		t.Error("Didn't expect to find any bridges")
 	}
 
-	path.Tags = append(path.Tags, b6.Tag{Key: "#bridge", Value: "yes"})
+	path.Tags = append(path.Tags, b6.Tag{Key: "#bridge", Value: b6.String("yes")})
 	w.AddFeature(path)
-	paths = b6.AllPaths(b6.FindPaths(b6.Intersection{b6.Tagged{Key: "#highway", Value: "footway"}, b6.Tagged{Key: "#bridge", Value: "yes"}}, w))
+	paths = b6.AllPaths(b6.FindPaths(b6.Intersection{b6.Tagged{Key: "#highway", Value: b6.String("footway")}, b6.Tagged{Key: "#bridge", Value: b6.String("yes")}}, w))
 	if len(paths) != 1 || paths[0].PathID() != path.PathID {
 		t.Errorf("Expected to find one path, found %d", len(paths))
 	}
@@ -150,27 +149,27 @@ func ValidateUpdatePathConnectivity(w MutableWorld, t *testing.T) {
 	b := osmPoint(5384190494, 51.5362126, -0.1270125)
 	c := osmPoint(5384190476, 51.5367563, -0.1266297)
 
-	ab := osmPath(558345071, []*PointFeature{a, b})
-	ca := osmPath(558345054, []*PointFeature{c, a})
+	ab := osmPath(558345071, []Feature{a, b})
+	ca := osmPath(558345054, []Feature{c, a})
 
 	if err := addFeatures(w, a, b, c, ab, ca); err != nil {
 		t.Fatal(err)
 	}
 
-	segments := b6.AllSegments(w.Traverse(c.PointID))
-	if len(segments) != 1 || segments[0].LastFeature().PointID() != a.PointID {
+	segments := b6.AllSegments(w.Traverse(c.FeatureID()))
+	if len(segments) != 1 || segments[0].LastFeature().FeatureID() != a.FeatureID() {
 		t.Error("Expected to find a connection to point a")
 	}
 
 	// Swap pathC from c -> a to c -> b
 	path := NewPathFeatureFromWorld(b6.FindPathByID(ca.PathID, w))
-	path.SetPointID(1, b.PointID)
+	path.SetPointID(1, b.FeatureID())
 	if w.AddFeature(path) != nil {
 		t.Error("Failed to swap path c -> b")
 	}
 
-	segments = b6.AllSegments(w.Traverse(c.PointID))
-	if len(segments) != 1 || segments[0].LastFeature().PointID() != b.PointID {
+	segments = b6.AllSegments(w.Traverse(c.FeatureID()))
+	if len(segments) != 1 || segments[0].LastFeature().FeatureID() != b.FeatureID() {
 		t.Errorf("Expected to find a connection to point b, found none (%d segments)", len(segments))
 	}
 }
@@ -182,7 +181,7 @@ func ValidateUpdateAreasByPointWhenChangingPointsOnAPath(w MutableWorld, t *test
 
 	d := osmPoint(2309943868, 51.5370710, -0.1240744)
 
-	path := osmPath(222021570, []*PointFeature{a, b, c, a})
+	path := osmPath(222021570, []Feature{a, b, c, a})
 
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(222021570)
@@ -192,29 +191,29 @@ func ValidateUpdateAreasByPointWhenChangingPointsOnAPath(w MutableWorld, t *test
 		t.Fatal(err)
 	}
 
-	areas := b6.AllAreas(w.FindAreasByPoint(c.PointID))
+	areas := b6.AllAreas(w.FindAreasByPoint(c.FeatureID()))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Error("Expected to find an area for point c")
 	}
 
-	areas = b6.AllAreas(w.FindAreasByPoint(d.PointID))
+	areas = b6.AllAreas(w.FindAreasByPoint(d.FeatureID()))
 	if len(areas) != 0 {
 		t.Error("Didn't expect to find an area for point d")
 	}
 
 	// Replace a point on the path
 	modifiedPath := NewPathFeatureFromWorld(b6.FindPathByID(path.PathID, w))
-	modifiedPath.SetPointID(1, d.PointID)
+	modifiedPath.SetPointID(1, d.FeatureID())
 	if err := addFeatures(w, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
 
-	areas = b6.AllAreas(w.FindAreasByPoint(d.PointID))
+	areas = b6.AllAreas(w.FindAreasByPoint(d.FeatureID()))
 	if len(areas) != 1 || areas[0].AreaID() != area.AreaID {
 		t.Errorf("Expected to find an area for point d, found: %d", len(areas))
 	}
 
-	areas = b6.AllAreas(w.FindAreasByPoint(b.PointID))
+	areas = b6.AllAreas(w.FindAreasByPoint(b.FeatureID()))
 	if len(areas) != 0 {
 		t.Errorf("Expected to find no areas for point a, found: %d", len(areas))
 	}
@@ -235,17 +234,17 @@ func ValidateUpdateAreasSharingAPointOnAPath(w MutableWorld, t *testing.T) {
 
 	h := osmPoint(2309943869, 51.5370778, -0.1236840) // Used to modify
 
-	pathA := osmPath(222021570, []*PointFeature{a, b, c, a})
+	pathA := osmPath(222021570, []Feature{a, b, c, a})
 	areaA := NewAreaFeature(1)
 	areaA.AreaID = AreaIDFromOSMWayID(222021570)
 	areaA.SetPathIDs(0, []b6.PathID{pathA.PathID})
 
-	pathB := osmPath(222021576, []*PointFeature{a, d, e, a})
+	pathB := osmPath(222021576, []Feature{a, d, e, a})
 	areaB := NewAreaFeature(1)
 	areaB.AreaID = AreaIDFromOSMWayID(222021576)
 	areaB.SetPathIDs(0, []b6.PathID{pathB.PathID})
 
-	pathC := osmPath(222021578, []*PointFeature{a, f, g, a})
+	pathC := osmPath(222021578, []Feature{a, f, g, a})
 	areaC := NewAreaFeature(1)
 	areaC.AreaID = AreaIDFromOSMWayID(222021578)
 	areaC.SetPathIDs(0, []b6.PathID{pathC.PathID})
@@ -256,18 +255,18 @@ func ValidateUpdateAreasSharingAPointOnAPath(w MutableWorld, t *testing.T) {
 
 	// Replace points on pathA
 	modifiedPath := NewPathFeatureFromWorld(b6.FindPathByID(pathA.PathID, w))
-	modifiedPath.SetPointID(0, h.PointID)
-	modifiedPath.SetPointID(3, h.PointID)
+	modifiedPath.SetPointID(0, h.FeatureID())
+	modifiedPath.SetPointID(3, h.FeatureID())
 	if err := addFeatures(w, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
 
-	areas := b6.AllAreas(w.FindAreasByPoint(h.PointID))
+	areas := b6.AllAreas(w.FindAreasByPoint(h.FeatureID()))
 	if len(areas) != 1 || areas[0].AreaID() != areaA.AreaID {
 		t.Errorf("Expected to find an area for point h, found: %d", len(areas))
 	}
 
-	areas = b6.AllAreas(w.FindAreasByPoint(a.PointID))
+	areas = b6.AllAreas(w.FindAreasByPoint(a.FeatureID()))
 	if len(areas) != 2 || areas[0].AreaID() == areaA.AreaID || areas[1].AreaID() == areaA.AreaID {
 		t.Errorf("Expected to find 2 areas for point a, none areaA, found: %d", len(areas))
 	}
@@ -281,12 +280,12 @@ func ValidateUpdateAreasSharingAPoint(w MutableWorld, t *testing.T) {
 	d := osmPoint(2309943849, 51.5357793, -0.1246146) // The Granary
 	e := osmPoint(2309943853, 51.5359057, -0.1253953)
 
-	pathA := osmPath(222021570, []*PointFeature{a, b, c, a})
+	pathA := osmPath(222021570, []Feature{a, b, c, a})
 	areaA := NewAreaFeature(1)
 	areaA.AreaID = AreaIDFromOSMWayID(222021570)
 	areaA.SetPathIDs(0, []b6.PathID{pathA.PathID})
 
-	pathB := osmPath(222021576, []*PointFeature{b, d, e, b})
+	pathB := osmPath(222021576, []Feature{b, d, e, b})
 	areaB := NewAreaFeature(1)
 	areaB.AreaID = AreaIDFromOSMWayID(222021576)
 	areaB.SetPathIDs(0, []b6.PathID{pathB.PathID})
@@ -301,12 +300,12 @@ func ValidateUpdateAreasSharingAPoint(w MutableWorld, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	point := b6.FindPointByID(modifiedPoint.PointID, w)
+	point := w.FindFeatureByID(modifiedPoint.FeatureID())
 	if point == nil {
 		t.Fatal("Expected to find point")
 	}
 
-	if point.Point().Distance(modifiedPoint.Point()) > 0.000001 {
+	if point.(b6.Geometry).Location().Distance(modifiedPoint.(b6.Geometry).Location()) > 0.000001 {
 		t.Error("Expected modified point to have an updated location")
 	}
 }
@@ -317,7 +316,7 @@ func ValidateUpdateAreasByPointWhenChangingPathsForAnArea(w MutableWorld, t *tes
 	c := osmPoint(2309943870, 51.5371371, -0.1240464)
 	d := osmPoint(598093309, 51.5321649, -0.1269834)
 
-	path := osmPath(222021570, []*PointFeature{a, b, c, a})
+	path := osmPath(222021570, []Feature{a, b, c, a})
 
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(222021570)
@@ -327,7 +326,7 @@ func ValidateUpdateAreasByPointWhenChangingPathsForAnArea(w MutableWorld, t *tes
 		t.Fatal(err)
 	}
 
-	newPath := osmPath(222021577, []*PointFeature{b, c, d, b})
+	newPath := osmPath(222021577, []Feature{b, c, d, b})
 	modifiedArea := NewAreaFeatureFromWorld(b6.FindAreaByID(area.AreaID, w))
 	modifiedArea.SetPathIDs(0, []b6.PathID{newPath.PathID})
 
@@ -339,12 +338,12 @@ func ValidateUpdateAreasByPointWhenChangingPathsForAnArea(w MutableWorld, t *tes
 		t.Errorf("Failed to add modified area: %s", err)
 	}
 
-	areas := b6.AllAreas(w.FindAreasByPoint(d.PointID))
+	areas := b6.AllAreas(w.FindAreasByPoint(d.FeatureID()))
 	if len(areas) != 1 || areas[0].AreaID() != modifiedArea.AreaID {
 		t.Error("Expected to find an area for point d")
 	}
 
-	areas = b6.AllAreas(w.FindAreasByPoint(a.PointID))
+	areas = b6.AllAreas(w.FindAreasByPoint(a.FeatureID()))
 	if len(areas) != 0 {
 		t.Error("Didn't expect to find an area for point a")
 	}
@@ -357,18 +356,18 @@ func ValidateUpdateRelationsByFeatureWhenChangingRelations(w MutableWorld, t *te
 
 	ab := NewPathFeature(2)
 	ab.PathID = FromOSMWayID(807925586)
-	ab.SetPointID(0, a.PointID)
-	ab.SetPointID(1, b.PointID)
+	ab.SetPointID(0, a.FeatureID())
+	ab.SetPointID(1, b.FeatureID())
 
 	bc := NewPathFeature(2)
 	bc.PathID = FromOSMWayID(558345068)
-	bc.SetPointID(0, b.PointID)
-	bc.SetPointID(1, c.PointID)
+	bc.SetPointID(0, b.FeatureID())
+	bc.SetPointID(1, c.FeatureID())
 
 	relation := NewRelationFeature(1)
 	relation.RelationID = FromOSMRelationID(11139964)
 	relation.Members[0] = b6.RelationMember{ID: ab.FeatureID()}
-	relation.Tags = []b6.Tag{{Key: "type", Value: "route"}}
+	relation.Tags = []b6.Tag{{Key: "type", Value: b6.String("route")}}
 
 	if err := addFeatures(w, a, b, c, ab, bc, relation); err != nil {
 		t.Fatal(err)
@@ -453,7 +452,7 @@ func ValidateUpdatingPathUpdatesS2CellIndex(w MutableWorld, t *testing.T) {
 	e := osmPoint(2309943852, 51.5358965, -0.1230551)
 	f := osmPoint(2309943867, 51.5370349, -0.1232719) // Top right
 
-	path := osmPath(222021577, []*PointFeature{a, b, c, d, a})
+	path := osmPath(222021577, []Feature{a, b, c, d, a})
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(222021577)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
@@ -470,8 +469,8 @@ func ValidateUpdatingPathUpdatesS2CellIndex(w MutableWorld, t *testing.T) {
 	}
 
 	modifiedPath := NewPathFeatureFromWorld(b6.FindPathByID(path.PathID, w))
-	modifiedPath.SetPointID(2, e.PointID)
-	modifiedPath.SetPointID(3, f.PointID)
+	modifiedPath.SetPointID(2, e.FeatureID())
+	modifiedPath.SetPointID(3, f.FeatureID())
 	if err := addFeatures(w, e, f, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -492,11 +491,7 @@ func ValidateUpdatingPointLocationsUpdatesS2CellIndex(w MutableWorld, t *testing
 	c := osmPoint(2309943846, 51.5356657, -0.1254957)
 	d := osmPoint(2309943872, 51.5372656, -0.1248160)
 
-	// Eastern Handyside Canopy, East edge
-	e := osmPoint(2309943852, 51.5358965, -0.1230551)
-	f := osmPoint(2309943867, 51.5370349, -0.1232719) // Top right
-
-	path := osmPath(222021577, []*PointFeature{a, b, c, d, a})
+	path := osmPath(222021577, []Feature{a, b, c, d, a})
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(222021577)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
@@ -512,10 +507,10 @@ func ValidateUpdatingPointLocationsUpdatesS2CellIndex(w MutableWorld, t *testing
 		t.Errorf("Didn't expect to find an area %s", areas[0].FeatureID())
 	}
 
-	newC := NewPointFeatureFromWorld(b6.FindPointByID(c.PointID, w))
-	newC.Location = e.Location
-	newD := NewPointFeatureFromWorld(b6.FindPointByID(d.PointID, w))
-	newD.Location = f.Location
+	// Eastern Handyside Canopy, East edge
+	newC := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5358965, -0.1230551))}}}
+	newD := &GenericFeature{ID: d.FeatureID(), Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719))}}}
+
 	if err := addFeatures(w, newC, newD); err != nil {
 		t.Fatal(err)
 	}
@@ -536,7 +531,7 @@ func ValidateUpdatingPointLocationsWillFailIfAreasAreInvalidated(w MutableWorld,
 	c := osmPoint(2309943846, 51.5356657, -0.1254957)
 	d := osmPoint(2309943872, 51.5372656, -0.1248160)
 
-	path := osmPath(222021577, []*PointFeature{a, b, c, d, a})
+	path := osmPath(222021577, []Feature{a, b, c, d, a})
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(222021577)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
@@ -545,8 +540,8 @@ func ValidateUpdatingPointLocationsWillFailIfAreasAreInvalidated(w MutableWorld,
 		t.Fatal(err)
 	}
 
-	modifiedPoint := NewPointFeatureFromWorld(b6.FindPointByID(c.PointID, w))
-	modifiedPoint.Location = s2.LatLngFromDegrees(51.5368549, -0.1256275)
+	modifiedPoint := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5368549, -0.1256275))}}}
+
 	if addFeatures(w, modifiedPoint) == nil {
 		t.Error("Expected adding point to fail, as it invalidates an area")
 	}
@@ -564,7 +559,7 @@ func ValidateUpdatingPathWillFailIfAreasAreInvalidated(w MutableWorld, t *testin
 	// A fountain in Lewis Cubitt Square
 	e := osmPoint(4031177264, 51.5368549, -0.1256275)
 
-	path := osmPath(222021577, []*PointFeature{a, b, c, d, a})
+	path := osmPath(222021577, []Feature{a, b, c, d, a})
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(222021577)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
@@ -574,15 +569,15 @@ func ValidateUpdatingPathWillFailIfAreasAreInvalidated(w MutableWorld, t *testin
 	}
 
 	modifiedPath := NewPathFeatureFromWorld(b6.FindPathByID(path.PathID, w))
-	modifiedPath.SetPointID(2, e.PointID)
+	modifiedPath.SetPointID(2, e.FeatureID())
 	if w.AddFeature(modifiedPath) == nil {
 		t.Error("Expected adding path to fail, as it invalidates an area")
 	}
 }
 
 func ValidateAddingFeaturesWithNoIDFails(w MutableWorld, t *testing.T) {
-	if err := w.AddFeature(&PointFeature{}); err == nil {
-		t.Error("Expected adding a point with no ID to fail")
+	if err := w.AddFeature(&GenericFeature{}); err == nil {
+		t.Error("Expected adding a feature with no ID to fail")
 	}
 	if err := w.AddFeature(&PathFeature{}); err == nil {
 		t.Error("Expected adding a path with no ID to fail")
@@ -600,20 +595,20 @@ func ValidateAddingFeaturesWithNoIDFails(w MutableWorld, t *testing.T) {
 
 func ValidateAddTagToExistingFeature(w MutableWorld, t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 	if err := addFeatures(w, caravan); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: "restaurant"}); err != nil {
+	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.String("restaurant")}); err != nil {
 		t.Fatalf("Failed to add tag: %s", err)
 	}
 
-	found := b6.FindPointByID(caravan.PointID, w)
+	found := w.FindFeatureByID(caravan.FeatureID())
 	if found == nil {
 		t.Fatal("Failed to find feature")
 	}
-	if found.Get("amenity").Value != "restaurant" {
+	if found.Get("amenity").Value.String() != "restaurant" {
 		t.Error("Failed to find expected tag value")
 	}
 }
@@ -659,16 +654,16 @@ func ValidateRepeatedModificationChangingNodes(id osm.WayID, find func(b6.World)
 	c := osmPoint(2309943846, 51.5356657, -0.1254957)
 	d := osmPoint(2309943872, 51.5372656, -0.1248160)
 
-	path := osmPath(id, []*PointFeature{a, b, c, d, a})
-	path.Tags = []b6.Tag{{Key: "#highway", Value: "primary"}}
+	path := osmPath(id, []Feature{a, b, c, d, a})
+	path.Tags = []b6.Tag{{Key: "#highway", Value: b6.String("primary")}}
 	if err := addFeatures(w, a, b, c, d, path); err != nil {
 		t.Fatal(err)
 	}
 
-	points := []*PointFeature{a, b, c, d}
+	points := []Feature{a, b, c, d}
 	for i := 0; i < len(points); i++ {
-		modifiedPoint := points[i].ClonePointFeature()
-		modifiedPoint.PointID = b6.MakePointID(points[i].Namespace, points[i].Value+1)
+		modifiedPoint := points[i].Clone()
+		modifiedPoint.SetFeatureID(b6.FeatureID{b6.FeatureTypePoint, points[i].FeatureID().Namespace, points[i].FeatureID().Value + 1})
 		if err := w.AddFeature(modifiedPoint); err != nil {
 			t.Fatal(err)
 		}
@@ -678,7 +673,7 @@ func ValidateRepeatedModificationChangingNodes(id osm.WayID, find func(b6.World)
 			t.Fatal("Failed to find feature")
 		}
 		modifiedPath := NewPathFeatureFromWorld(found)
-		modifiedPath.SetPointID(i, modifiedPoint.PointID)
+		modifiedPath.SetPointID(i, modifiedPoint.FeatureID())
 		if err := w.AddFeature(modifiedPath); err != nil {
 			t.Fatal(err)
 		}
@@ -700,13 +695,13 @@ func ValidateRepeatedModificationAddingNodes(id osm.WayID, find func(b6.World) b
 	d := osmPoint(2309943872, 51.5372656, -0.1248160)
 	e := osmPoint(4031177264, 51.5368549, -0.1256275)
 
-	path := osmPath(id, []*PointFeature{a, b})
-	path.Tags = []b6.Tag{{Key: "#highway", Value: "primary"}}
+	path := osmPath(id, []Feature{a, b})
+	path.Tags = []b6.Tag{{Key: "#highway", Value: b6.String("primary")}}
 	if err := addFeatures(w, a, b, c, d, e, path); err != nil {
 		t.Fatal(err)
 	}
 
-	newPoints := []*PointFeature{c, d, e}
+	newPoints := []Feature{c, d, e}
 	for i := 0; i < len(newPoints); i++ {
 		found := find(w)
 		if found == nil {
@@ -719,10 +714,10 @@ func ValidateRepeatedModificationAddingNodes(id osm.WayID, find func(b6.World) b
 		insert := 0
 		for j := 0; j < found.Len(); j++ {
 			if j == 1 {
-				newPath.SetPointID(insert, newPoints[i].PointID)
+				newPath.SetPointID(insert, newPoints[i].FeatureID())
 				insert++
 			}
-			newPath.SetPointID(insert, found.Feature(j).PointID())
+			newPath.SetPointID(insert, found.Feature(j).FeatureID())
 			insert++
 		}
 		if err := w.AddFeature(newPath); err != nil {
@@ -731,11 +726,11 @@ func ValidateRepeatedModificationAddingNodes(id osm.WayID, find func(b6.World) b
 	}
 
 	found := b6.FindPathByID(path.PathID, w)
-	var gotPointIDs []b6.PointID
+	var gotPointIDs []b6.FeatureID
 	for i := 0; i < found.Len(); i++ {
-		gotPointIDs = append(gotPointIDs, found.Feature(i).PointID())
+		gotPointIDs = append(gotPointIDs, found.Feature(i).FeatureID())
 	}
-	expected := []b6.PointID{a.PointID, e.PointID, d.PointID, c.PointID, b.PointID}
+	expected := []b6.FeatureID{a.FeatureID(), e.FeatureID(), d.FeatureID(), c.FeatureID(), b.FeatureID()}
 	if diff := cmp.Diff(expected, gotPointIDs); diff != "" {
 		t.Errorf("Unexpected point IDs (-want +got):\n%s", diff)
 	}
@@ -743,45 +738,47 @@ func ValidateRepeatedModificationAddingNodes(id osm.WayID, find func(b6.World) b
 
 func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 
 	lighterman := osmPoint(427900370, 51.5353986, -0.1243711)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: "The Lighterman"})
-	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: "restaurant"})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
 
 	if err := addFeatures(w, caravan, lighterman); err != nil {
 		t.Fatal(err)
 	}
 
-	points := b6.AllPoints(b6.FindPoints(b6.Tagged{Key: "#amenity", Value: "restaurant"}, w))
-	if len(points) != 1 {
-		t.Fatalf("Expected to find 1 point, found %d", len(points))
+	points := w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	if points.Next() != true && points.Next() != false {
+		t.Fatal("Expected to find 1 point")
 	}
 
-	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: "restaurant"}); err != nil {
+	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.String("restaurant")}); err != nil {
 		t.Fatalf("Failed to add tag: %s", err)
 	}
 
-	foundPoint := b6.FindPointByID(caravan.PointID, w)
+	foundPoint := w.FindFeatureByID(caravan.FeatureID())
 	if foundPoint == nil {
 		t.Fatal("Failed to find feature")
 	}
-	if foundPoint.Get("#amenity").Value != "restaurant" {
+	if foundPoint.Get("#amenity").Value.String() != "restaurant" {
 		t.Errorf("Failed to find expected tag value")
 	}
 
-	points = b6.AllPoints(b6.FindPoints(b6.Tagged{Key: "#amenity", Value: "restaurant"}, w))
-	if len(points) != 2 {
-		t.Fatalf("Expected to find 2 points, found %d", len(points))
-	}
-
+	points = w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	pointLen := 0
 	found := false
-	for _, point := range points {
-		if point.FeatureID() == caravan.FeatureID() {
+	for points.Next() {
+		pointLen++
+		if points.FeatureID() == caravan.FeatureID() {
 			found = true
-			break
 		}
 	}
+
+	if pointLen != 2 {
+		t.Fatalf("Expected to find 2 points, found %d", pointLen)
+	}
+
 	if !found {
 		t.Error("Expected to find Caravan")
 	}
@@ -789,7 +786,7 @@ func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 
 func ValidateAddTagToNonExistingFeature(w MutableWorld, t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: "restaurant"}); err == nil {
+	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.String("restaurant")}); err == nil {
 		t.Error("Expected an error, found none")
 	}
 }
@@ -810,7 +807,7 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 	// A fountain in Lewis Cubitt Square
 	g := osmPoint(4031177264, 51.5368549, -0.1256275)
 
-	path := osmPath(222021577, []*PointFeature{a, b, c, d, a})
+	path := osmPath(222021577, []Feature{a, b, c, d, a})
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(222021577)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
@@ -821,7 +818,7 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	if fountain := b6.FindPointByID(e.PointID, overlay); fountain != nil {
+	if fountain := overlay.FindFeatureByID(e.FeatureID()); fountain != nil {
 		t.Error("Expected to find fountain in base via overlay")
 	}
 
@@ -833,8 +830,8 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 	}
 
 	modifiedPath := NewPathFeatureFromWorld(b6.FindPathByID(path.PathID, overlay))
-	modifiedPath.SetPointID(2, e.PointID)
-	modifiedPath.SetPointID(3, f.PointID)
+	modifiedPath.SetPointID(2, e.FeatureID())
+	modifiedPath.SetPointID(3, f.FeatureID())
 	if err := addFeatures(overlay, e, f, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -844,7 +841,7 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 		t.Errorf("Expected to find area within the region (found %d areas)", len(areas))
 	}
 
-	paths := b6.AllPaths(overlay.FindPathsByPoint(a.PointID))
+	paths := b6.AllPaths(overlay.FindPathsByPoint(a.FeatureID()))
 	if len(paths) != 1 || paths[0].PathID().Value != path.PathID.Value {
 		t.Errorf("Expected to find 1 path by point a, found %d", len(paths))
 	}
@@ -856,7 +853,7 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 	a := osmPoint(1447052073, 51.5350350, -0.1247934)
 	b := osmPoint(1540349979, 51.5348204, -0.1246405)
 
-	path := osmPath(140633010, []*PointFeature{a, b})
+	path := osmPath(140633010, []Feature{a, b})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, path); err != nil {
@@ -864,7 +861,8 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	granarySquareCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, a.Point(), b.Point()), b6.MetersToAngle(10))
+
+	granarySquareCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, s2.PointFromLatLng(a.(b6.Geometry).Location()), s2.PointFromLatLng(b.(b6.Geometry).Location())), b6.MetersToAngle(10))
 	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Granary Square, found %d", len(paths))
@@ -876,7 +874,7 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, aPrime.Point(), bPrime.Point()), b6.MetersToAngle(10))
+	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, s2.PointFromLatLng(aPrime.(b6.Geometry).Location()), s2.PointFromLatLng(bPrime.(b6.Geometry).Location())), b6.MetersToAngle(10))
 	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(bankCap), overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Bank, found %d", len(paths))
@@ -887,7 +885,7 @@ func TestModifyPointsOnPathInExistingWorld(t *testing.T) {
 		t.Errorf("Expected to find no paths around Granary Square, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(overlay.FindPathsByPoint(a.PointID))
+	paths = b6.AllPaths(overlay.FindPathsByPoint(a.FeatureID()))
 	if len(paths) != 1 {
 		t.Errorf("Expected 1 path, found: %d", len(paths))
 	}
@@ -900,7 +898,7 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 	b := osmPoint(5693730033, 51.5352871, -0.1244193)
 	c := osmPoint(4270651273, 51.5351278, -0.1243315)
 
-	path := osmPath(140633010, []*PointFeature{a, b, c, a})
+	path := osmPath(140633010, []Feature{a, b, c, a})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, c, path); err != nil {
@@ -908,7 +906,8 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	granarySquareCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, a.Point(), b.Point()), b6.MetersToAngle(10))
+
+	granarySquareCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, s2.PointFromLatLng(a.(b6.Geometry).Location()), s2.PointFromLatLng(b.(b6.Geometry).Location())), b6.MetersToAngle(10))
 	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(granarySquareCap), overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Granary Square, found %d", len(paths))
@@ -922,7 +921,7 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, aPrime.Point(), bPrime.Point()), b6.MetersToAngle(10))
+	bankCap := s2.CapFromCenterAngle(s2.Interpolate(0.5, s2.PointFromLatLng(aPrime.(b6.Geometry).Location()), s2.PointFromLatLng(bPrime.(b6.Geometry).Location())), b6.MetersToAngle(10))
 	paths = b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(bankCap), overlay))
 	if len(paths) != 1 {
 		t.Errorf("Expected to find 1 path around Bank, found %d", len(paths))
@@ -933,7 +932,7 @@ func TestModifyPointsOnClosedPathInExistingWorld(t *testing.T) {
 		t.Errorf("Expected to find no paths around Granary Square, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(overlay.FindPathsByPoint(a.PointID))
+	paths = b6.AllPaths(overlay.FindPathsByPoint(a.FeatureID()))
 	if len(paths) != 1 || paths[0].PathID().Value != path.PathID.Value {
 		t.Errorf("Expected 1 path, found: %d", len(paths))
 		for _, p := range paths {
@@ -950,8 +949,8 @@ func TestModifyPathWithIntersectionsInExistingWorld(t *testing.T) {
 
 	e := osmPoint(7787634210, 51.5355869, -0.1269299)
 
-	ad := osmPath(647895239, []*PointFeature{a, b, c, d})
-	ec := osmPath(647895212, []*PointFeature{e, c})
+	ad := osmPath(647895239, []Feature{a, b, c, d})
+	ec := osmPath(647895212, []Feature{e, c})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, c, d, e, ad, ec); err != nil {
@@ -960,7 +959,7 @@ func TestModifyPathWithIntersectionsInExistingWorld(t *testing.T) {
 	overlay := NewMutableOverlayWorld(base)
 
 	reachable := make(map[b6.PathID]bool)
-	segments := overlay.Traverse(c.PointID)
+	segments := overlay.Traverse(c.FeatureID())
 	for segments.Next() {
 		reachable[segments.Segment().Feature.PathID()] = true
 	}
@@ -969,13 +968,13 @@ func TestModifyPathWithIntersectionsInExistingWorld(t *testing.T) {
 		t.Error("Didn't find expected initial connections")
 	}
 
-	newAD := osmPath(osm.WayID(ad.PathID.Value), []*PointFeature{a, c, d})
+	newAD := osmPath(osm.WayID(ad.PathID.Value), []Feature{a, c, d})
 	if err := addFeatures(overlay, newAD); err != nil {
 		t.Fatal(err)
 	}
 
 	reachable = make(map[b6.PathID]bool)
-	segments = overlay.Traverse(c.PointID)
+	segments = overlay.Traverse(c.FeatureID())
 	for segments.Next() {
 		reachable[segments.Segment().Feature.PathID()] = true
 	}
@@ -998,11 +997,11 @@ func validateTags(tagged b6.Taggable, expected []b6.Tag) error {
 
 	tags := make(map[string]string)
 	for _, tag := range tagged.AllTags() {
-		tags[tag.Key] = tag.Value
+		tags[tag.Key] = tag.Value.String()
 	}
 
 	for _, tag := range expected {
-		if value, ok := tags[tag.Key]; !ok || value != tag.Value {
+		if value, ok := tags[tag.Key]; !ok || value != tag.Value.String() {
 			return fmt.Errorf("Expected value %q for tag %q, found %q", tag.Value, tag.Key, value)
 		}
 	}
@@ -1011,8 +1010,8 @@ func validateTags(tagged b6.Taggable, expected []b6.Tag) error {
 
 func TestChangeTagsOnExistingPoint(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
-	caravan.AddTag(b6.Tag{Key: "wheelchair", Value: "no"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1021,15 +1020,16 @@ func TestChangeTagsOnExistingPoint(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(base)
 	// TODO: Updating the amenity actually needs to update the search index too.
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: "restaurant"})
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
 
-	point := b6.FindPointByID(caravan.PointID, overlay)
+	point := overlay.FindFeatureByID(caravan.FeatureID())
 
 	expected := []b6.Tag{
-		{Key: "name", Value: "Caravan"},
-		{Key: "wheelchair", Value: "yes"},
-		{Key: "amenity", Value: "restaurant"},
+		{Key: "name", Value: b6.String("Caravan")},
+		{Key: "wheelchair", Value: b6.String("yes")},
+		{Key: "amenity", Value: b6.String("restaurant")},
+		{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(point, expected); err != nil {
@@ -1042,9 +1042,9 @@ func TestChangeTagsOnExistingPath(t *testing.T) {
 	b := osmPoint(6384669830, 51.5342291, -0.1262792)
 
 	// Goods Way, South of Granary Square
-	ab := osmPath(807924986, []*PointFeature{a, b})
-	ab.AddTag(b6.Tag{Key: "highway", Value: "tertiary"})
-	ab.AddTag(b6.Tag{Key: "lit", Value: "no"})
+	ab := osmPath(807924986, []Feature{a, b})
+	ab.AddTag(b6.Tag{Key: "highway", Value: b6.String("tertiary")})
+	ab.AddTag(b6.Tag{Key: "lit", Value: b6.String("no")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, ab); err != nil {
@@ -1052,15 +1052,15 @@ func TestChangeTagsOnExistingPath(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(ab.FeatureID(), b6.Tag{Key: "cycleway:left", Value: "track"})
-	overlay.AddTag(ab.FeatureID(), b6.Tag{Key: "lit", Value: "yes"})
+	overlay.AddTag(ab.FeatureID(), b6.Tag{Key: "cycleway:left", Value: b6.String("track")})
+	overlay.AddTag(ab.FeatureID(), b6.Tag{Key: "lit", Value: b6.String("yes")})
 
 	path := b6.FindPathByID(ab.PathID, overlay)
 
 	expected := []b6.Tag{
-		{Key: "highway", Value: "tertiary"},
-		{Key: "lit", Value: "yes"},
-		{Key: "cycleway:left", Value: "track"},
+		{Key: "highway", Value: b6.String("tertiary")},
+		{Key: "lit", Value: b6.String("yes")},
+		{Key: "cycleway:left", Value: b6.String("track")},
 	}
 
 	if err := validateTags(path, expected); err != nil {
@@ -1072,11 +1072,11 @@ func TestChangeTagsOnExistingArea(t *testing.T) {
 	a := osmPoint(5693730034, 51.5352979, -0.1244842)
 	b := osmPoint(5693730033, 51.5352871, -0.1244193)
 	c := osmPoint(4270651271, 51.5353986, -0.1243711)
-	abc := osmPath(427900370, []*PointFeature{a, b, c, a})
+	abc := osmPath(427900370, []Feature{a, b, c, a})
 
 	lighterman := osmSimpleArea(427900370)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: "The Lighterman"})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: "no"})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, c, abc, lighterman); err != nil {
@@ -1084,15 +1084,15 @@ func TestChangeTagsOnExistingArea(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "amenity", Value: "pub"})
-	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "amenity", Value: b6.String("pub")})
+	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
 
 	area := b6.FindAreaByID(lighterman.AreaID, overlay)
 
 	expected := []b6.Tag{
-		{Key: "name", Value: "The Lighterman"},
-		{Key: "amenity", Value: "pub"},
-		{Key: "wheelchair", Value: "yes"},
+		{Key: "name", Value: b6.String("The Lighterman")},
+		{Key: "amenity", Value: b6.String("pub")},
+		{Key: "wheelchair", Value: b6.String("yes")},
 	}
 
 	if err := validateTags(area, expected); err != nil {
@@ -1104,11 +1104,11 @@ func TestAddSearchableTagTagToExistingArea(t *testing.T) {
 	a := osmPoint(5693730034, 51.5352979, -0.1244842)
 	b := osmPoint(5693730033, 51.5352871, -0.1244193)
 	c := osmPoint(4270651271, 51.5353986, -0.1243711)
-	abc := osmPath(427900370, []*PointFeature{a, b, c, a})
+	abc := osmPath(427900370, []Feature{a, b, c, a})
 
 	lighterman := osmSimpleArea(427900370)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: "The Lighterman"})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: "no"})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, c, abc, lighterman); err != nil {
@@ -1116,9 +1116,9 @@ func TestAddSearchableTagTagToExistingArea(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#reachable", Value: "yes"})
+	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#reachable", Value: b6.String("yes")})
 
-	areas := b6.AllAreas(b6.FindAreas(b6.Tagged{Key: "#reachable", Value: "yes"}, overlay))
+	areas := b6.AllAreas(b6.FindAreas(b6.Tagged{Key: "#reachable", Value: b6.String("yes")}, overlay))
 	if len(areas) != 1 {
 		t.Fatalf("Expected to find 1 area, found %d", len(areas))
 	}
@@ -1131,11 +1131,11 @@ func TestChangeTagsOnExistingRelation(t *testing.T) {
 	a := osmPoint(7555161584, 51.5345488, -0.1251005)
 	b := osmPoint(6384669830, 51.5342291, -0.1262792)
 	// Goods Way, South of Granary Square
-	ab := osmPath(807924986, []*PointFeature{a, b})
+	ab := osmPath(807924986, []Feature{a, b})
 	// Part of C6
 	c6 := osmSimpleRelation(10341051, 807924986)
-	c6.AddTag(b6.Tag{Key: "type", Value: "route"})
-	c6.AddTag(b6.Tag{Key: "network", Value: "lcn"})
+	c6.AddTag(b6.Tag{Key: "type", Value: b6.String("route")})
+	c6.AddTag(b6.Tag{Key: "network", Value: b6.String("lcn")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, ab, c6); err != nil {
@@ -1143,15 +1143,15 @@ func TestChangeTagsOnExistingRelation(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(c6.FeatureID(), b6.Tag{Key: "route", Value: "bicycle"})
-	overlay.AddTag(c6.FeatureID(), b6.Tag{Key: "network", Value: "rcn"})
+	overlay.AddTag(c6.FeatureID(), b6.Tag{Key: "route", Value: b6.String("bicycle")})
+	overlay.AddTag(c6.FeatureID(), b6.Tag{Key: "network", Value: b6.String("rcn")})
 
 	relation := b6.FindRelationByID(c6.RelationID, overlay)
 
 	expected := []b6.Tag{
-		{Key: "type", Value: "route"},
-		{Key: "route", Value: "bicycle"},
-		{Key: "network", Value: "rcn"},
+		{Key: "type", Value: b6.String("route")},
+		{Key: "route", Value: b6.String("bicycle")},
+		{Key: "network", Value: b6.String("rcn")},
 	}
 
 	if err := validateTags(relation, expected); err != nil {
@@ -1161,8 +1161,8 @@ func TestChangeTagsOnExistingRelation(t *testing.T) {
 
 func TestChangeTagsOnExistingCollection(t *testing.T) {
 	c := simpleCollection(b6.MakeCollectionID(b6.Namespace("test"), 1), "sappho", "fragments")
-	f13 := b6.Tag{Key: "13", Value: "Of all the stars"}
-	f31 := b6.Tag{Key: "31", Value: "That man seems to me to be equal to the gods, sitting opposite of you.."}
+	f13 := b6.Tag{Key: "13", Value: b6.String("Of all the stars")}
+	f31 := b6.Tag{Key: "31", Value: b6.String("That man seems to me to be equal to the gods, sitting opposite of you..")}
 	c.AddTag(f13)
 	c.AddTag(f31)
 
@@ -1172,13 +1172,13 @@ func TestChangeTagsOnExistingCollection(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(c.FeatureID(), b6.Tag{Key: "13", Value: "Of all the stars, the loveliest"})
+	overlay.AddTag(c.FeatureID(), b6.Tag{Key: "13", Value: b6.String("Of all the stars, the loveliest")})
 
 	collection := b6.FindCollectionByID(c.CollectionID, overlay)
 
 	expected := []b6.Tag{
-		{Key: "31", Value: "That man seems to me to be equal to the gods, sitting opposite of you.."},
-		{Key: "13", Value: "Of all the stars, the loveliest"},
+		{Key: "31", Value: b6.String("That man seems to me to be equal to the gods, sitting opposite of you..")},
+		{Key: "13", Value: b6.String("Of all the stars, the loveliest")},
 	}
 
 	if err := validateTags(collection, expected); err != nil {
@@ -1188,8 +1188,8 @@ func TestChangeTagsOnExistingCollection(t *testing.T) {
 
 func TestReturnModifiedTagsFromSearch(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
-	caravan.AddTag(b6.Tag{Key: "#amenity", Value: "restaurant"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1197,28 +1197,34 @@ func TestReturnModifiedTagsFromSearch(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
 
-	points := b6.AllPoints(b6.FindPoints(b6.Tagged{Key: "#amenity", Value: "restaurant"}, overlay))
-	if len(points) != 1 {
-		t.Fatal("Expected to find a point")
+	points := overlay.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	if !points.Next() {
+		t.Fatal("Expected to find 1 point")
+	}
+
+	point := points.Feature()
+	if points.Next() {
+		t.Fatal("Expected to find 1 point only")
 	}
 
 	expected := []b6.Tag{
-		{Key: "name", Value: "Caravan"},
-		{Key: "#amenity", Value: "restaurant"},
-		{Key: "wheelchair", Value: "yes"},
+		{Key: "name", Value: b6.String("Caravan")},
+		{Key: "#amenity", Value: b6.String("restaurant")},
+		{Key: "wheelchair", Value: b6.String("yes")},
+		{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
-	if err := validateTags(points[0], expected); err != nil {
+	if err := validateTags(point, expected); err != nil {
 		t.Error(err)
 	}
 }
 
 func TestSettingTheSameTagMultipleTimesChangesTheValue(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
-	caravan.AddTag(b6.Tag{Key: "#amenity", Value: "restaurant"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1227,15 +1233,16 @@ func TestSettingTheSameTagMultipleTimesChangesTheValue(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(base)
 	for i := 0; i < 4; i++ {
-		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "100m", Value: "yes"})
-		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "#200m", Value: "yes"})
+		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "100m", Value: b6.String("yes")})
+		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "#200m", Value: b6.String("yes")})
 	}
 
 	expected := []b6.Tag{
-		{Key: "name", Value: "Caravan"},
-		{Key: "#amenity", Value: "restaurant"},
-		{Key: "100m", Value: "yes"},
-		{Key: "#200m", Value: "yes"},
+		{Key: "name", Value: b6.String("Caravan")},
+		{Key: "#amenity", Value: b6.String("restaurant")},
+		{Key: "100m", Value: b6.String("yes")},
+		{Key: "#200m", Value: b6.String("yes")},
+		{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(overlay.FindFeatureByID(caravan.FeatureID()), expected); err != nil {
@@ -1245,8 +1252,8 @@ func TestSettingTheSameTagMultipleTimesChangesTheValue(t *testing.T) {
 
 func TestRemovedTag(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
-	caravan.AddTag(b6.Tag{Key: "#amenity", Value: "restaurant"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1256,12 +1263,13 @@ func TestRemovedTag(t *testing.T) {
 	overlay := NewMutableOverlayWorld(base)
 	for i := 0; i < 4; i++ {
 		overlay.RemoveTag(caravan.FeatureID(), "#amenity")
-		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "#shop", Value: "supermarket"})
+		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "#shop", Value: b6.String("supermarket")})
 	}
 
 	expected := []b6.Tag{
-		{Key: "name", Value: "Caravan"},
-		{Key: "#shop", Value: "supermarket"},
+		{Key: "name", Value: b6.String("Caravan")},
+		{Key: "#shop", Value: b6.String("supermarket")},
+		{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(overlay.FindFeatureByID(caravan.FeatureID()), expected); err != nil {
@@ -1283,7 +1291,7 @@ func TestConnectivityUnchangedFollowingTagModification(t *testing.T) {
 	}
 
 	for _, a := range before {
-		m.AddTag(a.FeatureID(), b6.Tag{Key: "#reachable", Value: "yes"})
+		m.AddTag(a.FeatureID(), b6.Tag{Key: "#reachable", Value: b6.String("yes")})
 	}
 
 	after := b6.AllAreas(m.FindAreasByPoint(entrance))
@@ -1294,7 +1302,7 @@ func TestConnectivityUnchangedFollowingTagModification(t *testing.T) {
 
 func TestWatchModifiedTags(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
 		t.Fatal(err)
@@ -1303,7 +1311,7 @@ func TestWatchModifiedTags(t *testing.T) {
 	overlay := NewMutableTagsOverlayWorld(base)
 	c, cancel := overlay.Watch()
 
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
 	var m ModifiedTag
 	ok := true
 	for ok {
@@ -1314,8 +1322,8 @@ func TestWatchModifiedTags(t *testing.T) {
 		}
 	}
 	cancel()
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "no"})
-	expected := ModifiedTag{ID: caravan.FeatureID(), Tag: b6.Tag{Key: "wheelchair", Value: "yes"}, Deleted: false}
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("no")})
+	expected := ModifiedTag{ID: caravan.FeatureID(), Tag: b6.Tag{Key: "wheelchair", Value: b6.String("yes")}, Deleted: false}
 	if m != expected {
 		t.Errorf("Expected %v, found %v", expected, m)
 	}
@@ -1325,7 +1333,7 @@ func TestPropagateModifiedTags(t *testing.T) {
 	base := NewBasicMutableWorld()
 
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 	if err := base.AddFeature(caravan); err != nil {
 		t.Fatal(err)
 	}
@@ -1335,19 +1343,19 @@ func TestPropagateModifiedTags(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	granary := osmPath(222021576, []*PointFeature{caravan, yumchaa})
+	granary := osmPath(222021576, []Feature{caravan, yumchaa})
 	if err := base.AddFeature(granary); err != nil {
 		t.Fatal(err)
 	}
 
 	w := NewMutableTagsOverlayWorld(base)
-	w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: "restaurant"})
+	w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
 
-	found := b6.FindPointByID(caravan.PointID, w)
+	found := w.FindFeatureByID(caravan.FeatureID())
 	if found == nil {
 		t.Fatal("Failed to find feature")
 	}
-	if found.Get("amenity").Value != "restaurant" {
+	if found.Get("amenity").Value.String() != "restaurant" {
 		t.Error("Failed to find expected tag value")
 	}
 
@@ -1356,17 +1364,17 @@ func TestPropagateModifiedTags(t *testing.T) {
 		t.Fatal("Failed to find feature")
 	}
 	for i := 0; i < path.Len(); i++ {
-		if found := path.Feature(i); found.PointID() == caravan.PointID && found.Get("amenity").Value != "restaurant" {
+		if found := path.Feature(i); found.FeatureID() == caravan.FeatureID() && found.Get("amenity").Value.String() != "restaurant" {
 			t.Error("Failed to find expected tag value")
 		}
 	}
 
-	ss := w.Traverse(caravan.PointID)
+	ss := w.Traverse(caravan.FeatureID())
 	for ss.Next() {
 		segment := ss.Segment()
 		for i := 0; i < segment.Feature.Len(); i++ {
-			if found := segment.Feature.Feature(i); found.PointID() == caravan.PointID {
-				if found.Get("amenity").Value != "restaurant" {
+			if found := segment.Feature.Feature(i); found.FeatureID() == caravan.FeatureID() {
+				if found.Get("amenity").Value.String() != "restaurant" {
 					t.Errorf("Failed to find expected tag value")
 				}
 			}
@@ -1380,7 +1388,7 @@ func TestModifiedTagsOnPathWithPlainLatLngs(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
 	yumchaa := osmPoint(3790640853, 51.5355955, -0.1250640)
 
-	for _, p := range []*PointFeature{caravan, yumchaa} {
+	for _, p := range []Feature{caravan, yumchaa} {
 		if err := base.AddFeature(p); err != nil {
 			t.Fatal(err)
 		}
@@ -1388,16 +1396,16 @@ func TestModifiedTagsOnPathWithPlainLatLngs(t *testing.T) {
 
 	path := NewPathFeature(3)
 	path.PathID = FromOSMWayID(222021576)
-	path.SetPointID(0, caravan.PointID)
+	path.SetPointID(0, caravan.FeatureID())
 	path.SetLatLng(1, s2.LatLngFromDegrees(51.535490, -0.125167))
-	path.SetPointID(2, yumchaa.PointID)
+	path.SetPointID(2, yumchaa.FeatureID())
 
 	if err := base.AddFeature(path); err != nil {
 		t.Fatal(err)
 	}
 
 	w := NewMutableTagsOverlayWorld(base)
-	w.AddTag(path.FeatureID(), b6.Tag{Key: "#highway", Value: "path"})
+	w.AddTag(path.FeatureID(), b6.Tag{Key: "#highway", Value: b6.String("path")})
 
 	path2 := b6.FindPathByID(path.PathID, w)
 	if path2 == nil {
@@ -1424,7 +1432,7 @@ func TestModifiedTagsFeatureFromArea(t *testing.T) {
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(265714033)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
-	area.AddTag(b6.Tag{Key: "#leisure", Value: "playground"})
+	area.AddTag(b6.Tag{Key: "#leisure", Value: b6.String("playground")})
 
 	base := NewBasicMutableWorld()
 	if err := base.AddFeature(path); err != nil {
@@ -1435,43 +1443,43 @@ func TestModifiedTagsFeatureFromArea(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(path.FeatureID(), b6.Tag{Key: "barrier", Value: "fence"})
+	overlay.AddTag(path.FeatureID(), b6.Tag{Key: "barrier", Value: b6.String("fence")})
 
 	found := b6.FindAreaByID(area.AreaID, overlay)
 	if found == nil {
 		t.Fatal("Expected to find feature")
 	}
 
-	if b := found.Feature(0)[0].Get("barrier"); !b.IsValid() || b.Value != "fence" {
+	if b := found.Feature(0)[0].Get("barrier"); !b.IsValid() || b.Value.String() != "fence" {
 		t.Error("Expected to find added tag value")
 	}
 }
 
 func TestSnapshot(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
 		t.Fatal(err)
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
 	snapshot := overlay.Snapshot()
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "no"})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
-	if wheelchair := overlay.FindFeatureByID(caravan.FeatureID()).Get("wheelchair"); wheelchair.Value != "no" {
+	if wheelchair := overlay.FindFeatureByID(caravan.FeatureID()).Get("wheelchair"); wheelchair.Value.String() != "no" {
 		t.Errorf("Expected wheelchair=no in overlay, found %s", wheelchair.Value)
 	}
 
-	if wheelchair := snapshot.FindFeatureByID(caravan.FeatureID()).Get("wheelchair"); wheelchair.Value != "yes" {
+	if wheelchair := snapshot.FindFeatureByID(caravan.FeatureID()).Get("wheelchair"); wheelchair.Value.String() != "yes" {
 		t.Errorf("Expected wheelchair=yes in snapshot, found %s", wheelchair.Value)
 	}
 }
 
 func TestChangeTagsOnNonExistantPoint(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1486,12 +1494,12 @@ func TestChangeTagsOnNonExistantPoint(t *testing.T) {
 
 func TestModifyingFeaturesWhileQueryingPanics(t *testing.T) {
 	lighterman := osmPoint(427900370, 51.535242, -0.124388)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: "The Lighterman"})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: "no"})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
-	caravan.AddTag(b6.Tag{Key: "amenity", Value: "restaurant"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan, lighterman); err != nil {
@@ -1514,18 +1522,18 @@ func TestModifyingFeaturesWhileQueryingPanics(t *testing.T) {
 
 func TestEachFeatureWithAPathDependingOnTheBaseWorld(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
 
 	dishoom := osmPoint(3501612811, 51.536454, -0.126826)
-	dishoom.AddTag(b6.Tag{Key: "name", Value: "Dishoom"})
+	dishoom.AddTag(b6.Tag{Key: "name", Value: b6.String("Dishoom")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan, dishoom); err != nil {
 		t.Fatal(err)
 	}
 
-	footway := osmPath(558345071, []*PointFeature{caravan, dishoom})
-	footway.AddTag(b6.Tag{Key: "highway", Value: "footway"})
+	footway := osmPath(558345071, []Feature{caravan, dishoom})
+	footway.AddTag(b6.Tag{Key: "highway", Value: b6.String("footway")})
 	m := NewMutableOverlayWorld(base)
 	if err := m.AddFeature(footway); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -1552,8 +1560,8 @@ func TestEachFeatureWithAPathDependingOnTheBaseWorld(t *testing.T) {
 
 func TestEachFeatureWithModifiedTags(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
-	caravan.AddTag(b6.Tag{Key: "cuisine", Value: "coffee_shop"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "cuisine", Value: b6.String("coffee_shop")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1561,14 +1569,14 @@ func TestEachFeatureWithModifiedTags(t *testing.T) {
 	}
 
 	m := NewMutableOverlayWorld(base)
-	m.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	m.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
 	m.RemoveTag(caravan.FeatureID(), "cuisine")
 
 	found := false
 	each := func(f b6.Feature, goroutine int) error {
 		if f.FeatureID() == caravan.FeatureID() {
 			found = true
-			if wheelchair := f.Get("wheelchair"); wheelchair.Value != "yes" {
+			if wheelchair := f.Get("wheelchair"); wheelchair.Value.String() != "yes" {
 				t.Errorf("Expected to find wheelchair=yes, found %s", wheelchair)
 			}
 			if cuisine := f.Get("cuisine"); cuisine.IsValid() {
@@ -1585,12 +1593,12 @@ func TestEachFeatureWithModifiedTags(t *testing.T) {
 
 func TestMergeWorlds(t *testing.T) {
 	lighterman := osmPoint(427900370, 51.535242, -0.124388)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: "The Lighterman"})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: "no"})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: "Caravan"})
-	caravan.AddTag(b6.Tag{Key: "amenity", Value: "restaurant"})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, lighterman); err != nil {

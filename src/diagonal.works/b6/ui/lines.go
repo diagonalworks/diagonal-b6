@@ -9,7 +9,6 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	pb "diagonal.works/b6/proto"
-	"github.com/golang/geo/s2"
 )
 
 func getStringExpression(f b6.Feature, key string) *pb.NodeProto {
@@ -223,9 +222,9 @@ func lineFromTags(f b6.Feature) *pb.LineProto {
 	}
 	for i, tag := range tags {
 		if strings.HasPrefix(tag.Key, "#") || strings.HasPrefix(tag.Key, "#") {
-			tl.Tags[i] = &pb.TagAtomProto{Prefix: tag.Key[0:1], Key: tag.Key[1:], Value: tag.Value}
+			tl.Tags[i] = &pb.TagAtomProto{Prefix: tag.Key[0:1], Key: tag.Key[1:], Value: tag.Value.String()}
 		} else {
-			tl.Tags[i] = &pb.TagAtomProto{Prefix: "", Key: tag.Key, Value: tag.Value}
+			tl.Tags[i] = &pb.TagAtomProto{Prefix: "", Key: tag.Key, Value: tag.Value.String()}
 		}
 		tl.Tags[i].ClickExpression = getStringExpression(f, tag.Key)
 	}
@@ -277,9 +276,6 @@ func AtomFromValue(value interface{}, w b6.World) *pb.AtomProto {
 			}
 		case b6.Tag:
 			return AtomFromString(api.UnparseTag(v))
-		case b6.Point:
-			ll := s2.LatLngFromPoint(v.Point())
-			return AtomFromString(fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees()))
 		default:
 			return AtomFromString(fmt.Sprintf("%v", v))
 		}
@@ -388,8 +384,8 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 	}
 	substacks = append(substacks, substack)
 
-	if point, ok := f.(b6.PointFeature); ok {
-		paths := b6.AllPaths(w.FindPathsByPoint(point.PointID()))
+	if point, ok := f.(b6.PhysicalFeature); ok && point.GeometryType() == b6.GeometryTypePoint {
+		paths := b6.AllPaths(w.FindPathsByPoint(point.FeatureID()))
 		substack := &pb.SubstackProto{Collapsable: true}
 		line := leftRightValueLineFromValues("Paths", len(paths), w)
 		substack.Lines = append(substack.Lines, line)

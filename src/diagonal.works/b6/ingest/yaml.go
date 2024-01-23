@@ -102,12 +102,7 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 			return applied.Collection(), err
 		}
 		var err error
-		if y.Point != nil {
-			var p *PointFeature
-			if p, err = newPointFromYAML(&y); err == nil {
-				err = m.AddFeature(p)
-			}
-		} else if y.Path != nil {
+		if y.Path != nil {
 			var p *PathFeature
 			if p, err = newPathFromYAML(&y); err == nil {
 				err = m.AddFeature(p)
@@ -132,6 +127,8 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 			if e, err = newExpressionFromYAML(&y); err == nil {
 				err = m.AddFeature(e)
 			}
+		} else if y.Tags != nil {
+			err = m.AddFeature(newGenericFeatureFromYAML(&y))
 		}
 		if err != nil {
 			return applied.Collection(), err
@@ -150,15 +147,6 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 
 // TODO: find a neat way of moving these functions alongside MarshalYAML
 // on the feature implementations themselves.
-func newPointFromYAML(y *exportedYAML) (*PointFeature, error) {
-	if y.ID.Type != b6.FeatureTypePoint {
-		return nil, fmt.Errorf("expected a point for %s", y.ID)
-	}
-	p := NewPointFeature(y.ID.ToPointID(), y.Point.LatLng)
-	p.Tags = y.Tags
-	return p, nil
-}
-
 func newPathFromYAML(y *exportedYAML) (*PathFeature, error) {
 	if y.ID.Type != b6.FeatureTypePath {
 		return nil, fmt.Errorf("expected a path for %s", y.ID)
@@ -169,7 +157,7 @@ func newPathFromYAML(y *exportedYAML) (*PathFeature, error) {
 	for i := range y.Path {
 		if s, ok := y.Path[i].(string); ok {
 			if strings.HasPrefix(s, "/") {
-				p.SetPointID(i, b6.FeatureIDFromString(s[1:]).ToPointID())
+				p.SetPointID(i, b6.FeatureIDFromString(s[1:]))
 			} else {
 				ll := LatLngYAML{}
 				if err := ll.UnmarshalYAMLString(s); err != nil {
@@ -284,4 +272,11 @@ func newExpressionFromYAML(y *exportedYAML) (*ExpressionFeature, error) {
 		Tags:         y.Tags,
 		Expression:   *y.Expression,
 	}, nil
+}
+
+func newGenericFeatureFromYAML(y *exportedYAML) *GenericFeature {
+	return &GenericFeature{
+		ID:   y.ID,
+		Tags: y.Tags,
+	}
 }

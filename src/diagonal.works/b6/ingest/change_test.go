@@ -9,9 +9,9 @@ import (
 )
 
 func TestAddPoints(t *testing.T) {
-	p1 := NewPointFeature(FromOSMNodeID(6082053666), s2.LatLngFromDegrees(51.5366467, -0.1263796))
-	p2 := NewPointFeature(b6.MakePointID(b6.NamespacePrivate, 1), s2.LatLngFromDegrees(51.5351906, -0.1245464))
-	add := AddFeatures([]Feature{p1, p2.ClonePointFeature()})
+	point1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	point2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
+	add := AddFeatures([]Feature{point1, point2.Clone()})
 
 	w := NewBasicMutableWorld()
 	applied, err := add.Apply(w)
@@ -22,34 +22,35 @@ func TestAddPoints(t *testing.T) {
 	ids := make(map[b6.FeatureID]b6.FeatureID)
 	b6.FillMap(applied, ids)
 
-	added := b6.FindPointByID(p1.PointID, w)
-	if added == nil || added.Point().Distance(s2.PointFromLatLng(p1.Location)) > b6.MetersToAngle(1.0) {
+	added := w.FindFeatureByID(point1.FeatureID())
+	if added == nil || added.(b6.Geometry).Location().Distance(point1.Location()) > b6.MetersToAngle(1.0) {
 		t.Error("Expected to find p2 under its given ID")
 	}
 
-	allocated, ok := ids[p2.FeatureID()]
+	allocated, ok := ids[point2.FeatureID()]
 	if !ok {
-		t.Fatalf("Expected a new ID for %s", p2.FeatureID())
+		t.Fatalf("Expected a new ID for %s", point2.FeatureID())
 	}
-	added = b6.FindPointByID(allocated.ToPointID(), w)
-	if added == nil || added.Point().Distance(s2.PointFromLatLng(p2.Location)) > b6.MetersToAngle(1.0) {
+
+	added = w.FindFeatureByID(allocated)
+	if added == nil || added.(b6.Geometry).Location().Distance(point2.Location()) > b6.MetersToAngle(1.0) {
 		t.Error("Expected to find p2 under a new ID")
 	}
 }
 
 func TestAddPaths(t *testing.T) {
-	p1 := NewPointFeature(FromOSMNodeID(6082053666), s2.LatLngFromDegrees(51.5366467, -0.1263796))
-	p2 := NewPointFeature(b6.MakePointID(b6.NamespacePrivate, 1), s2.LatLngFromDegrees(51.5351906, -0.1245464))
+	point1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	point2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
 
 	path := NewPathFeature(2)
 	path.PathID = b6.MakePathID(b6.NamespacePrivate+"/1", 1)
-	path.SetPointID(0, p1.PointID)
-	path.SetPointID(1, p2.PointID)
+	path.SetPointID(0, point1.FeatureID())
+	path.SetPointID(1, point2.FeatureID())
 
-	add := AddFeatures([]Feature{p2.ClonePointFeature(), path.ClonePathFeature()})
+	add := AddFeatures([]Feature{point2.Clone(), path.ClonePathFeature()})
 
 	w := NewBasicMutableWorld()
-	w.AddFeature(p1)
+	w.AddFeature(point1)
 
 	applied, err := add.Apply(w)
 	if err != nil {
@@ -59,12 +60,13 @@ func TestAddPaths(t *testing.T) {
 	ids := make(map[b6.FeatureID]b6.FeatureID)
 	b6.FillMap(applied, ids)
 
-	allocated, ok := ids[p2.FeatureID()]
+	allocated, ok := ids[point2.FeatureID()]
 	if !ok {
-		t.Fatalf("Expected a new ID for %s", p2.FeatureID())
+		t.Fatalf("Expected a new ID for %s", point2.FeatureID())
 	}
-	addedPoint := b6.FindPointByID(allocated.ToPointID(), w)
-	if addedPoint == nil || addedPoint.Point().Distance(s2.PointFromLatLng(p2.Location)) > b6.MetersToAngle(1.0) {
+
+	addedPoint := w.FindFeatureByID(allocated)
+	if addedPoint == nil || addedPoint.(b6.Geometry).Location().Distance(point2.Location()) > b6.MetersToAngle(1.0) {
 		t.Error("Expected to find p2 under a new ID")
 	}
 
@@ -76,28 +78,28 @@ func TestAddPaths(t *testing.T) {
 	if addedPath == nil {
 		t.Fatal("Expected to find path under a new ID")
 	}
-	if p := addedPath.Feature(1); p == nil || p.FeatureID() != ids[p2.FeatureID()] {
+	if p := addedPath.Feature(1); p == nil || p.FeatureID() != ids[point2.FeatureID()] {
 		t.Error("Expected path to reference newly generated ID")
 	}
 }
 
 func TestAddAreas(t *testing.T) {
-	p1 := NewPointFeature(FromOSMNodeID(4270651271), s2.LatLngFromDegrees(51.5354124, -0.1243817))
-	p2 := NewPointFeature(FromOSMNodeID(5693730034), s2.LatLngFromDegrees(51.5353117, -0.1244943))
-	p3 := NewPointFeature(b6.MakePointID(b6.NamespacePrivate, 1), s2.LatLngFromDegrees(51.5353736, -0.1242415))
+	p1 := &GenericFeature{ID: FromOSMNodeID(4270651271).FeatureID(), Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5354124, -0.1243817))}}}
+	p2 := &GenericFeature{ID: FromOSMNodeID(5693730034).FeatureID(), Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5353117, -0.1244943))}}}
+	p3 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5353736, -0.1242415))}}}
 
 	path := NewPathFeature(4)
 	path.PathID = b6.MakePathID(b6.NamespacePrivate+"/1", 1)
-	path.SetPointID(0, p1.PointID)
-	path.SetPointID(1, p2.PointID)
-	path.SetPointID(2, p3.PointID)
-	path.SetPointID(3, p1.PointID)
+	path.SetPointID(0, p1.FeatureID())
+	path.SetPointID(1, p2.FeatureID())
+	path.SetPointID(2, p3.FeatureID())
+	path.SetPointID(3, p1.FeatureID())
 
 	area := NewAreaFeature(1)
 	area.AreaID = b6.MakeAreaID(b6.NamespacePrivate+"/2", 1)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
 
-	add := AddFeatures([]Feature{p2.ClonePointFeature(), p3.ClonePointFeature(), path.ClonePathFeature(), area.CloneAreaFeature()})
+	add := AddFeatures([]Feature{p2.Clone(), p3.Clone(), path.ClonePathFeature(), area.CloneAreaFeature()})
 
 	w := NewBasicMutableWorld()
 	w.AddFeature(p1)
@@ -124,15 +126,15 @@ func TestAddAreas(t *testing.T) {
 }
 
 func TestAddRelations(t *testing.T) {
-	p1 := NewPointFeature(FromOSMNodeID(6082053666), s2.LatLngFromDegrees(51.5366467, -0.1263796))
-	p2 := NewPointFeature(b6.MakePointID(b6.NamespacePrivate, 1), s2.LatLngFromDegrees(51.5351906, -0.1245464))
+	p1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	p2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
 
 	relation := NewRelationFeature(2)
 	relation.RelationID = b6.MakeRelationID(b6.NamespaceDiagonalAccessPoints, 1)
 	relation.Members[0] = b6.RelationMember{ID: p1.FeatureID()}
 	relation.Members[1] = b6.RelationMember{ID: p2.FeatureID()}
 
-	add := AddFeatures([]Feature{p1.ClonePointFeature(), p2.ClonePointFeature(), relation.CloneRelationFeature()})
+	add := AddFeatures([]Feature{p1.Clone(), p2.Clone(), relation.CloneRelationFeature()})
 
 	w := NewBasicMutableWorld()
 	w.AddFeature(p1)
@@ -181,15 +183,15 @@ func TestAddCollections(t *testing.T) {
 
 func TestMergeChanges(t *testing.T) {
 	ns := b6.Namespace("diagonal.works/test")
-	p1 := NewPointFeature(b6.MakePointID(ns, 1), s2.LatLngFromDegrees(51.5366467, -0.1263796))
-	p2 := NewPointFeature(b6.MakePointID(ns, 2), s2.LatLngFromDegrees(51.5351906, -0.1245464))
+	p1 := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 1}, Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	p2 := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 2}, Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
 
 	add1 := AddFeatures([]Feature{p1, p2})
 
 	path := NewPathFeature(2)
 	path.PathID = b6.MakePathID(ns, 3)
-	path.SetPointID(0, p1.PointID)
-	path.SetPointID(1, p2.PointID)
+	path.SetPointID(0, p1.FeatureID())
+	path.SetPointID(1, p2.FeatureID())
 	add2 := AddFeatures([]Feature{path})
 
 	merged := MergedChange{&add1, &add2}
@@ -214,13 +216,13 @@ func TestMergeChanges(t *testing.T) {
 
 func TestMergeChangesLeavesWorldUnmodfiedFollowingError(t *testing.T) {
 	ns := b6.Namespace("diagonal.works/test")
-	point := NewPointFeature(b6.MakePointID(ns, 1), s2.LatLngFromDegrees(51.5366467, -0.1263796))
+	point := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 1}, Tags: []b6.Tag{{Key: "latlng", Value: b6.LatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
 	add1 := AddFeatures([]Feature{point})
 
 	path := NewPathFeature(2)
 	path.PathID = b6.MakePathID(ns, 3)
-	path.SetPointID(0, b6.MakePointID(b6.Namespace("nonexistant"), 0))
-	path.SetPointID(1, b6.MakePointID(b6.Namespace("nonexistant"), 1))
+	path.SetPointID(0, b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 0})
+	path.SetPointID(1, b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 1})
 	add2 := AddFeatures([]Feature{path})
 
 	merged := MergedChange{&add1, &add2}
@@ -230,7 +232,7 @@ func TestMergeChangesLeavesWorldUnmodfiedFollowingError(t *testing.T) {
 		t.Fatal("Expected an error, found none")
 	}
 
-	found := b6.FindPointByID(point.PointID, w)
+	found := w.FindFeatureByID(point.FeatureID())
 	if found != nil {
 		t.Error("Expected world to be unchanged following failure")
 	}

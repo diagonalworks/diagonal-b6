@@ -14,7 +14,7 @@ func TestReadFeaturesFromLSOABoundaries(t *testing.T) {
 	source := Source{
 		Filename:   test.Data("lsoa-camden.shp"),
 		CopyTags:   []CopyTag{{Field: "LSOA11CD", Key: "code"}, {Field: "LSOA11NM", Key: "name"}, {Field: "POPULATION", Key: "population"}},
-		AddTags:    []b6.Tag{{Key: "#boundary", Value: "lsoa"}},
+		AddTags:    []b6.Tag{{Key: "#boundary", Value: b6.String("lsoa")}},
 		IDField:    "LSOA11CD",
 		IDStrategy: UKONS2011IDStrategy,
 		Bounds:     s2.FullRect(),
@@ -35,7 +35,7 @@ func TestReadFeaturesFromLSOABoundaries(t *testing.T) {
 	if found == nil {
 		t.Fatal("Expected to find boundary")
 	}
-	expected := []b6.Tag{{Key: "#boundary", Value: "lsoa"}, {Key: "name", Value: "Camden 018B"}}
+	expected := []b6.Tag{{Key: "#boundary", Value: b6.String("lsoa")}, {Key: "name", Value: b6.String("Camden 018B")}}
 	for _, tag := range expected {
 		if found.Get(tag.Key) != tag {
 			t.Errorf("Expected to find %s", tag)
@@ -48,7 +48,7 @@ func TestReadFeaturesFromLSOABoundariesCopyingAllFields(t *testing.T) {
 		Filename:      test.Data("lsoa-camden.shp"),
 		CopyAllFields: true,
 		CopyTags:      []CopyTag{{Field: "LSOA11CD", Key: "code"}},
-		AddTags:       []b6.Tag{{Key: "#boundary", Value: "lsoa"}},
+		AddTags:       []b6.Tag{{Key: "#boundary", Value: b6.String("lsoa")}},
 		IDField:       "LSOA11CD",
 		IDStrategy:    UKONS2011IDStrategy,
 		Bounds:        s2.FullRect(),
@@ -68,7 +68,7 @@ func TestReadFeaturesFromLSOABoundariesCopyingAllFields(t *testing.T) {
 	if found == nil {
 		t.Fatal("Expected to find boundary")
 	}
-	expected := []b6.Tag{{Key: "code", Value: "E01000858"}, {Key: "LSOA11NM", Value: "Camden 018B"}}
+	expected := []b6.Tag{{Key: "code", Value: b6.String("E01000858")}, {Key: "LSOA11NM", Value: b6.String("Camden 018B")}}
 	for _, tag := range expected {
 		if found.Get(tag.Key) != tag {
 			t.Errorf("Expected to find %s", tag)

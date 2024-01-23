@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"diagonal.works/b6"
 	pb "diagonal.works/b6/proto"
@@ -45,13 +46,6 @@ func Resolve(id b6.Identifiable, w b6.World) b6.Feature {
 		return f
 	}
 	return w.FindFeatureByID(id.FeatureID())
-}
-
-func ResolvePoint(id b6.IdentifiablePoint, w b6.World) b6.PointFeature {
-	if f, ok := id.(b6.PointFeature); ok {
-		return f
-	}
-	return b6.FindPointByID(id.PointID(), w)
 }
 
 func IsTrue(v interface{}) bool {
@@ -189,8 +183,8 @@ var queryInterface = reflect.TypeOf((*b6.Query)(nil)).Elem()
 var numberInterface = reflect.TypeOf((*b6.Number)(nil)).Elem()
 var queryProtoPtrType = reflect.TypeOf((*pb.QueryProto)(nil))
 var featureIDType = reflect.TypeOf(b6.FeatureID{})
-var pointIDType = reflect.TypeOf(b6.PointID{})
-var pathIDType = reflect.TypeOf(b6.PointID{})
+
+var pathIDType = reflect.TypeOf(b6.PathID{})
 var areaIDType = reflect.TypeOf(b6.AreaID{})
 var relationIDType = reflect.TypeOf(b6.RelationID{})
 var collectionIDType = reflect.TypeOf(b6.CollectionID{})
@@ -211,12 +205,6 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 	case featureIDType:
 		if vv, ok := v.Interface().(b6.Identifiable); ok {
 			return reflect.ValueOf(vv.FeatureID()), nil
-		}
-	case pointIDType:
-		if vv, ok := v.Interface().(b6.Identifiable); ok {
-			if id := vv.FeatureID(); id.Type == b6.FeatureTypePoint {
-				return reflect.ValueOf(id.ToPointID()), nil
-			}
 		}
 	case pathIDType:
 		if vv, ok := v.Interface().(b6.Identifiable); ok {
@@ -261,16 +249,16 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 		}
 	case reflect.TypeOf(""):
 		if tag, ok := v.Interface().(b6.Tag); ok {
-			return reflect.ValueOf(tag.Value), nil
+			return reflect.ValueOf(tag.Value.String()), nil
 		}
 	case reflect.TypeOf(int(1)):
 		if tag, ok := v.Interface().(b6.Tag); ok {
-			i, _ := tag.IntValue()
+			i, _ := strconv.Atoi(tag.Value.String())
 			return reflect.ValueOf(i), nil
 		}
 	case reflect.TypeOf(float64(1.0)):
 		if tag, ok := v.Interface().(b6.Tag); ok {
-			f, _ := tag.FloatValue()
+			f, _ := strconv.ParseFloat(tag.Value.String(), 64)
 			return reflect.ValueOf(f), nil
 		}
 	}

@@ -76,8 +76,8 @@ func (j JoinTags) fillFromFile(filename string, fs filesystem.Interface, c conte
 		if len(row) <= len(header) {
 			tags := j[row[0]]
 			for i := 1; i < len(row) && i < len(header); i++ {
-				if  len(row[i]) > 0 {
-					tags = append(tags, b6.Tag{Key: header[i], Value: row[i]})
+				if len(row[i]) > 0 {
+					tags = append(tags, b6.Tag{Key: header[i], Value: b6.String(row[i])})
 				}
 			}
 			j[row[0]] = tags

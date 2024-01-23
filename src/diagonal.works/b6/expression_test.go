@@ -10,8 +10,8 @@ import (
 func TestExportCollectionExpressionAsYAML(t *testing.T) {
 	c := ArrayCollection[FeatureID, string]{
 		Keys: []FeatureID{
-			MakePointID(NamespaceOSMNode, 2300722786).FeatureID(),
-			MakePointID(NamespaceOSMNode, 3501612811).FeatureID(),
+			FeatureID{FeatureTypePoint, NamespaceOSMNode, 2300722786},
+			FeatureID{FeatureTypePoint, NamespaceOSMNode, 3501612811},
 		},
 		Values: []string{"good", "best"},
 	}

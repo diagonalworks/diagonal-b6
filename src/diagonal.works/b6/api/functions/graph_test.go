@@ -18,7 +18,7 @@ func TestAccessibility(t *testing.T) {
 		return
 	}
 
-	options := []b6.Tag{{Key: "mode", Value: "walk"}}
+	options := []b6.Tag{{Key: "mode", Value: b6.String("walk")}}
 	od, err := accessibilityForGranarySquare(options, w)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestAccessibilityFlipped(t *testing.T) {
 		return
 	}
 
-	options := []b6.Tag{{Key: "flip", Value: "yes"}, {Key: "mode", Value: "walk"}}
+	options := []b6.Tag{{Key: "flip", Value: b6.String("yes")}, {Key: "mode", Value: b6.String("walk")}}
 	od, err := accessibilityForGranarySquare(options, w)
 	if err != nil {
 		t.Fatal(err)

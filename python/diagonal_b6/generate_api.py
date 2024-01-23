@@ -9,7 +9,7 @@ from datetime import datetime
 SPECIAL_FUNCTIONS = ("map", "filter")
 
 COLLECTION_PARENTS = {
-    "FeatureIDPointFeatureCollection": "AnyPointCollection",
+    "FeatureIDFeatureCollection": "AnyFeatureCollection",
     "FeatureIDPathFeatureCollection": "FeatureIDPathCollection",
     "FeatureIDAreaFeatureCollection": "AnyAreaCollection",
 }

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/geometry"
 	"diagonal.works/b6/osm"
 	"github.com/golang/geo/s2"
@@ -30,15 +31,15 @@ func NewTagsFromWorld(t b6.Taggable) b6.Tags {
 }
 
 type Feature interface {
-	b6.Taggable
+	b6.Feature
 
-	FeatureID() b6.FeatureID
 	SetFeatureID(id b6.FeatureID)
-
-	AddTag(tag b6.Tag)
 	SetTags(tags []b6.Tag)
-	ModifyOrAddTag(tag b6.Tag) (bool, string)
+	AddTag(tag b6.Tag)
+	ModifyOrAddTag(tag b6.Tag) (bool, b6.Value)
 	RemoveTag(key string)
+	RemoveTags(keys []string)
+	RemoveAll()
 
 	References() []b6.Reference
 
@@ -47,27 +48,27 @@ type Feature interface {
 }
 
 func NewFeatureFromWorld(f b6.Feature) Feature {
-	switch f := f.(type) {
-	case b6.PointFeature:
-		return NewPointFeatureFromWorld(f)
-	case b6.PathFeature:
-		return NewPathFeatureFromWorld(f)
-	case b6.AreaFeature:
-		return NewAreaFeatureFromWorld(f)
-	case b6.RelationFeature:
-		return NewRelationFeatureFromWorld(f)
-	case b6.CollectionFeature:
-		return NewCollectionFeatureFromWorld(f)
-	case b6.ExpressionFeature:
-		return NewExpressionFeatureFromWorld(f)
+	switch f.FeatureID().Type {
+	case b6.FeatureTypePoint:
+		return NewGenericFeatureFromWorld(f)
+	case b6.FeatureTypePath:
+		return NewPathFeatureFromWorld(f.(b6.PathFeature))
+	case b6.FeatureTypeArea:
+		return NewAreaFeatureFromWorld(f.(b6.AreaFeature))
+	case b6.FeatureTypeRelation:
+		return NewRelationFeatureFromWorld(f.(b6.RelationFeature))
+	case b6.FeatureTypeCollection:
+		return NewCollectionFeatureFromWorld(f.(b6.CollectionFeature))
+	case b6.FeatureTypeExpression:
+		return NewExpressionFeatureFromWorld(f.(b6.ExpressionFeature))
 	}
 	panic(fmt.Sprintf("Can't handle feature type: %T", f))
 }
 
 func WrapFeature(f Feature, byID b6.FeaturesByID) b6.Feature {
 	switch f := f.(type) {
-	case *PointFeature:
-		return WrapPointFeature(f)
+	case *GenericFeature:
+		return f
 	case *PathFeature:
 		return WrapPathFeature(f, byID)
 	case *AreaFeature:
@@ -82,99 +83,62 @@ func WrapFeature(f Feature, byID b6.FeaturesByID) b6.Feature {
 	panic(fmt.Sprintf("Can't wrap feature type: %T", f))
 }
 
-type PointFeature struct {
-	b6.PointID
+type GenericFeature struct {
+	b6.ID
 	b6.Tags
-	Location s2.LatLng
 }
 
-func NewPointFeature(id b6.PointID, location s2.LatLng) *PointFeature {
-	return &PointFeature{
-		PointID:  id,
-		Tags:     []b6.Tag{},
-		Location: location,
-	}
-}
-
-func NewPointFeatureFromOSM(o *osm.Node) *PointFeature {
-	p := &PointFeature{}
-	p.FillFromOSM(o)
-	return p
-}
-
-func NewPointFeatureFromWorld(p b6.PointFeature) *PointFeature {
-	return &PointFeature{
-		PointID:  p.PointID(),
-		Tags:     NewTagsFromWorld(p),
-		Location: s2.LatLngFromPoint(p.Point()),
-	}
-}
-
-func (p *PointFeature) SetFeatureID(id b6.FeatureID) {
-	p.PointID = id.ToPointID()
-}
-
-func (p *PointFeature) FillFromOSM(node *osm.Node) {
-	p.PointID = FromOSMNodeID(node.ID)
-	FillTagsFromOSM(&p.Tags, node.Tags)
-	p.Location = node.Location.ToS2LatLng()
-}
-
-func (p *PointFeature) Point() s2.Point {
-	return s2.PointFromLatLng(p.Location)
-}
-
-func (p *PointFeature) CellID() s2.CellID {
-	return s2.CellIDFromLatLng(p.Location)
-}
-
-func (p *PointFeature) References() []b6.Reference {
+func (f *GenericFeature) References() []b6.Reference {
 	return []b6.Reference{}
 }
 
-func (p *PointFeature) Clone() Feature {
-	return p.ClonePointFeature()
-}
-
-func (p *PointFeature) ClonePointFeature() *PointFeature {
-	return &PointFeature{
-		PointID:  p.PointID,
-		Tags:     p.Tags.Clone(),
-		Location: p.Location,
+func (f *GenericFeature) Clone() Feature {
+	return &GenericFeature{
+		ID:   f.ID.FeatureID(),
+		Tags: f.Tags.Clone(),
 	}
 }
 
-func (p *PointFeature) MergeFrom(other Feature) {
-	if point, ok := other.(*PointFeature); ok {
-		p.MergeFromPointFeature(point)
-	} else {
-		panic(fmt.Sprintf("Expected a PointFeature, found %T", other))
-	}
+func (f *GenericFeature) MergeFrom(other Feature) {
+	f.ID = other.FeatureID()
+	f.Tags.MergeFrom(NewTagsFromWorld(other))
 }
 
-func (p *PointFeature) MergeFromPointFeature(other *PointFeature) {
-	p.PointID = other.PointID
-	p.Location = other.Location
-	p.Tags.MergeFrom(other.Tags)
-}
-
-func (p *PointFeature) MarshalYAML() (interface{}, error) {
+func (f *GenericFeature) MarshalYAML() (interface{}, error) {
 	y := map[string]interface{}{
-		"id":    p.PointID,
-		"point": LatLngYAML{LatLng: p.Location},
+		"id": f.ID,
 	}
-	if len(p.Tags) > 0 {
-		y["tags"] = p.Tags
+
+	if len(f.Tags) > 0 {
+		y["tags"] = f.Tags
 	}
 	return y, nil
 }
 
+func FillFromOSM(node *osm.Node) *GenericFeature {
+	f := GenericFeature{ID: FromOSMNodeID(node.ID).FeatureID()}
+	FillTagsFromOSM(&f.Tags, node.Tags)
+	f.ModifyOrAddTag(b6.Tag{Key: b6.LatLngTag, Value: b6.LatLng(node.Location.ToS2LatLng())})
+	return &f
+}
+
+func NewGenericFeatureFromWorld(f b6.Feature) *GenericFeature {
+	return &GenericFeature{
+		ID:   f.FeatureID(),
+		Tags: NewTagsFromWorld(f),
+	}
+}
+
+func (f *GenericFeature) ToGeoJSON() geojson.GeoJSON {
+	return b6.PhysicalFeatureToGeoJSON(f)
+}
+
 type PathMembers struct {
-	ids []b6.PointID
+	ids []b6.FeatureID
 }
 
 func NewPathMembers(n int) PathMembers {
-	return PathMembers{ids: make([]b6.PointID, n)}
+	return PathMembers{ids: make([]b6.FeatureID, n)}
 }
 
 func (p *PathMembers) FillFromOSM(way *osm.Way) {
@@ -188,15 +152,15 @@ func (p *PathMembers) Len() int {
 	return len(p.ids)
 }
 
-func (p *PathMembers) SetPointID(i int, id b6.PointID) {
+func (p *PathMembers) SetPointID(i int, id b6.FeatureID) {
 	p.ids[i] = id
 }
 
-func (p *PathMembers) PointID(i int) (b6.PointID, bool) {
+func (p *PathMembers) PointID(i int) (b6.FeatureID, bool) {
 	if p.ids[i].Namespace != b6.NamespaceLatLng {
 		return p.ids[i], true
 	}
-	return b6.PointID{}, false
+	return b6.FeatureID{}, false
 }
 
 func (p *PathMembers) SetLatLng(i int, ll s2.LatLng) {
@@ -231,7 +195,7 @@ func (p *PathMembers) Invert() {
 }
 
 func (p *PathMembers) Clone() PathMembers {
-	clone := PathMembers{ids: make([]b6.PointID, len(p.ids))}
+	clone := PathMembers{ids: make([]b6.FeatureID, len(p.ids))}
 	for i, id := range p.ids {
 		clone.ids[i] = id
 	}
@@ -269,7 +233,7 @@ func NewPathFeatureFromWorld(p b6.PathFeature) *PathFeature {
 	path.Tags = NewTagsFromWorld(p)
 	for i := 0; i < p.Len(); i++ {
 		if point := p.Feature(i); point != nil {
-			path.SetPointID(i, point.PointID())
+			path.SetPointID(i, point.FeatureID())
 		} else {
 			path.SetLatLng(i, s2.LatLngFromPoint(p.Point(i)))
 		}
@@ -303,7 +267,7 @@ func (p *PathFeature) AllPoints(byID b6.LocationsByID) ([]s2.Point, error) {
 			points[i] = point
 		} else {
 			id, _ := p.PointID(i)
-			if ll, ok := byID.FindLocationByID(id); ok {
+			if ll, err := byID.FindLocationByID(id); err == nil {
 				points[i] = s2.PointFromLatLng(ll)
 			} else {
 				return nil, fmt.Errorf("Path %s missing point %s", p.PathID, id)
@@ -368,6 +332,10 @@ func (p *PathFeature) MarshalYAML() (interface{}, error) {
 		y["tags"] = p.Tags
 	}
 	return y, nil
+}
+
+func (p *PathFeature) GeometryType() b6.GeometryType {
+	return b6.GeometryTypePath
 }
 
 type AreaMembers struct {
@@ -600,6 +568,10 @@ func (a *AreaFeature) MarshalYAML() (interface{}, error) {
 		y["tags"] = a.Tags
 	}
 	return y, nil
+}
+
+func (a *AreaFeature) GeometryType() b6.GeometryType {
+	return b6.GeometryTypeArea
 }
 
 type RelationFeature struct {
@@ -875,14 +847,14 @@ func (f *FeaturesByID) FindMutableFeatureByID(id b6.FeatureID) Feature {
 	return nil
 }
 
-func (f *FeaturesByID) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
+func (f *FeaturesByID) FindLocationByID(id b6.FeatureID) (s2.LatLng, error) {
 	if feature, ok := (*f)[id.FeatureID()]; ok {
-		if pointFeature, ok := feature.(*PointFeature); ok {
-			return pointFeature.Location, true
+		if f, ok := feature.(b6.Geometry); ok && f.GeometryType() == b6.GeometryTypePoint {
+			return f.Location(), nil
 		}
 	}
 
-	return s2.LatLng{}, false
+	return s2.LatLng{}, fmt.Errorf("location for feature with %s id not found", id.String())
 }
 
 func EachFeature(each func(f b6.Feature, goroutine int) error, f *FeaturesByID, r *FeatureReferencesByID, options *b6.EachFeatureOptions) error {

@@ -121,26 +121,28 @@ func (i IntersectsCells) Equal(other Query) bool {
 }
 
 func cellsIntersectFeature(cells []s2.Cell, feature Feature) bool {
-	switch f := feature.(type) {
-	case PointFeature:
-		for _, c := range cells {
-			if c.ContainsPoint(f.Point()) {
-				return true
-			}
-		}
-	case PathFeature:
-		polyline := f.Polyline()
-		for _, c := range cells {
-			if polyline.IntersectsCell(c) {
-				return true
-			}
-		}
-	case AreaFeature:
-		for j := 0; j < f.Len(); j++ {
-			polygon := f.Polygon(j)
+	if f, ok := feature.(Geometry); ok {
+		switch f.GeometryType() {
+		case GeometryTypePoint:
 			for _, c := range cells {
-				if polygon.IntersectsCell(c) {
+				if c.ContainsPoint(s2.PointFromLatLng(f.Location())) {
 					return true
+				}
+			}
+		case GeometryTypePath:
+			polyline := feature.(PathFeature).Polyline()
+			for _, c := range cells {
+				if polyline.IntersectsCell(c) {
+					return true
+				}
+			}
+		case GeometryTypeArea:
+			for j := 0; j < feature.(AreaFeature).Len(); j++ {
+				polygon := feature.(AreaFeature).Polygon(j)
+				for _, c := range cells {
+					if polygon.IntersectsCell(c) {
+						return true
+					}
 				}
 			}
 		}
@@ -237,20 +239,22 @@ func (i *IntersectsCap) Compile(index FeatureIndex, w World) search.Iterator {
 }
 
 func (i *IntersectsCap) Matches(feature Feature, w World) bool {
-	switch f := feature.(type) {
-	case PointFeature:
-		if i.cap.ContainsPoint(f.Point()) {
-			return true
-		}
-	case PathFeature:
-		projection, _ := f.Polyline().Project(i.cap.Center())
-		if i.cap.ContainsPoint(projection) {
-			return true
-		}
-	case AreaFeature:
-		for j := 0; j < f.Len(); j++ {
-			if i.IntersectsPolygon(f.Polygon(j)) {
+	if f, ok := feature.(Geometry); ok {
+		switch f.GeometryType() {
+		case GeometryTypePoint:
+			if i.cap.ContainsPoint(s2.PointFromLatLng(f.Location())) {
 				return true
+			}
+		case GeometryTypePath:
+			projection, _ := feature.(PathFeature).Polyline().Project(i.cap.Center())
+			if i.cap.ContainsPoint(projection) {
+				return true
+			}
+		case GeometryTypeArea:
+			for j := 0; j < feature.(AreaFeature).Len(); j++ {
+				if i.IntersectsPolygon(feature.(AreaFeature).Polygon(j)) {
+					return true
+				}
 			}
 		}
 	}
@@ -392,13 +396,15 @@ func (i IntersectsFeature) ToProto() (*pb.QueryProto, error) {
 
 func (i IntersectsFeature) toGeometryQuery(w World) Query {
 	if f := w.FindFeatureByID(i.ID); f != nil {
-		switch f := f.(type) {
-		case Point:
-			return IntersectsPoint{f.Point()}
-		case Path:
-			return IntersectsPolyline{f.Polyline()}
-		case Area:
-			return IntersectsMultiPolygon{MultiPolygon: f.MultiPolygon()}
+		if f, ok := f.(Geometry); ok {
+			switch f.GeometryType() {
+			case GeometryTypePoint:
+				return IntersectsPoint{s2.PointFromLatLng(f.Location())}
+			case GeometryTypePath:
+				return IntersectsPolyline{f.(PathFeature).Polyline()}
+			case GeometryTypeArea:
+				return IntersectsMultiPolygon{MultiPolygon: f.(AreaFeature).MultiPolygon()}
+			}
 		}
 	}
 	return Empty{}
@@ -465,17 +471,19 @@ func (i *intersectsPoint) Next() bool {
 }
 
 func pointIntersectsFeature(point s2.Point, feature Feature) bool {
-	switch f := feature.(type) {
-	case PointFeature:
-		return f.Point() == point
-	case PathFeature:
-		projection, _ := f.Polyline().Project(point)
-		// TODO: Define the tolerance with more rigour
-		return projection.Distance(point) < MetersToAngle(0.001)
-	case AreaFeature:
-		for i := 0; i < f.Len(); i++ {
-			if f.Polygon(i).ContainsPoint(point) {
-				return true
+	if f, ok := feature.(Geometry); ok {
+		switch f.GeometryType() {
+		case GeometryTypePoint:
+			return s2.PointFromLatLng(f.Location()) == point
+		case GeometryTypePath:
+			projection, _ := feature.(PathFeature).Polyline().Project(point)
+			// TODO: Define the tolerance with more rigour
+			return projection.Distance(point) < MetersToAngle(0.001)
+		case GeometryTypeArea:
+			for i := 0; i < feature.(AreaFeature).Len(); i++ {
+				if feature.(AreaFeature).Polygon(i).ContainsPoint(point) {
+					return true
+				}
 			}
 		}
 	}
@@ -563,17 +571,19 @@ func polylineIntersectsPolygon(polyline *s2.Polyline, polygon *s2.Polygon) bool 
 }
 
 func polylineIntersectsFeature(polyline *s2.Polyline, feature Feature) bool {
-	switch f := feature.(type) {
-	case PointFeature:
-		projection, _ := polyline.Project(f.Point())
-		// TODO: Define the tolerance with more rigour
-		return projection.Distance(f.Point()) < MetersToAngle(0.001)
-	case PathFeature:
-		return f.Polyline().Intersects(polyline)
-	case AreaFeature:
-		for i := 0; i < f.Len(); i++ {
-			if polylineIntersectsPolygon(polyline, f.Polygon(i)) {
-				return true
+	if f, ok := feature.(Geometry); ok {
+		switch f.GeometryType() {
+		case GeometryTypePoint:
+			projection, _ := polyline.Project(s2.PointFromLatLng(f.Location()))
+			// TODO: Define the tolerance with more rigour
+			return projection.Distance(s2.PointFromLatLng(f.Location())) < MetersToAngle(0.001)
+		case GeometryTypePath:
+			return feature.(PathFeature).Polyline().Intersects(polyline)
+		case GeometryTypeArea:
+			for i := 0; i < feature.(AreaFeature).Len(); i++ {
+				if polylineIntersectsPolygon(polyline, feature.(AreaFeature).Polygon(i)) {
+					return true
+				}
 			}
 		}
 	}
@@ -654,29 +664,29 @@ func (i *intersectsMultiPolygon) Next() bool {
 }
 
 func multiPolygonIntersectsFeature(polygons geometry.MultiPolygon, feature Feature) bool {
-	switch f := feature.(type) {
-	case PointFeature:
-		for _, polygon := range polygons {
-			if polygon.ContainsPoint(f.Point()) {
-				return true
+	if f, ok := feature.(Geometry); ok {
+		switch f.GeometryType() {
+		case GeometryTypePoint:
+			for _, polygon := range polygons {
+				return polygon.ContainsPoint(s2.PointFromLatLng(f.Location()))
 			}
-		}
-	case PathFeature:
-		polyline := f.Polyline()
-		for _, polygon := range polygons {
-			if polylineIntersectsPolygon(polyline, polygon) {
-				return true
-			}
-		}
-	case AreaFeature:
-		ps := make([]*s2.Polygon, f.Len())
-		for i := 0; i < f.Len(); i++ {
-			ps[i] = f.Polygon(i)
-		}
-		for _, a := range ps {
-			for _, b := range polygons {
-				if a.Intersects(b) {
+		case GeometryTypePath:
+			polyline := feature.(PathFeature).Polyline()
+			for _, polygon := range polygons {
+				if polylineIntersectsPolygon(polyline, polygon) {
 					return true
+				}
+			}
+		case GeometryTypeArea:
+			ps := make([]*s2.Polygon, feature.(AreaFeature).Len())
+			for i := 0; i < feature.(AreaFeature).Len(); i++ {
+				ps[i] = feature.(AreaFeature).Polygon(i)
+			}
+			for _, a := range ps {
+				for _, b := range polygons {
+					if a.Intersects(b) {
+						return true
+					}
 				}
 			}
 		}
@@ -700,24 +710,24 @@ func (i *intersectsMultiPolygon) EstimateLength() int {
 	return i.iterator.EstimateLength()
 }
 
-type FeatureIterator struct {
+type searchFeatureIterator struct {
 	i     search.Iterator
 	index FeatureIndex
 }
 
-func NewFeatureIterator(i search.Iterator, index FeatureIndex) *FeatureIterator {
-	return &FeatureIterator{i: i, index: index}
+func NewSearchFeatureIterator(i search.Iterator, index FeatureIndex) *searchFeatureIterator {
+	return &searchFeatureIterator{i: i, index: index}
 }
 
-func (f *FeatureIterator) Next() bool {
+func (f *searchFeatureIterator) Next() bool {
 	return f.i.Next()
 }
 
-func (f *FeatureIterator) Feature() Feature {
+func (f *searchFeatureIterator) Feature() Feature {
 	return f.index.Feature(f.i.Value())
 }
 
-func (f *FeatureIterator) FeatureID() FeatureID {
+func (f *searchFeatureIterator) FeatureID() FeatureID {
 	return f.index.ID(f.i.Value())
 }
 
@@ -728,7 +738,7 @@ func NewQueryFromProto(p *pb.QueryProto) (Query, error) {
 	case *pb.QueryProto_Keyed:
 		return Keyed{q.Keyed}, nil
 	case *pb.QueryProto_Tagged:
-		return Tagged{Key: q.Tagged.Key, Value: q.Tagged.Value}, nil
+		return Tagged{Key: q.Tagged.Key, Value: String(q.Tagged.Value)}, nil
 	case *pb.QueryProto_IntersectsCap:
 		ll := PointProtoToS2LatLng(q.IntersectsCap.Center)
 		cap := s2.CapFromCenterAngle(s2.PointFromLatLng(ll), MetersToAngle(q.IntersectsCap.RadiusMeters))

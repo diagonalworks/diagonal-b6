@@ -38,12 +38,10 @@ var functions = api.FunctionSymbols{
 	"histogram":    histogram,
 	// search
 	"find-feature":     findFeature,
-	"find-point":       findPointFeature,
 	"find-path":        findPathFeature,
 	"find-area":        findAreaFeature,
 	"find-relation":    findRelationFeature,
 	"find":             find,
-	"find-points":      findPointFeatures,
 	"find-paths":       findPathFeatures,
 	"find-areas":       findAreaFeatures,
 	"find-relations":   findRelationFeatures,
@@ -98,7 +96,6 @@ var functions = api.FunctionSymbols{
 	"count":       count,
 	// graph
 	"reachable-area":         reachableArea,
-	"reachable-points":       reachablePoints,
 	"reachable":              reachable,
 	"accessible-all":         accessibleAll,
 	"accessible-routes":      accessibleRoutes,
@@ -128,9 +125,6 @@ var functions = api.FunctionSymbols{
 	"tile-ids":     tileIDs,
 	"tile-ids-hex": tileIDsHex,
 	"tile-paths":   tilePaths,
-	// collections
-	"empty-points": emptyPointCollection,
-	"add-point":    addPoint,
 	// geojson
 	"parse-geojson":         parseGeoJSON,
 	"parse-geojson-file":    parseGeoJSONFile,
@@ -206,15 +200,6 @@ var functionAdaptors = []interface{}{
 			}
 		}
 	},
-	func(c api.Callable) func(*api.Context, b6.Point) (b6.Geometry, error) {
-		return func(context *api.Context, p b6.Point) (b6.Geometry, error) {
-			if result, err := api.Call1(context, p, c); result != nil {
-				return result.(b6.Geometry), err
-			} else {
-				return nil, err
-			}
-		}
-	},
 	func(c api.Callable) func(*api.Context, b6.Path) (b6.Geometry, error) {
 		return func(context *api.Context, p b6.Path) (b6.Geometry, error) {
 			if result, err := api.Call1(context, p, c); result != nil {
@@ -256,8 +241,8 @@ var functionAdaptors = []interface{}{
 			}
 		}
 	},
-	func(c api.Callable) func(*api.Context, b6.PointFeature) (bool, error) {
-		return func(context *api.Context, f b6.PointFeature) (bool, error) {
+	func(c api.Callable) func(*api.Context, b6.PhysicalFeature) (bool, error) {
+		return func(context *api.Context, f b6.PhysicalFeature) (bool, error) {
 			if result, err := api.Call1(context, f, c); result != nil {
 				return api.IsTrue(result), err
 			} else {
@@ -349,9 +334,7 @@ var collectionAdaptors = []interface{}{
 	b6.AdaptCollection[any, b6.Identifiable],
 	b6.AdaptCollection[any, b6.Path],
 	b6.AdaptCollection[any, b6.PathFeature],
-	b6.AdaptCollection[any, b6.Point],
-	b6.AdaptCollection[any, b6.PointFeature],
-	b6.AdaptCollection[any, b6.Renderable],
+	b6.AdaptCollection[any, b6.PhysicalFeature],
 	b6.AdaptCollection[any, b6.Tag],
 	b6.AdaptCollection[any, b6.UntypedCollection],
 	b6.AdaptCollection[any, ingest.Change],
@@ -364,8 +347,8 @@ var collectionAdaptors = []interface{}{
 	b6.AdaptCollection[b6.FeatureID, b6.Identifiable],
 	b6.AdaptCollection[b6.FeatureID, b6.Path],
 	b6.AdaptCollection[b6.FeatureID, b6.PathFeature],
-	b6.AdaptCollection[b6.FeatureID, b6.Point],
-	b6.AdaptCollection[b6.FeatureID, b6.PointFeature],
+	b6.AdaptCollection[b6.FeatureID, b6.Geometry],
+	b6.AdaptCollection[b6.FeatureID, b6.PhysicalFeature],
 	b6.AdaptCollection[b6.FeatureID, b6.Tag],
 	b6.AdaptCollection[b6.FeatureID, string],
 	b6.AdaptCollection[b6.Identifiable, string],
@@ -373,8 +356,8 @@ var collectionAdaptors = []interface{}{
 	b6.AdaptCollection[int, b6.AreaFeature],
 	b6.AdaptCollection[int, b6.Path],
 	b6.AdaptCollection[int, b6.PathFeature],
-	b6.AdaptCollection[int, b6.Point],
-	b6.AdaptCollection[int, b6.PointFeature],
+	b6.AdaptCollection[int, b6.Geometry],
+	b6.AdaptCollection[int, b6.PhysicalFeature],
 }
 
 var defaultAdaptors api.Adaptors

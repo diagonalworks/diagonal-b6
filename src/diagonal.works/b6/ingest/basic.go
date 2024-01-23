@@ -63,28 +63,6 @@ func (f *FeatureIndex) ID(v search.Value) b6.FeatureID {
 	panic(fmt.Sprintf("Bad feature type: %T", v))
 }
 
-type pointFeature struct {
-	*PointFeature
-}
-
-func (p pointFeature) PointID() b6.PointID {
-	return p.PointFeature.PointID
-}
-
-func (p pointFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	return s2.CellUnion([]s2.CellID{p.CellID().Parent(coverer.MaxLevel)})
-}
-
-func (p pointFeature) ToGeoJSON() geojson.GeoJSON {
-	return b6.PointFeatureToGeoJSON(p)
-}
-
-var _ b6.PointFeature = (*pointFeature)(nil)
-
-func WrapPointFeature(p *PointFeature) b6.PointFeature {
-	return pointFeature{p}
-}
-
 type pathFeature struct {
 	*PathFeature
 	features b6.FeaturesByID
@@ -99,9 +77,11 @@ func (p pathFeature) Point(i int) s2.Point {
 		return point
 	}
 	id, _ := p.PointID(i)
-	if ll, ok := p.features.FindLocationByID(id); ok {
+
+	if ll, err := p.features.FindLocationByID(id); err == nil {
 		return s2.PointFromLatLng(ll)
 	}
+
 	panic(fmt.Sprintf("No point with ID %s", id))
 }
 
@@ -113,14 +93,10 @@ func (p pathFeature) Polyline() *s2.Polyline {
 	return (*s2.Polyline)(&points)
 }
 
-func (p pathFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	return coverer.Covering(p.Polyline())
-}
-
-func (p pathFeature) Feature(i int) b6.PointFeature {
+func (p pathFeature) Feature(i int) b6.PhysicalFeature {
 	if id, ok := p.PointID(i); ok {
-		if point := b6.FindPointByID(id, p.features); point != nil {
-			return point
+		if point := p.features.FindFeatureByID(id); point != nil {
+			return point.(b6.PhysicalFeature)
 		}
 		panic(fmt.Sprintf("No point with ID %s", id))
 	}
@@ -176,16 +152,6 @@ func (a areaFeature) MultiPolygon() geometry.MultiPolygon {
 	return m
 }
 
-func (a areaFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	covering := s2.CellUnion([]s2.CellID{})
-	for i := 0; i < a.Len(); i++ {
-		if polygon := a.Polygon(i); polygon != nil {
-			covering = s2.CellUnionFromUnion(covering, coverer.Covering(polygon))
-		}
-	}
-	return covering
-}
-
 func (a areaFeature) Feature(i int) []b6.PathFeature {
 	if ids, ok := a.PathIDs(i); ok {
 		paths := make([]b6.PathFeature, 0, len(ids))
@@ -227,10 +193,6 @@ func (r relationFeature) Feature(i int) b6.Feature {
 
 func (r relationFeature) ToGeoJSON() geojson.GeoJSON {
 	return b6.RelationFeatureToGeoJSON(r, r.features)
-}
-
-func (r relationFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	return s2.CellUnion([]s2.CellID{})
 }
 
 type collectionFeature struct {
@@ -278,10 +240,6 @@ func (c *collectionFeatureIterator) Key() interface{} {
 
 func (c collectionFeatureIterator) Value() interface{} {
 	return c.c.Values[c.i-1]
-}
-
-func (c collectionFeature) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	return s2.CellUnion([]s2.CellID{})
 }
 
 type expressionFeature struct {
@@ -342,9 +300,9 @@ func NewPathFeatureIterator(paths []b6.PathFeature) b6.PathFeatures {
 	return &pathFeatureIterator{paths: paths}
 }
 
-func traverse(originID b6.PointID, f b6.FeaturesByID, r *FeatureReferencesByID, w b6.World) []b6.Segment {
+func traverse(originID b6.FeatureID, f b6.FeaturesByID, r *FeatureReferencesByID) []b6.Segment {
 	segments := make([]b6.Segment, 0, 2)
-	origin := b6.FindPointByID(originID, f)
+	origin := f.FindFeatureByID(originID)
 	if origin == nil {
 		return segments
 	}
@@ -372,8 +330,8 @@ func traverse(originID b6.PointID, f b6.FeaturesByID, r *FeatureReferencesByID, 
 				if pointID, ok := members.PointID(i); ok {
 					isNode := i == 0 || i == path.Len()-1 || len(r.FindReferences(pointID.FeatureID(), b6.FeatureTypePath)) > 1
 					if !isNode {
-						if point := f.FindFeatureByID(pointID.FeatureID()); point != nil {
-							isNode = len(point.AllTags()) > 0
+						if point := f.FindFeatureByID(pointID); point != nil {
+							isNode = len(point.AllTags()) > 1
 						}
 					}
 					if isNode {
@@ -384,6 +342,7 @@ func traverse(originID b6.PointID, f b6.FeaturesByID, r *FeatureReferencesByID, 
 			}
 		}
 	}
+
 	return segments
 }
 
@@ -412,28 +371,6 @@ func (a *areaFeatures) Next() bool {
 	return false
 }
 
-type iterator struct {
-	features []b6.Feature
-	i        int
-}
-
-func NewFeatureIterator(features []b6.Feature) b6.Features {
-	return &iterator{features: features}
-}
-
-func (i *iterator) Feature() b6.Feature {
-	return i.features[i.i-1]
-}
-
-func (i *iterator) FeatureID() b6.FeatureID {
-	return i.features[i.i-1].FeatureID()
-}
-
-func (i *iterator) Next() bool {
-	i.i++
-	return i.i <= len(i.features)
-}
-
 type basicWorld struct {
 	features   *FeaturesByID
 	references *FeatureReferencesByID
@@ -448,12 +385,12 @@ func (b *basicWorld) HasFeatureWithID(id b6.FeatureID) bool {
 	return b.features.HasFeatureWithID(id)
 }
 
-func (b *basicWorld) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
+func (b *basicWorld) FindLocationByID(id b6.FeatureID) (s2.LatLng, error) {
 	return b.features.FindLocationByID(id)
 }
 
 func (b *basicWorld) FindFeatures(q b6.Query) b6.Features {
-	return b6.NewFeatureIterator(q.Compile(b.index, b), b.index)
+	return b6.NewSearchFeatureIterator(q.Compile(b.index, b), b.index)
 }
 
 type relationFeatures struct {
@@ -535,7 +472,7 @@ func (b *basicWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeat
 	return NewCollectionFeatureIterator(features)
 }
 
-func (b *basicWorld) FindPathsByPoint(p b6.PointID) b6.PathFeatures {
+func (b *basicWorld) FindPathsByPoint(p b6.FeatureID) b6.PathFeatures {
 	references := b.FindReferences(p.FeatureID(), b6.FeatureTypePath)
 	var features []b6.PathFeature
 	for references.Next() {
@@ -545,7 +482,7 @@ func (b *basicWorld) FindPathsByPoint(p b6.PointID) b6.PathFeatures {
 	return NewPathFeatureIterator(features)
 }
 
-func (b *basicWorld) FindAreasByPoint(p b6.PointID) b6.AreaFeatures {
+func (b *basicWorld) FindAreasByPoint(p b6.FeatureID) b6.AreaFeatures {
 	references := b.FindReferences(p.FeatureID(), b6.FeatureTypeArea)
 	var features []b6.AreaFeature
 	for references.Next() {
@@ -567,11 +504,11 @@ func (b *basicWorld) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6
 		}
 	}
 
-	return NewFeatureIterator(features)
+	return b6.NewFeatureIterator(features)
 }
 
-func (b *basicWorld) Traverse(origin b6.PointID) b6.Segments {
-	return NewSegmentIterator(traverse(origin, b.features, b.references, b))
+func (b *basicWorld) Traverse(origin b6.FeatureID) b6.Segments {
+	return NewSegmentIterator(traverse(origin, b.features, b.references))
 }
 
 func (b *basicWorld) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
@@ -615,8 +552,8 @@ func (b BrokenFeatures) Error() string {
 
 func (b *BasicWorldBuilder) Finish(o *BuildOptions) (b6.World, error) {
 	stages := []func(toIndex chan<- Feature, byID *FeaturesByID){
-		func(c chan<- Feature, byID *FeaturesByID) {
-			for _, feature := range *byID {
+		func(c chan<- Feature, features *FeaturesByID) {
+			for _, feature := range *features {
 				c <- feature
 			}
 		},

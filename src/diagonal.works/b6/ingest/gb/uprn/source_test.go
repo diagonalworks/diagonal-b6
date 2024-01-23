@@ -3,6 +3,7 @@ package uprn
 import (
 	"context"
 	"reflect"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -12,29 +13,29 @@ import (
 )
 
 func TestUPRNClusters(t *testing.T) {
-	uprns := ingest.MemoryFeatureSource{
-		&ingest.PointFeature{
-			PointID:  b6.MakePointID(b6.NamespaceGBUPRN, 5150460),
-			Location: s2.LatLngFromDegrees(51.5349035, -0.1257194),
+	uprns := []ingest.Feature{
+		&ingest.GenericFeature{
+			ID:   b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceGBUPRN, 5150460},
+			Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5349035, -0.1257194))}},
 		},
-		&ingest.PointFeature{
-			PointID:  b6.MakePointID(b6.NamespaceGBUPRN, 5150461),
-			Location: s2.LatLngFromDegrees(51.5349035, -0.1257194),
+		&ingest.GenericFeature{
+			ID:   b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceGBUPRN, 5150461},
+			Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5349035, -0.1257194))}},
 		},
-		&ingest.PointFeature{
-			PointID:  b6.MakePointID(b6.NamespaceGBUPRN, 5158495),
-			Location: s2.LatLngFromDegrees(51.536685, -0.127258),
-		},
-	}
+		&ingest.GenericFeature{
+			ID:   b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceGBUPRN, 5158495},
+			Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.536685, -0.127258))}},
+		}}
+
 	source := ClusterSource{
-		UPRNs: uprns,
+		UPRNs: ingest.MemoryFeatureSource(uprns),
 	}
 	clusters := make(map[uint64]int)
 	var lock sync.Mutex
 	emit := func(f ingest.Feature, goroutine int) error {
 		lock.Lock()
 		defer lock.Unlock()
-		clusters[f.FeatureID().Value], _ = f.Get("uprn_cluster:size").IntValue()
+		clusters[f.FeatureID().Value], _ = strconv.Atoi(f.Get("uprn_cluster:size").Value.String())
 		return nil
 	}
 	expected := map[uint64]int{

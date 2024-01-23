@@ -80,7 +80,7 @@ func (_ All) Equal(other Query) bool {
 
 func TokenForTag(tag Tag) (string, bool) {
 	if strings.HasPrefix(tag.Key, "#") {
-		return fmt.Sprintf("%s=%s", tag.Key[1:], tag.Value), true
+		return fmt.Sprintf("%s=%s", tag.Key[1:], tag.Value.String()), true
 	} else if strings.HasPrefix(tag.Key, "@") {
 		return tag.Key[1:], true
 	}
@@ -91,7 +91,7 @@ type Tagged Tag
 
 func (t Tagged) Compile(i FeatureIndex, w World) search.Iterator {
 	if strings.HasPrefix(t.Key, "#") {
-		return search.All{Token: fmt.Sprintf("%s=%s", t.Key[1:], t.Value)}.Compile(i)
+		return search.All{Token: fmt.Sprintf("%s=%s", t.Key[1:], t.Value.String())}.Compile(i)
 	}
 	return search.NewEmptyIterator()
 }
@@ -101,7 +101,7 @@ func (t Tagged) Matches(f Feature, w World) bool {
 }
 
 func (t Tagged) String() string {
-	return fmt.Sprintf("(key-value %s %s)", t.Key, t.Value)
+	return fmt.Sprintf("(key-value %s %s)", t.Key, t.Value.String())
 }
 
 func (t Tagged) ToProto() (*pb.QueryProto, error) {
@@ -109,7 +109,7 @@ func (t Tagged) ToProto() (*pb.QueryProto, error) {
 		Query: &pb.QueryProto_Tagged{
 			Tagged: &pb.TagProto{
 				Key:   t.Key,
-				Value: t.Value,
+				Value: t.Value.String(),
 			},
 		},
 	}, nil
@@ -123,6 +123,14 @@ func (t Tagged) Equal(other Query) bool {
 		return t.Key == tt.Key && t.Value == tt.Value
 	}
 	return false
+}
+
+func (t Tagged) MarshalYAML() (interface{}, error) {
+	return Tag(t).MarshalYAML()
+}
+
+func (t *Tagged) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return (*Tag)(t).UnmarshalYAML(unmarshal)
 }
 
 type Keyed struct {

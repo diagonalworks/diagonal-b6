@@ -55,16 +55,6 @@ func find(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.
 	}, nil
 }
 
-// Return a collection of the point features present in the world that match the given query.
-// Keys are IDs, and values are features.
-func findPointFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.PointFeature], error) {
-	tq := b6.Typed{Type: b6.FeatureTypePoint, Query: query}
-	c := b6.Collection[b6.FeatureID, b6.Feature]{
-		AnyCollection: &searchFeatureCollection{query: tq, w: context.World},
-	}
-	return b6.AdaptCollection[b6.FeatureID, b6.PointFeature](c), nil
-}
-
 // Return a collection of the path features present in the world that match the given query.
 // Keys are IDs, and values are features.
 func findPathFeatures(context *api.Context, query b6.Query) (b6.Collection[b6.FeatureID, b6.PathFeature], error) {
@@ -97,20 +87,22 @@ func findRelationFeatures(context *api.Context, query b6.Query) (b6.Collection[b
 
 // Return a query that will match features that intersect the given geometry.
 func intersecting(context *api.Context, geometry b6.Geometry) (b6.Query, error) {
-	switch g := geometry.(type) {
-	case b6.Point:
-		return b6.IntersectsPoint{Point: g.Point()}, nil
-	case b6.Path:
-		return b6.IntersectsPolyline{Polyline: g.Polyline()}, nil
-	case b6.Area:
-		return b6.IntersectsMultiPolygon{MultiPolygon: g.MultiPolygon()}, nil
+	if geometry != nil {
+		switch geometry.GeometryType() {
+		case b6.GeometryTypePoint:
+			return b6.IntersectsPoint{Point: s2.PointFromLatLng(geometry.Location())}, nil
+		case b6.GeometryTypePath:
+			return b6.IntersectsPolyline{Polyline: geometry.(b6.Path).Polyline()}, nil
+		case b6.GeometryTypeArea:
+			return b6.IntersectsMultiPolygon{MultiPolygon: geometry.(b6.Area).MultiPolygon()}, nil
+		}
 	}
 	return b6.Empty{}, nil
 }
 
 // Return a query that will match features that intersect a spherical cap centred on the given point, with the given radius in meters.
-func intersectingCap(context *api.Context, center b6.Point, radius float64) (b6.Query, error) {
-	return b6.NewIntersectsCap(s2.CapFromCenterAngle(center.Point(), b6.MetersToAngle(radius))), nil
+func intersectingCap(context *api.Context, center b6.Geometry, radius float64) (b6.Query, error) {
+	return b6.NewIntersectsCap(s2.CapFromCenterAngle(s2.PointFromLatLng(center.Location()), b6.MetersToAngle(radius))), nil
 }
 
 // Return a query that will match point features.
@@ -169,13 +161,13 @@ func within(context *api.Context, a b6.Area) (b6.Query, error) {
 
 // Return a query that will match features that intersect a spherical cap centred on the given point, with the given radius in meters.
 // Deprecated. Use intersecting-cap.
-func withinCap(context *api.Context, p b6.Point, radius float64) (b6.Query, error) {
-	return b6.NewIntersectsCap(s2.CapFromCenterAngle(p.Point(), b6.MetersToAngle(radius))), nil
+func withinCap(context *api.Context, point b6.Geometry, radius float64) (b6.Query, error) {
+	return b6.NewIntersectsCap(s2.CapFromCenterAngle(s2.PointFromLatLng(point.Location()), b6.MetersToAngle(radius))), nil
 }
 
 // Return a query that will match features tagged with the given key and value.
 func tagged(context *api.Context, key string, value string) (b6.Query, error) {
-	return b6.Tagged{Key: key, Value: value}, nil
+	return b6.Tagged{Key: key, Value: b6.String(value)}, nil
 }
 
 // Return a query that will match features tagged with the given key independent of value.

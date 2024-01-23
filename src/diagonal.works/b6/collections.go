@@ -330,4 +330,4 @@ func (a ArrayFeatureCollection[Value]) Collection() Collection[FeatureID, Value]
 	return Collection[FeatureID, Value]{AnyCollection: a}
 }
 
-var _ AnyCollection[FeatureID, PointFeature] = &ArrayFeatureCollection[PointFeature]{}
+var _ AnyCollection[FeatureID, PhysicalFeature] = &ArrayFeatureCollection[PhysicalFeature]{}

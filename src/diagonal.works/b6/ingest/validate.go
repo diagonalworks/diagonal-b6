@@ -25,13 +25,6 @@ func ValidateFeature(feature Feature, o *ValidateOptions, features b6.FeaturesBy
 	return nil
 }
 
-func ValidatePoint(p *PointFeature) error {
-	if !p.PointID.IsValid() {
-		return fmt.Errorf("%s: invalid ID", p.PointID)
-	}
-	return nil
-}
-
 type ValidateOptions struct {
 	// Invert clockwise paths to anticlockwise if true, otherwise, consider them
 	// invalid

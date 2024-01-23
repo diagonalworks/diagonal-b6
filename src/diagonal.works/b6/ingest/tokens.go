@@ -7,7 +7,7 @@ import (
 )
 
 func TokensForFeature(feature b6.Feature) []string {
-	if feature.FeatureID().Type == b6.FeatureTypePoint && len(feature.AllTags()) == 0 {
+	if feature.FeatureID().Type == b6.FeatureTypePoint && len(feature.AllTags()) == 1 {
 		return []string{}
 	}
 
@@ -15,7 +15,7 @@ func TokensForFeature(feature b6.Feature) []string {
 	tokens = append(tokens, search.AllToken)
 
 	if p, ok := feature.(b6.PhysicalFeature); ok {
-		covering := p.Covering(s2.RegionCoverer{MaxLevel: search.MaxIndexedCellLevel, MaxCells: 5})
+		covering := b6.Covering(p, s2.RegionCoverer{MaxLevel: search.MaxIndexedCellLevel, MaxCells: 5})
 		tokens = search.TokensForCovering(covering, tokens)
 	}
 

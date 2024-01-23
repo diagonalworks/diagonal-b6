@@ -104,7 +104,7 @@ func TestMapItems(t *testing.T) {
 	if len(filled) < 2 {
 		t.Errorf("Expected at least two values, found %d", len(filled))
 	}
-	if count, ok := filled[b6.Tag{Key: "#amenity", Value: "cafe"}]; !ok || count != 1 {
+	if count, ok := filled[b6.Tag{Key: "#amenity", Value: b6.String("cafe")}]; !ok || count != 1 {
 		t.Errorf("Expected a count of 1 for amenity tag, found %+v", filled)
 	}
 }
@@ -218,8 +218,8 @@ func TestConvertQueryToFunctionReturningBool(t *testing.T) {
 
 func TestConvertQueryToFunctionReturningBoolWithSpecificFeature(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	apply := func(c *api.Context, f func(*api.Context, b6.PointFeature) (bool, error)) (bool, error) {
-		return f(c, b6.FindPointByID(ingest.FromOSMNodeID(camden.VermuteriaNode), c.World))
+	apply := func(c *api.Context, f func(*api.Context, b6.PhysicalFeature) (bool, error)) (bool, error) {
+		return f(c, c.World.FindFeatureByID(ingest.FromOSMNodeID(camden.VermuteriaNode)).(b6.PhysicalFeature))
 	}
 	c := &api.Context{
 		World: granarySquare,
@@ -337,8 +337,8 @@ func TestMapLiteralCollection(t *testing.T) {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	expected := map[b6.Tag]int{
-		{Key: "highway", Value: "motorway"}: 3,
-		{Key: "highway", Value: "primary"}:  7,
+		{Key: "highway", Value: b6.String("motorway")}: 3,
+		{Key: "highway", Value: b6.String("primary")}:  7,
 	}
 	if diff := cmp.Diff(expected, collection); diff != "" {
 		t.Errorf("Found diff (-want, +got):\n%s", diff)
