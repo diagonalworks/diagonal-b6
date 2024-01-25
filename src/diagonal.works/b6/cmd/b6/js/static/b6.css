@@ -713,7 +713,7 @@ form.shell-form > input {
 }
 
 .stack > .substack > .scrollable {
-    overflow-y: scroll;
+    overflow-y: auto;
     box-sizing: content-box;
     max-height: 269px;
 }
