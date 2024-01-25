@@ -725,7 +725,7 @@ form.shell-form > input {
 }
 
 .stack > .substack.collapsable.collapsable-open > .scrollable {
-    overflow-y: scroll;
+    overflow-y: auto;
     max-height: 269px;
     transition: max-height 0.5s ease-in-out;
 }
