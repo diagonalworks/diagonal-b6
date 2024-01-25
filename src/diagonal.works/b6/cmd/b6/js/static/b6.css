@@ -48,6 +48,15 @@
     src: url('https://diagonal.works/fonts/unica77-bold.woff2') format('woff2');
 }
 
+:root {
+    --bucket-0: #f1eef6;
+    --bucket-1: #d0d1e6;
+    --bucket-2: #a6bddb;
+    --bucket-3: #74a9cf;
+    --bucket-4: #2b8cbe;
+    --bucket-5: #045a8d;
+}
+
 html {
     background: white;
     font-family: 'Unica 77', sans-serif;
@@ -348,37 +357,37 @@ form.shell-form > input {
 }
 
 .palette > .bucketed-0 {
-    fill: #ffffff;
+    fill: var(--bucket-0);
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-1 {
-    fill: #a9aec5;
+    fill: var(--bucket-1);
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-2 {
-    fill: #9ccdeb;
+    fill: var(--bucket-2);
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-3 {
-    fill: #bce6ee;
+    fill: var(--bucket-3);
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-4 {
-    fill: #d6f5e6;
+    fill: var(--bucket-4);
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
 
 .palette > .bucketed-5 {
-    fill: #f4fde5;
+    fill: var(--bucket-5);
     stroke: #4f5a7d;
     stroke-width: 0.3;
 }
@@ -560,32 +569,32 @@ form.shell-form > input {
 }
 
 .range-icon.index-0 {
-    background-color: #ffffff;
+    background-color: var(--bucket-0);
     border: 1px solid var(--border-color);
 }
 
 .range-icon.index-1 {
-    background-color: #a9aec5;
+    background-color: var(--bucket-1);
     border: 1px solid var(--border-color);
 }
 
 .range-icon.index-2 {
-    background-color: #9ccdeb;
+    background-color: var(--bucket-2);
     border: 1px solid var(--border-color);
 }
 
 .range-icon.index-3 {
-    background-color: #bce6ee;
+    background-color: var(--bucket-3);
     border: 1px solid var(--border-color);
 }
 
 .range-icon.index-4 {
-    background-color: #d6f5e6;
+    background-color: var(--bucket-4);
     border: 1px solid var(--border-color);
 }
 
 .range-icon.index-5 {
-    background-color: #f4fde5;
+    background-color: var(--bucket-5);
     border: 1px solid var(--border-color);
 }
 
