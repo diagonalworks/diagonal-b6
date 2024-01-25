@@ -555,34 +555,38 @@ form.shell-form > input {
     height: 12px;
 }
 
+.range-icon {
+    --border-color: #a9aec5; /* Graphite 50 */
+}
+
 .range-icon.index-0 {
     background-color: #ffffff;
-    border: 1px solid #dbdeec; /* Graphite 30 */
+    border: 1px solid var(--border-color);
 }
 
 .range-icon.index-1 {
     background-color: #a9aec5;
-    border: 1px solid #dbdeec; /* Graphite 30 */
+    border: 1px solid var(--border-color);
 }
 
 .range-icon.index-2 {
     background-color: #9ccdeb;
-    border: 1px solid #dbdeec; /* Graphite 30 */
+    border: 1px solid var(--border-color);
 }
 
 .range-icon.index-3 {
     background-color: #bce6ee;
-    border: 1px solid #dbdeec; /* Graphite 30 */
+    border: 1px solid var(--border-color);
 }
 
 .range-icon.index-4 {
     background-color: #d6f5e6;
-    border: 1px solid #dbdeec; /* Graphite 30 */
+    border: 1px solid var(--border-color);
 }
 
 .range-icon.index-5 {
     background-color: #f4fde5;
-    border: 1px solid #dbdeec; /* Graphite 30 */
+    border: 1px solid var(--border-color);
 }
 
 .line-histogram-bar .range-icon {
