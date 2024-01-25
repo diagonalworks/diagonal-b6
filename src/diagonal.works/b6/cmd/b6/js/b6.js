@@ -39,6 +39,10 @@ const RoadWidths = {
     path: 8.0,
 };
 
+function withAlpha(colour, alpha) {
+    const rgb = d3.rgb(colour);
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
 function scaleWidth(width, resolution) {
     return width * (0.3 / resolution);
 }
@@ -54,7 +58,7 @@ function waterwayWidth(resolution) {
     return scaleWidth(32.0, resolution);
 }
 
-function newGeoJSONStyle(state, styles) {
+function newGeoJSONStyle(_, styles) {
     const point = styles.lookupCircle('geojson-point');
     const path = styles.lookupStyle('geojson-path');
     const area = styles.lookupStyle('geojson-area');
@@ -286,15 +290,31 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
     const buildings = new VectorTileLayer({
         source: baseSource,
         style: function (feature) {
-            if (feature.get('layer') == 'building') {
+            if (feature.get('layer') === 'building') {
                 const id = idKeyFromFeature(feature);
                 const bucket = state.bucketed[id];
-                if (
-                    bucket &&
-                    (state.showBucket < 0 || state.showBucket == bucket)
-                ) {
-                    return bucketedBuildingFill[bucket];
+
+                if (bucket && Object.keys(state.bucketed).length > 0) {
+                    if (state.showBucket < 0) {
+                        return bucketedBuildingFill[bucket];
+                    }
+
+                    const color = bucketedBuildingFill[bucket]
+                        .getFill()
+                        .getColor();
+                    if (state.showBucket == bucket && state.showBucket > 0) {
+                        return new Style({
+                            fill: new Fill({ color }),
+                            stroke: new Stroke({ color: '#4f5a7d', width: 1 }),
+                        });
+                    }
+
+                    return new Style({
+                        fill: new Fill({ color: withAlpha(color, 0.42) }),
+                        stroke: new Stroke({ color: '#4f5a7d', width: 0.3 }),
+                    });
                 }
+
                 if (state.highlighted[id]) {
                     return highlightedBuildingFill;
                 }
@@ -399,7 +419,9 @@ function showFeature(feature, locked, position, ui, logEvent) {
         MultiPolygon: 'area',
     };
     if (ns && id && types[feature.getType()]) {
-        const expression = `find-feature /${types[feature.getType()]}/${ns}/${BigInt('0x' + id)}`;
+        const expression = `find-feature /${
+            types[feature.getType()]
+        }/${ns}/${BigInt('0x' + id)}`;
         ui.evaluateExpressionInNewStack(
             expression,
             null,
@@ -967,7 +989,9 @@ class HistogramBarLineRenderer {
         line.select('.range-icon').attr(
             'class',
             (d) =>
-                `range-icon index-${d.histogramBar.index ? d.histogramBar.index : 0}`,
+                `range-icon index-${
+                    d.histogramBar.index ? d.histogramBar.index : 0
+                }`,
         );
         renderFromProto(
             line.select('.range').datum((d) => d.histogramBar.range),
@@ -979,7 +1003,9 @@ class HistogramBarLineRenderer {
         line.select('.fill').attr(
             'style',
             (d) =>
-                `width: ${((d.histogramBar.value || 0) / d.histogramBar.total) * 100.0}%;`,
+                `width: ${
+                    ((d.histogramBar.value || 0) / d.histogramBar.total) * 100.0
+                }%;`,
         );
     }
 }
@@ -1356,7 +1382,6 @@ class UI {
 
     closeAllDocked() {
         const docked = this.dockTarget.selectAll('.stack');
-
         docked.each(function () {
             if (this.__stack__) {
                 this.__stack__.removeFromMap();
