@@ -431,7 +431,6 @@ form.shell-form > input {
 }
 
 .line {
-    width: 282px;
     max-width: 282px;
     height: 20px;
     box-sizing: content-box;
