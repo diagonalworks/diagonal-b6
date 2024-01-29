@@ -651,6 +651,25 @@ form.shell-form > input {
     margin-top: 4px;
 }
 
+.interactive {
+    cursor: pointer;
+    transition-property: background-color;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.interactive:hover {
+    background-color: #f8f9fc; /* Graphite 10 */
+}
+
+.selected {
+    background-color: #dbdeec; /* Graphite 30 */
+}
+
+.selected:hover {
+    background-color: #c3c6d9; /* Graphite 40 */
+}
+
 .substack .line-swatch {
     border-top-color: white;
 }

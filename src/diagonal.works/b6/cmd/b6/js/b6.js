@@ -1031,8 +1031,18 @@ class SwatchLineRenderer {
                 (d) =>
                     `range-icon index-${d.swatch.index ? d.swatch.index : 0}`,
             );
+
+            line.attr('class', `${line.attr('class')} ${'interactive'}`);
+
             line.on('click', function (e) {
                 e.stopPropagation();
+
+                stack.target
+                    .selectAll('.line-swatch')
+                    .classed('selected', false);
+
+                line.attr('class', `${line.attr('class')} ${'selected'}`);
+
                 stack.toggleShowBucket(index);
             });
         }
