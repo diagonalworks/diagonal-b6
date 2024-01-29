@@ -302,7 +302,8 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
                     const color = bucketedBuildingFill[bucket]
                         .getFill()
                         .getColor();
-                    if (state.showBucket == bucket && state.showBucket > 0) {
+
+                    if (state.showBucket == bucket && state.showBucket > -1) {
                         return new Style({
                             fill: new Fill({ color }),
                             stroke: new Stroke({ color: '#4f5a7d', width: 1 }),
@@ -1036,12 +1037,15 @@ class SwatchLineRenderer {
 
             line.on('click', function (e) {
                 e.stopPropagation();
+                const isSelected = line.classed('selected');
 
                 stack.target
                     .selectAll('.line-swatch')
                     .classed('selected', false);
 
-                line.attr('class', `${line.attr('class')} ${'selected'}`);
+                if (!isSelected) {
+                    line.attr('class', `${line.attr('class')} ${'selected'}`);
+                }
 
                 stack.toggleShowBucket(index);
             });
