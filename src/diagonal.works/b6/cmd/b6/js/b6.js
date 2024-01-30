@@ -1172,6 +1172,7 @@ class ChoiceLineRenderer {
             .selectAll('span')
             .data((d) => this._mergeAtoms(d))
             .join('span');
+
         renderFromProto(atoms, 'atom', stack);
     }
 
@@ -1386,6 +1387,7 @@ class UI {
             this.openDockIndex = index;
             if (docked.__stack__) {
                 this.state.bucketed = {};
+                docked.__stack__.toggleShowBucket(-1);
                 docked.__stack__.addToMap();
             }
         } else {
