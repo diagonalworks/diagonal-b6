@@ -38,7 +38,6 @@ const RoadWidths = {
     footway: 8.0,
     path: 8.0,
 };
-const GeoJSONFillColour = '#364153';
 
 function scaleWidth(width, resolution) {
     return width * (0.3 / resolution);
@@ -60,12 +59,13 @@ function newGeoJSONStyle(state, styles) {
     const path = styles.lookupStyle('geojson-path');
     const area = styles.lookupStyle('geojson-area');
 
-    return function (feature, resolution) {
+    return function (feature) {
         var s = point;
         switch (feature.getGeometry().getType()) {
             case 'LineString':
             case 'MultiLineString':
                 s = path;
+                break;
             case 'Polygon':
             case 'MultiPolygon':
                 s = area;
@@ -113,7 +113,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
 
     const background = new VectorTileLayer({
         source: baseSource,
-        style: function (feature, resolution) {
+        style: function (feature) {
             if (feature.get('layer') == 'background') {
                 return backgroundFill;
             }
@@ -122,7 +122,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
 
     const boundaries = new VectorTileLayer({
         source: baseSource,
-        style: function (feature, resolution) {
+        style: function (feature) {
             if (feature.get('layer') == 'boundary') {
                 if (state.featureColours) {
                     const colour =
@@ -166,7 +166,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
 
     const landuse = new VectorTileLayer({
         source: baseSource,
-        style: function (feature, resolution) {
+        style: function (feature) {
             const landuse = feature.get('landuse');
             const leisure = feature.get('leisure');
             const natural = feature.get('natural');
@@ -242,7 +242,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
     const roadLabels = new VectorTileLayer({
         source: baseSource,
         declutter: true,
-        style: function (feature, resolution) {
+        style: function (feature) {
             if (feature.get('layer') == 'road') {
                 if (feature.get('name')) {
                     return styles.lookupLineTextWithText(
@@ -256,7 +256,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
 
     const rails = new VectorTileLayer({
         source: baseSource,
-        style: function (feature, resolution) {
+        style: function (feature) {
             if (feature.get('layer') == 'road' && feature.get('railway')) {
                 const id = idKeyFromFeature(feature);
                 if (state.highlighted[id]) {
@@ -285,7 +285,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
 
     const buildings = new VectorTileLayer({
         source: baseSource,
-        style: function (feature, resolution) {
+        style: function (feature) {
             if (feature.get('layer') == 'building') {
                 const id = idKeyFromFeature(feature);
                 const bucket = state.bucketed[id];
@@ -307,7 +307,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
 
     const points = new VectorTileLayer({
         source: baseSource,
-        style: function (feature, resolution) {
+        style: function (feature) {
             if (feature.get('layer') == 'point') {
                 const id = idKeyFromFeature(feature);
                 const bucket = state.bucketed[id];
@@ -327,7 +327,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom) {
 
     const labels = new VectorTileLayer({
         source: baseSource,
-        style: function (feature, resolution) {
+        style: function (feature) {
             if (feature.get('layer') == 'label') {
                 return new Style({
                     text: new Text({
@@ -776,7 +776,7 @@ class ConditionalAtomRenderer {
         return 'atom-conditional';
     }
 
-    enter(atom) {}
+    enter() {}
 
     update(atom, stack) {
         const conditional = atom.datum().conditional;
@@ -810,7 +810,7 @@ class ValueLineRenderer {
         return 'line-value';
     }
 
-    enter(line) {}
+    enter() {}
 
     update(line, stack) {
         const atoms = line
@@ -851,7 +851,7 @@ class LeftRightValueLineRenderer {
         return 'line-left-right-value';
     }
 
-    enter(line) {}
+    enter() {}
 
     update(line, stack) {
         const values = [];
@@ -892,7 +892,7 @@ class ExpressionLineRenderer {
         return 'line-expression';
     }
 
-    enter(line) {}
+    enter() {}
 
     update(line, stack) {
         line.text((d) => d.expression.expression);
@@ -1038,15 +1038,15 @@ class ShellLineRenderer {
             highlighted: 0,
         };
         const form = line.select('form');
-        form.select('input').on('focusin', (e) => {
+        form.select('input').on('focusin', () => {
             form.select('ul').classed('focussed', true);
         });
-        form.select('input').on('focusout', (e) => {
+        form.select('input').on('focusout', () => {
             form.select('ul').classed('focussed', false);
         });
         form.on('keydown', (e) => {
             switch (e.key) {
-                case 'Tab':
+                case 'Tab': {
                     const node = form.select('input').node();
                     if (
                         state.highlighted >= 0 &&
@@ -1057,6 +1057,7 @@ class ShellLineRenderer {
                     }
                     e.preventDefault();
                     break;
+                }
             }
         });
         form.on('keyup', (e) => {
@@ -1124,7 +1125,7 @@ class ChoiceLineRenderer {
         return 'line-choice';
     }
 
-    enter(line) {}
+    enter() {}
 
     update(line, stack) {
         const atoms = line
@@ -1191,7 +1192,7 @@ class ErrorLineRenderer {
         return 'line-error';
     }
 
-    enter(line) {}
+    enter() {}
 
     update(line) {
         line.text((d) => d.error.error);
@@ -1282,7 +1283,7 @@ class UI {
         this.docked = [];
         this.openDockIndex = -1;
 
-        this.map.on('moveend', (e) => {
+        this.map.on('moveend', () => {
             this._updateBrowserState();
         });
     }
@@ -1355,7 +1356,7 @@ class UI {
 
     closeAllDocked() {
         const docked = this.dockTarget.selectAll('.stack');
-        const ui = this;
+
         docked.each(function () {
             if (this.__stack__) {
                 this.__stack__.removeFromMap();
@@ -1761,10 +1762,6 @@ function showFeatureAtPixel(pixel, locked, position, map, ui, logEvent) {
     );
 }
 
-function idKey(id) {
-    return `/${id[0]}/${id[1]}/${id[2]}`;
-}
-
 const idGeometryTypes = {
     Point: 'point',
     LineString: 'path',
@@ -1865,7 +1862,7 @@ function newQueryStyle(state, styles) {
         return styles.lookupStyle(`bucketed-${b}`);
     });
 
-    return function (feature, resolution) {
+    return function (feature) {
         if (feature.get('layer') != 'background') {
             const id = idKeyFromFeature(feature);
             const highlighted = state.highlighted[id];
@@ -2093,7 +2090,7 @@ const EventTypeWorldShell = 'ws';
 const EventTypeError = 'err';
 
 class NullEventLogger {
-    logEvent(type, options) {}
+    logEvent() {}
 }
 
 function setup(selector, startupResponse, logger) {

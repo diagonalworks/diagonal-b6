@@ -8,5 +8,6 @@
         "ecmaVersion": "latest",
         "sourceType": "module"
     },
-    "rules": {}
+    "rules": {},
+    "ignorePatterns": ["bundle.js"]
 }
