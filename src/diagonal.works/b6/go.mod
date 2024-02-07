@@ -1,17 +1,13 @@
 module diagonal.works/b6
 
-go 1.20
-
-// Use Diagonal's fork of gdal, which supports linux/arm64 for Docker
-// running on Apple silicon.
-replace github.com/lukeroth/gdal v0.0.0-20220614134811-3c605a05e283 => github.com/diagonalworks/gdal v0.0.0-20230425060405-b7726afc0d73
+go 1.21
 
 require (
 	github.com/apache/beam v2.32.0+incompatible
 	github.com/golang/geo v0.0.0-20190916061304-5b978397cfec
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/go-cmp v0.5.9
-	github.com/lukeroth/gdal v0.0.0-20220614134811-3c605a05e283
+	github.com/lukeroth/gdal v0.0.0-20230818145556-62d5095a1cda
 	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
 	golang.org/x/mod v0.10.0
 	golang.org/x/sync v0.1.0
