@@ -1,3 +1,3 @@
-import main from "./b6.js";
+import main from './b6.js';
 
-main("#b6");
+main('#b6');
