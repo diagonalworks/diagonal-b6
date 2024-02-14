@@ -16,7 +16,7 @@ RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build python-test
 RUN cd /build/python; python3 -m build
 RUN /build/bin/$TARGETOS/$TARGETARCH/b6-ingest-osm --input=/build/data/tests/camden.osm.pbf --output=/build/data/camden.index
 RUN /build/bin/$TARGETOS/$TARGETARCH/b6-connect --input=/build/data/camden.index --output=/build/data/camden.connected.index
-FROM ubuntu:jammy
+FROM ubuntu:mantic
 ARG TARGETOS
 ARG TARGETARCH
 COPY --from=b6-build /build/bin/$TARGETOS/$TARGETARCH/* /diagonal/bin/
