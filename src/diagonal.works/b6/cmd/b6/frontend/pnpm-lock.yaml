@@ -43,6 +43,9 @@ devDependencies:
   '@storybook/test':
     specifier: ^7.6.15
     version: 7.6.15
+  '@storybook/theming':
+    specifier: ^7.6.15
+    version: 7.6.15(react-dom@18.2.0)(react@18.2.0)
   '@types/argparse':
     specifier: ^2.0.14
     version: 2.0.14
@@ -94,6 +97,9 @@ devDependencies:
   postcss:
     specifier: ^8.4.35
     version: 8.4.35
+  prettier-plugin-organize-imports:
+    specifier: ^3.2.4
+    version: 3.2.4(prettier@2.8.8)(typescript@5.3.3)
   storybook:
     specifier: ^7.6.15
     version: 7.6.15
@@ -7338,6 +7344,23 @@ packages:
   /prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
+    dev: true
+
+  /prettier-plugin-organize-imports@3.2.4(prettier@2.8.8)(typescript@5.3.3):
+    resolution: {integrity: sha512-6m8WBhIp0dfwu0SkgfOxJqh+HpdyfqSSLfKKRZSFbDuEQXDDndb8fTpRWkUrX/uBenkex3MgnVk0J3b3Y5byog==}
+    peerDependencies:
+      '@volar/vue-language-plugin-pug': ^1.0.4
+      '@volar/vue-typescript': ^1.0.4
+      prettier: '>=2.0'
+      typescript: '>=2.9'
+    peerDependenciesMeta:
+      '@volar/vue-language-plugin-pug':
+        optional: true
+      '@volar/vue-typescript':
+        optional: true
+    dependencies:
+      prettier: 2.8.8
+      typescript: 5.3.3
     dev: true
 
   /prettier@2.8.8:
