@@ -4,7 +4,9 @@
         "build": "rollup -c",
         "start": "rollup -c --watch"
     },
-    "files": ["b6.js"],
+    "files": [
+        "b6.js"
+    ],
     "main": "b6.js",
     "module": "b6.js",
     "dependencies": {
@@ -15,5 +17,11 @@
         "ol": "^7.0.0",
         "pbf": "^3.2.1",
         "rollup-plugin-terser": "^7.0.2"
+    },
+    "devDependencies": {
+        "eslint": "^8.56.0",
+        "eslint-config-prettier": "^9.1.0",
+        "prettier": "3.2.5",
+        "prettier-plugin-organize-imports": "^3.2.4"
     }
 }
