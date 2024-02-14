@@ -79,6 +79,10 @@ github.com/googleapis/enterprise-certificate-proxy v0.2.3/go.mod h1:AwSRAtLfXpU5
 github.com/googleapis/gax-go/v2 v2.8.0 h1:UBtEZqx1bjXtOQ5BVTkuYghXrr3N4V123VKJK67vJZc=
 github.com/googleapis/gax-go/v2 v2.8.0/go.mod h1:4orTrqY6hXxxaUL4LHIPl6lGo8vAE38/qKbhSAKP6QI=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
+github.com/lukeroth/gdal v0.0.0-20230817233842-b938af96a129 h1:QCZOLtmFjADRWl+cFwdCabIp0e9YnbFQDmTJu7ZsWhs=
+github.com/lukeroth/gdal v0.0.0-20230817233842-b938af96a129/go.mod h1:u/R3dIULVNb+dWMOvaoa5GxHgN1rJi+TUKUlTOqU/MY=
+github.com/lukeroth/gdal v0.0.0-20230818145556-62d5095a1cda h1:k/GMO3p7c586UHhr1hxGNQfBBtBfYuaI+acah/CwaPA=
+github.com/lukeroth/gdal v0.0.0-20230818145556-62d5095a1cda/go.mod h1:u/R3dIULVNb+dWMOvaoa5GxHgN1rJi+TUKUlTOqU/MY=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
