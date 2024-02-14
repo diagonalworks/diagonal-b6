@@ -431,7 +431,6 @@ form.shell-form > input {
 }
 
 .line {
-    width: 282px;
     max-width: 282px;
     height: 20px;
     box-sizing: content-box;
@@ -713,7 +712,7 @@ form.shell-form > input {
 }
 
 .stack > .substack > .scrollable {
-    overflow-y: scroll;
+    overflow-y: auto;
     box-sizing: content-box;
     max-height: 269px;
 }
@@ -725,7 +724,7 @@ form.shell-form > input {
 }
 
 .stack > .substack.collapsable.collapsable-open > .scrollable {
-    overflow-y: scroll;
+    overflow-y: auto;
     max-height: 269px;
     transition: max-height 0.5s ease-in-out;
 }
