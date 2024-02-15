@@ -1,19 +1,23 @@
-
-import { ArgumentParser } from 'argparse';
-import fs from 'fs';
-import { figma } from './api';
 import { $IntentionalAny } from '@/utils/defs';
-import { rgb } from "d3-color"
-import { groupBy, mapValues } from "lodash"
-
+import { ArgumentParser } from 'argparse';
+import { rgb } from 'd3-color';
+import fs from 'fs';
+import { groupBy, mapValues } from 'lodash';
+import { figma } from './api';
 
 const main = async () => {
     const parser = new ArgumentParser({
-        description: "Download styles from Figma",
-      });
-    parser.add_argument('-f', '--file', { help: 'Figma file id', required: true });
-    parser.add_argument('-o', '--output', { help: 'Output file', required: true });
-    
+        description: 'Download color styles from Figma',
+    });
+    parser.add_argument('-f', '--file', {
+        help: 'Figma file id',
+        required: true,
+    });
+    parser.add_argument('-o', '--output', {
+        help: 'Output file',
+        required: true,
+    });
+
     const { file, output } = parser.parse_args();
     const api = figma();
 
@@ -29,20 +33,25 @@ const main = async () => {
                 document.fills[0].color.r * 255,
                 document.fills[0].color.g * 255,
                 document.fills[0].color.b * 255,
-                document.fills[0].color.a
-            ).formatHex()
-        }
-    })
+                document.fills[0].color.a,
+            ).formatHex(),
+        };
+    });
 
-    const colors = mapValues(groupBy(colorsFlat, (c) => c.name), (d) => {
-        return d.reduce((acc, curr) => ({ ...acc, [curr.shade]: curr.color }), {} as Record<string, string>)
-    })
-
+    const colors = mapValues(
+        groupBy(colorsFlat, (c) => c.name),
+        (d) => {
+            return d.reduce(
+                (acc, curr) => ({ ...acc, [curr.shade]: curr.color }),
+                {} as Record<string, string>,
+            );
+        },
+    );
 
     fs.writeFileSync(output, JSON.stringify(colors, null, 2));
-}
+};
 
 main().catch((error) => {
     console.error(error);
     process.exit(1);
-})
+});

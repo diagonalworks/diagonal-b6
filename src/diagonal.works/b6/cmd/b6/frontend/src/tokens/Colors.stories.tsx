@@ -19,23 +19,29 @@ const colorOrder = Object.entries(fullConfig.theme.colors)
     .map((c) => c.name);
 
 const sortedColors = Object.entries(fullConfig.theme.colors).sort(
-    ([aName], [bName]) => colorOrder.indexOf(aName) - colorOrder.indexOf(bName),
+    ([aName], [bName]) => colorOrder.indexOf(aName) - colorOrder.indexOf(bName)
 );
 
 export const Colors = () => {
     return (
-        <ColorPalette>
-            {sortedColors.map(([name, value]) => {
-                return (
-                    <ColorItem
-                        key={name}
-                        subtitle=""
-                        title={toTitleCase(name)}
-                        colors={value}
-                    />
-                );
-            })}
-        </ColorPalette>
+        <div className="flex flex-col gap-8">
+            <h1 className="pb-1 text-sm border-b text-violet-70 border-violet-70 ">
+                Colors
+            </h1>
+
+            <ColorPalette>
+                {sortedColors.map(([name, value]) => {
+                    return (
+                        <ColorItem
+                            key={name}
+                            subtitle=""
+                            title={toTitleCase(name)}
+                            colors={value}
+                        />
+                    );
+                })}
+            </ColorPalette>
+        </div>
     );
 };
 

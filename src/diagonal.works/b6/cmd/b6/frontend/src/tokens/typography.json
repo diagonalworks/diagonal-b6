@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Title large",
+    "fontFamily": "Unica 77 Trial",
+    "fontWeight": 500,
+    "fontSize": 16,
+    "lineHeight": 20
+  },
+  {
+    "name": "Title base",
+    "fontFamily": "Unica 77 Trial",
+    "fontWeight": 300,
+    "fontSize": 16,
+    "lineHeight": 20
+  },
+  {
+    "name": "Body medium",
+    "fontFamily": "Unica 77 Trial",
+    "fontWeight": 500,
+    "fontSize": 14,
+    "lineHeight": 20
+  },
+  {
+    "name": "Body base",
+    "fontFamily": "Unica 77 Trial",
+    "fontWeight": 400,
+    "fontSize": 14,
+    "lineHeight": 20
+  },
+  {
+    "name": "Title medium",
+    "fontFamily": "Unica 77 Trial",
+    "fontWeight": 400,
+    "fontSize": 16,
+    "lineHeight": 20
+  },
+  {
+    "name": "Body histogram",
+    "fontFamily": "Unica 77 Trial",
+    "fontWeight": 400,
+    "fontSize": 14,
+    "lineHeight": 16
+  }
+]

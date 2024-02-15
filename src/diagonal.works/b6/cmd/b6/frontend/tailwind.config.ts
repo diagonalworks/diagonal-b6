@@ -1,16 +1,21 @@
-import type { Config } from "tailwindcss";
-import colors from "./src/tokens/colors.json";
+import type { Config } from 'tailwindcss';
+import defaultTheme from 'tailwindcss/defaultTheme';
+import colors from './src/tokens/colors.json';
 
-const config: Config =  {
-    content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+const defaultFontFamily = ['"Unica 77"', ...defaultTheme.fontFamily.sans];
+
+const config: Config = {
+    content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
     theme: {
-       colors: {
-        ...colors
-       },
-       extend: {},
+        fontFamily: {
+            sans: defaultFontFamily,
+        },
+        colors: {
+            ...colors,
+        },
+        extend: {},
     },
     plugins: [],
 };
-
 
 export default config;
