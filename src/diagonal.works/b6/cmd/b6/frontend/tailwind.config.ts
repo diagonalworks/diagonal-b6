@@ -7,6 +7,7 @@ const defaultFontFamily = ['"Unica 77"', ...defaultTheme.fontFamily.sans];
 const config: Config = {
     content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
     theme: {
+        ...defaultTheme,
         fontFamily: {
             sans: defaultFontFamily,
         },
