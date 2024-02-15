@@ -3,6 +3,8 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"slices"
+	"sort"
 	"sync"
 
 	"diagonal.works/b6"
@@ -32,10 +34,14 @@ type Feature interface {
 
 	FeatureID() b6.FeatureID
 	SetFeatureID(id b6.FeatureID)
+
 	AddTag(tag b6.Tag)
 	SetTags(tags []b6.Tag)
 	ModifyOrAddTag(tag b6.Tag) (bool, string)
 	RemoveTag(key string)
+
+	References() []b6.Reference
+
 	Clone() Feature
 	MergeFrom(other Feature)
 }
@@ -120,6 +126,10 @@ func (p *PointFeature) Point() s2.Point {
 
 func (p *PointFeature) CellID() s2.CellID {
 	return s2.CellIDFromLatLng(p.Location)
+}
+
+func (p *PointFeature) References() []b6.Reference {
+	return []b6.Reference{}
 }
 
 func (p *PointFeature) Clone() Feature {
@@ -301,6 +311,17 @@ func (p *PathFeature) AllPoints(byID b6.LocationsByID) ([]s2.Point, error) {
 		}
 	}
 	return points, nil
+}
+
+func (p *PathFeature) References() []b6.Reference {
+	references := make([]b6.Reference, 0, p.Len())
+	for i := 0; i < p.Len(); i++ {
+		if id, ok := p.PointID(i); ok {
+			references = append(references, &indexedReference{id.FeatureID(), i})
+		}
+	}
+
+	return references
 }
 
 func (p *PathFeature) Clone() Feature {
@@ -509,6 +530,19 @@ func (a *AreaFeature) FillFromOSMWay(way *osm.Way) {
 	a.AreaMembers.FillFromOSMWay(way)
 }
 
+func (a *AreaFeature) References() []b6.Reference {
+	references := make([]b6.Reference, 0, a.Len())
+	for i := 0; i < a.Len(); i++ {
+		if ids, ok := a.PathIDs(i); ok {
+			for _, id := range ids {
+				references = append(references, id.FeatureID())
+			}
+		}
+	}
+
+	return references
+}
+
 func (a *AreaFeature) Clone() Feature {
 	return a.CloneAreaFeature()
 }
@@ -600,6 +634,15 @@ func (r *RelationFeature) Member(i int) b6.RelationMember {
 	return r.Members[i]
 }
 
+func (r *RelationFeature) References() []b6.Reference {
+	references := make([]b6.Reference, 0, len(r.Members))
+	for _, member := range r.Members {
+		references = append(references, member.ID)
+	}
+
+	return references
+}
+
 func (r *RelationFeature) Clone() Feature {
 	return r.CloneRelationFeature()
 }
@@ -652,6 +695,16 @@ type CollectionFeature struct {
 
 	Keys   []interface{}
 	Values []interface{}
+}
+
+func (c *CollectionFeature) References() []b6.Reference {
+	references := make([]b6.Reference, 0, len(c.Keys))
+	for _, key := range c.Keys {
+		if id, ok := key.(b6.Identifiable); ok {
+			references = append(references, id.FeatureID())
+		}
+	}
+	return references
 }
 
 func (c *CollectionFeature) Clone() Feature {
@@ -728,6 +781,10 @@ type ExpressionFeature struct {
 	b6.Expression
 }
 
+func (c *ExpressionFeature) References() []b6.Reference {
+	return []b6.Reference{}
+}
+
 func (e *ExpressionFeature) Clone() Feature {
 	return &ExpressionFeature{
 		ExpressionID: e.ExpressionID,
@@ -786,181 +843,56 @@ func (p *PathPosition) IsFirstOrLast() bool {
 	return p.Position == 0 || p.Position == p.Path.Len()-1
 }
 
-type FeaturesByID struct {
-	Points      map[b6.PointID]*PointFeature
-	Paths       map[b6.PathID]*PathFeature
-	Areas       map[b6.AreaID]*AreaFeature
-	Relations   map[b6.RelationID]*RelationFeature
-	Collections map[b6.CollectionID]*CollectionFeature
-	Expressions map[b6.ExpressionID]*ExpressionFeature
-
-	PointsFromOSMNodes map[uint64]s2.LatLng
-}
+type FeaturesByID map[b6.FeatureID]Feature
 
 func NewFeaturesByID() *FeaturesByID {
-	f := &FeaturesByID{
-		Points:      make(map[b6.PointID]*PointFeature),
-		Paths:       make(map[b6.PathID]*PathFeature),
-		Areas:       make(map[b6.AreaID]*AreaFeature),
-		Relations:   make(map[b6.RelationID]*RelationFeature),
-		Collections: make(map[b6.CollectionID]*CollectionFeature),
-		Expressions: make(map[b6.ExpressionID]*ExpressionFeature),
-	}
-	f.PointsFromOSMNodes = make(map[uint64]s2.LatLng)
-	return f
-}
-
-func (f *FeaturesByID) AddSimplePoint(id b6.PointID, ll s2.LatLng) {
-	if id.Namespace == b6.NamespaceOSMNode {
-		f.PointsFromOSMNodes[id.Value] = ll
-		delete(f.Points, id)
-	} else {
-		f.Points[id] = NewPointFeature(id, ll)
-	}
+	f := FeaturesByID(make(map[b6.FeatureID]Feature))
+	return &f
 }
 
 func (f *FeaturesByID) AddFeature(feature Feature) {
-	switch feature := feature.(type) {
-	case *PointFeature:
-		if feature.FeatureID().Namespace == b6.NamespaceOSMNode {
-			delete(f.PointsFromOSMNodes, feature.FeatureID().Value)
-		}
-		f.Points[feature.PointID] = feature
-	case *PathFeature:
-		f.Paths[feature.PathID] = feature
-	case *AreaFeature:
-		f.Areas[feature.AreaID] = feature
-	case *RelationFeature:
-		f.Relations[feature.RelationID] = feature
-	case *CollectionFeature:
-		f.Collections[feature.CollectionID] = feature
-	case *ExpressionFeature:
-		f.Expressions[feature.ExpressionID] = feature
-	}
-}
-
-func (f *FeaturesByID) findSimplePointByID(id b6.FeatureID) (s2.LatLng, bool) {
-	if id.Namespace == b6.NamespaceOSMNode {
-		ll, ok := f.PointsFromOSMNodes[id.Value]
-		return ll, ok
-	}
-	return s2.LatLng{}, false
+	(*f)[feature.FeatureID()] = feature
 }
 
 func (f *FeaturesByID) FindFeatureByID(id b6.FeatureID) b6.Feature {
-	switch id.Type {
-	case b6.FeatureTypePoint:
-		if ll, ok := f.findSimplePointByID(id); ok {
-			return WrapPointFeature(NewPointFeature(id.ToPointID(), ll))
-		}
-		if p, ok := f.Points[id.ToPointID()]; ok {
-			return WrapPointFeature(p)
-		}
-	case b6.FeatureTypePath:
-		if p, ok := f.Paths[id.ToPathID()]; ok {
-			return WrapPathFeature(p, f)
-		}
-	case b6.FeatureTypeArea:
-		if a, ok := f.Areas[id.ToAreaID()]; ok {
-			return WrapAreaFeature(a, f)
-		}
-	case b6.FeatureTypeRelation:
-		if r, ok := f.Relations[id.ToRelationID()]; ok {
-			return WrapRelationFeature(r, f)
-		}
-	case b6.FeatureTypeCollection:
-		if c, ok := f.Collections[id.ToCollectionID()]; ok {
-			return WrapCollectionFeature(c, f)
-		}
-	case b6.FeatureTypeExpression:
-		if e, ok := f.Expressions[id.ToExpressionID()]; ok {
-			return WrapExpressionFeature(e)
-		}
+	if feature, ok := (*f)[id]; ok {
+		return WrapFeature(feature, f)
 	}
+
 	return nil
 }
 
 func (f *FeaturesByID) HasFeatureWithID(id b6.FeatureID) bool {
-	switch id.Type {
-	case b6.FeatureTypePoint:
-		if _, ok := f.findSimplePointByID(id); ok {
-			return true
-		}
-		_, ok := f.Points[id.ToPointID()]
-		return ok
-	case b6.FeatureTypePath:
-		_, ok := f.Paths[id.ToPathID()]
-		return ok
-	case b6.FeatureTypeArea:
-		_, ok := f.Areas[id.ToAreaID()]
-		return ok
-	case b6.FeatureTypeRelation:
-		_, ok := f.Relations[id.ToRelationID()]
-		return ok
-	case b6.FeatureTypeCollection:
-		_, ok := f.Collections[id.ToCollectionID()]
-		return ok
-	case b6.FeatureTypeExpression:
-		_, ok := f.Expressions[id.ToExpressionID()]
-		return ok
-	}
-	return false
+	_, ok := (*f)[id]
+	return ok
 }
 
 func (f *FeaturesByID) FindMutableFeatureByID(id b6.FeatureID) Feature {
-	switch id.Type {
-	case b6.FeatureTypePoint:
-		if ll, ok := f.findSimplePointByID(id); ok {
-			mutable := NewPointFeature(id.ToPointID(), ll)
-			f.Points[id.ToPointID()] = mutable
-			delete(f.PointsFromOSMNodes, id.Value)
-			return mutable
-		}
-		if p, ok := f.Points[id.ToPointID()]; ok {
-			return p
-		}
-	case b6.FeatureTypePath:
-		if p, ok := f.Paths[id.ToPathID()]; ok {
-			return p
-		}
-	case b6.FeatureTypeArea:
-		if a, ok := f.Areas[id.ToAreaID()]; ok {
-			return a
-		}
-	case b6.FeatureTypeRelation:
-		if r, ok := f.Relations[id.ToRelationID()]; ok {
-			return r
-		}
-	case b6.FeatureTypeCollection:
-		if c, ok := f.Collections[id.ToCollectionID()]; ok {
-			return c
-		}
-	case b6.FeatureTypeExpression:
-		if e, ok := f.Expressions[id.ToExpressionID()]; ok {
-			return e
-		}
+	if feature, ok := (*f)[id]; ok {
+		return feature
 	}
+
 	return nil
 }
 
 func (f *FeaturesByID) FindLocationByID(id b6.PointID) (s2.LatLng, bool) {
-	if ll, ok := f.findSimplePointByID(id.FeatureID()); ok {
-		return ll, true
+	if feature, ok := (*f)[id.FeatureID()]; ok {
+		if pointFeature, ok := feature.(*PointFeature); ok {
+			return pointFeature.Location, true
+		}
 	}
-	if p, ok := f.Points[id]; ok {
-		return p.Location, true
-	}
+
 	return s2.LatLng{}, false
 }
 
-func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
+func EachFeature(each func(f b6.Feature, goroutine int) error, f *FeaturesByID, r *FeatureReferencesByID, options *b6.EachFeatureOptions) error {
 	wrap := func(feature Feature, goroutine int) error {
 		return each(WrapFeature(feature, f), goroutine)
 	}
-	return f.eachIngestFeature(wrap, options)
+	return eachIngestFeature(wrap, f, r, options)
 }
 
-func (f *FeaturesByID) eachIngestFeature(each func(f Feature, goroutine int) error, options *b6.EachFeatureOptions) error {
+func eachIngestFeature(each func(f Feature, goroutine int) error, f *FeaturesByID, r *FeatureReferencesByID, options *b6.EachFeatureOptions) error {
 	goroutines := options.Goroutines
 	if goroutines < 1 {
 		goroutines = 1
@@ -979,310 +911,142 @@ func (f *FeaturesByID) eachIngestFeature(each func(f Feature, goroutine int) err
 		})
 	}
 
-	f.feedFeatures(c, gc.Done(), options)
+	feedFeatures(c, gc.Done(), f, r, options)
 	close(c)
 	return g.Wait()
 }
 
-func (f *FeaturesByID) feedFeatures(c chan<- Feature, done <-chan struct{}, options *b6.EachFeatureOptions) {
-	if !options.SkipPoints {
-		for _, point := range f.Points {
-			select {
-			case <-done:
-				return
-			case c <- point:
-			}
-		}
+func feedFeatures(c chan<- Feature, done <-chan struct{}, f *FeaturesByID, r *FeatureReferencesByID, options *b6.EachFeatureOptions) {
+	features := make([]Feature, 0, len(*f))
+	for _, feature := range *f {
+		features = append(features, feature)
 	}
 
-	if !options.SkipPaths {
-		for _, path := range f.Paths {
-			select {
-			case <-done:
-				return
-			case c <- path:
-			}
-		}
+	if options.FeedReferencesFirst {
+		sort.Slice(features, func(i, j int) bool {
+			return len(r.FindReferences(features[i].FeatureID())) > len(r.FindReferences(features[j].FeatureID()))
+		})
 	}
 
-	if !options.SkipAreas {
-		for _, area := range f.Areas {
-			select {
-			case <-done:
-				return
-			case c <- area:
-			}
+	for _, feature := range features {
+		if options.SkipPoints && feature.FeatureID().Type == b6.FeatureTypePoint || // TODO(mari): make this nicer / like opts r types so we can one-line this
+			options.SkipPaths && feature.FeatureID().Type == b6.FeatureTypePath ||
+			options.SkipAreas && feature.FeatureID().Type == b6.FeatureTypeArea ||
+			options.SkipRelations && feature.FeatureID().Type == b6.FeatureTypeRelation ||
+			options.SkipCollections && feature.FeatureID().Type == b6.FeatureTypeCollection ||
+			options.SkipExpressions && feature.FeatureID().Type == b6.FeatureTypeExpression {
+			continue
 		}
-	}
 
-	if !options.SkipRelations {
-		for _, relation := range f.Relations {
-			select {
-			case <-done:
-				return
-			case c <- relation:
-			}
-		}
-	}
-
-	if !options.SkipCollections {
-		for _, collection := range f.Collections {
-			select {
-			case <-done:
-				return
-			case c <- collection:
-			}
-		}
-	}
-
-	if !options.SkipExpressions {
-		for _, expression := range f.Expressions {
-			select {
-			case <-done:
-				return
-			case c <- expression:
-			}
+		select {
+		case <-done:
+			return
+		case c <- feature:
 		}
 	}
 }
 
-type FeatureReferences struct {
-	RelationsByFeature   map[b6.FeatureID][]*RelationFeature
-	PathsByPoint         map[b6.PointID][]PathPosition
-	AreasByPath          map[b6.PathID][]*AreaFeature
-	CollectionsByFeature map[b6.FeatureID][]*CollectionFeature
+type IndexedReference interface {
+	b6.Reference
+	Index() int
+	SetIndex(i int)
 }
 
-func NewFeatureReferences() *FeatureReferences {
-	return &FeatureReferences{
-		RelationsByFeature:   make(map[b6.FeatureID][]*RelationFeature),
-		PathsByPoint:         make(map[b6.PointID][]PathPosition),
-		AreasByPath:          make(map[b6.PathID][]*AreaFeature),
-		CollectionsByFeature: make(map[b6.FeatureID][]*CollectionFeature),
-	}
+type indexedReference struct {
+	source b6.FeatureID
+	index  int
 }
 
-func NewFilledFeatureReferences(byID *FeaturesByID) *FeatureReferences {
+func (r *indexedReference) Source() b6.FeatureID {
+	return r.source
+}
+
+func (r *indexedReference) Index() int {
+	return r.index
+}
+
+func (r *indexedReference) SetIndex(i int) {
+	r.index = i
+}
+
+type FeatureReferencesByID map[b6.FeatureID][]b6.Reference
+
+func NewFeatureReferences() *FeatureReferencesByID {
+	f := FeatureReferencesByID(make(map[b6.FeatureID][]b6.Reference))
+	return &f
+}
+
+func NewFilledFeatureReferences(byID *FeaturesByID) *FeatureReferencesByID {
 	f := NewFeatureReferences()
-	for _, path := range byID.Paths {
-		f.AddPointsForPath(path)
-	}
 
-	for _, area := range byID.Areas {
-		f.AddPathsForArea(area)
-	}
-
-	for _, relation := range byID.Relations {
-		f.AddRelationsForFeature(relation)
-	}
-
-	for _, collection := range byID.Collections {
-		f.AddCollectionsForFeature(collection)
+	for _, feature := range *byID {
+		f.AddFeature(feature)
 	}
 
 	return f
 }
 
-func (f *FeatureReferences) AddFeature(feature Feature, byID b6.FeaturesByID) {
-	switch feature := feature.(type) {
-	case *PathFeature:
-		f.AddPointsForPath(feature)
-	case *AreaFeature:
-		f.AddPathsForArea(feature)
-	case *RelationFeature:
-		f.AddRelationsForFeature(feature)
-	case *CollectionFeature:
-		f.AddCollectionsForFeature(feature)
-	}
-}
-
-func (f *FeatureReferences) RemoveFeature(feature Feature, byID b6.FeaturesByID) {
-	switch feature := feature.(type) {
-	case *PathFeature:
-		f.RemovePointsForPath(feature)
-	case *AreaFeature:
-		f.RemovePathsForArea(feature)
-	case *RelationFeature:
-		f.RemoveRelationsForFeature(feature)
-	case *CollectionFeature:
-		f.RemoveCollectionsForFeature(feature)
-	}
-}
-
-// AreasForPoint returns the areas that reference the point id. The world w
-// is used to find the paths that reference the point, before finding the
-// areas that reference those paths.
-func (f *FeatureReferences) AreasForPoint(id b6.PointID, w b6.World) []*AreaFeature {
-	areasSeen := make(map[b6.AreaID]*AreaFeature)
-	paths := w.FindPathsByPoint(id)
-	for paths.Next() {
-		for _, a := range f.AreasForPath(paths.FeatureID().ToPathID()) {
-			areasSeen[a.AreaID] = a
-		}
-	}
-	areas := make([]*AreaFeature, 0, len(areasSeen))
-	for _, a := range areasSeen {
-		areas = append(areas, a)
-	}
-	return areas
-}
-
-func (f *FeatureReferences) AreasForPath(id b6.PathID) []*AreaFeature {
-	if areas, ok := f.AreasByPath[id]; ok {
-		return areas
-	}
-	return []*AreaFeature{}
-}
-
-func (f *FeatureReferences) RemovePointsForPath(p *PathFeature) {
-	for i := 0; i < p.Len(); i++ {
-		if id, ok := p.PointID(i); ok {
-			if paths := f.PathsByPoint[id]; paths != nil && len(paths) > 0 {
-				read := 0
-				write := 0
-				for read < len(paths) {
-					if paths[read].Path == p {
-						read++
-						continue
-					}
-					if read != write {
-						paths[write] = paths[read]
-					}
-					read++
-					write++
-				}
-				f.PathsByPoint[id] = paths[0:write]
-			}
+func (f *FeatureReferencesByID) findReferences(id b6.FeatureID, m *map[b6.Reference]bool) {
+	if references, ok := (*f)[id]; ok {
+		for _, reference := range references {
+			(*m)[reference] = true
+			f.findReferences(reference.Source(), m)
 		}
 	}
 }
 
-func (f *FeatureReferences) AddPointsForPath(p *PathFeature) {
-	for i := 0; i < p.Len(); i++ {
-		if id, ok := p.PointID(i); ok {
-			paths, ok := f.PathsByPoint[id]
-			if !ok {
-				paths = make([]PathPosition, 0, 1)
-			}
-			seen := false
-			for j := 0; j < len(paths); j++ {
-				if paths[j].Path == p {
-					paths[j].Position = i
-					seen = true
-					break
-				}
-			}
-			if !seen {
-				f.PathsByPoint[id] = append(paths, PathPosition{Path: p, Position: i})
-			}
+func (f *FeatureReferencesByID) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) []b6.Reference {
+	m := make(map[b6.Reference]bool)
+	f.findReferences(id, &m)
+
+	var references []b6.Reference
+	for reference := range m {
+		if len(typed) == 0 || slices.Contains(typed, reference.Source().Type) {
+			references = append(references, reference)
 		}
 	}
+
+	return references
 }
 
-func (f *FeatureReferences) RemovePathsForArea(a *AreaFeature) {
-	for i := 0; i < a.Len(); i++ {
-		if paths, ok := a.PathIDs(i); ok {
-			for _, id := range paths {
-				if areas := f.AreasByPath[id]; areas != nil && len(areas) > 0 {
-					read := 0
-					write := 0
-					for read < len(areas) {
-						if areas[read] == a {
-							read++
-							continue
-						}
-						if read != write {
-							areas[write] = areas[read]
-						}
-						read++
-						write++
-					}
-					f.AreasByPath[id] = areas[0:write]
-				}
-			}
-		}
-	}
-}
-
-func (f *FeatureReferences) AddPathsForArea(a *AreaFeature) {
-	for i := 0; i < a.Len(); i++ {
-		if ids, ok := a.PathIDs(i); ok {
-			for _, id := range ids {
-				areas, ok := f.AreasByPath[id]
-				if !ok {
-					areas = make([]*AreaFeature, 0, 1)
-				}
-				f.AreasByPath[id] = append(areas, a)
-			}
-		}
-	}
-}
-
-func (f *FeatureReferences) RemoveRelationsForFeature(r *RelationFeature) {
-	for _, member := range r.Members {
-		ids := f.RelationsByFeature[member.ID]
-		if len(ids) > 0 {
-			filtered := make([]*RelationFeature, 0, len(ids)-1)
-			for _, relation := range ids {
-				if relation != r {
-					filtered = append(filtered, relation)
-				}
-			}
-			f.RelationsByFeature[member.ID] = filtered
-		}
-	}
-}
-
-func (f *FeatureReferences) AddRelationsForFeature(r *RelationFeature) {
-	id := r.FeatureID()
-member:
-	for _, member := range r.Members {
-		relations, ok := f.RelationsByFeature[member.ID]
+func (f *FeatureReferencesByID) AddFeature(feature Feature) {
+	for index, reference := range feature.References() {
+		references, ok := (*f)[reference.Source()]
 		if !ok {
-			relations = make([]*RelationFeature, 0, 1)
+			references = make([]b6.Reference, 0, 1)
 		}
-		for _, rr := range relations {
-			if rr.FeatureID() == id {
-				continue member
-			}
-		}
-		f.RelationsByFeature[member.ID] = append(relations, r)
-	}
-}
 
-func (f *FeatureReferences) AddCollectionsForFeature(c *CollectionFeature) {
-	collectionID := c.FeatureID()
-each:
-	for _, key := range c.Keys {
-		if id, ok := key.(b6.Identifiable); ok {
-			collections, ok := f.CollectionsByFeature[id.FeatureID()]
-			if !ok {
-				collections = make([]*CollectionFeature, 0, 1)
-			}
-
-			for _, collection := range collections {
-				if collection.FeatureID() == collectionID {
-					continue each
+		referenced := false
+		for i := range references {
+			if references[i].Source() == feature.FeatureID() {
+				referenced = true
+				if reference, ok := (*f)[reference.Source()][i].(IndexedReference); ok { // Overwrite the index to deal with paths, which have duplicate start/end point.
+					reference.SetIndex(index) // Only applies to paths atm; we may need to limit if we introduce other indexed references. TODO: consider moving this logic further down.
 				}
 			}
+		}
 
-			f.CollectionsByFeature[id.FeatureID()] = append(collections, c)
+		if !referenced {
+			if _, ok := reference.(IndexedReference); ok {
+				(*f)[reference.Source()] = append(references, &indexedReference{feature.FeatureID(), index})
+			} else {
+				(*f)[reference.Source()] = append(references, feature.FeatureID())
+			}
 		}
 	}
 }
 
-func (f *FeatureReferences) RemoveCollectionsForFeature(c *CollectionFeature) {
-	for _, key := range c.Keys {
-		if id, ok := key.(b6.Identifiable); ok {
-			ids := f.CollectionsByFeature[id.FeatureID()]
-			if len(ids) > 0 {
-				filtered := make([]*CollectionFeature, 0, len(ids)-1)
-				for _, collection := range ids {
-					if collection != c {
-						filtered = append(filtered, collection)
+func (f *FeatureReferencesByID) RemoveFeature(feature Feature) {
+	for _, reference := range feature.References() {
+		if references, ok := (*f)[reference.Source()]; ok {
+			for i := range references {
+				if references[i].Source() == feature.FeatureID() {
+					if i == len(references)-1 {
+						(*f)[reference.Source()] = (*f)[reference.Source()][:i]
+					} else {
+						(*f)[reference.Source()] = append((*f)[reference.Source()][:i], (*f)[reference.Source()][i+1:]...)
 					}
 				}
-				f.CollectionsByFeature[id.FeatureID()] = filtered
 			}
 		}
 	}

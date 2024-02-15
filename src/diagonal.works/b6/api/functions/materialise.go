@@ -38,22 +38,20 @@ func materialise(context *api.Context, id b6.CollectionID, function api.Callable
 		return nil, fmt.Errorf("Failed to fill values: %s", err)
 	}
 
-	var expressions []*ingest.ExpressionFeature
+	var expressionFeature ingest.ExpressionFeature
 	if expression, ok := function.Expression(); ok {
-		expressions = append(expressions, &ingest.ExpressionFeature{
+		expressionFeature = ingest.ExpressionFeature{
 			ExpressionID: b6.ExpressionID{Namespace: id.Namespace, Value: id.Value},
 			Expression:   expression,
-		})
+		}
 	}
 
-	return &ingest.AddFeatures{
-		Collections: []*ingest.CollectionFeature{
-			{
-				CollectionID: id,
-				Keys:         keys,
-				Values:       values,
-			},
-		},
-		Expressions: expressions,
-	}, nil
+	collectionFeature := ingest.CollectionFeature{
+		CollectionID: id,
+		Keys:         keys,
+		Values:       values,
+	}
+
+	add := ingest.AddFeatures([]ingest.Feature{&expressionFeature, &collectionFeature})
+	return &add, nil
 }

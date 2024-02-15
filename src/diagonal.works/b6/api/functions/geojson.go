@@ -102,11 +102,7 @@ func parseGeoJSONFile(c *api.Context, filename string) (geojson.GeoJSON, error) 
 // IDs are formed from the given namespace, and the index of the feature
 // within the geojson collection (or 0, if a single feature is used).
 func importGeoJSON(c *api.Context, features geojson.GeoJSON, namespace string) (ingest.Change, error) {
-	add := &ingest.AddFeatures{
-		IDsToReplace: map[b6.Namespace]b6.Namespace{
-			b6.NamespacePrivate: b6.Namespace(namespace),
-		},
-	}
+	add := &ingest.AddFeatures{}
 	add.FillFromGeoJSON(features)
 	return add, nil
 }
@@ -139,11 +135,7 @@ func importGeoJSONFile(c *api.Context, filename string, namespace string) (inges
 	}
 	f.Close()
 
-	add := &ingest.AddFeatures{
-		IDsToReplace: map[b6.Namespace]b6.Namespace{
-			b6.NamespacePrivate: b6.Namespace(namespace),
-		},
-	}
+	add := &ingest.AddFeatures{}
 	add.FillFromGeoJSON(&collection)
 	return add, nil
 }

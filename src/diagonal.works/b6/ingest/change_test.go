@@ -11,13 +11,7 @@ import (
 func TestAddPoints(t *testing.T) {
 	p1 := NewPointFeature(FromOSMNodeID(6082053666), s2.LatLngFromDegrees(51.5366467, -0.1263796))
 	p2 := NewPointFeature(b6.MakePointID(b6.NamespacePrivate, 1), s2.LatLngFromDegrees(51.5351906, -0.1245464))
-
-	add := AddFeatures{
-		Points: []*PointFeature{p1, p2.ClonePointFeature()}, // Clone p2 as the ID is overwritten
-		IDsToReplace: map[b6.Namespace]b6.Namespace{
-			b6.NamespacePrivate: b6.NamespaceDiagonalEntrances,
-		},
-	}
+	add := AddFeatures([]Feature{p1, p2.ClonePointFeature()})
 
 	w := NewBasicMutableWorld()
 	applied, err := add.Apply(w)
@@ -52,17 +46,10 @@ func TestAddPaths(t *testing.T) {
 	path.SetPointID(0, p1.PointID)
 	path.SetPointID(1, p2.PointID)
 
-	add := AddFeatures{
-		Points: []*PointFeature{p2.ClonePointFeature()}, // Clone features as the ID is overwritten
-		Paths:  []*PathFeature{path.ClonePathFeature()},
-		IDsToReplace: map[b6.Namespace]b6.Namespace{
-			b6.NamespacePrivate:        b6.NamespaceDiagonalEntrances,
-			b6.NamespacePrivate + "/1": b6.NamespaceDiagonalAccessPoints,
-		},
-	}
+	add := AddFeatures([]Feature{p2.ClonePointFeature(), path.ClonePathFeature()})
 
 	w := NewBasicMutableWorld()
-	w.AddPoint(p1)
+	w.AddFeature(p1)
 
 	applied, err := add.Apply(w)
 	if err != nil {
@@ -110,19 +97,10 @@ func TestAddAreas(t *testing.T) {
 	area.AreaID = b6.MakeAreaID(b6.NamespacePrivate+"/2", 1)
 	area.SetPathIDs(0, []b6.PathID{path.PathID})
 
-	add := AddFeatures{
-		Points: []*PointFeature{p2.ClonePointFeature(), p3.ClonePointFeature()}, // Clone features as the ID is overwritten
-		Paths:  []*PathFeature{path.ClonePathFeature()},
-		Areas:  []*AreaFeature{area.CloneAreaFeature()},
-		IDsToReplace: map[b6.Namespace]b6.Namespace{
-			b6.NamespacePrivate:        b6.NamespaceDiagonalEntrances,
-			b6.NamespacePrivate + "/1": b6.NamespaceDiagonalAccessPoints,
-			b6.NamespacePrivate + "/2": b6.NamespaceUKONSBoundaries,
-		},
-	}
+	add := AddFeatures([]Feature{p2.ClonePointFeature(), p3.ClonePointFeature(), path.ClonePathFeature(), area.CloneAreaFeature()})
 
 	w := NewBasicMutableWorld()
-	w.AddPoint(p1)
+	w.AddFeature(p1)
 
 	applied, err := add.Apply(w)
 	if err != nil {
@@ -154,16 +132,10 @@ func TestAddRelations(t *testing.T) {
 	relation.Members[0] = b6.RelationMember{ID: p1.FeatureID()}
 	relation.Members[1] = b6.RelationMember{ID: p2.FeatureID()}
 
-	add := AddFeatures{
-		Points:    []*PointFeature{p1.ClonePointFeature(), p2.ClonePointFeature()}, // Clone features as the ID is overwritten
-		Relations: []*RelationFeature{relation.CloneRelationFeature()},
-		IDsToReplace: map[b6.Namespace]b6.Namespace{
-			b6.NamespacePrivate: b6.NamespaceDiagonalEntrances,
-		},
-	}
+	add := AddFeatures([]Feature{p1.ClonePointFeature(), p2.ClonePointFeature(), relation.CloneRelationFeature()})
 
 	w := NewBasicMutableWorld()
-	w.AddPoint(p1)
+	w.AddFeature(p1)
 
 	applied, err := add.Apply(w)
 	if err != nil {
@@ -189,9 +161,7 @@ func TestAddCollections(t *testing.T) {
 		Values:       []interface{}{"i dont need to be humble"},
 	}
 
-	add := AddFeatures{
-		Collections: []*CollectionFeature{&collection},
-	}
+	add := AddFeatures([]Feature{&collection})
 
 	w := NewBasicMutableWorld()
 
@@ -213,17 +183,14 @@ func TestMergeChanges(t *testing.T) {
 	ns := b6.Namespace("diagonal.works/test")
 	p1 := NewPointFeature(b6.MakePointID(ns, 1), s2.LatLngFromDegrees(51.5366467, -0.1263796))
 	p2 := NewPointFeature(b6.MakePointID(ns, 2), s2.LatLngFromDegrees(51.5351906, -0.1245464))
-	add1 := AddFeatures{
-		Points: []*PointFeature{p1, p2},
-	}
+
+	add1 := AddFeatures([]Feature{p1, p2})
 
 	path := NewPathFeature(2)
 	path.PathID = b6.MakePathID(ns, 3)
 	path.SetPointID(0, p1.PointID)
 	path.SetPointID(1, p2.PointID)
-	add2 := AddFeatures{
-		Paths: []*PathFeature{path},
-	}
+	add2 := AddFeatures([]Feature{path})
 
 	merged := MergedChange{&add1, &add2}
 	w := NewBasicMutableWorld()
@@ -248,17 +215,13 @@ func TestMergeChanges(t *testing.T) {
 func TestMergeChangesLeavesWorldUnmodfiedFollowingError(t *testing.T) {
 	ns := b6.Namespace("diagonal.works/test")
 	point := NewPointFeature(b6.MakePointID(ns, 1), s2.LatLngFromDegrees(51.5366467, -0.1263796))
-	add1 := AddFeatures{
-		Points: []*PointFeature{point},
-	}
+	add1 := AddFeatures([]Feature{point})
 
 	path := NewPathFeature(2)
 	path.PathID = b6.MakePathID(ns, 3)
 	path.SetPointID(0, b6.MakePointID(b6.Namespace("nonexistant"), 0))
 	path.SetPointID(1, b6.MakePointID(b6.Namespace("nonexistant"), 1))
-	add2 := AddFeatures{
-		Paths: []*PathFeature{path},
-	}
+	add2 := AddFeatures([]Feature{path})
 
 	merged := MergedChange{&add1, &add2}
 	w := NewBasicMutableWorld()

@@ -228,7 +228,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	w, err := compact.ReadWorld(*worldFlag, *coresFlag)
+	w, err := compact.ReadWorld(*worldFlag, &ingest.BuildOptions{Cores: *coresFlag})
 	if err != nil {
 		log.Fatal(err)
 	}

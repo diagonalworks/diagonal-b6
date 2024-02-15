@@ -461,6 +461,20 @@ func (f FeatureID) ToExpressionID() ExpressionID {
 	panic("Not an expression")
 }
 
+type Reference interface {
+	Source() FeatureID
+}
+
+func (f FeatureID) Source() FeatureID {
+	return f
+}
+
+func (f FeatureID) Index() (int, error) {
+	return -1, fmt.Errorf("index not available")
+}
+
+func (f FeatureID) SetIndex(i int) {}
+
 func FeatureIDFromString(s string) FeatureID {
 	if len(s) > 0 && s[0] == '/' {
 		s = s[1:]
@@ -1246,7 +1260,9 @@ type EachFeatureOptions struct {
 	SkipRelations   bool
 	SkipCollections bool
 	SkipExpressions bool
-	Goroutines      int
+
+	FeedReferencesFirst bool
+	Goroutines          int
 }
 
 func (e *EachFeatureOptions) IsSkipped(t FeatureType) bool {
@@ -1276,6 +1292,7 @@ type World interface {
 	FindCollectionsByFeature(id FeatureID) CollectionFeatures
 	FindPathsByPoint(id PointID) PathFeatures
 	FindAreasByPoint(id PointID) AreaFeatures
+	FindReferences(id FeatureID, typed ...FeatureType) Features
 	Traverse(id PointID) Segments
 	EachFeature(each func(f Feature, goroutine int) error, options *EachFeatureOptions) error
 
@@ -1316,6 +1333,10 @@ func (EmptyWorld) FindPathsByPoint(id PointID) PathFeatures {
 
 func (EmptyWorld) FindAreasByPoint(id PointID) AreaFeatures {
 	return EmptyAreaFeatures{}
+}
+
+func (EmptyWorld) FindReferences(id FeatureID, typed ...FeatureType) Features {
+	return EmptyFeatures{}
 }
 
 func (EmptyWorld) Traverse(id PointID) Segments {

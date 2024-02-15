@@ -12,10 +12,9 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func mergeOSM(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, base b6.World, w *World) error {
+func mergeOSM(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, base b6.World, w *World, o *ingest.BuildOptions) error {
 	osmSource := ingest.MemoryOSMSource{Nodes: nodes, Ways: ways, Relations: relations}
-	o := ingest.BuildOptions{Cores: 2}
-	source, err := ingest.NewFeatureSourceFromPBF(&osmSource, &o, context.Background())
+	source, err := ingest.NewFeatureSourceFromPBF(&osmSource, o, context.Background())
 	if err != nil {
 		return err
 	}
@@ -33,10 +32,10 @@ func mergeOSM(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, base b
 	return w.Merge(index)
 }
 
-func TestWorld(t *testing.T) {
-	build := func(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
+func TestValidateWorld(t *testing.T) {
+	build := func(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, o *ingest.BuildOptions) (b6.World, error) {
 		w := NewWorld()
-		return w, mergeOSM(nodes, ways, relations, nil, w)
+		return w, mergeOSM(nodes, ways, relations, nil, w, o)
 	}
 	ingest.ValidateWorld("Compact", build, t)
 }
@@ -78,11 +77,11 @@ func TestPathSegmentsWithSameNamespaceInMultipleBlocks(t *testing.T) {
 	}
 
 	w := NewWorld()
-	if err := mergeOSM(nodes, ways[0], []osm.Relation{}, nil, w); err != nil {
+	if err := mergeOSM(nodes, ways[0], []osm.Relation{}, nil, w, &ingest.BuildOptions{Cores: 2}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	if err := mergeOSM([]osm.Node{}, ways[1], []osm.Relation{}, w, w); err != nil {
+	if err := mergeOSM([]osm.Node{}, ways[1], []osm.Relation{}, w, w, &ingest.BuildOptions{Cores: 2}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -106,8 +105,7 @@ func TestPathSegmentsWithSameNamespaceInMultipleBlocks(t *testing.T) {
 
 func mustBuildCamdenForBenchmarks() b6.World {
 	pbf := ingest.PBFFilesOSMSource{Glob: test.Data(test.CamdenPBF), FailWhenNoFiles: true}
-	o := ingest.BuildOptions{Cores: 2}
-	source, err := ingest.NewFeatureSourceFromPBF(&pbf, &o, context.Background())
+	source, err := ingest.NewFeatureSourceFromPBF(&pbf, &ingest.BuildOptions{Cores: 2}, context.Background())
 	if err != nil {
 		panic(err)
 	}

@@ -8,6 +8,23 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+// TODO(mari): see if this can be more feature/agnostic; also we prob want to validate our references aren't circular in general
+func ValidateFeature(feature Feature, o *ValidateOptions, features b6.FeaturesByID) error {
+	if !feature.FeatureID().IsValid() {
+		return fmt.Errorf("%s: invalid ID", feature.FeatureID())
+	}
+
+	if feature.FeatureID().Type == b6.FeatureTypePath {
+		return ValidatePath(feature.(*PathFeature), o, features)
+	}
+
+	if feature.FeatureID().Type == b6.FeatureTypeArea {
+		return ValidateArea(feature.(*AreaFeature), features)
+	}
+
+	return nil
+}
+
 func ValidatePoint(p *PointFeature) error {
 	if !p.PointID.IsValid() {
 		return fmt.Errorf("%s: invalid ID", p.PointID)

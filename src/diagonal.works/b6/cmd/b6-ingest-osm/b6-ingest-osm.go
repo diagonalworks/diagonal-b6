@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"time"
 
 	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/ingest/compact"
@@ -39,9 +40,15 @@ func main() {
 		osmSource := ingest.PBFFilesOSMSource{Glob: *input}
 		var source ingest.FeatureSource
 		source, err = ingest.NewFeatureSourceFromPBF(&osmSource, &ingest.BuildOptions{Cores: *cores}, context.Background())
+		start := time.Now()
 		if err == nil {
 			err = compact.Build(source, &options)
 		}
+
+		fmt.Fprintln(os.Stdout, "Index Build time: ", time.Since(start).String())
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		fmt.Fprintln(os.Stdout, "Total Alloc MB: ", m.TotalAlloc/(1024*1024))
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())

@@ -8,64 +8,52 @@ import (
 	"diagonal.works/b6/osm"
 )
 
-func buildBasicWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
-	o := BuildOptions{Cores: 2}
-	return BuildWorldFromOSM(nodes, ways, relations, &o)
+func buildBasicWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, o *BuildOptions) (b6.World, error) {
+	return BuildWorldFromOSM(nodes, ways, relations, o)
 }
 
-func buildOverlayWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
+func buildOverlayWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, o *BuildOptions) (b6.World, error) {
 	// TODO: Interleave the elements to make two different worlds?
-	emptyWorld, err := buildBasicWorld([]osm.Node{}, []osm.Way{}, []osm.Relation{})
+	emptyWorld, err := buildBasicWorld([]osm.Node{}, []osm.Way{}, []osm.Relation{}, o)
 	if err != nil {
 		return nil, err
 	}
-	basic, err := buildBasicWorld(nodes, ways, relations)
+	basic, err := buildBasicWorld(nodes, ways, relations, o)
 	if err != nil {
 		return nil, err
 	}
 	return NewOverlayWorld(emptyWorld, basic), nil
 }
 
-func buildBasicMutableWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
-	o := BuildOptions{Cores: 2}
-	return BuildMutableWorldFromOSM(nodes, ways, relations, &o)
+func buildBasicMutableWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, o *BuildOptions) (b6.World, error) {
+	return BuildMutableWorldFromOSM(nodes, ways, relations, o)
 }
 
-func buildMutableOverlayWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
+func buildMutableOverlayWorld(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, o *BuildOptions) (b6.World, error) {
 	// TODO: Interleave the elements to make two different worlds?
-	basic, err := buildBasicWorld(nodes, ways, relations)
+	basic, err := buildBasicWorld(nodes, ways, relations, o)
 	if err != nil {
 		return nil, err
 	}
 	return NewMutableOverlayWorld(basic), nil
 }
 
-func buildMutableOverlayWorldOnBasic(nodes []osm.Node, ways []osm.Way, relations []osm.Relation) (b6.World, error) {
+func buildMutableOverlayWorldOnBasic(nodes []osm.Node, ways []osm.Way, relations []osm.Relation, o *BuildOptions) (b6.World, error) {
 	// TODO: Interleave the elements to make two different worlds?
-	basic, err := buildBasicWorld(nodes, ways, relations)
+	basic, err := buildBasicWorld(nodes, ways, relations, o)
 	if err != nil {
 		return nil, err
 	}
 	w := NewMutableOverlayWorld(basic)
 
 	osmSource := MemoryOSMSource{Nodes: nodes, Ways: ways, Relations: relations}
-	o := BuildOptions{Cores: 2}
-	source, err := NewFeatureSourceFromPBF(&osmSource, &o, context.Background())
+	source, err := NewFeatureSourceFromPBF(&osmSource, o, context.Background())
 	if err != nil {
 		return nil, err
 	}
 
 	emit := func(feature Feature, g int) error {
-		switch feature := feature.(type) {
-		case *PointFeature:
-			w.AddPoint(feature)
-		case *PathFeature:
-			w.AddPath(feature)
-		case *AreaFeature:
-			w.AddArea(feature)
-		case *RelationFeature:
-			w.AddRelation(feature)
-		}
+		w.AddFeature(feature)
 		return nil
 	}
 	options := ReadOptions{Goroutines: 2}

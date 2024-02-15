@@ -81,7 +81,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	b, err := compact.ReadWorld(*base, *cores)
+	b, err := compact.ReadWorld(*base, &ingest.BuildOptions{Cores: *cores})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func main() {
 	if *input == *base {
 		i = b
 	} else {
-		i, err = compact.ReadWorld(*input, *cores)
+		i, err = compact.ReadWorld(*input, &ingest.BuildOptions{Cores: *cores})
 		if err != nil {
 			log.Fatal(err)
 		}
