@@ -25,6 +25,7 @@
         "@storybook/addon-links": "^7.6.15",
         "@storybook/addon-onboarding": "^1.0.11",
         "@storybook/blocks": "^7.6.15",
+        "@storybook/manager-api": "^7.6.15",
         "@storybook/react": "^7.6.15",
         "@storybook/react-vite": "^7.6.15",
         "@storybook/test": "^7.6.15",
