@@ -13,6 +13,7 @@ const config: Config = {
         },
         colors: {
             ...colors,
+            white: 'white',
         },
         extend: {},
     },
