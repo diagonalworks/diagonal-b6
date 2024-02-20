@@ -54,7 +54,7 @@ export const SelectOption = React.forwardRef<
         <RadixSelect.Item
             {...props}
             className={twMerge(
-                'flex flex-row  items-center gap-2 bg-graphite-20 px-1 py-0.5 rounded data-[highlighted]:bg-graphite-30 data-[highlighted]:outline-none cursor-pointer ',
+                'flex flex-row items-center gap-2 bg-graphite-20 px-1 py-0.5 rounded data-[highlighted]:bg-graphite-30 data-[highlighted]:outline-none cursor-pointer ',
                 className
             )}
             ref={forwardedRef}

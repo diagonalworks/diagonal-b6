@@ -10,8 +10,13 @@ type Story = StoryObj<typeof LineComponent>;
 export const LabelledIcon: Story = {
     render: () => (
         <div className=" border border-graphite-30 border-dashed w-fit p-2">
-            <LabelledIconComponent slots={{ icon: <Shop /> }}>
-                Hello
+            <LabelledIconComponent>
+                <LabelledIconComponent.Icon>
+                    <Shop />
+                </LabelledIconComponent.Icon>
+                <LabelledIconComponent.Label>
+                    Collection
+                </LabelledIconComponent.Label>
             </LabelledIconComponent>
         </div>
     ),
@@ -51,7 +56,7 @@ export const Select: Story = {
 };
 
 const meta: Meta = {
-    title: 'Atoms/Atom',
+    title: 'Primitives/Atoms',
 };
 
 export default meta;

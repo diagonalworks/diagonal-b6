@@ -16,8 +16,11 @@ export const Line: Story = {
             <div>
                 <h3 className="mb-1">Line with Atoms</h3>
                 <LineComponent>
-                    <LabelledIcon slots={{ icon: <Shop /> }}>
-                        Hello
+                    <LabelledIcon>
+                        <LabelledIcon.Icon>
+                            <Shop />
+                        </LabelledIcon.Icon>
+                        <LabelledIcon.Label>Collection</LabelledIcon.Label>
                     </LabelledIcon>
                 </LineComponent>
             </div>
@@ -27,7 +30,7 @@ export const Line: Story = {
 
 const meta: Meta<typeof LineComponent> = {
     component: LineComponent,
-    title: 'Atoms/Line',
+    title: 'Primitives/Line',
 };
 
 export default meta;
