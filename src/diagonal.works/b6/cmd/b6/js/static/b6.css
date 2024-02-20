@@ -49,12 +49,12 @@
 }
 
 :root {
-    --bucket-0: #fff;
-    --bucket-1: #d0d1e6;
-    --bucket-2: #a6bddb;
-    --bucket-3: #74a9cf;
-    --bucket-4: #2b8cbe;
-    --bucket-5: #045a8d;
+    --bucket-0: #ffffff;
+    --bucket-1: #a9aec5;
+    --bucket-2: #9ccdeb;
+    --bucket-3: #bce6ee;
+    --bucket-4: #d6f5e6;
+    --bucket-5: #f4fde5;
 }
 
 html {
