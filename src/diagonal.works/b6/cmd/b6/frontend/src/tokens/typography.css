@@ -52,9 +52,9 @@
 
 @layer components {
     .base {
-        @apply text-sm;
+        @apply text-sm text-graphite-100;
     }
     .title {
-        @apply text-base;
+        @apply text-base text-graphite-100;
     }
 }

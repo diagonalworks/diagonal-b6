@@ -3,7 +3,34 @@ import { twMerge } from 'tailwind-merge';
 
 export interface LineProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-export const Line = React.forwardRef<HTMLDivElement, LineProps>(
+const Value = React.forwardRef<
+    HTMLSpanElement,
+    React.HTMLAttributes<HTMLSpanElement>
+>(
+    (
+        {
+            children,
+            className,
+            ...props
+        }: React.HTMLAttributes<HTMLSpanElement>,
+        forwardedRef
+    ) => {
+        return (
+            <span
+                {...props}
+                className={twMerge(
+                    'text-ultramarine-60 text-base text-right',
+                    className
+                )}
+                ref={forwardedRef}
+            >
+                {children}
+            </span>
+        );
+    }
+);
+
+const Root = React.forwardRef<HTMLDivElement, LineProps>(
     ({ children, className, ...props }: LineProps, forwardedRef) => {
         return (
             <div
@@ -19,3 +46,7 @@ export const Line = React.forwardRef<HTMLDivElement, LineProps>(
         );
     }
 );
+
+export const Line = Object.assign(Root, {
+    Value,
+});

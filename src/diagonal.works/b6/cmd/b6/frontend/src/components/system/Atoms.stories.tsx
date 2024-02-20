@@ -7,6 +7,14 @@ import { Select as SelectComponent } from './Select';
 
 type Story = StoryObj<typeof LineComponent>;
 
+export const LineValue: Story = {
+    render: () => (
+        <div className=" border border-graphite-30 border-dashed w-fit p-2">
+            <LineComponent.Value>73</LineComponent.Value>
+        </div>
+    ),
+};
+
 export const LabelledIcon: Story = {
     render: () => (
         <div className=" border border-graphite-30 border-dashed w-fit p-2">
