@@ -11,7 +11,7 @@ const Root = React.forwardRef<HTMLDivElement, LabelledIconProps>(
             <div
                 {...props}
                 className={twMerge(
-                    'flex gap-2 min-w-28 items-center text-graphite-100 overflow-hidden overflow-ellipsis whitespace-nowrap',
+                    'flex  gap-2 items-center text-graphite-100 overflow-hidden overflow-ellipsis whitespace-nowrap',
                     className
                 )}
                 ref={forwardedRef}

@@ -92,8 +92,8 @@ export const Line: Story = {
                             <SelectForStory type="grocery" />
                         </div>
                     </LineComponent>
-                    <LineComponent className="  ">
-                        <LabelledIcon className=" ">
+                    <LineComponent>
+                        <LabelledIcon>
                             <LabelledIcon.Icon>
                                 <Grocery />
                             </LabelledIcon.Icon>
