@@ -1,6 +1,7 @@
 import { Shop } from '@/assets/icons/circle';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
+import { Header as HeaderComponent } from './Header';
 import { LabelledIcon as LabelledIconComponent } from './LabelledIcon';
 import { Line as LineComponent } from './Line';
 import { Select as SelectComponent } from './Select';
@@ -61,6 +62,17 @@ const SelectStory = () => {
 
 export const Select: Story = {
     render: () => <SelectStory />,
+};
+
+export const Header: Story = {
+    render: () => (
+        <div className=" border border-graphite-30 border-dashed w-fit p-2">
+            <HeaderComponent>
+                <HeaderComponent.Label>Header</HeaderComponent.Label>
+                <HeaderComponent.Actions share close />
+            </HeaderComponent>
+        </div>
+    ),
 };
 
 const meta: Meta = {
