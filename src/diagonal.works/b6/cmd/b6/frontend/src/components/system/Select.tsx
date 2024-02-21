@@ -2,6 +2,7 @@ import { CheckIcon, ChevronDownIcon } from '@radix-ui/react-icons';
 import * as RadixSelect from '@radix-ui/react-select';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
+import { TooltipOverflow } from './TooltipOverflow';
 
 const SelectButton = React.forwardRef<
     React.ElementRef<typeof RadixSelect.Trigger>,
@@ -11,12 +12,16 @@ const SelectButton = React.forwardRef<
         <RadixSelect.Trigger
             {...props}
             className={twMerge(
-                'flex items-center gap-1 [&_svg]:data-[state=open]:rotate-180 bg-graphite-20 px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus-visible:ring-violet-50 focus:ring-offset-2 ',
+                'flex max-w-20 items-center gap-1 [&_svg]:data-[state=open]:rotate-180 bg-graphite-20 px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus-visible:ring-violet-50 focus:ring-offset-2 ',
                 className
             )}
             ref={forwardedRef}
         >
-            {children}
+            <TooltipOverflow>
+                <span className="flex-1">
+                    <Select.Primitive.Value>{children}</Select.Primitive.Value>
+                </span>
+            </TooltipOverflow>
             <RadixSelect.Icon>
                 <ChevronDownIcon className="transition-transform text-violet-50 " />
             </RadixSelect.Icon>

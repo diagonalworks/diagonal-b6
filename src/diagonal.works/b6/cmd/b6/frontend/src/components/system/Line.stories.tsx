@@ -1,9 +1,49 @@
-import { Shop } from '@/assets/icons/circle';
+import { Grocery, School, Shop } from '@/assets/icons/circle';
 import type { Meta, StoryObj } from '@storybook/react';
+import { useState } from 'react';
 import { LabelledIcon } from './LabelledIcon';
 import { Line as LineComponent } from './Line';
+import { Select } from './Select';
 
 type Story = StoryObj<typeof LineComponent>;
+
+const SELECT_OPTIONS = {
+    travel: [
+        { value: '15-walk', label: '15 min walk' },
+        { value: '30-walk', label: '30 min walk' },
+        { value: '20-bus', label: '20 min bus' },
+    ],
+
+    grocery: [
+        { value: 'all', label: 'all' },
+        { value: 'convenience', label: 'convenience shops' },
+        { value: 'comparison', label: 'comparison shops' },
+    ],
+};
+
+const SelectForStory = ({ type }: { type: 'travel' | 'grocery' }) => {
+    const options = SELECT_OPTIONS[type];
+    const [value, setValue] = useState(options[0].value);
+
+    const label = (value: string) => {
+        return options.find((option) => option.value === value)?.label ?? '';
+    };
+
+    return (
+        <Select value={value} onValueChange={setValue}>
+            <Select.Button className="whitespace-nowrap">
+                {label(value)}
+            </Select.Button>
+            <Select.Options>
+                {options.map((option) => (
+                    <Select.Option key={option.value} value={option.value}>
+                        {option.label}
+                    </Select.Option>
+                ))}
+            </Select.Options>
+        </Select>
+    );
+};
 
 export const Line: Story = {
     render: () => (
@@ -14,7 +54,7 @@ export const Line: Story = {
                 </div>
             </LineComponent>
             <div>
-                <h3 className="mb-1">Line with Atoms</h3>
+                <h3 className="mb-1">Lines with Atoms</h3>
                 <LineComponent>
                     <LabelledIcon>
                         <LabelledIcon.Icon>
@@ -22,6 +62,29 @@ export const Line: Story = {
                         </LabelledIcon.Icon>
                         <LabelledIcon.Label>Collection</LabelledIcon.Label>
                     </LabelledIcon>
+                </LineComponent>
+                <LineComponent className="justify-between">
+                    <LabelledIcon>
+                        <LabelledIcon.Icon>
+                            <School />
+                        </LabelledIcon.Icon>
+                        <LabelledIcon.Label>Schools</LabelledIcon.Label>
+                    </LabelledIcon>
+                    <LineComponent.Value>3</LineComponent.Value>
+                </LineComponent>
+                <LineComponent>
+                    <LabelledIcon>
+                        <LabelledIcon.Icon>
+                            <Grocery />
+                        </LabelledIcon.Icon>
+                        <LabelledIcon.Label>
+                            a very long collection name
+                        </LabelledIcon.Label>
+                    </LabelledIcon>
+                    <div className="flex items-center gap-1">
+                        <SelectForStory type="travel" />
+                        <SelectForStory type="grocery" />
+                    </div>
                 </LineComponent>
             </div>
         </div>

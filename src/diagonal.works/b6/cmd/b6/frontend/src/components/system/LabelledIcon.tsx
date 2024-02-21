@@ -1,5 +1,6 @@
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
+import { TooltipOverflow } from './TooltipOverflow';
 
 export interface LabelledIconProps
     extends React.HTMLAttributes<HTMLDivElement> {}
@@ -10,7 +11,7 @@ const Root = React.forwardRef<HTMLDivElement, LabelledIconProps>(
             <div
                 {...props}
                 className={twMerge(
-                    'flex gap-2 items-center text-graphite-100 w-fit ',
+                    'flex gap-2 items-center text-graphite-100 w-fit overflow-hidden overflow-ellipsis whitespace-nowrap',
                     className
                 )}
                 ref={forwardedRef}
@@ -41,13 +42,15 @@ export const Label = React.forwardRef<
     React.HTMLAttributes<HTMLSpanElement>
 >(({ children, className, ...props }, forwardedRef) => {
     return (
-        <span
-            {...props}
-            ref={forwardedRef}
-            className={twMerge('text-graphite-100 text-base', className)}
-        >
-            {children}
-        </span>
+        <TooltipOverflow>
+            <span
+                {...props}
+                ref={forwardedRef}
+                className={twMerge('text-graphite-100 text-base', className)}
+            >
+                {children}
+            </span>
+        </TooltipOverflow>
     );
 });
 
