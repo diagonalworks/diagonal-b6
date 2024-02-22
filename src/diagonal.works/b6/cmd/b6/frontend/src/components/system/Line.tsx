@@ -36,7 +36,7 @@ const Root = React.forwardRef<HTMLDivElement, LineProps>(
             <div
                 {...props}
                 className={twMerge(
-                    'p-3 border flex items-center gap-1 max-w-80 min-h-11 border-graphite-30 hover:bg-graphite-10 cursor-default',
+                    'line p-3 border flex items-center gap-1 max-w-80 min-h-11 box-border border-graphite-30 bg-white hover:bg-graphite-10 cursor-default',
                     className
                 )}
                 ref={forwardedRef}

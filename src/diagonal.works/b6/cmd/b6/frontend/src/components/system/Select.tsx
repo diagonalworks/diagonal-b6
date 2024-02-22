@@ -12,7 +12,7 @@ const SelectButton = React.forwardRef<
         <RadixSelect.Trigger
             {...props}
             className={twMerge(
-                'flex min-w-12 whitespace-nowrap items-center gap-1 [&_svg]:data-[state=open]:rotate-180 bg-graphite-20 px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus-visible:ring-violet-50 focus:ring-offset-2 ',
+                'flex min-w-12 whitespace-nowrap items-center gap-1 [&_svg]:data-[state=open]:rotate-180 bg-graphite-20 px-1  font-light rounded focus:outline-none focus:ring-2 focus-visible:ring-violet-50 focus:ring-offset-2 ',
                 className
             )}
             ref={forwardedRef}

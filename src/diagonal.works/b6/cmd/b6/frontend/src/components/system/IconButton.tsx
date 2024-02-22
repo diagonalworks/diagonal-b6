@@ -10,7 +10,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
             <button
                 {...props}
                 className={twMerge(
-                    'flex items-center justify-center p-2 rounded-full text-graphite-80  hover:bg-graphite-20',
+                    'flex items-center justify-center p-1 rounded-full text-graphite-80  hover:bg-graphite-20',
                     className
                 )}
                 ref={forwardedRef}

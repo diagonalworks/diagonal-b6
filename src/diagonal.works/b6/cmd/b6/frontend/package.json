@@ -12,9 +12,10 @@
         "build-storybook": "storybook build",
         "design:colors": "bun src/scripts/figma/colors.ts -f b4AjeD0RMn75NF3tyuPrHx -o src/tokens/colors.json",
         "design:typography": "bun src/scripts/figma/typography.ts -f L3ZBxyipqdj4zs4zjLDoiT -o src/tokens/typography.css -r src/tokens/typography.json",
-        "design:icons:transform": "svgr --config-file .svgrrc --icon 20 src/assets/icons/circle/svg -d src/assets/icons/circle && svgr --config-file .svgrrc --icon 20 src/assets/icons/solid/svg -d src/assets/icons/solid"
+        "design:icons:transform": "svgr --config-file .svgrrc --icon 18 src/assets/icons/circle/svg -d src/assets/icons/circle && svgr --config-file .svgrrc --icon 20 src/assets/icons/solid/svg -d src/assets/icons/solid"
     },
     "dependencies": {
+        "@radix-ui/react-collapsible": "^1.0.3",
         "@radix-ui/react-icons": "^1.3.0",
         "@radix-ui/react-select": "^2.0.0",
         "@radix-ui/react-tooltip": "^1.0.7",
