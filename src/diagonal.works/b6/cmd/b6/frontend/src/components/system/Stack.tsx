@@ -3,16 +3,52 @@ import { AnimatePresence, motion } from 'framer-motion';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
+const StackContext = React.createContext<{
+    collapsible: boolean;
+}>({
+    collapsible: true,
+});
+
+const useStackContext = () => {
+    return React.useContext(StackContext);
+};
+
+const Root = React.forwardRef<
+    HTMLDivElement,
+    CollapsiblePrimitive.CollapsibleProps &
+        React.HTMLAttributes<HTMLDivElement> & { collapsible?: boolean }
+>(({ children, className, ...props }, forwardedRef) => {
+    return (
+        <StackContext.Provider
+            value={{ collapsible: props.collapsible ?? false }}
+        >
+            <CollapsiblePrimitive.Root
+                {...props}
+                ref={forwardedRef}
+                className={twMerge('line-stack', className)}
+                open={props.collapsible ? props.open : true}
+            >
+                {children}
+            </CollapsiblePrimitive.Root>
+        </StackContext.Provider>
+    );
+});
+
 const Trigger = React.forwardRef<
     HTMLButtonElement,
     CollapsiblePrimitive.CollapsibleTriggerProps &
         React.RefAttributes<HTMLButtonElement>
 >(({ children, className, ...props }, forwardedRef) => {
+    const { collapsible } = useStackContext();
+
     return (
         <CollapsiblePrimitive.Trigger
             {...props}
             ref={forwardedRef}
-            className={twMerge('cursor-pointer select-none', className)}
+            className={twMerge(
+                collapsible && 'cursor-pointer select-none',
+                className
+            )}
         >
             {children}
         </CollapsiblePrimitive.Trigger>
@@ -47,7 +83,7 @@ const Content = React.forwardRef<
     );
 });
 
-export const Stack = Object.assign(CollapsiblePrimitive.Root, {
+export const Stack = Object.assign(Root, {
     Trigger,
     Content,
 });

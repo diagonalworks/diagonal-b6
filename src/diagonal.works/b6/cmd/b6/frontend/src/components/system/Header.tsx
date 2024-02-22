@@ -36,8 +36,8 @@ const Label = React.forwardRef<
 const Actions = React.forwardRef<
     HTMLDivElement,
     Omit<HtmlHTMLAttributes<HTMLDivElement>, 'children'> & {
-        share?: boolean;
-        close?: boolean;
+        share: boolean;
+        close: boolean;
     }
 >(({ className, ...props }, forwardedRef) => {
     return (

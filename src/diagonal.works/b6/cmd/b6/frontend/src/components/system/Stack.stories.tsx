@@ -12,11 +12,15 @@ const meta: Meta<typeof StackComponent> = {
     title: 'Primitives/Stack',
 };
 
-const StackStory = () => {
+const StackStory = ({ collapsible }: { collapsible?: boolean }) => {
     const [open, setOpen] = useState(false);
 
     return (
-        <StackComponent open={open} onOpenChange={setOpen}>
+        <StackComponent
+            open={open}
+            onOpenChange={setOpen}
+            collapsible={collapsible}
+        >
             <StackComponent.Trigger asChild>
                 <Line>
                     <Header>
@@ -55,8 +59,12 @@ const StackStory = () => {
     );
 };
 
-export const Stack: Story = {
+export const Default: Story = {
     render: () => <StackStory />,
+};
+
+export const Collapsible: Story = {
+    render: () => <StackStory collapsible />,
 };
 
 export default meta;
