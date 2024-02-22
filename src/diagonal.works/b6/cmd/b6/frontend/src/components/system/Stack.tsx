@@ -25,7 +25,11 @@ const Root = React.forwardRef<
             <CollapsiblePrimitive.Root
                 {...props}
                 ref={forwardedRef}
-                className={twMerge('line-stack', className)}
+                className={twMerge(
+                    props.open &&
+                        'border border-graphite-50 transition-colors w-fit  ',
+                    className
+                )}
                 open={props.collapsible ? props.open : true}
             >
                 {children}
@@ -72,7 +76,7 @@ const Content = React.forwardRef<
                     exit={{ height: 0, y: -5 }}
                     transition={{ duration: 0.5, type: 'spring' }}
                     className={twMerge(
-                        'text-base overflow-hidden [&_.line]:border-t-0',
+                        'text-base overflow-hidden [&_.line]:border-t-0 max-h-64 overflow-y-auto',
                         className
                     )}
                 >

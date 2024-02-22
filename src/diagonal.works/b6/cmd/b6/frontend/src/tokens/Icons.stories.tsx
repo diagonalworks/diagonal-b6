@@ -55,6 +55,8 @@ export const Icons = () => {
                                         'fill-graphite-50',
                                         selectedColor?.fill
                                     )}
+                                    width={20}
+                                    height={20}
                                 />
                                 <span className="text-xs text-graphite-50">
                                     {key}

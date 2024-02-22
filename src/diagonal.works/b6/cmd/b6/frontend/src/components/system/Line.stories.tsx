@@ -1,4 +1,5 @@
 import { Grocery, School, Shop } from '@/assets/icons/circle';
+import { Dot } from '@/assets/icons/solid';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { Header } from './Header';
@@ -111,6 +112,18 @@ export const Line: Story = {
                             <Header.Label>Header</Header.Label>
                             <Header.Actions close share />
                         </Header>
+                    </LineComponent>
+                    <LineComponent>
+                        <LineComponent.Button>
+                            <LabelledIcon>
+                                <LabelledIcon.Icon>
+                                    <Dot className=" fill-ultramarine-60" />
+                                </LabelledIcon.Icon>
+                                <LabelledIcon.Label>
+                                    Collection
+                                </LabelledIcon.Label>
+                            </LabelledIcon>
+                        </LineComponent.Button>
                     </LineComponent>
                 </div>
             </div>

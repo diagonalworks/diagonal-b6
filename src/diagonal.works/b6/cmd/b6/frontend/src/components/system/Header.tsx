@@ -1,4 +1,4 @@
-import { Cross1Icon, Share1Icon } from '@radix-ui/react-icons';
+import { Cross1Icon, Link2Icon } from '@radix-ui/react-icons';
 import React, { HtmlHTMLAttributes } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { IconButton } from './IconButton';
@@ -48,7 +48,7 @@ const Actions = React.forwardRef<
         >
             {props.share && (
                 <IconButton>
-                    <Share1Icon />
+                    <Link2Icon />
                 </IconButton>
             )}
             {props.close && (

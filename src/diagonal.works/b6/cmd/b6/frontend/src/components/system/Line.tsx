@@ -1,3 +1,4 @@
+import { PlusIcon } from '@radix-ui/react-icons';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
@@ -30,13 +31,32 @@ const Value = React.forwardRef<
     }
 );
 
+const Button = React.forwardRef<
+    HTMLButtonElement,
+    React.HTMLAttributes<HTMLButtonElement>
+>(({ children, className, ...props }, forwardedRef) => {
+    return (
+        <button
+            {...props}
+            className={twMerge(
+                'line-button flex items-center gap-1 w-full justify-between',
+                className
+            )}
+            ref={forwardedRef}
+        >
+            {children}
+            <PlusIcon />
+        </button>
+    );
+});
+
 const Root = React.forwardRef<HTMLDivElement, LineProps>(
     ({ children, className, ...props }: LineProps, forwardedRef) => {
         return (
             <div
                 {...props}
                 className={twMerge(
-                    'line p-3 border flex items-center gap-1 max-w-80 min-h-11 box-border border-graphite-30 bg-white hover:bg-graphite-10 cursor-default',
+                    'line p-3 border flex items-center gap-1 w-80 min-h-11 box-border border-graphite-30 bg-white hover:bg-graphite-10 cursor-default has-[.line-button]:cursor-pointer',
                     className
                 )}
                 ref={forwardedRef}
@@ -49,4 +69,5 @@ const Root = React.forwardRef<HTMLDivElement, LineProps>(
 
 export const Line = Object.assign(Root, {
     Value,
+    Button,
 });
