@@ -242,6 +242,11 @@ var functionAdaptors = []interface{}{
 			}
 		}
 	},
+	func(c api.Callable) func(*api.Context, b6.Feature) (interface{}, error) {
+		return func(context *api.Context, f b6.Feature) (interface{}, error) {
+			return api.Call1(context, f, c)
+		}
+	},
 	func(c api.Callable) func(*api.Context, b6.Feature) (bool, error) {
 		return func(context *api.Context, f b6.Feature) (bool, error) {
 			if result, err := api.Call1(context, f, c); result != nil {
