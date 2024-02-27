@@ -101,10 +101,10 @@ const main = async () => {
 
 @layer components {
     .base {
-    @apply ${getFontSizeStyle(body?.fontSize ?? 14)};
+    @apply ${getFontSizeStyle(body?.fontSize ?? 14)} text-graphite-100;
     }
     .title {
-    @apply ${getFontSizeStyle(title?.fontSize ?? 16)};
+    @apply ${getFontSizeStyle(title?.fontSize ?? 16)} text-graphite-100;
     }
 }`;
 
