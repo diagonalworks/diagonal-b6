@@ -91,7 +91,7 @@ type Callable interface {
 	// result at the top of the stack.
 	// Scratch is a temporary buffer used to avoid allocations.
 	CallFromStack(context *Context, n int, scratch []reflect.Value) ([]reflect.Value, error)
-	// Call a function using arguments passed to yhe method. Scratch is a temporary
+	// Call a function using arguments passed to the method. Scratch is a temporary
 	// buffer used to avoid allocations. Execution happens in the VM specified by
 	// the context, and the stack is left unmodified.
 	CallWithArgs(context *Context, args []interface{}, scratch []reflect.Value) (interface{}, []reflect.Value, error)

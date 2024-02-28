@@ -3,6 +3,7 @@ package renderer
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -57,16 +58,21 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 	}
 	q, ok := v.(b6.Query)
 	if !ok {
-		return nil, fmt.Errorf("Expected a Query, found %T", v)
+		return nil, fmt.Errorf("expected a Query, found %T", v)
 	}
 
-	var fv func(interface{}) (interface{}, error)
+	var fv func(*api.Context, b6.Feature) (interface{}, error)
 	if args.V != "" {
 		v, err := api.EvaluateString(args.V, &context)
 		if err != nil {
 			return nil, err
 		}
-		fv = v.(func(interface{}) (interface{}, error))
+
+		if c, ok := v.(api.Callable); ok {
+			fv = c.ToFunctionValue(reflect.TypeOf(fv), &context).Interface().(func(*api.Context, b6.Feature) (interface{}, error))
+		} else {
+			return nil, fmt.Errorf("expected %q to return a function", args.V)
+		}
 	}
 
 	bounds := tile.RectBound()
@@ -84,7 +90,7 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 			}
 		}
 		if fv != nil {
-			if v, err := fv(f); err == nil {
+			if v, err := fv(&context, f); err == nil {
 				switch v := v.(type) {
 				case int:
 					tags = append(tags, b6.Tag{Key: "v", Value: fmt.Sprintf("%d", v)})
@@ -93,12 +99,12 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 				case fmt.Stringer:
 					tags = append(tags, b6.Tag{Key: "v", Value: v.String()})
 				}
-				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{})
+				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{Label: true})
 			} else {
-				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{})
+				return nil, err
 			}
 		} else {
-			rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{})
+			rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{Label: true})
 		}
 		n++
 		if n > QueryRendererMaxFeaturesPerTile {
