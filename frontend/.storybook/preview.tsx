@@ -6,6 +6,11 @@ import '../src/tokens/typography.css';
 
 const preview: Preview = {
     parameters: {
+        options: {
+            storySort: {
+                order: ['Tokens', 'Primitives', 'Components'],
+            },
+        },
         actions: { argTypesRegex: '^on[A-Z].*' },
         controls: {
             matchers: {
