@@ -1,45 +1,63 @@
+import { useChartDimensions } from '@/lib/useChartDimensions';
 import { scaleLinear } from '@visx/scale';
 import { Text } from '@visx/text';
 import { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from './Line';
 
+const BAR_MARGIN = {
+    marginTop: 1, // 1px to make space for the border
+    marginRight: 24,
+    marginBottom: 1,
+    marginLeft: 1,
+};
+const BAR_HEIGHT = 4;
+
+/**
+ * Histogram component.
+ * This component is used to display a histogram. It can be used with or without selection. The
+ * selection can be controlled by the parent component or it can be controlled by the component
+ * itself.
+ */
 export function Histogram<T>({
     data,
     bucket,
     value,
     color,
     label,
-    width = 200,
-    margin = { top: 5, right: 0, bottom: 0, left: 20 },
     selected,
     onSelect,
     selectable = false,
 }: {
+    /** The data to display. */
     data: T[];
+    /** The accessor function for the bucket. */
     bucket: (d: T) => string;
+    /** The accessor function for the value. */
     value: (d: T) => number;
+    /** The accessor function for the color. */
     color: (d: T) => string;
+    /** The accessor function for the label. */
     label?: (d: T) => string;
     selectable?: boolean;
+    /** Optional controlled state for the value of the selected bucket. */
     selected?: T | null;
+    /** Optional change handler for the value of the selected bucket. */
     onSelect?: (d: T | null) => void;
-    width?: number;
-    margin?: { top: number; right: number; bottom: number; left: number };
+    /** The width of the histogram. */
 }) {
     const [internalSelected, setInternalSelected] = useState<T | null>(null);
-
-    const boundedWidth = useMemo(
-        () => width - margin.left - margin.right,
-        [width, margin.left, margin.right]
-    );
+    const [ref, dimensions] = useChartDimensions({
+        ...BAR_MARGIN,
+        height: BAR_HEIGHT + BAR_MARGIN.marginTop + BAR_MARGIN.marginBottom,
+    });
 
     const xScale = useMemo(() => {
         return scaleLinear({
             domain: [0, Math.max(...data.map(value))],
-            range: [0, boundedWidth],
+            range: [0, dimensions.boundedWidth],
         });
-    }, [data, boundedWidth, value]);
+    }, [data, dimensions.boundedWidth, value]);
 
     const selectedBucket = selectable ? selected ?? internalSelected : null;
 
@@ -66,10 +84,11 @@ export function Histogram<T>({
                         onClick={(e) =>
                             selectable ? handleClick(e, d) : undefined
                         }
+                        ref={ref}
                     >
                         <div
                             className={twMerge(
-                                'transition-opacity',
+                                'transition-opacity w-full',
                                 selectedBucket && !isSelected && 'opacity-50'
                             )}
                         >
@@ -85,15 +104,15 @@ export function Histogram<T>({
                                 </span>
                             </div>
                             <svg
-                                width={width}
-                                height={4 + 2}
+                                width={dimensions.width}
+                                height={dimensions.height}
                                 className=" overflow-visible"
                             >
                                 <rect
-                                    x={1}
-                                    y={1}
+                                    x={dimensions.marginLeft}
+                                    y={dimensions.marginTop}
                                     width={xScale(value(d))}
-                                    height={4}
+                                    height={BAR_HEIGHT}
                                     fill={color(d)}
                                     rx={1}
                                     className="stroke-graphite-80"
@@ -101,7 +120,7 @@ export function Histogram<T>({
                                 />
                                 <Text
                                     x={xScale(value(d)) + 5}
-                                    y={2}
+                                    y={BAR_HEIGHT / 2}
                                     className="  fill-graphite-50"
                                     verticalAnchor="middle"
                                     fontSize={10}
