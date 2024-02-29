@@ -5,6 +5,9 @@ import { TooltipOverflow } from './TooltipOverflow';
 export interface LabelledIconProps
     extends React.HTMLAttributes<HTMLDivElement> {}
 
+/**
+ * A component that can be used to display an icon with its respective label, used in a Line.
+ */
 const Root = React.forwardRef<HTMLDivElement, LabelledIconProps>(
     ({ children, className, ...props }: LabelledIconProps, forwardedRef) => {
         return (

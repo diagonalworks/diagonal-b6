@@ -38,6 +38,10 @@ const Root = React.forwardRef<
     );
 });
 
+/**
+ * If the Stack is collapsible, this component will be used to trigger the collapse/expand action.
+ * Depends on the stack context, so it should be used inside a Stack component.
+ */
 const Trigger = React.forwardRef<
     HTMLButtonElement,
     CollapsiblePrimitive.CollapsibleTriggerProps &
@@ -58,9 +62,6 @@ const Trigger = React.forwardRef<
         </CollapsiblePrimitive.Trigger>
     );
 });
-
-/* [&+.line-stack]:border-t-0
- */
 
 const Content = React.forwardRef<
     HTMLDivElement,
@@ -87,6 +88,9 @@ const Content = React.forwardRef<
     );
 });
 
+/**
+ * Stack component used to render a (optionally) collapsible stack of Line components.
+ */
 export const Stack = Object.assign(Root, {
     Trigger,
     Content,

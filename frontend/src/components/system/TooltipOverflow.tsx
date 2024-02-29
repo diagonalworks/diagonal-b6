@@ -4,6 +4,9 @@ import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useImperativeHandle } from 'react';
 
+/**
+ * Wrapping component that will display a tooltip if the content is overflowing.
+ */
 export const TooltipOverflow = React.forwardRef<
     HTMLDivElement,
     React.HTMLAttributes<HTMLDivElement>

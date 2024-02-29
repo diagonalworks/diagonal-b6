@@ -9,11 +9,17 @@ type FunctionB6 = {
     description: string;
 };
 
+/**
+ * A Shell component that can be used to execute B6 functions.
+ * @TODO: Review the implementation depending on the api to execute functions.
+ */
 export function Shell({
     onSubmit,
     functions,
 }: {
+    /** The list of functions that can be executed. */
     functions: FunctionB6[];
+    /** Optional handler for the submit event. */
     onSubmit?: ({ func, args }: { func: string; args: string }) => void;
 }) {
     const [selected, setSelected] = useState<string | null>(null);

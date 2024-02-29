@@ -4,6 +4,9 @@ import { twMerge } from 'tailwind-merge';
 
 export interface LineProps extends React.HTMLAttributes<HTMLDivElement> {}
 
+/**
+ * Renders a value on the right side of a Line.
+ */
 const Value = React.forwardRef<
     HTMLSpanElement,
     React.HTMLAttributes<HTMLSpanElement>
@@ -31,6 +34,9 @@ const Value = React.forwardRef<
     }
 );
 
+/**
+ * Renders a button, should be used to wrap the Line contents when it should be clickable.
+ */
 const Button = React.forwardRef<
     HTMLButtonElement,
     React.HTMLAttributes<HTMLButtonElement>
@@ -50,6 +56,9 @@ const Button = React.forwardRef<
     );
 });
 
+/**
+ * Line component that can be used to render line atoms.
+ */
 const Root = React.forwardRef<HTMLDivElement, LineProps>(
     ({ children, className, ...props }: LineProps, forwardedRef) => {
         return (

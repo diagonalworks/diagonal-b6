@@ -4,6 +4,9 @@ import React from 'react';
 import { twMerge } from 'tailwind-merge';
 import { TooltipOverflow } from './TooltipOverflow';
 
+/**
+ * The button that triggers the select options to be shown, also displays the current selected value.
+ */
 const SelectButton = React.forwardRef<
     React.ElementRef<typeof RadixSelect.Trigger>,
     React.ComponentPropsWithoutRef<typeof RadixSelect.Trigger>
@@ -29,6 +32,9 @@ const SelectButton = React.forwardRef<
     );
 });
 
+/**
+ * The options container
+ */
 const SelectOptions = React.forwardRef<
     React.ElementRef<typeof RadixSelect.Content>,
     React.ComponentPropsWithoutRef<typeof RadixSelect.Content>
@@ -51,6 +57,9 @@ const SelectOptions = React.forwardRef<
     );
 });
 
+/**
+ * Renders a single option, should be used inside the SelectOptions component.
+ */
 export const SelectOption = React.forwardRef<
     React.ElementRef<typeof RadixSelect.Item>,
     React.ComponentPropsWithoutRef<typeof RadixSelect.Item>
@@ -72,6 +81,9 @@ export const SelectOption = React.forwardRef<
     );
 });
 
+/**
+ * Select component. It is a wrapper around Radix Select component.
+ */
 export const Select = Object.assign(RadixSelect.Root, {
     Primitive: RadixSelect,
     Option: SelectOption,
