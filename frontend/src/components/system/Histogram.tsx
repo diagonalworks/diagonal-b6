@@ -1,11 +1,4 @@
-import { Group } from '@visx/group';
-import {
-    BandScaleConfig,
-    StringLike,
-    scaleBand,
-    scaleLinear,
-} from '@visx/scale';
-import { Text } from '@visx/text';
+import { BandScaleConfig, StringLike, scaleLinear } from '@visx/scale';
 import { useMemo } from 'react';
 
 export function Histogram<T>({
@@ -44,66 +37,35 @@ export function Histogram<T>({
         });
     }, [data, boundedWidth, value]);
 
-    const boundedHeight = useMemo(() => {
-        const step = data.length / (1 - (bandProps.paddingInner ?? 0.2));
-        return step * barHeight + (bandProps.paddingOuter ?? 0) * step * 2;
-    }, [bandProps.paddingInner, bandProps.paddingOuter, barHeight, data]);
-
-    const yScale = useMemo(() => {
-        const buckets = data.map(bucket);
-
-        return scaleBand({
-            ...bandProps,
-            domain: buckets,
-            range: [0, boundedHeight],
-        });
-    }, [boundedHeight, bucket, data, bandProps]);
-
     return (
-        <svg width={width} height={boundedHeight + margin.top + margin.bottom}>
-            <Group top={margin.top}>
-                {data.map((d) => {
-                    console.log({
-                        d,
-                        bucket: bucket(d),
-                        value: value(d),
-                        x: xScale(value(d)),
-                        y: yScale(bucket(d)),
-                    });
-                    return (
-                        <Group top={yScale(bucket(d))}>
-                            <rect
-                                x={0}
-                                y={yScale.bandwidth() - 3}
-                                key={bucket(d)}
-                                width={xScale(value(d))}
-                                height={3}
-                                fill={color(d)}
-                                className=" stroke-graphite-80"
-                                strokeWidth={0.7}
-                                rx={2}
+        <div className="flex flex-col gap-3">
+            {data.map((d) => {
+                return (
+                    <div>
+                        <div className="flex gap-1 mb-0.5">
+                            <div
+                                className="w-4 h-4 rounded border border-graphite-80"
+                                style={{ backgroundColor: color(d) }}
                             />
-                            <rect
-                                x={1} // to account for stroke width
-                                width={yScale.bandwidth() - 4 - 2}
-                                height={yScale.bandwidth() - 4 - 2}
-                                fill={color(d)}
-                                className=" stroke-graphite-80 "
-                                strokeWidth={0.7}
-                                rx={2}
-                            />
-                            <Text
-                                x={yScale.bandwidth() - 4 - 2 + 6}
-                                y={(yScale.bandwidth() - 4 - 2) / 2}
-                                verticalAnchor="middle"
-                                className="text-xs"
-                            >
+                            <span className="text-xs text-graphite-100">
                                 {label ? label(d) : bucket(d)}
-                            </Text>
-                        </Group>
-                    );
-                })}
-            </Group>
-        </svg>
+                            </span>
+                        </div>
+                        <svg width={width} height={4 + 2}>
+                            <rect
+                                x={1}
+                                y={1}
+                                width={xScale(value(d))}
+                                height={4}
+                                fill={color(d)}
+                                rx={1}
+                                className="stroke-graphite-80"
+                                strokeWidth={0.7}
+                            />
+                        </svg>
+                    </div>
+                );
+            })}
+        </div>
     );
 }
