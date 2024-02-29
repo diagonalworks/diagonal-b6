@@ -11,7 +11,7 @@ const dummyData: { bucket: string; value: number }[] = [
     { bucket: '2', value: 30 },
     { bucket: '3', value: 20 },
     { bucket: '4', value: 10 },
-    { bucket: '5', value: 5 },
+    { bucket: '5', value: 8 },
 ];
 
 const colorInterpolator = interpolateRgbBasis([
@@ -24,7 +24,7 @@ const histogramColorScale = scaleOrdinal({
     range: dummyData.map((_, i) => colorInterpolator(i / dummyData.length)),
 });
 
-export const Histogram: Story = {
+export const Default: Story = {
     render: () => {
         return (
             <HistogramComponent
@@ -37,6 +37,25 @@ export const Histogram: Story = {
                         ? `${d.bucket} health services nearby`
                         : `${d.bucket} nearby`
                 }
+            />
+        );
+    },
+};
+
+export const Selectable: Story = {
+    render: () => {
+        return (
+            <HistogramComponent
+                data={dummyData}
+                bucket={(d) => d.bucket}
+                value={(d) => d.value}
+                color={(d) => histogramColorScale(d.bucket)}
+                label={(d) =>
+                    d.bucket === '0'
+                        ? `${d.bucket} health services nearby`
+                        : `${d.bucket} nearby`
+                }
+                selectable
             />
         );
     },
