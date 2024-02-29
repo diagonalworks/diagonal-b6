@@ -1,7 +1,7 @@
 import { useChartDimensions } from '@/lib/useChartDimensions';
 import { scaleLinear } from '@visx/scale';
 import { Text } from '@visx/text';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from './Line';
 
@@ -62,7 +62,7 @@ export function Histogram<T>({
     const selectedBucket = selectable ? selected ?? internalSelected : null;
 
     const handleClick = (
-        _: React.MouseEvent<HTMLDivElement, MouseEvent>,
+        _: React.MouseEvent<HTMLButtonElement, MouseEvent>,
         d: T
     ) => {
         const onSelectHandler = onSelect ?? setInternalSelected;
@@ -73,62 +73,73 @@ export function Histogram<T>({
         }
     };
 
+    const Wrapper = selectable ? Line.Button : React.Fragment;
+
     return (
         <div className="flex flex-col [&_.line]:border-t-0 first:[&_.line]:border-t">
             {data.map((d) => {
                 const isSelected =
                     selectedBucket && bucket(d) === bucket(selectedBucket);
+
                 return (
                     <Line
                         className={twMerge(selectable && 'cursor-pointer')}
-                        onClick={(e) =>
-                            selectable ? handleClick(e, d) : undefined
-                        }
                         ref={ref}
                     >
-                        <div
-                            className={twMerge(
-                                'transition-opacity w-full',
-                                selectedBucket && !isSelected && 'opacity-50'
-                            )}
+                        <Wrapper
+                            {...(selectable && {
+                                onClick: (e) => handleClick(e, d),
+                            })}
+                            onClick={(e) =>
+                                selectable ? handleClick(e, d) : undefined
+                            }
                         >
-                            <div className="flex gap-1 mb-1">
-                                <div
-                                    className="w-4 h-4 rounded border border-graphite-80"
-                                    style={{
-                                        backgroundColor: color(d),
-                                    }}
-                                />
-                                <span className="text-xs text-graphite-100">
-                                    {label ? label(d) : bucket(d)}
-                                </span>
-                            </div>
-                            <svg
-                                width={dimensions.width}
-                                height={dimensions.height}
-                                className=" overflow-visible"
+                            <div
+                                className={twMerge(
+                                    'transition-opacity w-full',
+                                    selectedBucket &&
+                                        !isSelected &&
+                                        'opacity-50'
+                                )}
                             >
-                                <rect
-                                    x={dimensions.marginLeft}
-                                    y={dimensions.marginTop}
-                                    width={xScale(value(d))}
-                                    height={BAR_HEIGHT}
-                                    fill={color(d)}
-                                    rx={1}
-                                    className="stroke-graphite-80"
-                                    strokeWidth={0.7}
-                                />
-                                <Text
-                                    x={xScale(value(d)) + 5}
-                                    y={BAR_HEIGHT / 2}
-                                    className="  fill-graphite-50"
-                                    verticalAnchor="middle"
-                                    fontSize={10}
+                                <div className="flex gap-1 mb-1">
+                                    <div
+                                        className="w-4 h-4 rounded border border-graphite-80"
+                                        style={{
+                                            backgroundColor: color(d),
+                                        }}
+                                    />
+                                    <span className="text-xs text-graphite-100">
+                                        {label ? label(d) : bucket(d)}
+                                    </span>
+                                </div>
+                                <svg
+                                    width={dimensions.width}
+                                    height={dimensions.height}
+                                    className=" overflow-visible"
                                 >
-                                    {value(d)}
-                                </Text>
-                            </svg>
-                        </div>
+                                    <rect
+                                        x={dimensions.marginLeft}
+                                        y={dimensions.marginTop}
+                                        width={xScale(value(d))}
+                                        height={BAR_HEIGHT}
+                                        fill={color(d)}
+                                        rx={1}
+                                        className="stroke-graphite-80"
+                                        strokeWidth={0.7}
+                                    />
+                                    <Text
+                                        x={xScale(value(d)) + 5}
+                                        y={BAR_HEIGHT / 2}
+                                        className="  fill-graphite-50"
+                                        verticalAnchor="middle"
+                                        fontSize={10}
+                                    >
+                                        {value(d)}
+                                    </Text>
+                                </svg>
+                            </div>
+                        </Wrapper>
                     </Line>
                 );
             })}

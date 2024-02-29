@@ -45,7 +45,7 @@ const Button = React.forwardRef<
         <button
             {...props}
             className={twMerge(
-                'line-button flex items-center gap-1 w-full justify-between',
+                'line-button flex items-center gap-1 w-full justify-between p-3',
                 className
             )}
             ref={forwardedRef}
@@ -65,7 +65,7 @@ const Root = React.forwardRef<HTMLDivElement, LineProps>(
             <div
                 {...props}
                 className={twMerge(
-                    'line p-3 border flex items-center gap-1 w-80 min-h-11 box-border border-graphite-30 bg-white hover:bg-graphite-10 focus:bg-graphite-10 cursor-default has-[.line-button]:cursor-pointer',
+                    'line p-3 border flex items-center gap-1 w-80 min-h-11 box-border border-graphite-30 bg-white hover:bg-graphite-10 focus:bg-graphite-10 cursor-default has-[.line-button]:cursor-pointer has-[.line-button]:p-0',
                     className
                 )}
                 ref={forwardedRef}
