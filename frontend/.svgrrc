@@ -1,0 +1,7 @@
+{
+    "replaceAttrValues": {
+        "#4F5A7D": "{props.fill}"
+    },
+    "typescript": true,
+    "jsxRuntime": "automatic"
+}

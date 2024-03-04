@@ -1,0 +1,5 @@
+@import url(./tokens/typography.css);
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
