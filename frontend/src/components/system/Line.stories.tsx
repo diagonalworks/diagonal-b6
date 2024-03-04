@@ -1,5 +1,6 @@
 import { Grocery, School, Shop } from '@/assets/icons/circle';
 import { Dot } from '@/assets/icons/solid';
+import { PlusIcon } from '@radix-ui/react-icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { Header } from './Header';
@@ -114,7 +115,7 @@ export const Line: Story = {
                         </Header>
                     </LineComponent>
                     <LineComponent>
-                        <LineComponent.Button>
+                        <LineComponent.Button icon={<PlusIcon />}>
                             <LabelledIcon>
                                 <LabelledIcon.Icon>
                                     <Dot className=" fill-ultramarine-60" />

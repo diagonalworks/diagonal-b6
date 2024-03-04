@@ -82,10 +82,7 @@ export function Histogram<T>({
                     selectedBucket && bucket(d) === bucket(selectedBucket);
 
                 return (
-                    <Line
-                        className={twMerge(selectable && 'cursor-pointer')}
-                        ref={ref}
-                    >
+                    <Line>
                         <Wrapper
                             {...(selectable && {
                                 onClick: (e) => handleClick(e, d),
@@ -95,6 +92,7 @@ export function Histogram<T>({
                             }
                         >
                             <div
+                                ref={ref}
                                 className={twMerge(
                                     'transition-opacity w-full',
                                     selectedBucket &&

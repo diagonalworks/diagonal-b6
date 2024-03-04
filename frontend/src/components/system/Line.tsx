@@ -1,4 +1,3 @@
-import { PlusIcon } from '@radix-ui/react-icons';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
@@ -39,8 +38,8 @@ const Value = React.forwardRef<
  */
 const Button = React.forwardRef<
     HTMLButtonElement,
-    React.HTMLAttributes<HTMLButtonElement>
->(({ children, className, ...props }, forwardedRef) => {
+    React.HTMLAttributes<HTMLButtonElement> & { icon?: React.ReactNode }
+>(({ children, icon, className, ...props }, forwardedRef) => {
     return (
         <button
             {...props}
@@ -51,7 +50,7 @@ const Button = React.forwardRef<
             ref={forwardedRef}
         >
             {children}
-            <PlusIcon />
+            {icon}
         </button>
     );
 });
