@@ -33,6 +33,7 @@ func main() {
 	readOnlyFlag := flag.Bool("read-only", false, "Prevent changes to the world")
 	staticFlag := flag.String("static", "src/diagonal.works/b6/cmd/b6/js/static", "Path to static content")
 	jsFlag := flag.String("js", "src/diagonal.works/b6/cmd/b6/js", "Path to JS bundle")
+	staticV2Flag := flag.String("static-v2", "frontend/dist", "Path to V2 static content")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	fileIOFlag := flag.Bool("file-io", true, "Is file IO allowed from the API?")
 
@@ -63,6 +64,7 @@ func main() {
 	options := ui.Options{
 		StaticPath:     *staticFlag,
 		JavaScriptPath: *jsFlag,
+		StaticV2Path:   *staticV2Flag,
 		World:          w,
 		APIOptions:     apiOptions,
 	}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"math/rand"
 	"net/http"
@@ -33,6 +34,7 @@ const MaxSafeJavaScriptInteger = (1 << 53) - 1
 type Options struct {
 	StaticPath        string
 	JavaScriptPath    string
+	StaticV2Path      string
 	BasemapRules      renderer.RenderRules
 	UI                UI
 	World             ingest.MutableWorld
@@ -49,7 +51,7 @@ func (m MergedFilesystem) Open(filename string) (http.File, error) {
 			return os.Open(full)
 		}
 	}
-	return nil, os.ErrExist
+	return nil, fs.ErrNotExist
 }
 
 func RegisterWebInterface(root *http.ServeMux, options *Options) error {
@@ -59,6 +61,14 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	root.Handle("/bundle.js", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(options.JavaScriptPath, "bundle.js"))
 	}))
+
+	staticV2Paths := strings.Split(options.StaticV2Path, ",")
+	root.Handle("/assets/", http.FileServer(MergedFilesystem(staticV2Paths)))
+	if len(staticV2Paths) > 0 {
+		root.Handle("/v2.html", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, filepath.Join(staticV2Paths[0], "index.html"))
+		}))
+	}
 
 	var ui UI
 	if options.UI != nil {

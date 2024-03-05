@@ -10,8 +10,11 @@ all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-
 .git/hooks/pre-commit: etc/pre-commit
 	cp $< $@
 
-b6: b6-backend
+b6: b6-backend b6-frontend
 	make -C src/diagonal.works/b6/cmd/b6/js
+
+b6-frontend:
+	make -C frontend
 
 VERSION: b6-api
 	bin/${TARGETPLATFORM}/b6-api --version > $@
@@ -119,4 +122,4 @@ clean:
 	rm -f python/diagonal_b6/*_pb2.py
 	rm -f python/diagonal_b6/*_pb2_grpc.py
 
-.PHONY: python proto proto-go proto-python docker
+.PHONY: python proto proto-go proto-python docker b6-frontend

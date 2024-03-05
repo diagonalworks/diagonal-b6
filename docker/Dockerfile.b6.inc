@@ -3,13 +3,14 @@
 # of a clone of the git repo:
 # docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile -t b6-amd64 .
 # Written to extend Dockerfile.b6-build.inc
-COPY Makefile /build/Makefile
-COPY src /build/src
-COPY python /build/python
-COPY proto /build/proto
-COPY etc /build/etc
-COPY data /build/data
 COPY .git /build/.git
+COPY data /build/data
+COPY etc /build/etc
+COPY frontend /build/frontend
+COPY Makefile /build/Makefile
+COPY proto /build/proto
+COPY python /build/python
+COPY src /build/src
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build test
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build python-test
@@ -24,7 +25,8 @@ COPY --from=b6-build /build/data/camden.connected.index /world/camden.connected.
 COPY --from=b6-build /build/python/dist/* /diagonal/python/dist/
 COPY --from=b6-build /build/src/diagonal.works/b6/cmd/b6/js/bundle.js /diagonal/js/bundle.js
 COPY --from=b6-build /build/src/diagonal.works/b6/cmd/b6/js/static /diagonal/static
+COPY --from=b6-build /build/frontend/dist /diagonal/frontend
 COPY --from=b6-build /build/VERSION /diagonal/VERSION
 RUN tar -czf /diagonal-$TARGETOS-$TARGETARCH-`cat /diagonal/VERSION`.tar.gz /diagonal
 EXPOSE 8001 8002
-CMD ["/diagonal/bin/b6", "--world=/world", "--js=/diagonal/js", "--static=/diagonal/static", "--http=0.0.0.0:8001", "--grpc=0.0.0.0:8002"]
+CMD ["/diagonal/bin/b6", "--world=/world", "--js=/diagonal/js", "--static=/diagonal/static", "--static-v2=/diagonal/frontend", "--http=0.0.0.0:8001", "--grpc=0.0.0.0:8002"]

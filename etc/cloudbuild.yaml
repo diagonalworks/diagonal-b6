@@ -5,4 +5,4 @@ steps:
 - name: "gcr.io/cloud-builders/git"
   args: ["fetch", "--unshallow"]
 - name: "europe-docker.pkg.dev/diagonal-public/b6/b6-ci"
-  args: ["make", "test", "python-test"]
+  args: ["make", "test", "python-test", "b6-frontend"]
