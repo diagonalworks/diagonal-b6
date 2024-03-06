@@ -35,11 +35,25 @@ type Options struct {
 	StaticPath        string
 	JavaScriptPath    string
 	StaticV2Path      string
+	StorybookPath     string
+	EnableStorybook   bool
 	BasemapRules      renderer.RenderRules
 	UI                UI
 	World             ingest.MutableWorld
 	APIOptions        api.Options
 	InstrumentHandler func(handler http.Handler, name string) http.Handler
+}
+
+type DropPrefixFilesystem struct {
+	Prefix string
+	Next   http.FileSystem
+}
+
+func (d *DropPrefixFilesystem) Open(filename string) (http.File, error) {
+	if strings.HasPrefix(filename, d.Prefix) {
+		return d.Next.Open(filename[len(d.Prefix):])
+	}
+	return nil, fs.ErrNotExist
 }
 
 type MergedFilesystem []string
@@ -67,6 +81,14 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	if len(staticV2Paths) > 0 {
 		root.Handle("/v2.html", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, filepath.Join(staticV2Paths[0], "index.html"))
+		}))
+	}
+
+	if options.EnableStorybook {
+		storybookPaths := strings.Split(options.StorybookPath, ",")
+		root.Handle("/storybook/", http.FileServer(&DropPrefixFilesystem{
+			Prefix: "/storybook",
+			Next:   MergedFilesystem(storybookPaths),
 		}))
 	}
 

@@ -34,6 +34,8 @@ func main() {
 	staticFlag := flag.String("static", "src/diagonal.works/b6/cmd/b6/js/static", "Path to static content")
 	jsFlag := flag.String("js", "src/diagonal.works/b6/cmd/b6/js", "Path to JS bundle")
 	staticV2Flag := flag.String("static-v2", "frontend/dist", "Path to V2 static content")
+	storybookFlag := flag.String("storybook", "frontend/dist-storybook", "Path to V2 static content")
+	enableStorybookFlag := flag.Bool("enable-storybook", false, "Serve storybook on /storybook")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	fileIOFlag := flag.Bool("file-io", true, "Is file IO allowed from the API?")
 
@@ -62,11 +64,13 @@ func main() {
 	}
 
 	options := ui.Options{
-		StaticPath:     *staticFlag,
-		JavaScriptPath: *jsFlag,
-		StaticV2Path:   *staticV2Flag,
-		World:          w,
-		APIOptions:     apiOptions,
+		StaticPath:      *staticFlag,
+		JavaScriptPath:  *jsFlag,
+		StaticV2Path:    *staticV2Flag,
+		StorybookPath:   *storybookFlag,
+		EnableStorybook: *enableStorybookFlag,
+		World:           w,
+		APIOptions:      apiOptions,
 	}
 
 	handler := http.NewServeMux()

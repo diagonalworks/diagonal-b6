@@ -5,3 +5,4 @@ all:
 	npm install -g pnpm
 	pnpm install --config.confirmModulesPurge=false
 	pnpm build
+	pnpm build-storybook
