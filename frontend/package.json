@@ -9,7 +9,7 @@
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "preview": "vite preview",
         "storybook": "storybook dev -p 6006",
-        "build-storybook": "storybook build",
+        "build-storybook": "storybook build -o dist-storybook",
         "design:colors": "bun src/scripts/figma/colors.ts -f b4AjeD0RMn75NF3tyuPrHx -o src/tokens/colors.json",
         "design:typography": "bun src/scripts/figma/typography.ts -f L3ZBxyipqdj4zs4zjLDoiT -o src/tokens/typography.css -r src/tokens/typography.json",
         "design:icons:transform": "svgr --config-file .svgrrc --icon 18 src/assets/icons/circle/svg -d src/assets/icons/circle && svgr --config-file .svgrrc --icon 20 src/assets/icons/solid/svg -d src/assets/icons/solid"

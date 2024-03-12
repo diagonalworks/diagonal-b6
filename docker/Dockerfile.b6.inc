@@ -25,8 +25,9 @@ COPY --from=b6-build /build/data/camden.connected.index /world/camden.connected.
 COPY --from=b6-build /build/python/dist/* /diagonal/python/dist/
 COPY --from=b6-build /build/src/diagonal.works/b6/cmd/b6/js/bundle.js /diagonal/js/bundle.js
 COPY --from=b6-build /build/src/diagonal.works/b6/cmd/b6/js/static /diagonal/static
-COPY --from=b6-build /build/frontend/dist /diagonal/frontend
+COPY --from=b6-build /build/frontend/dist /diagonal/frontend/dist
+COPY --from=b6-build /build/frontend/dist-storybook /diagonal/frontend/dist-storybook
 COPY --from=b6-build /build/VERSION /diagonal/VERSION
 RUN tar -czf /diagonal-$TARGETOS-$TARGETARCH-`cat /diagonal/VERSION`.tar.gz /diagonal
 EXPOSE 8001 8002
-CMD ["/diagonal/bin/b6", "--world=/world", "--js=/diagonal/js", "--static=/diagonal/static", "--static-v2=/diagonal/frontend", "--http=0.0.0.0:8001", "--grpc=0.0.0.0:8002"]
+CMD ["/diagonal/bin/b6", "--world=/world", "--js=/diagonal/js", "--static=/diagonal/static", "--static-v2=/diagonal/frontend/dist", "--http=0.0.0.0:8001", "--grpc=0.0.0.0:8002"]
