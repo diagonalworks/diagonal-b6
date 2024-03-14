@@ -3,6 +3,7 @@ package graph
 import (
 	"container/heap"
 	"math"
+	"strconv"
 	"strings"
 
 	"diagonal.works/b6"
@@ -21,7 +22,7 @@ const WalkingMetersPerSecond = 4500.0 / (60.0 * 60.0)
 func weightFromSegment(segment b6.Segment) float64 {
 	weight := b6.AngleToMeters(segment.Polyline().Length())
 	if factor := segment.Feature.Get("diagonal:weight"); factor.IsValid() {
-		if f, ok := factor.FloatValue(); ok {
+		if f, err := strconv.ParseFloat(factor.Value.String(), 64); err == nil {
 			return weight * f
 		}
 	}
@@ -49,7 +50,7 @@ func (SimpleHighwayWeights) IsUseable(segment b6.Segment) bool {
 	if highway := segment.Feature.Get("#highway"); highway.IsValid() {
 		return true
 	}
-	return segment.Feature.Get("diagonal").Value == "connection"
+	return segment.Feature.Get("diagonal").Value.String() == "connection"
 }
 
 func (SimpleHighwayWeights) Weight(segment b6.Segment) float64 {
@@ -57,23 +58,23 @@ func (SimpleHighwayWeights) Weight(segment b6.Segment) float64 {
 }
 
 func IsPathUsableByBus(path b6.PathFeature) bool {
-	if path.Get("diagonal").Value == "connection" {
+	if path.Get("diagonal").Value.String() == "connection" {
 		return true
 	}
 	if highway := path.Get("#highway"); highway.IsValid() {
 		// TODO: Make this an accept list, rather than a reject list
-		isPath := highway.Value == "footway" || highway.Value == "steps" || highway.Value == "corridor" || highway.Value == "path" || highway.Value == "pedestrian"
+		isPath := highway.Value.String() == "footway" || highway.Value.String() == "steps" || highway.Value.String() == "corridor" || highway.Value.String() == "path" || highway.Value.String() == "pedestrian"
 		if isPath {
 			return false
 		}
-		if highway.Value == "cycleway" || highway.Value == "bridleway" || highway.Value == "escape" {
+		if highway.Value.String() == "cycleway" || highway.Value.String() == "bridleway" || highway.Value.String() == "escape" {
 			return false
 		}
-		if highway.Value == "proposed" || highway.Value == "construction" {
+		if highway.Value.String() == "proposed" || highway.Value.String() == "construction" {
 			return false
 		}
-		if access := path.Get("access"); access.Value == "no" {
-			return path.Get("bus").Value == "yes"
+		if access := path.Get("access"); access.Value.String() == "no" {
+			return path.Get("bus").Value.String() == "yes"
 		}
 		return true
 	}
@@ -81,15 +82,15 @@ func IsPathUsableByBus(path b6.PathFeature) bool {
 }
 
 func IsPathPreferredByBus(path b6.PathFeature) bool {
-	highway := path.Get("#highway").Value
+	highway := path.Get("#highway").Value.String()
 	return highway == "primary" || highway == "secondary" || highway == "trunk"
 }
 
 func IsSegmentUseableInThisDirectionByBus(segment b6.Segment) bool {
-	if oneway := segment.Feature.Get("oneway"); oneway.Value != "yes" {
+	if oneway := segment.Feature.Get("oneway"); oneway.Value.String() != "yes" {
 		return true
 	}
-	if oneway := segment.Feature.Get("oneway:bus"); oneway.Value == "no" {
+	if oneway := segment.Feature.Get("oneway:bus"); oneway.Value.String() == "no" {
 		return true
 	}
 	return segment.Last > segment.First
@@ -106,19 +107,19 @@ func (BusWeights) Weight(segment b6.Segment) float64 {
 }
 
 func IsPathUsableByCar(path b6.PathFeature) bool {
-	if path.Get("diagonal").Value == "connection" {
+	if path.Get("diagonal").Value.String() == "connection" {
 		return true
 	}
 	if highway := path.Get("#highway"); highway.IsValid() {
 		// TODO: Make this an accept list, rather than a reject list
-		isPath := highway.Value == "footway" || highway.Value == "steps" || highway.Value == "corridor" || highway.Value == "path" || highway.Value == "pedestrian"
+		isPath := highway.Value.String() == "footway" || highway.Value.String() == "steps" || highway.Value.String() == "corridor" || highway.Value.String() == "path" || highway.Value.String() == "pedestrian"
 		if isPath {
 			return false
 		}
-		if highway.Value == "cycleway" || highway.Value == "bridleway" || highway.Value == "escape" {
+		if highway.Value.String() == "cycleway" || highway.Value.String() == "bridleway" || highway.Value.String() == "escape" {
 			return false
 		}
-		if highway.Value == "proposed" || highway.Value == "construction" {
+		if highway.Value.String() == "proposed" || highway.Value.String() == "construction" {
 			return false
 		}
 		return true
@@ -127,7 +128,7 @@ func IsPathUsableByCar(path b6.PathFeature) bool {
 }
 
 func IsSegmentUseableInThisDirectionByCar(segment b6.Segment) bool {
-	if oneway := segment.Feature.Get("oneway"); oneway.Value != "yes" {
+	if oneway := segment.Feature.Get("oneway"); oneway.Value.String() != "yes" {
 		return true
 	}
 	return segment.Last > segment.First
@@ -148,11 +149,11 @@ func IsPathUsableByPedestrian(path b6.PathFeature) bool {
 	// https://wiki.openstreetmap.org/wiki/OSM_tags_for_routing/Access_restrictions#United_Kingdom
 	// TODO: Factor out the logic here and IsPathUsableByBus
 	// TODO: Also take into account access tags
-	if path.Get("diagonal").Value == "connection" {
+	if path.Get("diagonal").Value.String() == "connection" {
 		return true
 	}
 	if highway := path.Get("#highway"); highway.IsValid() {
-		return highway.Value != "motorway"
+		return highway.Value.String() != "motorway"
 	}
 	return false
 }
@@ -180,19 +181,19 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 	for i := first; i < last; i++ {
 		start := path.Feature(i)
 		stop := path.Feature(i + 1)
-		w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{start.Point(), stop.Point()}).Length())
 
-		startElevation, ok := start.Get("ele").FloatValue()
-		if ok {
-			elevation, fromMemory = startElevation, ok
+		w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{s2.PointFromLatLng(start.Location()), s2.PointFromLatLng(stop.Location())}).Length())
+
+		startElevation, err := strconv.ParseFloat(start.Get("ele").Value.String(), 64)
+		if err == nil {
+			elevation, fromMemory = startElevation, true
 		} else {
-			startElevation, ok = elevation, fromMemory
+			startElevation = elevation
 		}
 
-		stopElevation, ok := stop.Get("ele").FloatValue()
+		stopElevation, err := strconv.ParseFloat(stop.Get("ele").Value.String(), 64)
 
-		if fromMemory && ok {
-
+		if fromMemory && err == nil {
 			if stopElevation > startElevation { // Ascending.
 				// Naismith’s Rule adds ~6s/m of elevation,
 				// which we're normalizing against 1.38m/s avg. walking speed.
@@ -219,7 +220,7 @@ func (_ WalkingTimeWeights) IsUseable(segment b6.Segment) bool {
 	if highway := segment.Feature.Get("#highway"); highway.IsValid() {
 		return true
 	}
-	return segment.Feature.Get("diagonal").Value == "connection"
+	return segment.Feature.Get("diagonal").Value.String() == "connection"
 }
 
 func (w WalkingTimeWeights) Weight(segment b6.Segment) float64 {
@@ -249,7 +250,7 @@ func (t TransitTimeWeights) Weight(segment b6.Segment) float64 {
 		}
 
 		if time := segment.Feature.Get(tag); time.IsValid() {
-			if f, ok := time.FloatValue(); ok {
+			if f, err := strconv.ParseFloat(time.Value.String(), 64); err == nil {
 				return f
 			}
 		}
@@ -293,7 +294,7 @@ func interpolateShortestPathDistances(segment b6.Segment, firstDistance s1.Angle
 }
 
 type reachable struct {
-	point    b6.PointID
+	point    b6.FeatureID
 	visited  bool
 	distance float64
 	segment  b6.Segment
@@ -310,29 +311,31 @@ const (
 
 type ShortestPathSearch struct {
 	queue      []*reachable
-	byPoint    map[b6.PointID]*reachable
+	byPoint    map[b6.FeatureID]*reachable
 	byArea     map[b6.AreaID]*reachable // The reachable instance for the entrance used to enter the area
 	pathStates map[b6.SegmentKey]PathState
 }
 
 func NewShortestPathSearchFromFeature(f b6.Feature, weights Weights, w b6.World) *ShortestPathSearch {
-	switch f := f.(type) {
-	case b6.PointFeature:
-		return NewShortestPathSearchFromPoint(f.PointID())
-	case b6.AreaFeature:
-		return NewShortestPathSearchFromBuilding(f, weights, w)
+	if f, ok := f.(b6.PhysicalFeature); ok {
+		switch f.GeometryType() {
+		case b6.GeometryTypePoint:
+			return NewShortestPathSearchFromPoint(f.FeatureID())
+		case b6.GeometryTypeArea:
+			return NewShortestPathSearchFromBuilding(f.(b6.AreaFeature), weights, w)
+		}
 	}
 	return newShortestPathSearch()
 }
 
-func NewShortestPathSearchFromPoint(from b6.PointID) *ShortestPathSearch {
+func NewShortestPathSearchFromPoint(from b6.FeatureID) *ShortestPathSearch {
 	s := newShortestPathSearch()
 	s.queue = append(s.queue, &reachable{point: from, visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: 0})
 	s.byPoint[from] = s.queue[0]
 	return s
 }
 
-func isConnected(p b6.PointID, weights Weights, w b6.World) bool {
+func isConnected(p b6.FeatureID, weights Weights, w b6.World) bool {
 	ps := w.FindPathsByPoint(p)
 	for ps.Next() {
 		if weights.IsUseable(b6.ToSegment(ps.Feature())) {
@@ -348,8 +351,8 @@ func NewShortestPathSearchFromBuilding(area b6.AreaFeature, weights Weights, w b
 		for _, path := range area.Feature(i) {
 			for j := 0; j < path.Len(); j++ {
 				if point := path.Feature(j); point != nil {
-					if isConnected(point.PointID(), weights, w) {
-						r := &reachable{point: point.PointID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
+					if isConnected(point.FeatureID(), weights, w) {
+						r := &reachable{point: point.FeatureID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
 						s.queue = append(s.queue, r)
 					}
 				}
@@ -365,7 +368,7 @@ func NewShortestPathSearchFromBuilding(area b6.AreaFeature, weights Weights, w b
 func newShortestPathSearch() *ShortestPathSearch {
 	return &ShortestPathSearch{
 		queue:      make([]*reachable, 0, 64),
-		byPoint:    make(map[b6.PointID]*reachable),
+		byPoint:    make(map[b6.FeatureID]*reachable),
 		byArea:     make(map[b6.AreaID]*reachable),
 		pathStates: make(map[b6.SegmentKey]PathState),
 	}
@@ -400,7 +403,7 @@ func (s *ShortestPathSearch) Pop() interface{} {
 }
 
 func (s *ShortestPathSearch) AddOrUpdate(segment b6.Segment, distance float64, features ShortestPathFeatures, w b6.World) {
-	point := segment.LastFeature().PointID()
+	point := segment.LastFeature().FeatureID()
 	updated := false
 	var r *reachable
 	var ok bool
@@ -428,7 +431,7 @@ func (s *ShortestPathSearch) AddOrUpdate(segment b6.Segment, distance float64, f
 	}
 }
 
-func (s *ShortestPathSearch) CurrentDistance(point b6.PointID) float64 {
+func (s *ShortestPathSearch) CurrentDistance(point b6.FeatureID) float64 {
 	if r, ok := s.byPoint[point]; ok {
 		return r.distance
 	}
@@ -442,7 +445,7 @@ const (
 	PointsAndAreas                      = true
 )
 
-func (s *ShortestPathSearch) ExpandSearchTo(to b6.PointID, maxDistance float64, weights Weights, w b6.World) {
+func (s *ShortestPathSearch) ExpandSearchTo(to b6.FeatureID, maxDistance float64, weights Weights, w b6.World) {
 	destination := &reachable{point: to, distance: math.Inf(1)}
 	s.byPoint[to] = destination
 	heap.Push(s, destination)
@@ -456,7 +459,7 @@ func (s *ShortestPathSearch) ExpandSearchTo(to b6.PointID, maxDistance float64, 
 		for ss.Next() {
 			segment := ss.Segment()
 			point := segment.LastFeature()
-			if next, ok := s.byPoint[point.PointID()]; !ok || !next.visited {
+			if next, ok := s.byPoint[point.FeatureID()]; !ok || !next.visited {
 				if weights.IsUseable(segment) {
 					weight := weights.Weight(segment)
 					if r.distance+weight < maxDistance {
@@ -481,7 +484,7 @@ func (s *ShortestPathSearch) ExpandSearch(maxDistance float64, weights Weights, 
 		for ss.Next() {
 			segment := ss.Segment()
 			point := segment.LastFeature()
-			if next, ok := s.byPoint[point.PointID()]; !ok || !next.visited {
+			if next, ok := s.byPoint[point.FeatureID()]; !ok || !next.visited {
 				if weights.IsUseable(segment) {
 					weight := weights.Weight(segment)
 					if r.distance+weight < maxDistance {
@@ -498,13 +501,13 @@ func (s *ShortestPathSearch) ExpandSearch(maxDistance float64, weights Weights, 
 	}
 }
 
-func (s *ShortestPathSearch) BuildRoute(destination b6.PointID) b6.Route {
+func (s *ShortestPathSearch) BuildRoute(destination b6.FeatureID) b6.Route {
 	route := b6.Route{}
 	point := destination
 	for {
 		if r, ok := s.byPoint[point]; ok && r.segment != b6.SegmentInvalid {
 			route.Steps = append(route.Steps, b6.Step{Destination: point, Via: r.segment.Feature.PathID(), Cost: r.distance})
-			point = r.segment.FirstFeature().PointID()
+			point = r.segment.FirstFeature().FeatureID()
 		} else {
 			route.Origin = point
 			break
@@ -519,13 +522,13 @@ func (s *ShortestPathSearch) BuildRoute(destination b6.PointID) b6.Route {
 }
 
 // TODO: Deprecate in favour of BuildRoute
-func (s *ShortestPathSearch) BuildPath(destination b6.PointID) []b6.Segment {
+func (s *ShortestPathSearch) BuildPath(destination b6.FeatureID) []b6.Segment {
 	segments := make([]b6.Segment, 0, 16)
 	point := destination
 	for {
 		if r, ok := s.byPoint[point]; ok && r.segment != b6.SegmentInvalid {
 			segments = append(segments, r.segment)
-			point = r.segment.FirstFeature().PointID()
+			point = r.segment.FirstFeature().FeatureID()
 		} else {
 			break
 		}
@@ -538,8 +541,8 @@ func (s *ShortestPathSearch) BuildPath(destination b6.PointID) []b6.Segment {
 	return segments
 }
 
-func (s *ShortestPathSearch) PointDistances() map[b6.PointID]float64 {
-	distances := make(map[b6.PointID]float64, len(s.byPoint))
+func (s *ShortestPathSearch) PointDistances() map[b6.FeatureID]float64 {
+	distances := make(map[b6.FeatureID]float64, len(s.byPoint))
 	for id, r := range s.byPoint {
 		distances[id] = r.distance
 	}
@@ -565,15 +568,15 @@ func (s *ShortestPathSearch) AllRoutes() map[b6.FeatureID]b6.Route {
 	return routes
 }
 
-func (s *ShortestPathSearch) AreaEntrances() map[b6.AreaID]b6.PointID {
-	entrances := make(map[b6.AreaID]b6.PointID, len(s.byArea))
+func (s *ShortestPathSearch) AreaEntrances() map[b6.AreaID]b6.FeatureID {
+	entrances := make(map[b6.AreaID]b6.FeatureID, len(s.byArea))
 	for id, r := range s.byArea {
 		entrances[id] = r.point
 	}
 	return entrances
 }
 
-func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.SegmentKey]int, distances map[b6.PointID]float64) {
+func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.SegmentKey]int, distances map[b6.FeatureID]float64) {
 	for id, _ := range s.byPoint {
 		for _, segment := range s.BuildPath(id) {
 			first, last := segment.First, segment.Last
@@ -591,15 +594,15 @@ func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.Segme
 			// maybe by introducting Weights to calculate the distance along the segment when
 			// interpolating
 			firstDistance, lastDistance := s1.InfAngle(), s1.InfAngle()
-			if d, ok := distances[segment.FirstFeature().PointID()]; ok {
+			if d, ok := distances[segment.FirstFeature().FeatureID()]; ok {
 				firstDistance = b6.MetersToAngle(d)
 			}
-			if d, ok := distances[segment.LastFeature().PointID()]; ok {
+			if d, ok := distances[segment.LastFeature().FeatureID()]; ok {
 				lastDistance = b6.MetersToAngle(d)
 			}
 			ds := interpolateShortestPathDistances(segment, firstDistance, lastDistance)
 			for i := 0; i < segment.Len(); i++ {
-				distances[segment.SegmentFeature(i).PointID()] = b6.AngleToMeters(ds[i])
+				distances[segment.SegmentFeature(i).FeatureID()] = b6.AngleToMeters(ds[i])
 			}
 		}
 	}
@@ -609,13 +612,13 @@ func (s *ShortestPathSearch) PathStates() map[b6.SegmentKey]PathState {
 	return s.pathStates
 }
 
-func ComputeShortestPath(from b6.PointID, to b6.PointID, maxDistance float64, weights Weights, w b6.World) []b6.Segment {
+func ComputeShortestPath(from b6.FeatureID, to b6.FeatureID, maxDistance float64, weights Weights, w b6.World) []b6.Segment {
 	s := NewShortestPathSearchFromPoint(from)
 	s.ExpandSearchTo(to, maxDistance, weights, w)
 	return s.BuildPath(to)
 }
 
-func ComputeAccessibility(from b6.PointID, maxDistance float64, weights Weights, w b6.World) (map[b6.PointID]float64, map[b6.SegmentKey]int) {
+func ComputeAccessibility(from b6.FeatureID, maxDistance float64, weights Weights, w b6.World) (map[b6.FeatureID]float64, map[b6.SegmentKey]int) {
 	s := NewShortestPathSearchFromPoint(from)
 	s.ExpandSearch(maxDistance, weights, Points, w)
 	// TODO: Rework this API: We shouldn't have to do PointDistances() and the Fill()

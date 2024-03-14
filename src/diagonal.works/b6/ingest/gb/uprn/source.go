@@ -14,7 +14,6 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/ingest"
 	"github.com/golang/geo/s2"
 
@@ -85,14 +84,11 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 }
 
 func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines int) error {
-	ps := make([]ingest.PointFeature, goroutines*2)
+	ps := make([]ingest.Feature, goroutines*2)
 	for i := range ps {
-		ps[i] = ingest.PointFeature{
-			PointID: b6.PointID{
-				Namespace: b6.NamespaceGBUPRN,
-			},
-			Tags: []b6.Tag{{Key: "#place", Value: "uprn"}},
-		}
+		ps[i] = &ingest.GenericFeature{}
+		ps[i].SetFeatureID(b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespaceGBUPRN})
+		ps[i].AddTag(b6.Tag{Key: "#place", Value: b6.String("uprn")})
 	}
 
 	uprns := 0
@@ -110,10 +106,13 @@ func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines
 		}
 		slot := uprns % len(ps)
 		uprns++
-		ps[slot].PointID.Value, err = strconv.ParseUint(row[columns[0]], 10, 64)
+
+		value, err := strconv.ParseUint(row[columns[0]], 10, 64)
 		if err != nil {
 			return fmt.Errorf("Parsing id for %q: %s", row, err)
 		}
+		ps[slot].SetFeatureID(b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespaceGBUPRN, Value: value})
+
 		lat, err := strconv.ParseFloat(row[columns[1]], 64)
 		if err != nil {
 			return fmt.Errorf("Parsing latitude for %q: %s", row, err)
@@ -122,33 +121,19 @@ func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines
 		if err != nil {
 			return fmt.Errorf("Parsing longitude for %q: %s", row, err)
 		}
-		ps[slot].Location = s2.LatLngFromDegrees(lat, lng)
-		ps[slot].Tags = ps[slot].Tags[0:1] // Keep #place=uprn
-		s.JoinTags.AddTags(row[columns[0]], &ps[slot])
-		if len(ps[slot].Tags) > 1 {
+
+		ps[slot].RemoveAll()
+		ps[slot].AddTag(b6.Tag{Key: "#place", Value: b6.String("uprn")})
+		ps[slot].ModifyOrAddTag(b6.Tag{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(lat, lng))})
+		s.JoinTags.AddTags(row[columns[0]], ps[slot])
+		if len(ps[slot].AllTags()) > 1 {
 			joined++
-			joined_tags += len(ps[slot].Tags) - 1
+			joined_tags += len(ps[slot].AllTags()) - 1
 		}
-		if err := emit(&ps[slot], slot%goroutines); err != nil {
+		if err := emit(ps[slot], slot%goroutines); err != nil {
 			return err
 		}
 	}
-}
-
-type point struct {
-	*ingest.PointFeature
-}
-
-func (p point) PointID() b6.PointID {
-	return p.PointFeature.PointID
-}
-
-func (p point) Covering(coverer s2.RegionCoverer) s2.CellUnion {
-	return s2.CellUnion([]s2.CellID{p.CellID().Parent(coverer.MaxLevel)})
-}
-
-func (p point) ToGeoJSON() geojson.GeoJSON {
-	return b6.PointFeatureToGeoJSON(p)
 }
 
 func filter(filter Filter, emit ingest.Emit, options ingest.ReadOptions, ctx *api.Context) ingest.Emit {
@@ -160,8 +145,8 @@ func filter(filter Filter, emit ingest.Emit, options ingest.ReadOptions, ctx *ap
 	return func(f ingest.Feature, goroutine int) error {
 		var err error
 		keep := true
-		if p, ok := f.(*ingest.PointFeature); ok {
-			if keep, err = filter(ctxs[goroutine], point{p}); err != nil {
+		if f.FeatureID().Type == b6.FeatureTypePoint {
+			if keep, err = filter(ctxs[goroutine], f); err != nil {
 				return err
 			}
 		}
@@ -195,24 +180,19 @@ func (s *ClusterSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx c
 		if goroutines < 1 {
 			goroutines = 1
 		}
-		ps := make([]ingest.PointFeature, goroutines*2)
-		for i := range ps {
-			ps[i] = ingest.PointFeature{
-				PointID: b6.PointID{
-					Namespace: b6.NamespaceDiagonalUPRNCluster,
-				},
-				Tags: []b6.Tag{{Key: "#place", Value: "uprn_cluster"}, {Key: "uprn_cluster:size", Value: "0"}},
-			}
+		features := make([]ingest.Feature, goroutines*2)
+		for i := range features {
+			features[i] = &ingest.GenericFeature{Tags: []b6.Tag{{Key: "#place", Value: b6.String("uprn_cluster")}, {Key: "uprn_cluster:size", Value: b6.String("0")}}}
 		}
 		parallelised, wait := ingest.ParalleliseEmit(emit, goroutines, ctx)
 		clusters := 0
 		for c, count := range s.centroids {
-			slot := clusters % len(ps)
+			slot := clusters % len(features)
 			clusters++
-			ps[slot].PointID.Value = uint64(c)
-			ps[slot].Tags[1].Value = strconv.Itoa(int(count))
-			ps[slot].Location = c.LatLng()
-			if err := parallelised(&ps[slot], slot%goroutines); err != nil {
+			features[slot].SetFeatureID(b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespaceDiagonalUPRNCluster, Value: uint64(c)})
+			features[slot].ModifyOrAddTag(b6.Tag{Key: "uprn_cluster:size", Value: b6.String(strconv.Itoa(int(count)))})
+			features[slot].ModifyOrAddTag(b6.Tag{Key: b6.LatLngTag, Value: b6.LatLng(c.LatLng())})
+			if err := parallelised(features[slot], slot%goroutines); err != nil {
 				wait()
 				return err
 			}
@@ -238,8 +218,8 @@ func (s *ClusterSource) fillCentroids(options ingest.ReadOptions, ctx context.Co
 		centroids[i] = make([]s2.CellID, 0, 1024)
 	}
 	addUprn := func(f ingest.Feature, goroutine int) error {
-		if p, ok := f.(*ingest.PointFeature); ok {
-			centroid := s2.CellIDFromLatLng(p.Location).Parent(ClusterSourceS2Level)
+		if f, ok := f.(b6.Geometry); ok && f.GeometryType() == b6.GeometryTypePoint {
+			centroid := s2.CellIDFromLatLng(f.Location()).Parent(ClusterSourceS2Level)
 			centroids[goroutine] = append(centroids[goroutine], centroid)
 		}
 		return nil

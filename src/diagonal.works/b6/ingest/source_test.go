@@ -22,11 +22,11 @@ func TestParalliseEmit(t *testing.T) {
 		return nil
 	}
 
-	ps := make([]PointFeature, cores*2)
+	ps := make([]GenericFeature, cores*2)
 	parallelised, wait := ParalleliseEmit(emit, cores, context.Background())
 	for i := 0; i < nIDs; i++ {
 		slot := i % len(ps)
-		ps[slot].PointID = b6.MakePointID(ns, uint64(i))
+		ps[slot].SetFeatureID(b6.FeatureID{b6.FeatureTypePoint, ns, uint64(i)})
 		if err := parallelised(&ps[slot], i%cores); err != nil {
 			break
 		}
@@ -37,7 +37,7 @@ func TestParalliseEmit(t *testing.T) {
 
 	expected := make(map[b6.FeatureID]struct{})
 	for i := 0; i < nIDs; i++ {
-		expected[b6.MakePointID(ns, uint64(i)).FeatureID()] = struct{}{}
+		expected[b6.FeatureID{b6.FeatureTypePoint, ns, uint64(i)}] = struct{}{}
 	}
 	for _, ids := range emitted {
 		for _, id := range ids {
@@ -62,11 +62,11 @@ func TestParalliseEmitWithError(t *testing.T) {
 		return nil
 	}
 
-	ps := make([]PointFeature, cores*2)
+	ps := make([]GenericFeature, cores*2)
 	parallelised, wait := ParalleliseEmit(emit, cores, context.Background())
 	for i := 0; i < nIDs; i++ {
 		slot := i % len(ps)
-		ps[slot].PointID = b6.MakePointID(ns, uint64(i))
+		ps[slot].SetFeatureID(b6.FeatureID{b6.FeatureTypePoint, ns, uint64(i)})
 		if err := parallelised(&ps[slot], i%cores); err != nil {
 			break
 		}

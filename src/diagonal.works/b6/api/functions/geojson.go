@@ -15,14 +15,14 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func toGeoJSON(c *api.Context, renderable b6.Renderable) (geojson.GeoJSON, error) {
+func toGeoJSON(c *api.Context, renderable b6.Geometry) (geojson.GeoJSON, error) {
 	if renderable != nil {
 		return renderable.ToGeoJSON(), nil
 	}
 	return geojson.NewFeatureCollection(), nil
 }
 
-func toGeoJSONCollection(c *api.Context, renderables b6.Collection[interface{}, b6.Renderable]) (geojson.GeoJSON, error) {
+func toGeoJSONCollection(c *api.Context, renderables b6.Collection[interface{}, b6.Geometry]) (geojson.GeoJSON, error) {
 	collection := geojson.NewFeatureCollection()
 	var err error
 	i := renderables.Begin()
@@ -156,10 +156,10 @@ func geojsonAreas(c *api.Context, g geojson.GeoJSON) (b6.Collection[int, b6.Area
 }
 
 // Wrap the given function such that it will only be called when passed a point.
-func applyToPoint(context *api.Context, f func(*api.Context, b6.Point) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
+func applyToPoint(context *api.Context, f func(*api.Context, b6.Geometry) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
 	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
-		if point, ok := g.(b6.Point); ok {
-			return f(context, point)
+		if g.GeometryType() == b6.GeometryTypePoint {
+			return f(context, g)
 		}
 		return g, nil
 	}
@@ -193,8 +193,6 @@ func mapGeometry(g b6.Geometry, f func(*api.Context, b6.Geometry) (b6.Geometry, 
 	}
 
 	switch g := g.(type) {
-	case b6.Point:
-		return geojson.FromS2Point(g.Point()), nil
 	case b6.Path:
 		return geojson.FromPolyline(g.Polyline()), nil
 	case b6.Area:
@@ -207,8 +205,9 @@ func mapGeometry(g b6.Geometry, f func(*api.Context, b6.Geometry) (b6.Geometry, 
 			}
 			return geojson.FromPolygons(polygons), nil
 		}
+	default:
+		return geojson.FromS2LatLng(g.Location()), nil
 	}
-	return nil, fmt.Errorf("Can't map geometry of type %T", g)
 }
 
 // Return a geojson representing the result of applying the given function to each geometry in the given geojson.
@@ -216,7 +215,7 @@ func mapGeometries(c *api.Context, g geojson.GeoJSON, f func(*api.Context, b6.Ge
 	m := func(cs geojson.Coordinates) (geojson.Coordinates, error) {
 		switch cs := cs.(type) {
 		case geojson.Point:
-			return mapGeometry(b6.PointFromS2Point(cs.ToS2Point()), f, c)
+			return mapGeometry(b6.GeometryFromLatLng(s2.LatLngFromPoint(cs.ToS2Point())), f, c)
 		case geojson.LineString:
 			return mapGeometry(b6.PathFromS2Points(cs.ToS2Polyline()), f, c)
 		case geojson.Polygon:

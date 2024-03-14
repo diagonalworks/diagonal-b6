@@ -38,7 +38,7 @@ func (p PathIDSet) Contains(id b6.PathID) bool {
 // by the given Weights.
 func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weights, g *geojson.FeatureCollection, w b6.World) PathIDSet {
 	network := make(PathIDSet)
-	stack := make([]b6.PointFeature, 0, 2)
+	stack := make([]b6.PhysicalFeature, 0, 2)
 	for paths.Next() {
 		path := paths.Feature()
 		if network.Contains(path.PathID()) || !weights.IsUseable(b6.ToSegment(path)) {
@@ -50,14 +50,14 @@ func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weigh
 		if first == nil {
 			continue
 		}
-		segments := w.Traverse(first.PointID())
+		segments := w.Traverse(first.FeatureID())
 		var origin s2.Point
 		for segments.Next() {
 			segment := segments.Segment()
 			if segment.Feature.FeatureID() == path.FeatureID() {
 				seen[segment.ToKey()] = struct{}{}
 				if first := segment.FirstFeature(); first != nil {
-					origin = first.Point()
+					origin = s2.PointFromLatLng(first.Location())
 					if last := segment.LastFeature(); last != nil {
 						stack = append(stack, last)
 						break
@@ -70,10 +70,10 @@ func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weigh
 		for len(stack) > 0 {
 			point := stack[len(stack)-1]
 			stack = stack[0 : len(stack)-1]
-			if origin.Distance(point.Point()) > threshold {
+			if origin.Distance(s2.PointFromLatLng(point.Location())) > threshold {
 				connected = true
 			} else {
-				segments := w.Traverse(point.PointID())
+				segments := w.Traverse(point.FeatureID())
 				for segments.Next() {
 					segment := segments.Segment()
 					if !weights.IsUseable(segment) {
@@ -113,7 +113,7 @@ func BuildStreetNetwork(paths b6.PathFeatures, threshold s1.Angle, weights Weigh
 	return network
 }
 
-func IsPointConnected(id b6.PointID, network PathIDSet, w b6.World) bool {
+func IsPointConnected(id b6.FeatureID, network PathIDSet, w b6.World) bool {
 	paths := w.FindPathsByPoint(id)
 	for paths.Next() {
 		if _, ok := network[paths.FeatureID().ToPathID()]; ok {
@@ -144,7 +144,7 @@ func hash(a uint64, b uint64) uint64 {
 	return h.Sum64()
 }
 
-func hashIDs(points [2]b6.PointID) uint64 {
+func hashIDs(points [2]b6.FeatureID) uint64 {
 	h := fnv.New64()
 	var buffer [8]byte
 	for _, p := range points {
@@ -155,20 +155,20 @@ func hashIDs(points [2]b6.PointID) uint64 {
 	return h.Sum64()
 }
 
-func entranceID(f b6.FeatureID, entrance int) b6.PointID {
+func entranceID(f b6.FeatureID, entrance int) b6.FeatureID {
 	ns := b6.NamespaceDiagonalEntrances.String() + "/" + f.Namespace.String()
-	return b6.MakePointID(b6.Namespace(ns), hash(f.Value, uint64(entrance)))
+	return b6.FeatureID{b6.FeatureTypePoint, b6.Namespace(ns), hash(f.Value, uint64(entrance))}
 }
 
-func accessID(id b6.FeatureID, entrance int) b6.PointID {
+func accessID(id b6.FeatureID, entrance int) b6.FeatureID {
 	ns := b6.NamespaceDiagonalAccessPoints.String() + "/" + id.Namespace.String()
-	return b6.MakePointID(b6.Namespace(ns), hash(id.Value, uint64(entrance)))
+	return b6.FeatureID{b6.FeatureTypePoint, b6.Namespace(ns), hash(id.Value, uint64(entrance))}
 }
 
 type insertion struct {
 	PathID   b6.PathID
 	Distance s1.Angle
-	PointID  b6.PointID
+	PointID  b6.FeatureID
 }
 
 type insertions []insertion
@@ -183,11 +183,11 @@ func (is insertions) Less(i, j int) bool {
 }
 
 type extent struct {
-	From b6.PointID
-	To   b6.PointID
+	From b6.FeatureID
+	To   b6.FeatureID
 }
 
-type additions [][2]b6.PointID
+type additions [][2]b6.FeatureID
 
 func (as additions) Len() int      { return len(as) }
 func (as additions) Swap(i, j int) { as[i], as[j] = as[j], as[i] }
@@ -201,28 +201,28 @@ func (as additions) Less(i, j int) bool {
 type Connections struct {
 	insertions insertions
 	additions  additions
-	clustered  map[b6.PointID]b6.PointID
+	clustered  map[b6.FeatureID]b6.FeatureID
 	lock       sync.Mutex
 }
 
 func NewConnections() *Connections {
-	return &Connections{clustered: make(map[b6.PointID]b6.PointID)}
+	return &Connections{clustered: make(map[b6.FeatureID]b6.FeatureID)}
 }
 
 func (c *Connections) String() string {
 	return fmt.Sprintf("%d insertions, %d additions, %d clustered", len(c.insertions), len(c.additions), len(c.clustered))
 }
 
-func (c *Connections) InsertPoint(path b6.PathID, distance s1.Angle, point b6.PointID) {
+func (c *Connections) InsertPoint(path b6.PathID, distance s1.Angle, point b6.FeatureID) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.insertions = append(c.insertions, insertion{PathID: path, Distance: distance, PointID: point})
 }
 
-func (c *Connections) AddPath(from b6.PointID, to b6.PointID) {
+func (c *Connections) AddPath(from b6.FeatureID, to b6.FeatureID) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.additions = append(c.additions, [2]b6.PointID{from, to})
+	c.additions = append(c.additions, [2]b6.FeatureID{from, to})
 }
 
 func (c *Connections) Cluster(threshold s1.Angle, w b6.World) {
@@ -294,12 +294,12 @@ func (c *Connections) clusterInsertionsOntoExistingPoints(threshold s1.Angle, w 
 		}
 		if previous < next {
 			if previous < threshold {
-				c.clustered[insertion.PointID] = path.Feature(p - 1).PointID()
+				c.clustered[insertion.PointID] = path.Feature(p - 1).FeatureID()
 				c.insertions[i].Distance = s1.InfAngle()
 			}
 		} else {
 			if next < threshold {
-				c.clustered[insertion.PointID] = path.Feature(p).PointID()
+				c.clustered[insertion.PointID] = path.Feature(p).FeatureID()
 				c.insertions[i].Distance = s1.InfAngle()
 			}
 		}
@@ -315,13 +315,13 @@ func (c *Connections) ApplyToPath(path b6.PathFeature) *ingest.PathFeature {
 		return ingest.NewPathFeatureFromWorld(path)
 	}
 	distances := pathDistances(path, []s1.Angle{})
-	ids := make([]b6.PointID, 0, path.Len())
+	ids := make([]b6.FeatureID, 0, path.Len())
 	points := make([]s2.Point, 0, path.Len())
 	next := 0
 	for i < len(c.insertions) && c.insertions[i].PathID == path.PathID() {
 		if c.insertions[i].Distance != s1.InfAngle() {
 			for distances[next] < c.insertions[i].Distance {
-				ids = append(ids, path.Feature(next).PointID())
+				ids = append(ids, path.Feature(next).FeatureID())
 				points = append(points, path.Point(next))
 				next++
 			}
@@ -331,7 +331,7 @@ func (c *Connections) ApplyToPath(path b6.PathFeature) *ingest.PathFeature {
 		i++
 	}
 	for next < path.Len() {
-		ids = append(ids, path.Feature(next).PointID())
+		ids = append(ids, path.Feature(next).FeatureID())
 		points = append(points, path.Point(next))
 		next++
 	}
@@ -339,7 +339,7 @@ func (c *Connections) ApplyToPath(path b6.PathFeature) *ingest.PathFeature {
 	applied.PathID = path.PathID()
 	applied.Tags = ingest.NewTagsFromWorld(path)
 	for i, p := range ids {
-		if p != b6.PointIDInvalid {
+		if p != b6.FeatureIDInvalid {
 			applied.SetPointID(i, p)
 		} else {
 			applied.SetLatLng(i, s2.LatLngFromPoint(points[i]))
@@ -348,7 +348,7 @@ func (c *Connections) ApplyToPath(path b6.PathFeature) *ingest.PathFeature {
 	return applied
 }
 
-func (c *Connections) EachInsertedPoint(f func(id b6.PointID, ll s2.LatLng) error, w b6.World) error {
+func (c *Connections) EachInsertedPoint(f func(id b6.FeatureID, ll s2.LatLng) error, w b6.World) error {
 	id := b6.PathIDInvalid
 	var polyline *s2.Polyline
 	length := s1.InfAngle()
@@ -374,9 +374,9 @@ func (c *Connections) EachInsertedPoint(f func(id b6.PointID, ll s2.LatLng) erro
 }
 
 func (c *Connections) EachAddedPath(emit ingest.Emit) error {
-	last := [2]b6.PointID{b6.PointIDInvalid, b6.PointIDInvalid}
+	last := [2]b6.FeatureID{b6.FeatureIDInvalid, b6.FeatureIDInvalid}
 	path := ingest.NewPathFeature(2)
-	path.Tags.AddTag(b6.Tag{Key: "diagonal", Value: "connection"})
+	path.Tags.AddTag(b6.Tag{Key: "diagonal", Value: b6.String("connection")})
 	for _, a := range c.additions {
 		if a != last {
 			last = a
@@ -402,8 +402,8 @@ func (c *Connections) Change(w b6.World) ingest.Change {
 			}
 		}
 	}
-	f := func(id b6.PointID, ll s2.LatLng) error {
-		*change = append(*change, ingest.NewPointFeature(id, ll))
+	f := func(id b6.FeatureID, ll s2.LatLng) error {
+		*change = append(*change, &ingest.GenericFeature{ID: id.FeatureID(), Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(ll)}}})
 		return nil
 	}
 	c.EachInsertedPoint(f, w)
@@ -440,11 +440,10 @@ func (m *modifyWorldSource) Read(options ingest.ReadOptions, emit ingest.Emit, c
 		return nil
 	}
 	if !o.SkipPoints {
-		var point ingest.PointFeature
-		f := func(id b6.PointID, ll s2.LatLng) error {
-			point.Location = ll
-			point.PointID = id
-			return emit(&point, 0)
+		var point ingest.Feature
+		f := func(id b6.FeatureID, ll s2.LatLng) error {
+			point = &ingest.GenericFeature{ID: id.FeatureID(), Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(ll)}}}
+			return emit(point, 0)
 		}
 		if err := m.Connections.EachInsertedPoint(f, m.World); err != nil {
 			return err
@@ -503,7 +502,7 @@ func newProjection(point s2.Point, path b6.PathFeature, polyline *s2.Polyline) *
 	}
 }
 
-func (p *Projection) InsertPoint(id b6.PointID, connections *Connections) {
+func (p *Projection) InsertPoint(id b6.FeatureID, connections *Connections) {
 	begin := s2.Polyline((*p.Polyline)[0 : p.NextVertex-1])
 	distance := begin.Length() + (*p.Polyline)[p.NextVertex-1].Distance(p.Point)
 	connections.InsertPoint(p.Feature.PathID(), distance, id)
@@ -514,12 +513,12 @@ func (p *Projection) Points() (s2.Point, s2.Point) {
 	return p.Feature.Point(before), p.Feature.Point(after)
 }
 
-func (p *Projection) PointIDs() (b6.PointID, b6.PointID) {
+func (p *Projection) PointIDs() (b6.FeatureID, b6.FeatureID) {
 	// TODO: The projection code doesn't handle the case of polygons with
 	// some points that have IDs, and some that don't. Improve when
 	// necessary
 	before, after := p.Indices()
-	return p.Feature.Feature(before).PointID(), p.Feature.Feature(after).PointID()
+	return p.Feature.Feature(before).FeatureID(), p.Feature.Feature(after).FeatureID()
 }
 
 func (p *Projection) Indices() (int, int) {
@@ -546,7 +545,7 @@ func isAreaConnected(area b6.AreaFeature, i int, network PathIDSet, w b6.World) 
 	if paths := area.Feature(i); paths != nil {
 		for j := 0; j < paths[0].Len(); j++ {
 			if point := paths[0].Feature(j); point != nil {
-				if IsPointConnected(point.PointID(), network, w) {
+				if IsPointConnected(point.FeatureID(), network, w) {
 					return ConnectResultAlreadyConnected
 				}
 			}
@@ -565,7 +564,7 @@ func ConnectArea(area b6.AreaFeature, network PathIDSet, threshold s1.Angle, w b
 			continue
 		}
 		boundary := area.Feature(i)[0]
-		entrances := make([]b6.PointFeature, 0)
+		entrances := make([]b6.PhysicalFeature, 0)
 		for j := 0; j < boundary.Len(); j++ {
 			point := boundary.Feature(j)
 			if entrance := point.Get("entrance"); entrance.IsValid() {
@@ -599,8 +598,8 @@ func ConnectArea(area b6.AreaFeature, network PathIDSet, threshold s1.Angle, w b
 			}
 		} else {
 			for _, entrance := range entrances {
-				if access := closestCandidate(entrance.Point(), candidates); access.Distance < threshold {
-					s.ConnectPoint(area.FeatureID(), entrance.PointID(), access, n)
+				if access := closestCandidate(s2.PointFromLatLng(entrance.Location()), candidates); access.Distance < threshold {
+					s.ConnectPoint(area.FeatureID(), entrance.FeatureID(), access, n)
 					n++
 				}
 			}
@@ -608,11 +607,11 @@ func ConnectArea(area b6.AreaFeature, network PathIDSet, threshold s1.Angle, w b
 	}
 }
 
-func ConnectPoint(point b6.PointFeature, network PathIDSet, threshold s1.Angle, w b6.World, s ConnectionStrategy) {
-	if IsPointConnected(point.PointID(), network, w) {
+func ConnectPoint(point b6.PhysicalFeature, network PathIDSet, threshold s1.Angle, w b6.World, s ConnectionStrategy) {
+	if IsPointConnected(point.FeatureID(), network, w) {
 		return
 	}
-	cap := s2.CapFromCenterAngle(point.Point(), threshold)
+	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(point.Location()), threshold)
 	highways := b6.FindPaths(b6.Intersection{b6.Keyed{"#highway"}, b6.MightIntersect{cap}}, w)
 	candidates := make([]candidate, 0, 16)
 	for highways.Next() {
@@ -621,23 +620,25 @@ func ConnectPoint(point b6.PointFeature, network PathIDSet, threshold s1.Angle, 
 			candidates = append(candidates, candidate{Feature: f, Polyline: f.Polyline()})
 		}
 	}
-	if access := closestCandidate(point.Point(), candidates); access.Distance < threshold {
-		s.ConnectPoint(point.FeatureID(), point.PointID(), access, 0)
+	if access := closestCandidate(s2.PointFromLatLng(point.Location()), candidates); access.Distance < threshold {
+		s.ConnectPoint(point.FeatureID(), point.FeatureID(), access, 0)
 	}
 }
 
 func ConnectFeature(f b6.Feature, network PathIDSet, threshold s1.Angle, w b6.World, s ConnectionStrategy) {
-	switch f := f.(type) {
-	case b6.PointFeature:
-		ConnectPoint(f, network, threshold, w, s)
-	case b6.AreaFeature:
-		ConnectArea(f, network, threshold, w, s)
+	if f, ok := f.(b6.PhysicalFeature); ok {
+		switch f.GeometryType() {
+		case b6.GeometryTypePoint:
+			ConnectPoint(f, network, threshold, w, s)
+		case b6.GeometryTypeArea:
+			ConnectArea(f.(b6.AreaFeature), network, threshold, w, s)
+		}
 	}
 }
 
 type ConnectionStrategy interface {
 	ConnectProjection(f b6.FeatureID, entrance *Projection, access *Projection, n int)
-	ConnectPoint(f b6.FeatureID, entrance b6.PointID, access *Projection, n int)
+	ConnectPoint(f b6.FeatureID, entrance b6.FeatureID, access *Projection, n int)
 	Finish()
 	Output() ingest.FeatureSource
 }
@@ -656,7 +657,7 @@ func (s InsertNewPointsIntoPaths) ConnectProjection(f b6.FeatureID, entrance *Pr
 	s.Connections.AddPath(from, to)
 }
 
-func (s InsertNewPointsIntoPaths) ConnectPoint(f b6.FeatureID, entrance b6.PointID, access *Projection, n int) {
+func (s InsertNewPointsIntoPaths) ConnectPoint(f b6.FeatureID, entrance b6.FeatureID, access *Projection, n int) {
 	to := accessID(f, n)
 	access.InsertPoint(to, s.Connections)
 	s.Connections.AddPath(entrance, to)
@@ -680,7 +681,7 @@ func (s UseExisitingPoints) ConnectProjection(f b6.FeatureID, entrance *Projecti
 	// Create two access paths, one to each of the points before and after the
 	// access projection, choosing the entrance point that minimises the
 	// distance of addedd paths
-	var from b6.PointID
+	var from b6.FeatureID
 	if be.Distance(ba)+be.Distance(aa) < ae.Distance(ba)+aa.Distance(aa) {
 		from, _ = entrance.PointIDs()
 	} else {
@@ -691,7 +692,7 @@ func (s UseExisitingPoints) ConnectProjection(f b6.FeatureID, entrance *Projecti
 	s.Connections.AddPath(from, aid)
 }
 
-func (s UseExisitingPoints) ConnectPoint(f b6.FeatureID, entrance b6.PointID, access *Projection, n int) {
+func (s UseExisitingPoints) ConnectPoint(f b6.FeatureID, entrance b6.FeatureID, access *Projection, n int) {
 	bid, aid := access.PointIDs()
 	s.Connections.AddPath(entrance, bid)
 	s.Connections.AddPath(entrance, aid)

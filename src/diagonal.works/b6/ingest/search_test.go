@@ -8,28 +8,28 @@ import (
 )
 
 func TestMatches(t *testing.T) {
-	id := b6.MakePointID("diagonal.works/test", 0)
-	p := NewPointFeature(id, s2.LatLngFromDegrees(51.5366567, -0.1263944))
-	p.Tags.AddTag(b6.Tag{Key: "name", Value: "Vermuteria"})
-	p.Tags.AddTag(b6.Tag{Key: "#amenity", Value: "cafe"})
+	id := b6.FeatureID{b6.FeatureTypePoint, "diagonal.works/test", 0}
+	f := &GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5366567, -0.1263944))}}}
+	f.AddTag(b6.Tag{Key: "name", Value: b6.String("Vermuteria")})
+	f.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("cafe")})
 
 	cases := []struct {
 		q        b6.Query
 		expected bool
 	}{
 		{b6.Keyed{Key: "#amenity"}, true},
-		{b6.Tagged{Key: "#amenity", Value: "cafe"}, true},
-		{b6.Tagged{Key: "#amenity", Value: "restaurant"}, false},
-		{b6.Union{b6.Tagged{Key: "#amenity", Value: "cafe"}}, true},
-		{b6.Union{b6.Tagged{Key: "#amenity", Value: "restaurant"}}, false},
-		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: "cafe"}}, true},
-		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: "restaurant"}}, false},
-		{b6.Union{b6.Tagged{Key: "#amenity", Value: "cafe"}, b6.Tagged{Key: "#amenity", Value: "restaurant"}}, true},
-		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: "cafe"}, b6.Tagged{Key: "#amenity", Value: "restaurant"}}, false},
+		{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}, true},
+		{b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}, false},
+		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}}, true},
+		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}}, false},
+		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}}, true},
+		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}}, false},
+		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}}, true},
+		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}}, false},
 	}
 
 	for _, c := range cases {
-		if matches := c.q.Matches(WrapFeature(p, nil), nil); matches != c.expected {
+		if matches := c.q.Matches(WrapFeature(f, nil), nil); matches != c.expected {
 			t.Errorf("Unexpected matching for %s: expected %v, found %v", c.q, c.expected, matches)
 		}
 	}

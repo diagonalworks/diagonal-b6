@@ -27,7 +27,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 
 	path := ingest.NewPathFeature(2)
 	path.PathID = b6.MakePathID(b6.NamespaceDiagonalAccessPoints, 42)
-	path.Tags.AddTag(b6.Tag{Key: "#highway", Value: "cycleway"})
+	path.Tags.AddTag(b6.Tag{Key: "#highway", Value: b6.String("cycleway")})
 	path.SetPointID(0, ingest.FromOSMNodeID(camden.LightermanEntranceNode))
 	path.SetPointID(1, ingest.FromOSMNodeID(camden.StableStreetBridgeNorthEndNode))
 

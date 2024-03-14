@@ -39,13 +39,13 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	}
 
 	m := NewMutableOverlayWorld(base)
-	m.AddTag(FromOSMNodeID(caravan.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: "yes"})
+	m.AddTag(FromOSMNodeID(caravan.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
 	m.RemoveTag(FromOSMNodeID(caravan.ID).FeatureID(), "cuisine")
-	m.AddTag(FromOSMNodeID(dishoom.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: "no"})
+	m.AddTag(FromOSMNodeID(dishoom.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
-	ifo := NewPointFeature(FromOSMNodeID(osm.NodeID(3868276529)), s2.LatLngFromDegrees(51.5321749, -0.1250181))
-	ifo.AddTag(b6.Tag{Key: "name", Value: "Identified Flying Object"})
-	ifo.AddTag(b6.Tag{Key: "tourism", Value: "attraction"})
+	ifo := &GenericFeature{ID: FromOSMNodeID(osm.NodeID(3868276529)).FeatureID(), Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5321749, -0.1250181))}}}
+	ifo.AddTag(b6.Tag{Key: "name", Value: b6.String("Identified Flying Object")})
+	ifo.AddTag(b6.Tag{Key: "tourism", Value: b6.String("attraction")})
 	if err := m.AddFeature(ifo); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -55,7 +55,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	footway.SetPointID(0, FromOSMNodeID(caravan.ID))
 	footway.SetLatLng(1, s2.LatLngFromDegrees(51.535632, -0.126046))
 	footway.SetPointID(2, FromOSMNodeID(dishoom.ID))
-	footway.AddTag(b6.Tag{Key: "highway", Value: "footway"})
+	footway.AddTag(b6.Tag{Key: "highway", Value: b6.String("footway")})
 	if err := m.AddFeature(footway); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -66,7 +66,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	boundary.SetPointID(1, FromOSMNodeID(dishoom.ID))
 	boundary.SetLatLng(2, s2.LatLngFromDegrees(51.535632, -0.126046))
 	boundary.SetPointID(3, FromOSMNodeID(caravan.ID))
-	boundary.AddTag(b6.Tag{Key: "highway", Value: "footway"})
+	boundary.AddTag(b6.Tag{Key: "highway", Value: b6.String("footway")})
 	if err := m.AddFeature(boundary); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -84,7 +84,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		{ID: FromOSMNodeID(caravan.ID).FeatureID(), Role: "good"},
 		{ID: FromOSMNodeID(dishoom.ID).FeatureID(), Role: "best"},
 	}
-	ranking.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
+	ranking.AddTag(b6.Tag{Key: "source", Value: b6.String("diagonal")})
 	if err := m.AddFeature(ranking); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -93,7 +93,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	analysis.CollectionID = b6.MakeCollectionID(b6.Namespace("diagonal.works/test"), 5)
 	analysis.Keys = []interface{}{FromOSMNodeID(caravan.ID).FeatureID(), FromOSMNodeID(dishoom.ID).FeatureID()}
 	analysis.Values = []interface{}{"good", "best"}
-	analysis.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
+	analysis.AddTag(b6.Tag{Key: "source", Value: b6.String("diagonal")})
 	if err := m.AddFeature(&analysis); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -107,7 +107,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 				{
 					AnyExpression: &b6.QueryExpression{
 						Query: b6.Intersection{
-							b6.Tagged{Key: "#highway", Value: "cycleway"},
+							b6.Tagged{Key: "#highway", Value: b6.String("cycleway")},
 							b6.IntersectsFeature{
 								ID: AreaIDFromOSMWayID(222021571).FeatureID(),
 							},
@@ -120,8 +120,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 			},
 		},
 	}
-
-	expression.AddTag(b6.Tag{Key: "source", Value: "diagonal"})
+	expression.AddTag(b6.Tag{Key: "source", Value: b6.String("diagonal")})
 	if err := m.AddFeature(&expression); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -149,7 +148,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 
 	compare := func(f b6.Feature, goroutine int) error {
 		if diff := DiffFeatures(f, ingested.FindFeatureByID(f.FeatureID())); diff != "" {
-			t.Error(diff)
+			t.Errorf("ID: %s \n diff: %s", f.FeatureID().String(), diff)
 		}
 		compared[f.FeatureID()] = true
 		return nil
@@ -214,10 +213,10 @@ func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
 				diffs += diff
 			}
 		}
-	} else if e, ok := expected.(b6.PhysicalFeature); ok {
-		a := actual.(b6.PhysicalFeature)
+	} else if e, ok := expected.(b6.Geometry); ok {
+		a := actual.(b6.Geometry)
 		coverer := s2.RegionCoverer{MaxLevel: 18, MaxCells: 10} // 18 implies 3cm accuracy
-		diffs += cmp.Diff(e.Covering(coverer), a.Covering(coverer))
+		diffs += cmp.Diff(b6.Covering(e, coverer), b6.Covering(a, coverer))
 	} else if e, ok := expected.(b6.ExpressionFeature); ok {
 		a := actual.(b6.ExpressionFeature)
 		ae, _ := a.Expression().ToProto()

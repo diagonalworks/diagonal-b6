@@ -37,14 +37,14 @@ func TestPointIDFromInvalidGBPostcode(t *testing.T) {
 
 	for _, postcode := range postcodes {
 		id := PointIDFromGBPostcode(postcode)
-		if id != PointIDInvalid {
+		if id != FeatureIDInvalid {
 			t.Errorf("Expected invalid id for %q, found %s", postcode, id)
 		}
 	}
 
-	ids := []PointID{
-		PointIDInvalid,
-		MakePointID(NamespaceOSMNode, 3501612811),
+	ids := []FeatureID{
+		FeatureIDInvalid,
+		FeatureID{FeatureTypePoint, NamespaceOSMNode, 3501612811},
 	}
 	for _, id := range ids {
 		if _, ok := PostcodeFromPointID(id); ok {

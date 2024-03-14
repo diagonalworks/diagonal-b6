@@ -25,7 +25,7 @@ func TestFillColourFromFeature(t *testing.T) {
 		{"red", false, ""},
 	}
 	for _, test := range tests {
-		tags := b6.Tags{{Key: "diagonal:colour", Value: test.featureColour}}
+		tags := b6.Tags{{Key: "diagonal:colour", Value: b6.String(test.featureColour)}}
 		feature := NewFeature(&Point{})
 		fillColourFromFeature(feature, tags)
 		tileColour, ok := feature.Tags["colour"]
@@ -79,13 +79,13 @@ func TestFeaturesAreOrderedByLayerTag(t *testing.T) {
 	lighterman := b6.FindAreaByID(camden.LightermanID, mutable)
 	roof := ingest.NewAreaFeatureFromWorld(lighterman)
 	roof.AreaID = b6.MakeAreaID(b6.NamespacePrivate, 1)
-	roof.AddTag(b6.Tag{Key: "layer", Value: "2"})
+	roof.AddTag(b6.Tag{Key: "layer", Value: b6.String("2")})
 	if err := mutable.AddFeature(roof); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 	basement := ingest.NewAreaFeatureFromWorld(lighterman)
 	basement.AreaID = b6.MakeAreaID(b6.NamespacePrivate, 2)
-	basement.AddTag(b6.Tag{Key: "layer", Value: "-1"})
+	basement.AddTag(b6.Tag{Key: "layer", Value: b6.String("-1")})
 	if err := mutable.AddFeature(basement); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

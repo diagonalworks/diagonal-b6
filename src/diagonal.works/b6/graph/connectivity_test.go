@@ -45,7 +45,7 @@ func TestMergeInsertions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ids := []b6.PointID{
+	ids := []b6.FeatureID{
 		accessID(ingest.AreaIDFromOSMWayID(222021577).FeatureID(), 0),
 		accessID(ingest.AreaIDFromOSMWayID(222021573).FeatureID(), 0),
 		accessID(ingest.AreaIDFromOSMWayID(532767917).FeatureID(), 0),
@@ -63,7 +63,7 @@ func TestMergeInsertions(t *testing.T) {
 	if applied.Len() != 5 {
 		t.Fatalf("Expected 5 points, found %d", applied.Len())
 	}
-	expected := []b6.PointID{
+	expected := []b6.FeatureID{
 		ingest.FromOSMNodeID(nodes[0].ID), ids[0], ingest.FromOSMNodeID(nodes[1].ID), ids[1], ingest.FromOSMNodeID(nodes[2].ID),
 	}
 	for i, e := range expected {
@@ -93,7 +93,7 @@ func TestClusterCloseInsertions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ids := []b6.PointID{
+	ids := []b6.FeatureID{
 		accessID(ingest.AreaIDFromOSMWayID(222021577).FeatureID(), 0),
 		accessID(ingest.AreaIDFromOSMWayID(222021573).FeatureID(), 0),
 		accessID(ingest.AreaIDFromOSMWayID(532767917).FeatureID(), 0),
@@ -115,7 +115,7 @@ func TestClusterCloseInsertions(t *testing.T) {
 		t.Fatalf("Expected 5 points, found %d", applied.Len())
 	}
 	// ids[1] should have been been clusters with ids[0]
-	expected := []b6.PointID{
+	expected := []b6.FeatureID{
 		ingest.FromOSMNodeID(nodes[0].ID), ids[0], ingest.FromOSMNodeID(nodes[1].ID), ids[2], ingest.FromOSMNodeID(nodes[2].ID),
 	}
 	for i, e := range expected {
@@ -164,7 +164,7 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ids := []b6.PointID{
+	ids := []b6.FeatureID{
 		// Near the towpath
 		accessID(ingest.AreaIDFromOSMWayID(834276095).FeatureID(), 0),
 
@@ -195,7 +195,7 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 		t.Fatalf("Expected 4 points, found %d", applied.Len())
 	}
 	// ids[1] and ids[2] should have been been clustered onto point[1]
-	expected := []b6.PointID{
+	expected := []b6.FeatureID{
 		ingest.FromOSMNodeID(nodes[0].ID), ingest.FromOSMNodeID(nodes[1].ID), ids[3], ingest.FromOSMNodeID(nodes[2].ID),
 	}
 	for i, e := range expected {
@@ -221,18 +221,18 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 	if access.Len() != 2 {
 		t.Fatalf("Expected 2 points, found %d", access.Len())
 	}
-	expected = []b6.PointID{
+	expected = []b6.FeatureID{
 		ingest.FromOSMNodeID(ways[1].Nodes[1]),
 		ingest.FromOSMNodeID(nodes[len(nodes)-1].ID),
 	}
 	for i, e := range expected {
-		if p := access.Feature(i); p.PointID() != e {
+		if p := access.Feature(i); p.FeatureID() != e {
 			t.Errorf("Expected %s, found %s", e, p)
 		}
 	}
 }
 
-func countAccessibleBuildings(from b6.PointID, maxDistance float64, w b6.World) int {
+func countAccessibleBuildings(from b6.FeatureID, maxDistance float64, w b6.World) int {
 	distances, _ := ComputeAccessibility(from, maxDistance, SimpleHighwayWeights{}, w)
 	buildings := make(map[b6.AreaID]struct{})
 	for point := range distances {
@@ -247,11 +247,11 @@ func countAccessibleBuildings(from b6.PointID, maxDistance float64, w b6.World) 
 	return len(buildings)
 }
 
-func countAccessibleAmenities(from b6.PointID, maxDistance float64, w b6.World) int {
+func countAccessibleAmenities(from b6.FeatureID, maxDistance float64, w b6.World) int {
 	distances, _ := ComputeAccessibility(from, maxDistance, SimpleHighwayWeights{}, w)
-	amenities := make(map[b6.PointID]struct{})
+	amenities := make(map[b6.FeatureID]struct{})
 	for id := range distances {
-		point := b6.FindPointByID(id, w)
+		point := w.FindFeatureByID(id)
 		if point.Get("#amenity").IsValid() {
 			amenities[id] = struct{}{}
 		}
@@ -279,15 +279,15 @@ func TestConnectGranarySquare(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			connected := test.f(features, network, granarySquare, t)
 			if connected != nil {
-				origin := b6.FindPointByID(ingest.FromOSMNodeID(6083735356), granarySquare) // South end of the Coal Drops Yard footway
-				before := countAccessibleBuildings(origin.PointID(), 1000.0, granarySquare)
-				after := countAccessibleBuildings(origin.PointID(), 1000.0, connected)
+				origin := granarySquare.FindFeatureByID(ingest.FromOSMNodeID(6083735356)) // South end of the Coal Drops Yard footway
+				before := countAccessibleBuildings(origin.FeatureID(), 1000.0, granarySquare)
+				after := countAccessibleBuildings(origin.FeatureID(), 1000.0, connected)
 				if after <= before {
 					t.Errorf("Expected more buildings to be connected, before: %d after: %d", before, after)
 				}
 
-				before = countAccessibleAmenities(origin.PointID(), 1000.0, granarySquare)
-				after = countAccessibleAmenities(origin.PointID(), 1000.0, connected)
+				before = countAccessibleAmenities(origin.FeatureID(), 1000.0, granarySquare)
+				after = countAccessibleAmenities(origin.FeatureID(), 1000.0, connected)
 				if after <= before {
 					t.Errorf("Expected more amenities to be connected, before: %d after: %d", before, after)
 				}

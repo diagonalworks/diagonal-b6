@@ -22,7 +22,7 @@ import (
 
 // A semver 2.0.0 compliant version for the index format. Indicies generated
 // with a different major version will fail to load.
-const Version = "0.0.0"
+const Version = "0.0.1"
 
 func init() {
 	if l := encoding.MarshalledSize(Header{}); l != HeaderLength {
@@ -399,22 +399,56 @@ func (lls *LatLngs) UnmarshalWithoutLength(l int, buffer []byte) int {
 	return i
 }
 
-type Tag struct {
-	Key   int
-	Value int
+type Value interface {
+	Marshal(buffer []byte) int
+	Unmarshal(buffer []byte) int
 }
 
+type Tag struct {
+	Key       int
+	Value     Value
+	ValueType b6.ValueType
+}
+
+type Int int
+
+func (i *Int) Marshal(buffer []byte) int {
+	return binary.PutUvarint(buffer, uint64(*i))
+}
+
+func (i *Int) Unmarshal(buffer []byte) int {
+	v, n := binary.Uvarint(buffer)
+	*i = Int(v)
+	return n
+}
+
+const ValueTypeBits = 2
+
 func (t *Tag) Marshal(buffer []byte) int {
-	i := binary.PutUvarint(buffer, uint64(t.Key))
-	return i + binary.PutUvarint(buffer[i:], uint64(t.Value))
+	key := uint64(t.Key) << ValueTypeBits
+	if int(key>>ValueTypeBits) != t.Key {
+		panic("Can't encode tag type")
+	}
+	key |= uint64(t.ValueType)
+	i := binary.PutUvarint(buffer, uint64(key))
+	return i + t.Value.Marshal(buffer[i:])
 }
 
 func (t *Tag) Unmarshal(buffer []byte) int {
 	key, i := binary.Uvarint(buffer)
-	value, n := binary.Uvarint(buffer[i:])
-	t.Key = int(key)
-	t.Value = int(value)
-	return i + n
+	t.Key = int(key >> ValueTypeBits)
+	t.ValueType = b6.ValueType(key & ((1 << ValueTypeBits) - 1))
+
+	switch t.ValueType {
+	case b6.ValueTypeString:
+		m := Int(0)
+		t.Value = &m
+	case b6.ValueTypeLatLng:
+		ll := LatLng{}
+		t.Value = &ll
+	}
+
+	return i + t.Value.Unmarshal(buffer[i:])
 }
 
 func (t *Tag) Length() int {
@@ -459,14 +493,25 @@ func (t *Tags) Unmarshal(buffer []byte) int {
 	return i
 }
 
-func (t *Tags) FromOSM(tags osm.Tags, s *encoding.StringTableBuilder) {
+func (t *Tags) FromOSM(tags osm.Tags, node *osm.Node, s *encoding.StringTableBuilder) {
 	for len(*t) < len(tags) {
 		*t = append(*t, Tag{})
 	}
+
 	*t = (*t)[0:len(tags)]
 	for i, tag := range tags {
 		(*t)[i].Key = s.Lookup(ingest.KeyForOSMKey(tag.Key))
-		(*t)[i].Value = s.Lookup(tag.Value)
+		value := Int(s.Lookup(tag.Value))
+		(*t)[i].Value = &value
+		(*t)[i].ValueType = b6.ValueTypeString
+	}
+
+	if node != nil {
+		*t = (*t)[0 : len(*t)+1]
+		(*t)[len(tags)].Key = s.Lookup(b6.LatLngTag)
+		ll := LatLng{int32(math.Round(node.Location.Lat * 1e7)), int32(math.Round(node.Location.Lng * 1e7))}
+		(*t)[len(tags)].Value = &ll
+		(*t)[len(tags)].ValueType = b6.ValueTypeLatLng
 	}
 }
 
@@ -478,7 +523,15 @@ func (t *Tags) FromFeature(tagged b6.Taggable, s *encoding.StringTableBuilder) {
 	*t = (*t)[0:len(tags)]
 	for i, tag := range tags {
 		(*t)[i].Key = s.Lookup(tag.Key)
-		(*t)[i].Value = s.Lookup(tag.Value)
+		(*t)[i].ValueType = tag.Value.Type()
+
+		if tag.Value.Type() == b6.ValueTypeLatLng {
+			ll := LatLng{tag.Value.(b6.LatLng).Lat.E7(), tag.Value.(b6.LatLng).Lng.E7()}
+			(*t)[i].Value = &ll
+		} else {
+			v := Int(s.Lookup(tag.Value.String()))
+			(*t)[i].Value = &v
+		}
 	}
 }
 
@@ -494,7 +547,14 @@ func (m MarshalledTags) AllTags() []b6.Tag {
 	tags := make([]b6.Tag, 0, 2)
 	for i < start+int(l) {
 		i += tag.Unmarshal(m.Tags[i:])
-		tags = append(tags, b6.Tag{Key: m.Strings.Lookup(tag.Key), Value: m.Strings.Lookup(tag.Value)})
+		var value b6.Value
+		switch t := tag.Value.(type) {
+		case *Int:
+			value = b6.String(m.Strings.Lookup(int(*t)))
+		case *LatLng:
+			value = b6.LatLng(t.ToS2LatLng())
+		}
+		tags = append(tags, b6.Tag{Key: m.Strings.Lookup(tag.Key), Value: value})
 	}
 	return tags
 }
@@ -506,7 +566,12 @@ func (m MarshalledTags) Get(key string) b6.Tag {
 	for i < start+int(l) {
 		i += tag.Unmarshal(m.Tags[i:])
 		if m.Strings.Equal(tag.Key, key) {
-			return b6.Tag{Key: key, Value: m.Strings.Lookup(tag.Value)}
+			switch t := tag.Value.(type) {
+			case *Int:
+				return b6.Tag{key, b6.String(m.Strings.Lookup(int(*t)))}
+			case *LatLng:
+				return b6.Tag{key, b6.LatLng(t.ToS2LatLng())}
+			}
 		}
 	}
 	return b6.InvalidTag()
@@ -517,41 +582,12 @@ func (m MarshalledTags) Length() int {
 	return i + int(l)
 }
 
-type Point struct {
-	Location LatLng
-	Tags
-}
+func (m MarshalledTags) Location() (s2.LatLng, error) {
+	if ll := m.Get(b6.LatLngTag).Value; ll != nil {
+		return b6.LatLngFromString(ll.String())
+	}
 
-func (p *Point) FromOSM(n *osm.Node, s *encoding.StringTableBuilder) {
-	p.Location.LatE7, p.Location.LngE7 = int32(math.Round(n.Location.Lat*1e7)), int32(math.Round(n.Location.Lng*1e7))
-	p.Tags.FromOSM(n.Tags, s)
-}
-
-func (p *Point) FromFeature(f *ingest.PointFeature, s *encoding.StringTableBuilder) {
-	p.Location.LatE7, p.Location.LngE7 = f.Location.Lat.E7(), f.Location.Lng.E7()
-	p.Tags.FromFeature(f.Tags, s)
-}
-
-func (p *Point) Marshal(buffer []byte) int {
-	i := p.Location.Marshal(buffer)
-	return i + p.Tags.Marshal(buffer[i:])
-}
-
-func (p *Point) Unmarshal(buffer []byte) int {
-	i := p.Location.Unmarshal(buffer)
-	return i + p.Tags.Unmarshal(buffer[i:])
-}
-
-type MarshalledPoint []byte
-
-func (m MarshalledPoint) Location() s2.LatLng {
-	latE7 := int32(binary.LittleEndian.Uint32(m[0:]))
-	lngE7 := int32(binary.LittleEndian.Uint32(m[4:]))
-	return s2.LatLngFromDegrees(float64(latE7)/1e7, float64(lngE7)/1e7)
-}
-
-func (m MarshalledPoint) Tags(s encoding.Strings) b6.Taggable {
-	return MarshalledTags{Tags: m[8:], Strings: s}
+	return s2.LatLng{}, fmt.Errorf("can't extract location")
 }
 
 type Reference struct {
@@ -918,18 +954,18 @@ func UnmarshalPathGeometry(primary Namespace, buffer []byte) (PathGeometry, int)
 }
 
 type CommonPoint struct {
-	Point
+	Tags
 	Path Reference
 }
 
 func (c *CommonPoint) Marshal(nss *Namespaces, buffer []byte) int {
-	i := c.Point.Marshal(buffer)
+	i := c.Tags.Marshal(buffer)
 	i += c.Path.Marshal(nss.ForType(b6.FeatureTypePath), buffer[i:])
 	return i
 }
 
 func (c *CommonPoint) Unmarshal(nss *Namespaces, buffer []byte) int {
-	i := c.Point.Unmarshal(buffer)
+	i := c.Tags.Unmarshal(buffer)
 	i += c.Path.Unmarshal(nss.ForType(b6.FeatureTypePath), buffer[i:])
 	return i
 }
@@ -960,18 +996,18 @@ func (p *PointReferences) Unmarshal(nss *Namespaces, buffer []byte) int {
 }
 
 type FullPoint struct {
-	Point
+	Tags
 	PointReferences
 }
 
 func (p *FullPoint) Marshal(nss *Namespaces, buffer []byte) int {
-	i := p.Point.Marshal(buffer)
+	i := p.Tags.Marshal(buffer)
 	i += p.PointReferences.Marshal(nss, buffer[i:])
 	return i
 }
 
 func (p *FullPoint) Unmarshal(nss *Namespaces, buffer []byte) int {
-	i := p.Point.Unmarshal(buffer)
+	i := p.Tags.Unmarshal(buffer)
 	i += p.PointReferences.Unmarshal(nss, buffer[i:])
 	return i
 }
@@ -1021,7 +1057,7 @@ func (p *Path) Unmarshal(nss *Namespaces, buffer []byte) int {
 }
 
 func (p *Path) FromOSM(way *osm.Way, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	p.Tags.FromOSM(way.Tags, s)
+	p.Tags.FromOSM(way.Tags, nil, s)
 	points := &PathGeometryReferences{
 		Points: make(References, len(way.Nodes)),
 	}
@@ -1387,7 +1423,7 @@ func (a *Area) Unmarshal(nss *Namespaces, buffer []byte) int {
 }
 
 func (a *Area) FromOSMWay(way *osm.Way, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	a.Tags.FromOSM(way.Tags, s)
+	a.Tags.FromOSM(way.Tags, nil, s)
 	a.Polygons = &AreaGeometryReferences{
 		Polygons: []int{},
 		Paths:    []Reference{{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: uint64(way.ID)}},
@@ -1395,7 +1431,7 @@ func (a *Area) FromOSMWay(way *osm.Way, s *encoding.StringTableBuilder, nt *Name
 }
 
 func (a *Area) FromOSMRelation(relation *osm.Relation, s *encoding.StringTableBuilder, nt *NamespaceTable) bool {
-	a.Tags.FromOSM(relation.Tags, s)
+	a.Tags.FromOSM(relation.Tags, nil, s)
 	polygons := &AreaGeometryReferences{}
 	start := 0
 	for _, member := range relation.Members {
@@ -1550,7 +1586,7 @@ func (r *Relation) Unmarshal(primary b6.FeatureType, nss *Namespaces, buffer []b
 }
 
 func (r *Relation) FromOSM(relation *osm.Relation, wayAreas *ingest.IDSet, relationAreas *ingest.IDSet, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	r.Tags.FromOSM(relation.Tags, s)
+	r.Tags.FromOSM(relation.Tags, nil, s)
 	r.Members = r.Members[0:0]
 	var m Member
 	for _, member := range relation.Members {

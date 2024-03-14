@@ -15,7 +15,7 @@ import (
 func TestAllTags(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
 
-	vermuteria := b6.FindPointByID(camden.VermuteriaID, w)
+	vermuteria := w.FindFeatureByID(camden.VermuteriaID)
 	if vermuteria == nil {
 		t.Fatal("Failed to find expected test point")
 	}
@@ -37,7 +37,7 @@ func TestAllTags(t *testing.T) {
 	found := false
 	for _, tag := range filled {
 		if tag.Key == "#amenity" {
-			if tag.Value != "cafe" {
+			if tag.Value.String() != "cafe" {
 				t.Errorf("Expected #amenity=cafe, found %+v", tag)
 			}
 			found = true
@@ -53,16 +53,16 @@ func TestFindAreasContainingPoints(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
 	m := ingest.NewMutableOverlayWorld(w)
 
-	vermuteria := b6.FindPointByID(camden.VermuteriaID, m)
+	vermuteria := m.FindFeatureByID(camden.VermuteriaID)
 	if vermuteria == nil {
 		t.Fatal("Failed to find expected test point")
 	}
 
-	features := b6.ArrayFeatureCollection[b6.PointFeature]([]b6.PointFeature{vermuteria})
+	features := b6.ArrayFeatureCollection[b6.PhysicalFeature]([]b6.PhysicalFeature{vermuteria.(b6.PhysicalFeature)})
 	context := api.Context{
 		World: m,
 	}
-	points := b6.AdaptCollection[any, b6.Point](features.Collection())
+	points := b6.AdaptCollection[any, b6.Feature](features.Collection())
 	found, err := findAreasContainingPoints(&context, points, b6.Keyed{Key: "#shop"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -100,7 +100,7 @@ func TestPoints(t *testing.T) {
 		t.Fatalf("Expected no error, found %s", err)
 	}
 
-	points := make(map[int]b6.Point)
+	points := make(map[int]b6.Geometry)
 	if err := api.FillMap(ps, points); err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
@@ -109,9 +109,9 @@ func TestPoints(t *testing.T) {
 		t.Fatalf("Expected %d points, found %d", len(granarySquare)+len(lighterman), len(points))
 	}
 
-	center := s2.PointFromLatLng(s2.LatLngFromDegrees(51.53541, -0.12530))
+	center := s2.LatLngFromDegrees(51.53541, -0.12530)
 	for _, v := range points {
-		if d := b6.AngleToMeters(v.Point().Distance(center)); d > 100.0 {
+		if d := b6.AngleToMeters(v.Location().Distance(center)); d > 100.0 {
 			t.Errorf("Point too far away: expected <= 100.0m, found %fm", d)
 		}
 	}
@@ -135,7 +135,7 @@ func TestSamplePointsAlongPaths(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	points := make(map[interface{}]b6.Point)
+	points := make(map[interface{}]b6.Geometry)
 	if err := api.FillMap(sampled, points); err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
@@ -144,9 +144,9 @@ func TestSamplePointsAlongPaths(t *testing.T) {
 		t.Errorf("Number of sampled points outside expected bounds: %d", len(points))
 	}
 
-	center := s2.PointFromLatLng(s2.LatLngFromDegrees(51.53539, -0.12537))
+	center := s2.LatLngFromDegrees(51.53539, -0.12537)
 	for _, v := range points {
-		if v.Point().Distance(center) > b6.MetersToAngle(500) {
+		if v.Location().Distance(center) > b6.MetersToAngle(500) {
 			t.Error("Point too far away from the center of the test data area")
 		}
 	}
@@ -181,7 +181,8 @@ func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
 			if !ok {
 				break
 			}
-			runs[run] = append(runs[run], i.Value().(b6.Point).Point())
+
+			runs[run] = append(runs[run], s2.PointFromLatLng(i.Value().Location()))
 		}
 	}
 
@@ -246,8 +247,7 @@ func TestOrderedJoin(t *testing.T) {
 
 	midpoint, _ := interpolate(&api.Context{}, joined, 0.5)
 	expected, _ := interpolate(&api.Context{}, path, 0.5)
-
-	if midpoint.Point().Distance(expected.Point()) > 0.000001 {
+	if midpoint.Location().Distance(expected.Location()) > 0.000001 {
 		t.Error("Midpoint of joined paths too far from expected point")
 	}
 }
@@ -267,8 +267,8 @@ func TestInterpolate(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	expected := s2.LatLngFromDegrees(51.5361869, -0.1258445)
-	if d := b6.AngleToMeters(s2.PointFromLatLng(expected).Distance(interpolated.Point())); d > 0.1 {
+	expected := s2.PointFromLatLng(s2.LatLngFromDegrees(51.5361869, -0.1258445))
+	if d := b6.AngleToMeters(expected.Distance(s2.PointFromLatLng(interpolated.Location()))); d > 0.1 {
 		t.Errorf("Interpolated point not close to expected location: %fm", d)
 	}
 }

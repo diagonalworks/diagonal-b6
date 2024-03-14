@@ -51,7 +51,7 @@ func tileIDsHex(c *api.Context, feature b6.Feature) (b6.Collection[b6.FeatureID,
 func tilePaths(c *api.Context, geometry b6.Geometry, zoom int) (b6.Collection[int, string], error) {
 	coverer := s2.RegionCoverer{MaxLevel: 20, MinLevel: 0}
 	paths := make([]string, 0)
-	for _, t := range b6.CoverCellUnionWithTiles(geometry.Covering(coverer), uint(zoom)) {
+	for _, t := range b6.CoverCellUnionWithTiles(b6.Covering(geometry, coverer), uint(zoom)) {
 		paths = append(paths, t.String())
 	}
 	return b6.ArrayValuesCollection[string](paths).Collection(), nil

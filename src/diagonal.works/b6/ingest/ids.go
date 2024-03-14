@@ -60,12 +60,12 @@ const (
 	BoundaryRelationIDsBegin osm.RelationID = 100000000
 )
 
-func NewLatLngID(ll s2.LatLng) b6.PointID {
+func NewLatLngID(ll s2.LatLng) b6.FeatureID {
 	id := (uint64(uint32(ll.Lat.E7())) << 32) | uint64(uint32(ll.Lng.E7()))
-	return b6.MakePointID(b6.NamespaceLatLng, id)
+	return b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceLatLng, id}
 }
 
-func LatLngFromID(id b6.PointID) (s2.LatLng, bool) {
+func LatLngFromID(id b6.FeatureID) (s2.LatLng, bool) {
 	if id.Namespace == b6.NamespaceLatLng {
 		latE7 := int32((id.Value >> 32) & ((1 << 32) - 1))
 		lngE7 := int32(id.Value & uint64((1<<32)-1))

@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"fmt"
+
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 
@@ -9,8 +11,8 @@ import (
 )
 
 // Return a point at the given latitude and longitude, specified in degrees.
-func ll(context *api.Context, lat float64, lng float64) (b6.Point, error) {
-	return b6.PointFromLatLng(s2.LatLngFromDegrees(lat, lng)), nil
+func ll(context *api.Context, lat float64, lng float64) (b6.Geometry, error) {
+	return b6.GeometryFromLatLng(s2.LatLngFromDegrees(lat, lng)), nil
 }
 
 // Return a single area containing all areas from the given collection.
@@ -35,14 +37,14 @@ func collectAreas(context *api.Context, areas b6.Collection[any, b6.Area]) (b6.A
 }
 
 // Return the distance in meters between the given points.
-func distanceMeters(context *api.Context, a b6.Point, b b6.Point) (float64, error) {
-	return b6.AngleToMeters(a.Point().Distance(b.Point())), nil
+func distanceMeters(context *api.Context, a b6.Geometry, b b6.Geometry) (float64, error) {
+	return b6.AngleToMeters(a.Location().Distance(b.Location())), nil
 }
 
 // Return the distance in meters between the given path, and the project of the give point onto it.
-func distanceToPointMeters(context *api.Context, path b6.Path, point b6.Point) (float64, error) {
+func distanceToPointMeters(context *api.Context, path b6.Path, point b6.Geometry) (float64, error) {
 	polyline := *path.Polyline()
-	projection, vertex := polyline.Project(point.Point())
+	projection, vertex := polyline.Project(s2.PointFromLatLng(point.Location()))
 	distance := polyline[vertex-1].Distance(projection)
 	if vertex > 1 {
 		p := polyline[0:vertex]
@@ -54,28 +56,29 @@ func distanceToPointMeters(context *api.Context, path b6.Path, point b6.Point) (
 // Return the centroid of the given geometry.
 // For multipolygons, we return the centroid of the convex hull formed from
 // the points of those polygons.
-func centroid(context *api.Context, geometry b6.Geometry) (b6.Point, error) {
-	switch g := geometry.(type) {
-	case b6.Point:
-		return g, nil
-	case b6.Path:
-		return b6.PointFromS2Point(g.Polyline().Centroid()), nil
-	case b6.Area:
+func centroid(context *api.Context, geometry b6.Geometry) (b6.Geometry, error) {
+	switch geometry.GeometryType() {
+	case b6.GeometryTypePoint:
+		return geometry, nil
+	case b6.GeometryTypePath:
+		return b6.GeometryFromLatLng(s2.LatLngFromPoint(geometry.(b6.Path).Polyline().Centroid())), nil
+	case b6.GeometryTypeArea:
 		query := s2.NewConvexHullQuery()
-		for i := 0; i < g.Len(); i++ {
-			polygon := g.Polygon(i)
+		for i := 0; i < geometry.(b6.Area).Len(); i++ {
+			polygon := geometry.(b6.Area).Polygon(i)
 			query.AddPolygon(polygon)
 		}
-		return b6.PointFromS2Point(query.ConvexHull().Centroid()), nil
+		return b6.GeometryFromLatLng(s2.LatLngFromPoint(query.ConvexHull().Centroid())), nil
+	default:
+		return nil, fmt.Errorf("geometry type not supported")
 	}
-	return b6.PointFromS2Point(s2.Point{}), nil
 }
 
 // Return the point at the given fraction along the given path.
-func interpolate(context *api.Context, path b6.Path, fraction float64) (b6.Point, error) {
+func interpolate(context *api.Context, path b6.Path, fraction float64) (b6.Geometry, error) {
 	polyline := path.Polyline()
 	point, _ := polyline.Interpolate(fraction)
-	return b6.PointFromS2Point(point), nil
+	return b6.GeometryFromLatLng(s2.LatLngFromPoint(point)), nil
 }
 
 func validatePolygon(polygon *s2.Polygon) bool {
@@ -103,9 +106,8 @@ func areaArea(context *api.Context, area b6.Area) (float64, error) {
 }
 
 // Return a rectangle polygon with the given top left and bottom right points.
-func rectanglePolygon(context *api.Context, a b6.Point, b b6.Point) (b6.Area, error) {
-	r := s2.EmptyRect().AddPoint(s2.LatLngFromPoint(a.Point()))
-	r = r.AddPoint(s2.LatLngFromPoint(b.Point()))
+func rectanglePolygon(context *api.Context, a b6.Geometry, b b6.Geometry) (b6.Area, error) {
+	r := s2.EmptyRect().AddPoint(a.Location()).AddPoint(b.Location())
 	points := make([]s2.Point, 4)
 	for i := range points {
 		points[i] = s2.PointFromLatLng(r.Vertex(i))
@@ -114,8 +116,8 @@ func rectanglePolygon(context *api.Context, a b6.Point, b b6.Point) (b6.Area, er
 }
 
 // Return a polygon approximating a spherical cap with the given center and radius in meters.
-func capPolygon(context *api.Context, center b6.Point, radius float64) (b6.Area, error) {
-	return b6.AreaFromS2Loop(s2.RegularLoop(center.Point(), b6.MetersToAngle(radius), 128)), nil
+func capPolygon(context *api.Context, center b6.Geometry, radius float64) (b6.Area, error) {
+	return b6.AreaFromS2Loop(s2.RegularLoop(s2.PointFromLatLng(center.Location()), b6.MetersToAngle(radius), 128)), nil
 }
 
 func filterShortEdges(edges []s2.Edge, threshold s1.Angle) []s2.Edge {
@@ -210,16 +212,17 @@ func convexHull(context *api.Context, c b6.Collection[any, b6.Geometry]) (b6.Are
 		} else if !ok {
 			break
 		}
-		switch g := i.Value().(type) {
-		case b6.Point:
-			query.AddPoint(g.Point())
-		case b6.Path:
-			for i := 0; i < g.Len(); i++ {
-				query.AddPoint(g.Point(i))
+
+		switch i.Value().GeometryType() {
+		case b6.GeometryTypePoint:
+			query.AddPoint(s2.PointFromLatLng(i.Value().Location()))
+		case b6.GeometryTypePath:
+			for j := 0; j < i.Value().(b6.Path).Len(); j++ {
+				query.AddPoint(i.Value().(b6.Path).Point(j))
 			}
-		case b6.Area:
-			for i := 0; i < g.Len(); i++ {
-				query.AddPolygon(g.Polygon(i))
+		case b6.GeometryTypeArea:
+			for j := 0; j < i.Value().(b6.Area).Len(); j++ {
+				query.AddPolygon(i.Value().(b6.Area).Polygon(j))
 			}
 		}
 	}

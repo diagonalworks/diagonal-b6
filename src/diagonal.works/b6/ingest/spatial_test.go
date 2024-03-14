@@ -18,10 +18,10 @@ func makeAreaMap(areas b6.AreaFeatures) map[b6.AreaID]b6.AreaFeature {
 	return m
 }
 
-func makePointMap(points b6.PointFeatures) map[b6.PointID]b6.PointFeature {
-	m := make(map[b6.PointID]b6.PointFeature)
+func makePointMap(points b6.Features) map[b6.FeatureID]b6.PhysicalFeature {
+	m := make(map[b6.FeatureID]b6.PhysicalFeature)
 	for points.Next() {
-		m[points.Feature().PointID()] = points.Feature()
+		m[points.FeatureID()] = points.Feature().(b6.PhysicalFeature)
 	}
 	return m
 }
@@ -63,12 +63,12 @@ func TestIntersectsWithAreaFeature(t *testing.T) {
 		t.Fatal("Failed to find Coal Drops Yard")
 	}
 
-	points := makePointMap(b6.FindPoints(b6.IntersectsFeature{coalDropsYard.FeatureID()}, w))
-	if _, ok := points[b6.MakePointID(b6.NamespaceOSMNode, 6082053669)]; !ok {
+	points := makePointMap(w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.IntersectsFeature{coalDropsYard.FeatureID()}}))
+	if _, ok := points[b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceOSMNode, 6082053669}]; !ok {
 		t.Error("Expected to find Outsiders Store")
 	}
 
-	if _, ok := points[b6.MakePointID(b6.NamespaceOSMNode, 6082053666)]; ok {
+	if _, ok := points[b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceOSMNode, 6082053666}]; ok {
 		t.Error("Didn't expect to find Vermuteria")
 	}
 }

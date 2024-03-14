@@ -52,7 +52,7 @@ class B6Test(unittest.TestCase):
         self.assertEqual(len(names), BUILDINGS_IN_GRANARY_SQUARE)
 
     def test_find_point_by_id(self):        
-        area = self.connection(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)))
+        area = self.connection(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)))
         self.assertEqual(area.id.value, STABLE_STREET_BRIDGE_SOUTH_END_ID)
 
     def test_find_area_by_id(self):
@@ -60,7 +60,8 @@ class B6Test(unittest.TestCase):
         self.assertEqual(area.id.value, COAL_DROPS_YARD_WEST_BUILDING_ID)
 
     def test_find_non_existant_id(self):
-        self.assertEqual(self.connection(b6.find_point(b6.osm_node_id(42))), None)
+        with self.assertRaises(Exception):
+            self.assertEqual(self.connection(b6.find_feature(b6.osm_node_id(42))), None)
 
     def test_find_area_by_wrong_id_type(self):
         with self.assertRaises(Exception): # TODO: Make more specific
@@ -84,16 +85,16 @@ class B6Test(unittest.TestCase):
         self.assertIn("Le Cafe Alain Ducasse", names)
 
     def test_point_degree(self):
-        self.assertEqual(self.connection(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)).degree()), STABLE_STREET_BRIDGE_NORTH_END_DEGREE)
-        degrees = [degree for (id, degree) in self.connection(b6.find_points(b6.within_cap(b6.ll(51.535241, -0.124364), 100)).degree())]
+        self.assertEqual(self.connection(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)).degree()), STABLE_STREET_BRIDGE_NORTH_END_DEGREE)
+        degrees = [degree for (id, degree) in self.connection(b6.find(b6.within_cap(b6.ll(51.535241, -0.124364), 100)).degree())]
         for d in degrees:
             self.assertGreaterEqual(d, 0)
             self.assertLess(d, 10)
 
     def test_send_evaluated_feature_back_to_server(self):
-        point = self.connection(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)))
+        point = self.connection(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)))
         degree = self.connection(b6.degree(point))
-        self.assertEqual(degree, self.connection(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)).degree()))
+        self.assertEqual(degree, self.connection(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)).degree()))
 
     def test_path_lengths(self):
         lengths = [length for (id, length) in self.connection(b6.find_paths(b6.keyed("#highway")).length())]
@@ -107,17 +108,17 @@ class B6Test(unittest.TestCase):
         self.assertIn("Jubilee Greenway", names)
 
     def test_reachable_areas_from_point(self):
-        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).get_string("name")
+        expression = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).get_string("name")
         names = set([name for (_, name) in self.connection(expression)])
         self.assertIn("The Lighterman", names)
 
     def test_reachable_with_distance(self):
-        small = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 100.0, b6.keyed("#amenity")).count()
-        large = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).count()
+        small = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 100.0, b6.keyed("#amenity")).count()
+        large = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).count()
         self.assertGreater(self.connection(large), self.connection(small))
 
     def test_paths_to_reach(self):
-        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).paths_to_reach("walk", 200.0, b6.keyed("#amenity"))
+        expression = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).paths_to_reach("walk", 200.0, b6.keyed("#amenity"))
         paths = list(self.connection(expression))
         self.assertGreaterEqual(len(paths), 4)
         for path, count in paths:
@@ -139,12 +140,12 @@ class B6Test(unittest.TestCase):
             self.assertLess(route.cost(), 500.0)
 
     def test_closest_from_point(self):
-        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "pub"))
+        expression = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "pub"))
         pub = self.connection(expression)
         self.assertEqual("The Lighterman", pub.get_string("name"))
 
     def test_closest_from_point_distance(self):
-        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest_distance("walk", 1000.0, b6.tagged("#amenity", "pub"))
+        expression = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest_distance("walk", 1000.0, b6.tagged("#amenity", "pub"))
         distance = self.connection(expression)
         self.assertGreater(distance, 100.0)
         self.assertLess(distance, 105.0)
@@ -155,25 +156,25 @@ class B6Test(unittest.TestCase):
         self.assertEqual("The Lighterman", pub.get_string("name"))
 
     def test_closest_from_point_non_existant(self):
-        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "nonexistant"))
+        expression = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "nonexistant"))
         self.assertEqual(None, self.connection(expression))
 
     def test_containing_areas_from_point(self):
-        expression = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable_points("walk", 1000.0, b6.all()).containing_areas(b6.keyed("#shop")).get_string("name")
+        expression = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 1000.0, b6.all()).containing_areas(b6.keyed("#shop")).get_string("name")
         names = set([name for (_, name) in self.connection(expression)])
         self.assertIn("Coal Drops Yard", names)
 
     def test_containing_areas_from_area(self):
-        areas = self.connection(b6.find_area(b6.osm_way_area_id(COAL_DROPS_YARD_WEST_BUILDING_ID)).reachable_points("walk", 1000.0, b6.all()).containing_areas(b6.all()))
+        areas = self.connection(b6.find_area(b6.osm_way_area_id(COAL_DROPS_YARD_WEST_BUILDING_ID)).reachable("walk", 1000.0, b6.all()).containing_areas(b6.all()))
         self.assertGreater(len(areas), 10)
 
     def test_count_features(self):
-        self.assertEqual(self.connection(b6.find_points(b6.tagged("#amenity", "bicycle_parking")).count()), BIKE_PARKING_IN_GRANARY_SQUARE)
+        self.assertEqual(self.connection(b6.find(b6.tagged("#amenity", "bicycle_parking")).count()), BIKE_PARKING_IN_GRANARY_SQUARE)
         self.assertEqual(self.connection(b6.find_paths(b6.keyed("#highway")).count()), HIGHWAYS_IN_GRANARY_SQUARE)
         self.assertEqual(self.connection(b6.find_areas(b6.keyed("#building")).count()), BUILDINGS_IN_GRANARY_SQUARE)
 
     def test_divide_count_features(self):
-        self.assertAlmostEqual(self.connection(b6.find_points(b6.tagged("#amenity", "bicycle_parking")).count().divide(10.0)), BIKE_PARKING_IN_GRANARY_SQUARE / 10.0)
+        self.assertAlmostEqual(self.connection(b6.find(b6.tagged("#amenity", "bicycle_parking")).count().divide(10.0)), BIKE_PARKING_IN_GRANARY_SQUARE / 10.0)
 
     def test_filter(self):
         filtered = self.connection(b6.find_areas(b6.keyed("#amenity")).filter(lambda a: b6.matches(a, b6.keyed("addr:postcode"))))
@@ -192,13 +193,14 @@ class B6Test(unittest.TestCase):
             self.assertIn("#building", feature["properties"])
 
     def test_to_geojson_with_feature(self):
-        closest = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "pub"))
+        closest = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).closest("walk", 1000.0, b6.tagged("#amenity", "pub"))
         geojson = self.connection(b6.to_geojson(closest))
         self.assertEqual(geojson["type"], "Feature")
 
     def test_to_geojson_with_missing_feature(self):
-        geojson = self.connection(b6.to_geojson(b6.find_point(b6.osm_node_id(1))))
-        self.assertEqual(len(geojson["features"]), 0)
+        with self.assertRaises(Exception):
+            geojson = self.connection(b6.to_geojson(b6.find_feature(b6.osm_node_id(1))))
+            self.assertEqual(len(geojson["features"]), 0)
 
     def test_search_within_wkt_polygon(self):
         granarySquare = b6.wkt(GRANARY_SQUARE_POLYGON_WKT)
@@ -218,7 +220,7 @@ class B6Test(unittest.TestCase):
         self.assertEqual(self.connection(b6.find_paths(b6.keyed("#bicycle")).count()), len(applied))
 
     def test_search_for_newly_added_tag(self):
-        reachable = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 1000.0, b6.keyed("#amenity"))
+        reachable = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 1000.0, b6.keyed("#amenity"))
         modified = self.connection(b6.add_tags(reachable.map(lambda building: b6.tag("#reachable", "yes"))))
         self.assertGreater(len(modified), 1)
         self.assertEqual(self.connection(b6.find(b6.keyed("#reachable")).count()), len(modified))
@@ -316,7 +318,7 @@ class B6Test(unittest.TestCase):
         self.assertEqual(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID), points[0][0])
 
     def test_paths_by_point(self):
-        paths = self.connection(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)).point_paths())
+        paths = self.connection(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)).point_paths())
         self.assertIn(b6.osm_way_id(STABLE_STREET_BRIDGE_ID), [id for (id, _) in paths])
 
     def test_interpolate(self):
@@ -380,14 +382,14 @@ class B6Test(unittest.TestCase):
         self.assertLess(bridge.length_meters(), 30.0)
 
     def test_connect_points(self):
-        modified = self.connection(b6.find_point(b6.osm_node_id(VERMUTERIA_NODE_ID)).connect(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID))))
+        modified = self.connection(b6.find_feature(b6.osm_node_id(VERMUTERIA_NODE_ID)).connect(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID))))
         self.assertEqual(len(modified), 1)
         for (_, id) in modified:
             self.assertTrue(id.is_path())
             self.assertEqual(id.namespace, b6.NAMESPACE_DIAGONAL_ACCESS_POINTS)
 
     def test_connect_point_to_network(self):
-        modified = self.connection(b6.find_point(b6.osm_node_id(VERMUTERIA_NODE_ID)).connect_to_network())
+        modified = self.connection(b6.find_feature(b6.osm_node_id(VERMUTERIA_NODE_ID)).connect_to_network())
         # The attempt to connect the point to the network fails, as the sample area
         # used by the tests is too small for us to consider any street as being part
         # of the street network, but the test at least verifies the wrapping of
@@ -416,7 +418,7 @@ class B6Test(unittest.TestCase):
         }
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
-        self.assertEqual(self.connection(b6.find_point(ids[0][1]).get_string("name")), "Ruby Violet Truck")
+        self.assertEqual(self.connection(b6.find_feature(ids[0][1]).get_string("name")), "Ruby Violet Truck")
 
     def test_import_geojson_path(self):
         g = {
@@ -494,7 +496,7 @@ class B6Test(unittest.TestCase):
 
     def test_reachable_with_changed_world(self):
         close_road = b6.remove_tag(b6.osm_way_id(STABLE_STREET_BRIDGE_ID), "#highway")
-        reachable = b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).get_string("name")
+        reachable = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable("walk", 200.0, b6.keyed("#amenity")).get_string("name")
         before = len(self.connection(reachable))
         after = len(self.connection(b6.with_change(close_road, lambda: reachable)))
         self.assertGreater(before, after)
@@ -588,7 +590,7 @@ class B6Test(unittest.TestCase):
         self.assertIsNotNone(expression)
 
     def test_name_expression(self):
-        origin = b6.name(b6.find_point(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)), "bridge")
+        origin = b6.name(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)), "bridge")
         query = b6.name(b6.keyed("#amenity"), "amenities")
         distance = b6.name(200.0, "200m")
         count = b6.count(b6.reachable(origin, "walk", distance, query))

@@ -13,10 +13,10 @@ const (
 	gbPostcodeLengthBits  = 2 // to encode a maximum of (7-5) = 2
 )
 
-func PointIDFromGBPostcode(postcode string) PointID {
+func PointIDFromGBPostcode(postcode string) FeatureID {
 	postcode = strings.ToUpper(strings.Replace(postcode, " ", "", -1))
 	if len(postcode) < gbPostcodeMinLength || len(postcode) > gbPostcodeMaxLength {
-		return PointIDInvalid
+		return FeatureIDInvalid
 	}
 	id := uint64(0)
 	const shift = 6 // 6 bits
@@ -30,16 +30,16 @@ func PointIDFromGBPostcode(postcode string) PointID {
 		} else if r >= 'A' && r <= 'Z' {
 			v = uint64(r-'A') + 10
 		} else {
-			return PointIDInvalid
+			return FeatureIDInvalid
 		}
 		id |= v
 	}
 	id <<= gbPostcodeLengthBits
 	id |= uint64(len(postcode) - gbPostcodeMinLength)
-	return MakePointID(NamespaceGBCodePoint, id)
+	return FeatureID{FeatureTypePoint, NamespaceGBCodePoint, id}
 }
 
-func PostcodeFromPointID(id PointID) (string, bool) {
+func PostcodeFromPointID(id FeatureID) (string, bool) {
 	if id.Namespace != NamespaceGBCodePoint {
 		return "", false
 	}

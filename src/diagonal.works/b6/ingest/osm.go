@@ -11,8 +11,8 @@ import (
 	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/local"
 )
 
-func FromOSMNodeID(id osm.NodeID) b6.PointID {
-	return b6.MakePointID(b6.NamespaceOSMNode, uint64(id))
+func FromOSMNodeID(id osm.NodeID) b6.FeatureID {
+	return b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceOSMNode, uint64(id)}
 }
 
 func FromOSMWayID(id osm.WayID) b6.PathID {
@@ -169,7 +169,8 @@ func FillTagsFromOSM(t *b6.Tags, o osm.Tags) {
 		if mapped, ok := osmTagMapping[tag.Key]; ok {
 			key = mapped
 		}
-		*t = append(*t, b6.Tag{Key: key, Value: tag.Value})
+		*t = append(*t, b6.Tag{Key: key, Value: b6.String(tag.Value)})
+
 	}
 }
 
@@ -337,15 +338,15 @@ func (s *pbfSource) Read(options ReadOptions, emit Emit, ctx context.Context) er
 		SkipRelations: options.SkipRelations && options.SkipAreas,
 		Cores:         cores,
 	}
-	points := make([]PointFeature, cores)
+	points := make([]Feature, cores)
 	paths := make([]PathFeature, cores)
 	areas := make([]AreaFeature, cores)
 	relations := make([]RelationFeature, cores)
 	f := func(element osm.Element, g int) error {
 		switch e := element.(type) {
 		case *osm.Node:
-			points[g].FillFromOSM(e)
-			return emit(&points[g], g)
+			points[g] = FillFromOSM(e)
+			return emit(points[g], g)
 		case *osm.Way:
 			if isWayClosed(e) {
 				if !options.SkipPaths {

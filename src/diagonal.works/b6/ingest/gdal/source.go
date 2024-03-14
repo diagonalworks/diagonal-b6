@@ -261,10 +261,9 @@ type Source struct {
 func newFeatureFromS2Region(r s2.Region) ingest.Feature {
 	switch g := r.(type) {
 	case s2.Point:
-		return &ingest.PointFeature{
-			PointID:  b6.PointIDInvalid,
-			Tags:     []b6.Tag{},
-			Location: s2.LatLngFromPoint(g),
+		return &ingest.GenericFeature{
+			ID:   b6.FeatureIDInvalid,
+			Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromPoint(g))}},
 		}
 	case *s2.Polyline:
 		f := ingest.NewPathFeature(len(*g))
@@ -333,7 +332,7 @@ type copyFields []copyField
 func (c copyFields) Fill(f *gdal.Feature, tags []b6.Tag) ([]b6.Tag, error) {
 	for _, cc := range c {
 		if value, err := cc.Value(f); err == nil {
-			tags = append(tags, b6.Tag{Key: cc.Key, Value: value})
+			tags = append(tags, b6.Tag{Key: cc.Key, Value: b6.String(value)})
 		} else {
 			return nil, err
 		}

@@ -66,30 +66,30 @@ func newProtoFromTagged(t Taggable) []*pb.TagProto {
 	tags := t.AllTags()
 	p := make([]*pb.TagProto, len(tags))
 	for i, tag := range tags {
-		p[i] = &pb.TagProto{Key: tag.Key, Value: tag.Value}
+		p[i] = &pb.TagProto{Key: tag.Key, Value: tag.Value.String()}
 	}
 	return p
 }
 
 func NewProtoFromFeature(feature Feature) (*pb.FeatureProto, error) {
-	switch f := feature.(type) {
-	case PointFeature:
-		return newProtoFromPointFeature(f)
-	case PathFeature:
-		return newProtoFromPathFeature(f)
-	case AreaFeature:
-		return newProtoFromAreaFeature(f)
-	case RelationFeature:
-		return newProtoFromRelationFeature(f)
-	case CollectionFeature:
-		return newProtoFromCollectionFeature(f)
-	case ExpressionFeature:
-		return newProtoFromExpressionFeature(f)
+	switch feature.FeatureID().Type {
+	case FeatureTypePoint:
+		return newProtoFromPointFeature(feature)
+	case FeatureTypePath:
+		return newProtoFromPathFeature(feature.(PathFeature))
+	case FeatureTypeArea:
+		return newProtoFromAreaFeature(feature.(AreaFeature))
+	case FeatureTypeRelation:
+		return newProtoFromRelationFeature(feature.(RelationFeature))
+	case FeatureTypeCollection:
+		return newProtoFromCollectionFeature(feature.(CollectionFeature))
+	case FeatureTypeExpression:
+		return newProtoFromExpressionFeature(feature.(ExpressionFeature))
 	}
 	panic(fmt.Sprintf("Can't handle feature %T", feature))
 }
 
-func newProtoFromPointFeature(f PointFeature) (*pb.FeatureProto, error) {
+func newProtoFromPointFeature(f Feature) (*pb.FeatureProto, error) { // TODO(mari): clean up feature specific protos
 	return &pb.FeatureProto{
 		Feature: &pb.FeatureProto_Point{
 			Point: &pb.PointFeatureProto{
@@ -324,12 +324,12 @@ func NewProtoFromRoute(route Route) *pb.RouteProto {
 
 func NewRouteFromProto(p *pb.RouteProto) Route {
 	route := Route{
-		Origin: NewFeatureIDFromProto(p.Origin).ToPointID(),
+		Origin: NewFeatureIDFromProto(p.Origin),
 		Steps:  make([]Step, len(p.Steps)),
 	}
 	for i, step := range p.Steps {
 		route.Steps[i] = Step{
-			Destination: NewFeatureIDFromProto(step.Destination).ToPointID(),
+			Destination: NewFeatureIDFromProto(step.Destination),
 			Via:         NewFeatureIDFromProto(step.Via).ToPathID(),
 			Cost:        step.Cost,
 		}

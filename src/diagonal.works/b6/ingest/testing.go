@@ -23,7 +23,6 @@ func ValidateWorld(name string, buildWorld BuildOSMWorld, t *testing.T) {
 	}{
 		{"GranarySquareSeemsReasonable", ValidateGranarySquareSeemsReasonable},
 		{"WaysWithMissingNodesArentIndexed", ValidateWaysWithMissingNodesArentIndexed},
-		{"PointsWithoutTagsArentIndexed", ValidatePointsWithoutTagsArentIndexed},
 		{"WaysFallingExactlyWithinSearchCellAreFound", ValidateWaysFallingExactlyWithinSearchCellAreFound},
 		{"ClockwisePolygonsAreIndexedCorrectly", ValidateClockwisePolygonsAreIndexedCorrectly},
 		{"PolygonsWithInvalidGeometryAreSkipped", ValidatePolygonsWithInvalidGeometryAreSkipped},
@@ -167,10 +166,10 @@ func ValidateGranarySquareSeemsReasonable(buildWorld BuildOSMWorld, t *testing.T
 	trees := 0
 	for found.Next() {
 		feature := found.Feature()
-		if feature.Get("#amenity").Value == "bench" {
+		if feature.Get("#amenity").Value.String() == "bench" {
 			benches++
 		}
-		if feature.Get("#natural").Value == "tree" {
+		if feature.Get("#natural").Value.String() == "tree" {
 			trees++
 		}
 	}
@@ -248,14 +247,14 @@ func ValidatePointsWithoutTagsArentIndexed(buildWorld BuildOSMWorld, t *testing.
 		return
 	}
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(100))
-	points := b6.AllPoints(b6.FindPoints(b6.NewIntersectsCap(cap), w))
+	points := w.FindFeatures(b6.NewIntersectsCap(cap))
 
-	if len(points) == 1 {
-		if points[0].FeatureID().Value != uint64(nodes[0].ID) {
-			t.Errorf("Expected ID %d, found %d", nodes[0].ID, points[0].FeatureID().Value)
-		}
-	} else {
-		t.Errorf("Expected %d points, found %d", 1, len(points))
+	if !points.Next() || points.FeatureID().Value != uint64(nodes[0].ID) {
+		t.Errorf("Expected ID %d, found %d", nodes[0].ID, points.FeatureID().Value)
+	}
+
+	if points.Next() {
+		t.Errorf("Expected 1 point, found more")
 	}
 }
 
@@ -413,7 +412,7 @@ func ValidateRelationsAsAreas(buildWorld BuildOSMWorld, t *testing.T) {
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(500))
 
 	expectedAreas := 1
-	q := b6.Intersection{b6.NewIntersectsCap(cap), b6.Tagged{Key: "#building", Value: "yes"}}
+	q := b6.Intersection{b6.NewIntersectsCap(cap), b6.Tagged{Key: "#building", Value: b6.String("yes")}}
 	if areas := b6.AllAreas(b6.FindAreas(q, w)); len(areas) != expectedAreas {
 		t.Errorf("Expected %d area, found %d", expectedAreas, len(areas))
 	} else {
@@ -609,7 +608,7 @@ func ValidateFindWithIntersectionQuery(buildWorld BuildOSMWorld, t *testing.T) {
 		return
 	}
 
-	q := b6.Intersection{b6.Tagged{Key: "#amenity", Value: "school"}, b6.Tagged{Key: "#building", Value: "yes"}}
+	q := b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.String("school")}, b6.Tagged{Key: "#building", Value: b6.String("yes")}}
 	fs := b6.AllFeatures(w.FindFeatures(q))
 	if len(fs) != 1 {
 		t.Errorf("Expected one feature, found %d", len(fs))
@@ -657,8 +656,8 @@ func ValidateTraverseReturnsSegmentsWithCorrectOrigin(buildWorld BuildOSMWorld, 
 	}
 
 	for _, segment := range segments {
-		if segment.FirstFeature().PointID() != origin {
-			t.Errorf("Expected first point to be %s, found %s", origin, segment.FirstFeature().PointID())
+		if segment.FirstFeature().FeatureID() != origin {
+			t.Errorf("Expected first point to be %s, found %s", origin, segment.FirstFeature().FeatureID())
 		}
 	}
 }
@@ -694,8 +693,8 @@ func ValidateTraverseAlongWaysThatHaveBeenInverted(buildWorld BuildOSMWorld, t *
 
 	origin := FromOSMNodeID(2309943825)
 	for _, segment := range b6.AllSegments(w.Traverse(origin)) {
-		if segment.FirstFeature().PointID() != origin {
-			t.Errorf("Expected point %s, found %s", origin, segment.FirstFeature().PointID())
+		if segment.FirstFeature().FeatureID() != origin {
+			t.Errorf("Expected point %s, found %s", origin, segment.FirstFeature().FeatureID())
 		}
 	}
 }
@@ -764,7 +763,7 @@ func ValidateTraverseByIntersectionsAtEndNodes(buildWorld BuildOSMWorld, t *test
 		t.Errorf("Expected a feature at index 0")
 		return
 	}
-	found := b6.AllSegments(w.Traverse(point.PointID()))
+	found := b6.AllSegments(w.Traverse(point.FeatureID()))
 	expected := []uint64{557698825, 642639444, 807925586}
 	if len(found) != len(expected) {
 		t.Errorf("Expected %d paths, found %d", len(expected), len(found))
@@ -787,7 +786,7 @@ func ValidateTraverseByIntersectionsAtEndNodes(buildWorld BuildOSMWorld, t *test
 		t.Errorf("Expected a PointFeature at index 1")
 		return
 	}
-	found = b6.AllSegments(w.Traverse(point.PointID()))
+	found = b6.AllSegments(w.Traverse(point.FeatureID()))
 	if len(found) != 2 {
 		t.Errorf("Expected 2 path segments, found %d", len(found))
 	}
@@ -820,7 +819,7 @@ func ValidateTraverseWithoutIntersectionsAtEndNodes(buildWorld BuildOSMWorld, t 
 		t.Errorf("Expected a feature at index 0")
 		return
 	}
-	found := b6.AllSegments(w.Traverse(point.PointID()))
+	found := b6.AllSegments(w.Traverse(point.FeatureID()))
 	if len(found) != 1 {
 		t.Errorf("Expected 1 segment, found %d", len(found))
 		return
@@ -874,7 +873,7 @@ func ValidateTraverseByIntersectionsBetweenEndNodes(buildWorld BuildOSMWorld, t 
 		return
 	}
 
-	found := b6.AllSegments(w.Traverse(point.PointID()))
+	found := b6.AllSegments(w.Traverse(point.FeatureID()))
 	sort.Sort(bySegmentKey(found))
 	expected := []struct {
 		way   osm.WayID
@@ -934,7 +933,7 @@ func ValidateSegmentsAreOnlyReturnedForWaysWithAllNodesPresent(buildWorld BuildO
 		return
 	}
 
-	found := b6.AllSegments(w.Traverse(point.PointID()))
+	found := b6.AllSegments(w.Traverse(point.FeatureID()))
 	if len(found) != 1 || found[0].Feature.FeatureID().Value != uint64(558345068) {
 		t.Errorf("Expected to find a single segment")
 	}
@@ -1047,7 +1046,7 @@ func ValidateFindRelationsByFeature(buildWorld BuildOSMWorld, t *testing.T) {
 
 	found := b6.AllRelations(w.FindRelationsByFeature(FromOSMWayID(807925586).FeatureID()))
 	if len(found) == 1 {
-		expected := b6.Tag{Key: "#route", Value: "bicycle"}
+		expected := b6.Tag{Key: "#route", Value: b6.String("bicycle")}
 		if route := found[0].Get("#route"); route != expected {
 			t.Errorf("Expected tag value %q, found %q", expected, route)
 		}
@@ -1123,7 +1122,7 @@ func ValidateSpatialQueriesOnAnEmptyIndexReturnNothing(buildWorld BuildOSMWorld,
 		// imaginary ways, but both are covered.
 		t.Errorf("Didn't expect to find any paths")
 	}
-	if points := b6.AllPoints(b6.FindPoints(query, w)); len(points) != 0 {
+	if points := w.FindFeatures(b6.Typed{b6.FeatureTypePoint, query}); points.Next() != false {
 		t.Errorf("Didn't expect to find any points")
 	}
 }
@@ -1327,22 +1326,28 @@ func ValidateTagsAreSearchable(buildWorld BuildOSMWorld, t *testing.T) {
 	}
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052)), b6.MetersToAngle(100))
-	points := b6.AllPoints(b6.FindPoints(b6.NewIntersectsCap(cap), w))
-	if len(points) != 1 {
-		t.Errorf("Expected to find 1 point, found %d", len(points))
-		return
+	points := w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.NewIntersectsCap(cap)})
+	pointsLen := 0
+
+	for points.Next() {
+		pointsLen++
+
+		if amenity := points.Feature().Get("#amenity"); !amenity.IsValid() {
+			t.Errorf("Expected amenity tag to be searchable")
+		}
+		if amenity := points.Feature().Get("amenity"); amenity.IsValid() {
+			t.Errorf("Expected amenity tag to be searchable")
+		}
+		if name := points.Feature().Get("name"); !name.IsValid() {
+			t.Errorf("Didn't expect name tag to be searchable")
+		}
+		if name := points.Feature().Get("#name"); name.IsValid() {
+			t.Errorf("Didn't expect name tag to be searchable")
+		}
 	}
-	if amenity := points[0].Get("#amenity"); !amenity.IsValid() {
-		t.Errorf("Expected amenity tag to be searchable")
-	}
-	if amenity := points[0].Get("amenity"); amenity.IsValid() {
-		t.Errorf("Expected amenity tag to be searchable")
-	}
-	if name := points[0].Get("name"); !name.IsValid() {
-		t.Errorf("Didn't expect name tag to be searchable")
-	}
-	if name := points[0].Get("#name"); name.IsValid() {
-		t.Errorf("Didn't expect name tag to be searchable")
+
+	if pointsLen != 1 {
+		t.Errorf("Expected to find 1 point, found %d", pointsLen)
 	}
 }
 

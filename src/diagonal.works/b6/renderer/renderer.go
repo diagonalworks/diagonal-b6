@@ -7,6 +7,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
+	"github.com/golang/geo/s2"
 )
 
 type Renderer interface {
@@ -27,7 +28,7 @@ func (b byLayerThenID) Less(i, j int) bool {
 
 func layerNumber(f b6.Feature) int {
 	if layer := f.Get("layer"); layer.IsValid() {
-		if i, ok := layer.IntValue(); ok {
+		if i, err := strconv.Atoi(layer.Value.String()); err == nil {
 			return i
 		}
 	}
@@ -113,7 +114,7 @@ func (r *RenderRule) ToQuery(zoom uint) (b6.Query, bool) {
 	if (r.MinZoom > 0 && zoom < r.MinZoom) || (r.MaxZoom > 0 && zoom > r.MaxZoom) {
 		return nil, false
 	}
-	if r.Tag.Value != "" {
+	if r.Tag.Value != nil {
 		return b6.Tagged(r.Tag), true
 	} else {
 		return b6.Keyed{Key: r.Tag.Key}, true
@@ -135,7 +136,7 @@ func (rs RenderRules) ToQuery(zoom uint) b6.Query {
 func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 	for _, r := range rs {
 		if r.Tag.Key == tag.Key {
-			if r.Tag.Value == "" || r.Tag.Value == tag.Value {
+			if r.Tag.Value == nil || r.Tag.Value == tag.Value {
 				return true
 			}
 		}
@@ -144,41 +145,41 @@ func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 }
 
 var BasemapRenderRules = RenderRules{
-	{Tag: b6.Tag{Key: "#building", Value: "train_station"}, MinZoom: 12, Layer: BasemapLayerBuilding},
+	{Tag: b6.Tag{Key: "#building", Value: b6.String("train_station")}, MinZoom: 12, Layer: BasemapLayerBuilding},
 	{Tag: b6.Tag{Key: "#building"}, MinZoom: 14, Layer: BasemapLayerBuilding},
-	{Tag: b6.Tag{Key: "#highway", Value: "cycleway"}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "footway"}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "motorway"}, MinZoom: 12, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "path"}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "pedestrian"}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "primary"}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
-	{Tag: b6.Tag{Key: "#highway", Value: "residential"}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "secondary"}, MinZoom: 16, Layer: BasemapLayerRoad, Label: true},
-	{Tag: b6.Tag{Key: "#highway", Value: "service"}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "street"}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: "tertiary"}, MinZoom: 14, Layer: BasemapLayerRoad, Label: true},
-	{Tag: b6.Tag{Key: "#highway", Value: "trunk"}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
-	{Tag: b6.Tag{Key: "#highway", Value: "unclassified"}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#landuse", Value: "cemetary"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: "forest"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: "grass"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: "heath"}, MinZoom: 16, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: "meadow"}, MinZoom: 16, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: "park"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: "pitch"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: "vacant"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: "park"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: "pitch"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: "playground"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: "garden"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: "nature_reserve"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#natural", Value: "coastline"}, MinZoom: 12, Layer: BasemapLayerBoundary},
-	{Tag: b6.Tag{Key: "#natural", Value: "heath"}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#outline", Value: "contour"}, MinZoom: 14, Layer: BasemapLayerContour},
-	{Tag: b6.Tag{Key: "#railway", Value: "rail"}, MinZoom: 12, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("cycleway")}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("footway")}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("motorway")}, MinZoom: 12, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("path")}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("pedestrian")}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("primary")}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("residential")}, MinZoom: 14, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("secondary")}, MinZoom: 16, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("service")}, MinZoom: 14, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("street")}, MinZoom: 14, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("tertiary")}, MinZoom: 14, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("trunk")}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.String("unclassified")}, MinZoom: 14, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.String("cemetary")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.String("forest")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.String("grass")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.String("heath")}, MinZoom: 16, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.String("meadow")}, MinZoom: 16, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.String("park")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.String("pitch")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.String("vacant")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.String("park")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.String("pitch")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.String("playground")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.String("garden")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.String("nature_reserve")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#natural", Value: b6.String("coastline")}, MinZoom: 12, Layer: BasemapLayerBoundary},
+	{Tag: b6.Tag{Key: "#natural", Value: b6.String("heath")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#outline", Value: b6.String("contour")}, MinZoom: 14, Layer: BasemapLayerContour},
+	{Tag: b6.Tag{Key: "#railway", Value: b6.String("rail")}, MinZoom: 12, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#water"}, MinZoom: 12, Layer: BasemapLayerWater},
 	{Tag: b6.Tag{Key: "#waterway"}, MinZoom: 14, Layer: BasemapLayerWater},
-	{Tag: b6.Tag{Key: "#place", Value: "city"}, MaxZoom: 11, Layer: BasemapLayerLabel},
+	{Tag: b6.Tag{Key: "#place", Value: b6.String("city")}, MaxZoom: 11, Layer: BasemapLayerLabel},
 }
 
 type BasemapRenderer struct {
@@ -208,7 +209,7 @@ func (b *BasemapRenderer) findFeatures(tile b6.Tile) []b6.Feature {
 func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs []*Feature) []*Feature {
 	var tags [1]b6.Tag
 	for _, rule := range b.RenderRules {
-		if t := f.Get(rule.Tag.Key); t.IsValid() && (rule.Tag.Value == "" || t.Value == rule.Tag.Value) {
+		if t := f.Get(rule.Tag.Key); t.IsValid() && rule.Tag.Value == nil || t.Value == rule.Tag.Value {
 			tags[0] = b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value}
 			fs = FillFeaturesFromFeature(f, tags[0:], fs, &rule)
 			layers[rule.Layer].AddFeatures(fs)
@@ -219,22 +220,24 @@ func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs 
 }
 
 func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature, rule *RenderRule) []*Feature {
-	switch f := f.(type) {
-	case b6.PointFeature:
-		tfs = fillFeaturesFromPoint(f, tags, tfs, rule)
-	case b6.PathFeature:
-		tfs = fillFeaturesFromPath(f, tags, tfs, rule)
-	case b6.AreaFeature:
-		tfs = fillFeaturesFromArea(f, tags, tfs, rule)
+	if f, ok := f.(b6.PhysicalFeature); ok {
+		switch f.GeometryType() {
+		case b6.GeometryTypePoint:
+			tfs = fillFeaturesFromPoint(f, tags, tfs, rule)
+		case b6.GeometryTypePath:
+			tfs = fillFeaturesFromPath(f.(b6.PathFeature), tags, tfs, rule)
+		case b6.GeometryTypeArea:
+			tfs = fillFeaturesFromArea(f.(b6.AreaFeature), tags, tfs, rule)
+		}
 	}
 	return tfs
 }
 
-func fillFeaturesFromPoint(point b6.PointFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
-	f := NewFeature(NewPoint(point.Point()))
+func fillFeaturesFromPoint(point b6.PhysicalFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
+	f := NewFeature(NewPoint(s2.PointFromLatLng(point.Location())))
 	f.ID = api.TileFeatureID(point.FeatureID())
 	for _, t := range tags {
-		f.Tags[t.Key] = t.Value
+		f.Tags[t.Key] = t.Value.String()
 	}
 	fillTagsFromTags(f, point, rule)
 	return append(fs, f)
@@ -244,7 +247,7 @@ func fillFeaturesFromPath(path b6.PathFeature, tags []b6.Tag, fs []*Feature, rul
 	f := NewFeature(NewLineString(path.Polyline()))
 	f.ID = api.TileFeatureID(path.FeatureID())
 	for _, t := range tags {
-		f.Tags[t.Key] = t.Value
+		f.Tags[t.Key] = t.Value.String()
 	}
 	fillTagsFromTags(f, path, rule)
 	return append(fs, f)
@@ -255,7 +258,7 @@ func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature, rul
 		f := NewFeature(NewPolygon(area.Polygon(i)))
 		f.ID = api.TileFeatureIDForPolygon(area.FeatureID(), i)
 		for _, t := range tags {
-			f.Tags[t.Key] = t.Value
+			f.Tags[t.Key] = t.Value.String()
 		}
 		fillTagsFromTags(f, area, rule)
 		fs = append(fs, f)
@@ -273,9 +276,9 @@ func fillTagsFromTags(tf *Feature, f b6.Feature, rule *RenderRule) {
 
 func fillNameFromFeature(tf *Feature, f b6.Feature) {
 	if name := f.Get("addr:housename"); name.IsValid() {
-		tf.Tags["name"] = name.Value
+		tf.Tags["name"] = name.Value.String()
 	} else if name := f.Get("name"); name.IsValid() {
-		tf.Tags["name"] = name.Value
+		tf.Tags["name"] = name.Value.String()
 	}
 }
 
@@ -309,7 +312,7 @@ func colourFromTagValue(v string) string {
 
 func fillColourFromFeature(tf *Feature, f b6.Taggable) {
 	if colour := f.Get(DiagonalColour); colour.IsValid() {
-		if converted := colourFromTagValue(colour.Value); converted != "" {
+		if converted := colourFromTagValue(colour.Value.String()); converted != "" {
 			tf.Tags["colour"] = converted
 		}
 	}

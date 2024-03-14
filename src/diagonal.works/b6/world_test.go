@@ -26,17 +26,18 @@ func TestTagToAndFromStringHappyPath(t *testing.T) {
 		tag Tag
 		s   string
 	}{
-		{Tag{Key: "#amenity", Value: "restaurant"}, "#amenity=restaurant"},
-		{Tag{Key: "note", Value: "Only on match days"}, `note="Only on match days"`},
-		{Tag{Key: "note", Value: "Value with a \" in the middle"}, `note="Value with a \" in the middle"`},
-		{Tag{Key: "note", Value: "Value with a \\ in the middle"}, `note="Value with a \\ in the middle"`},
-		{Tag{Key: `Key with = in middle`, Value: "Value with a \\ in the middle"}, `"Key with = in middle"="Value with a \\ in the middle"`},
+		{Tag{Key: "#amenity", Value: String("restaurant")}, "#amenity=restaurant"},
+		{Tag{Key: "note", Value: String("Only on match days")}, `note="Only on match days"`},
+		{Tag{Key: "note", Value: String("Value with a \" in the middle")}, `note="Value with a \" in the middle"`},
+		{Tag{Key: "note", Value: String("Value with a \\ in the middle")}, `note="Value with a \\ in the middle"`},
+		{Tag{Key: `Key with = in middle`, Value: String("Value with a \\ in the middle")}, `"Key with = in middle"="Value with a \\ in the middle"`},
 	}
 	for _, c := range cases {
 		if s := c.tag.String(); s != c.s {
 			t.Errorf("Expected %s, found %s", c.s, s)
 		}
-		tag := TagFromString(c.s)
+		var tag Tag
+		tag.FromString(c.s, ValueTypeString)
 		if tag.Key != c.tag.Key {
 			t.Errorf("Expected key %s, found %s", c.tag.Key, tag.Key)
 		}
@@ -51,12 +52,13 @@ func TestTagToAndFromStringBrokenStrings(t *testing.T) {
 		s   string
 		tag Tag
 	}{
-		{`#amenity="restaurant"nonsense`, Tag{Key: "#amenity", Value: "restaurant"}},
-		{`#amenity    ="restaurant"nonsense`, Tag{Key: "#amenity", Value: "restaurant"}},
-		{`#amenity restaurant`, Tag{Key: "#amenityrestaurant", Value: ""}},
+		{`#amenity="restaurant"nonsense`, Tag{Key: "#amenity", Value: String("restaurant")}},
+		{`#amenity    ="restaurant"nonsense`, Tag{Key: "#amenity", Value: String("restaurant")}},
+		{`#amenity restaurant`, Tag{Key: "#amenityrestaurant", Value: String("")}},
 	}
 	for _, c := range cases {
-		tag := TagFromString(c.s)
+		var tag Tag
+		tag.FromString(c.s, ValueTypeString)
 		if tag.Key != c.tag.Key {
 			t.Errorf("Expected key %s, found %s", c.tag.Key, tag.Key)
 		}

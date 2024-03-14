@@ -40,13 +40,13 @@ func TestDistanceToPointMeters(t *testing.T) {
 		t.Fatal("Failed to find expected path")
 	}
 
-	point := b6.PointFromLatLngDegrees(51.53586, -0.12564)
+	point := b6.GeometryFromLatLng(s2.LatLngFromDegrees(51.53586, -0.12564))
 	distance, err := distanceToPointMeters(context, path, point)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	baseline := b6.AngleToMeters(path.Point(0).Distance(point.Point()))
+	baseline := b6.AngleToMeters(path.Point(0).Distance(s2.PointFromLatLng(point.Location())))
 	if baseline/distance > 1.5 {
 		t.Errorf("Distances aren't similar enough; ratio: %f", baseline/distance)
 	}
