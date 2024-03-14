@@ -39,12 +39,13 @@ func TestMatchingFunctions(t *testing.T) {
 }
 
 func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
-	base := camden.BuildGranarySquareForTests(t)
-	w := ingest.NewMutableOverlayWorld(base)
+	w := &ingest.MutableWorlds{
+		Base: camden.BuildGranarySquareForTests(t),
+	}
 
 	handler := StackHandler{
 		UI: &OpenSourceUI{
-			World:           w,
+			Worlds:          w,
 			FunctionSymbols: functions.Functions(),
 			Adaptors:        functions.Adaptors(),
 			Options: api.Options{

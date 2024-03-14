@@ -7,6 +7,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
+	"diagonal.works/b6/ingest"
 	"github.com/golang/geo/s2"
 )
 
@@ -184,11 +185,11 @@ var BasemapRenderRules = RenderRules{
 
 type BasemapRenderer struct {
 	RenderRules RenderRules
-	World       b6.World
+	Worlds      ingest.Worlds
 }
 
 func (b *BasemapRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
-	features := b.findFeatures(tile)
+	features := b.findFeatures(args.R, tile)
 	layers := NewLayers()
 	fs := make([]*Feature, 0, 2)
 	for _, feature := range features {
@@ -197,11 +198,11 @@ func (b *BasemapRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 	return &Tile{Layers: (*layers)[0:]}, nil
 }
 
-func (b *BasemapRenderer) findFeatures(tile b6.Tile) []b6.Feature {
+func (b *BasemapRenderer) findFeatures(root b6.FeatureID, tile b6.Tile) []b6.Feature {
 	bounds := tile.RectBound()
 	regionQuery := b6.MightIntersect{Region: bounds}
 	q := b6.Intersection{b.RenderRules.ToQuery(tile.Z), regionQuery}
-	features := b6.AllFeatures(b.World.FindFeatures(q))
+	features := b6.AllFeatures(b.Worlds.FindOrCreateWorld(root).FindFeatures(q))
 	sort.Sort(byLayerThenID(features))
 	return features
 }

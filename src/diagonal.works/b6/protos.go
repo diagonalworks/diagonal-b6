@@ -19,6 +19,9 @@ func NewProtoFromFeatureID(id FeatureID) *pb.FeatureIDProto {
 }
 
 func NewFeatureIDFromProto(p *pb.FeatureIDProto) FeatureID {
+	if p == nil {
+		return FeatureIDInvalid
+	}
 	return FeatureID{
 		Type:      NewFeatureTypeFromProto(p.Type),
 		Namespace: Namespace(p.Namespace),

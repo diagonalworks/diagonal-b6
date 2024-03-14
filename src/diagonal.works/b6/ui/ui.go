@@ -38,7 +38,7 @@ type Options struct {
 	EnableStorybook   bool
 	BasemapRules      renderer.RenderRules
 	UI                UI
-	World             ingest.MutableWorld
+	Worlds            ingest.Worlds
 	APIOptions        api.Options
 	InstrumentHandler func(handler http.Handler, name string) http.Handler
 }
@@ -96,7 +96,7 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 		ui = options.UI
 	} else {
 		ui = &OpenSourceUI{
-			World:           options.World,
+			Worlds:          options.Worlds,
 			Options:         options.APIOptions,
 			FunctionSymbols: functions.Functions(),
 			Adaptors:        functions.Adaptors(),
@@ -122,12 +122,12 @@ func RegisterTiles(root *http.ServeMux, options *Options) {
 	if options.BasemapRules != nil {
 		rules = options.BasemapRules
 	}
-	base := http.Handler(&renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: rules, World: options.World}})
+	base := http.Handler(&renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: rules, Worlds: options.Worlds}})
 	if options.InstrumentHandler != nil {
 		base = options.InstrumentHandler(base, "tiles_base")
 	}
 	root.Handle("/tiles/base/", base)
-	query := http.Handler(&renderer.TileHandler{Renderer: renderer.NewQueryRenderer(options.World, options.APIOptions.Cores)})
+	query := http.Handler(&renderer.TileHandler{Renderer: renderer.NewQueryRenderer(options.Worlds, options.APIOptions.Cores)})
 	if options.InstrumentHandler != nil {
 		query = options.InstrumentHandler(query, "tiles_query")
 	}
@@ -334,14 +334,15 @@ func SendJSON(value interface{}, w http.ResponseWriter, r *http.Request) {
 
 type OpenSourceUI struct {
 	BasemapRules    renderer.RenderRules
-	World           b6.World
+	Worlds          ingest.Worlds
 	Options         api.Options
 	FunctionSymbols api.FunctionSymbols
 	Adaptors        api.Adaptors
 }
 
 func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupResponseJSON, ui UI) error {
-	if context := b6.FindCollectionByID(request.RenderContext, o.World); context != nil {
+	w := o.Worlds.FindOrCreateWorld(request.RenderContext.FeatureID())
+	if context := b6.FindCollectionByID(request.RenderContext, w); context != nil {
 		if context, ok := context.(b6.CollectionFeature); ok {
 			c := b6.AdaptCollection[string, b6.FeatureID](context)
 			i := c.Begin()
@@ -353,8 +354,8 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 					break
 				}
 				if i.Key() == "centroid" {
-					if centroid := o.World.FindFeatureByID(i.Value()); centroid != nil {
-						if p, ok := centroid.(b6.Geometry); ok {
+					if centroid := w.FindFeatureByID(i.Value()); centroid != nil {
+						if p, ok := centroid.(b6.PhysicalFeature); ok {
 							response.MapCenter = &LatLngJSON{
 								LatE7: int(p.Location().Lat.E7()),
 								LngE7: int(p.Location().Lng.E7()),
@@ -363,7 +364,7 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 						}
 					}
 				} else if i.Key() == "docked" {
-					if docked := o.World.FindFeatureByID(i.Value()); docked != nil {
+					if docked := w.FindFeatureByID(i.Value()); docked != nil {
 						uiResponse := NewUIResponseJSON()
 						if err := ui.Render(uiResponse, docked, context, true, ui); err == nil {
 							response.Docked = append(response.Docked, uiResponse)
@@ -396,9 +397,12 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 }
 
 func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIResponseJSON, ui UI) error {
-	var root b6.CollectionFeature
+	root := b6.NewFeatureIDFromProto(request.Context)
+	w := o.Worlds.FindOrCreateWorld(root)
+
+	var rootCollection b6.CollectionFeature
 	if request.Context != nil && request.Context.Type == pb.FeatureType_FeatureTypeCollection {
-		root = b6.FindCollectionByID(b6.NewFeatureIDFromProto(request.Context).ToCollectionID(), o.World)
+		rootCollection = b6.FindCollectionByID(b6.NewFeatureIDFromProto(request.Context).ToCollectionID(), w)
 	}
 
 	var expression b6.Expression
@@ -413,7 +417,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 			}
 		}
 		if err != nil {
-			ui.Render(response, err, root, request.Locked, ui)
+			ui.Render(response, err, rootCollection, request.Locked, ui)
 			var substack pb.SubstackProto
 			fillSubstackFromError(&substack, err)
 			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
@@ -438,12 +442,12 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 
 	var err error
 	if response.Proto.Node, err = expression.ToProto(); err != nil {
-		ui.Render(response, err, root, request.Locked, ui)
+		ui.Render(response, err, rootCollection, request.Locked, ui)
 		return nil
 	}
 
 	vmContext := api.Context{
-		World:           o.World,
+		World:           w,
 		FunctionSymbols: o.FunctionSymbols,
 		Adaptors:        o.Adaptors,
 		Context:         context.Background(),
@@ -452,16 +456,20 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 
 	result, err := api.Evaluate(expression, &vmContext)
 	if err == nil {
-		err = ui.Render(response, result, root, request.Locked, ui)
+		err = ui.Render(response, result, rootCollection, request.Locked, ui)
 	}
 	if err != nil {
-		ui.Render(response, err, root, request.Locked, ui)
+		ui.Render(response, err, rootCollection, request.Locked, ui)
 	}
 	return nil
 }
 
-func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, context b6.CollectionFeature, locked bool, ui UI) error {
-	if err := o.fillResponseFromResult(response, value); err == nil {
+func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root b6.CollectionFeature, locked bool, ui UI) error {
+	id := b6.FeatureIDInvalid
+	if root != nil {
+		id = root.FeatureID()
+	}
+	if err := o.fillResponseFromResult(response, value, o.Worlds.FindOrCreateWorld(id)); err == nil {
 		shell := &pb.ShellLineProto{
 			Functions: make([]string, 0),
 		}
@@ -471,11 +479,11 @@ func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, conte
 		})
 		return nil
 	} else {
-		return o.fillResponseFromResult(response, err)
+		return o.fillResponseFromResult(response, err, o.Worlds.FindOrCreateWorld(id))
 	}
 }
 
-func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result interface{}) error {
+func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result interface{}, w b6.World) error {
 	p := (*pb.UIResponseProto)(response.Proto)
 	switch r := result.(type) {
 	case error:
@@ -498,16 +506,16 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, substack)
 		}
 		id := b6.MakeCollectionID(r.ExpressionID().Namespace, r.ExpressionID().Value)
-		if c := b6.FindCollectionByID(id, o.World); c != nil {
+		if c := b6.FindCollectionByID(id, w); c != nil {
 			substack := &pb.SubstackProto{}
-			if err := fillSubstackFromCollection(substack, c, p, o.World); err == nil {
+			if err := fillSubstackFromCollection(substack, c, p, w); err == nil {
 				p.Stack.Substacks = append(p.Stack.Substacks, substack)
 			} else {
 				return err
 			}
 		}
 	case b6.Feature:
-		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, r, o.World)
+		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, r, w)
 		highlightInResponse(p, r.FeatureID())
 	case b6.Query:
 		if q, ok := api.UnparseQuery(r); ok {
@@ -522,7 +530,7 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 		}
 	case b6.Tag:
 		var substack pb.SubstackProto
-		fillSubstackFromAtom(&substack, AtomFromValue(r, o.World))
+		fillSubstackFromAtom(&substack, AtomFromValue(r, w))
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		if !o.BasemapRules.IsRendered(r) {
 			if q, ok := api.UnparseQuery(b6.Tagged(r)); ok {
@@ -534,12 +542,12 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			}
 		}
 	case *api.HistogramCollection:
-		if err := fillResponseFromHistogram(p, r, o.World); err != nil {
+		if err := fillResponseFromHistogram(p, r, w); err != nil {
 			return err
 		}
 	case b6.UntypedCollection:
 		substack := &pb.SubstackProto{}
-		if err := fillSubstackFromCollection(substack, r, p, o.World); err == nil {
+		if err := fillSubstackFromCollection(substack, r, p, w); err == nil {
 			p.Stack.Substacks = append(p.Stack.Substacks, substack)
 		} else {
 			return err
@@ -610,7 +618,7 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			Lines: []*pb.LineProto{{
 				Line: &pb.LineProto_Value{
 					Value: &pb.ValueLineProto{
-						Atom: AtomFromValue(r, o.World),
+						Atom: AtomFromValue(r, w),
 					},
 				},
 			}},

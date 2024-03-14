@@ -4,15 +4,18 @@ import (
 	"testing"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/ingest"
 	"diagonal.works/b6/test/camden"
 	"github.com/golang/geo/s2"
 )
 
 func TestQueryRenderer(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	w := &ingest.MutableWorlds{
+		Base: camden.BuildGranarySquareForTests(t),
+	}
 
 	projection := b6.NewTileMercatorProjection(16)
-	r := NewQueryRenderer(granarySquare, 2)
+	r := NewQueryRenderer(w, 2)
 	args := &TileArgs{Q: "[#amenity=cafe]"}
 	tile, err := r.Render(projection.TileFromLatLng(s2.LatLngFromDegrees(51.53531, -0.12434)), args)
 	if err != nil {
@@ -36,10 +39,12 @@ func TestQueryRenderer(t *testing.T) {
 }
 
 func TestQueryRendererWithValueFunction(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	w := &ingest.MutableWorlds{
+		Base: camden.BuildGranarySquareForTests(t),
+	}
 
 	projection := b6.NewTileMercatorProjection(16)
-	r := NewQueryRenderer(granarySquare, 2)
+	r := NewQueryRenderer(w, 2)
 	args := &TileArgs{Q: "[#amenity=cafe]", V: "get-string \"cuisine\""}
 	tile, err := r.Render(projection.TileFromLatLng(s2.LatLngFromDegrees(51.53531, -0.12434)), args)
 	if err != nil {

@@ -35,12 +35,17 @@ class FeatureID(expression.Literal):
     def is_relation(self):
         return self.type == FEATURE_TYPE_RELATION
 
+    def to_proto(self):
+        p = api_pb2.FeatureIDProto()
+        p.type = self.type
+        p.namespace = self.namespace
+        p.value = self.value
+        return p
+
     def to_literal_proto(self):
-        l = api_pb2.LiteralNodeProto()
-        l.featureIDValue.type = self.type
-        l.featureIDValue.namespace = self.namespace
-        l.featureIDValue.value = self.value
-        return l
+        p = api_pb2.LiteralNodeProto()
+        p.featureIDValue.CopyFrom(self.to_proto())
+        return p
 
     def __str__(self):
         type = api_pb2.FeatureType.Name(self.type).replace("FeatureType", "").lower()
@@ -236,13 +241,6 @@ def from_applied_change_proto(change):
     return applied
 
 expression.register_literal_from_proto("appliedChangeValue", from_applied_change_proto)
-
-def id_to_proto(id):
-    pb = api_pb2.FeatureIDProto()
-    pb.type = id.type
-    pb.namespace = id.namespace
-    pb.value = id.value
-    return pb
 
 def _from_point_proto(p):
     return PointFeature(p)

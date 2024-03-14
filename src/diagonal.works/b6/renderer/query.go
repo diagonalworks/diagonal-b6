@@ -8,14 +8,15 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
+	"diagonal.works/b6/ingest"
 )
 
 type QueryRenderer struct {
-	rules RenderRules
-	world b6.World
-	cores int
-	fs    api.FunctionSymbols
-	a     api.Adaptors
+	rules  RenderRules
+	worlds ingest.Worlds
+	cores  int
+	fs     api.FunctionSymbols
+	a      api.Adaptors
 }
 
 // QueryRenderRules is used to fill in an tile feature attributre
@@ -34,19 +35,20 @@ var QueryRenderRules = RenderRules{
 
 const QueryRendererMaxFeaturesPerTile = 10000
 
-func NewQueryRenderer(w b6.World, cores int) *QueryRenderer {
+func NewQueryRenderer(worlds ingest.Worlds, cores int) *QueryRenderer {
 	return &QueryRenderer{
-		rules: QueryRenderRules,
-		world: w,
-		cores: cores,
-		fs:    functions.Functions(),
-		a:     functions.Adaptors(),
+		rules:  QueryRenderRules,
+		worlds: worlds,
+		cores:  cores,
+		fs:     functions.Functions(),
+		a:      functions.Adaptors(),
 	}
 }
 
 func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
+	w := r.worlds.FindOrCreateWorld(args.R)
 	context := api.Context{
-		World:           r.world,
+		World:           w,
 		FunctionSymbols: r.fs,
 		Adaptors:        r.a,
 		Cores:           r.cores,
@@ -76,7 +78,7 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 	}
 
 	bounds := tile.RectBound()
-	features := r.world.FindFeatures(b6.Intersection{q, b6.MightIntersect{Region: bounds}})
+	features := w.FindFeatures(b6.Intersection{q, b6.MightIntersect{Region: bounds}})
 	rendered := make([]*Feature, 0, 4)
 	n := 0
 	tags := make([]b6.Tag, 0, 4)
