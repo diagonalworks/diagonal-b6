@@ -20,6 +20,7 @@ RUN /build/bin/$TARGETOS/$TARGETARCH/b6-connect --input=/build/data/camden.index
 FROM ubuntu:mantic
 ARG TARGETOS
 ARG TARGETARCH
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -yq install ca-certificates
 COPY --from=b6-build /build/bin/$TARGETOS/$TARGETARCH/* /diagonal/bin/
 COPY --from=b6-build /build/data/camden.connected.index /world/camden.connected.index
 COPY --from=b6-build /build/python/dist/* /diagonal/python/dist/
