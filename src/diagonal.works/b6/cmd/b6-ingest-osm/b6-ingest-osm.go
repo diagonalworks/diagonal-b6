@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 	"time"
@@ -25,30 +26,38 @@ func main() {
 
 	var err error
 	if *input == "" || *output == "" {
-		err = fmt.Errorf("Must specify --input and --output")
+		err = fmt.Errorf("must specify --input and --output")
 	} else {
 		t := compact.OutputTypeMemory
 		if !*memory {
 			t = compact.OutputTypeDisk
 		}
 		options := compact.Options{
-			OutputFilename:       *output,
-			Goroutines:           *cores,
-			WorkDirectory:        *scratch,
-			PointsWorkOutputType: t,
+			OutputFilename:          *output,
+			Goroutines:              *cores,
+			ScratchDirectory:        *scratch,
+			PointsScratchOutputType: t,
 		}
-		osmSource := ingest.PBFFilesOSMSource{Glob: *input}
-		var source ingest.FeatureSource
-		source, err = ingest.NewFeatureSourceFromPBF(&osmSource, &ingest.BuildOptions{Cores: *cores}, context.Background())
-		start := time.Now()
+		var finish func() error
+		finish, err = compact.MaybeWriteToCloud(&options)
 		if err == nil {
-			err = compact.Build(source, &options)
-		}
+			osmSource := ingest.PBFFilesOSMSource{Glob: *input}
+			var source ingest.FeatureSource
+			source, err = ingest.NewFeatureSourceFromPBF(&osmSource, &ingest.BuildOptions{Cores: *cores}, context.Background())
+			start := time.Now()
+			if err == nil {
+				err = compact.Build(source, &options)
+			}
 
-		fmt.Fprintln(os.Stdout, "Index Build time: ", time.Since(start).String())
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
-		fmt.Fprintln(os.Stdout, "Total Alloc MB: ", m.TotalAlloc/(1024*1024))
+			log.Printf("index build time: %s", time.Since(start).Truncate(time.Second))
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			log.Printf("total alloc MB: %d", m.TotalAlloc/(1024*1024))
+
+			if err == nil {
+				err = finish()
+			}
+		}
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())

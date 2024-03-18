@@ -234,10 +234,10 @@ func main() {
 	}
 
 	options := compact.Options{
-		OutputFilename:       *outputFlag,
-		Goroutines:           *coresFlag,
-		WorkDirectory:        "",
-		PointsWorkOutputType: compact.OutputTypeMemory,
+		OutputFilename:          *outputFlag,
+		Goroutines:              *coresFlag,
+		ScratchDirectory:        "",
+		PointsScratchOutputType: compact.OutputTypeMemory,
 	}
 	source := elevationSource{World: w, Elevations: elevations}
 	if compact.Build(&source, &options); err != nil {

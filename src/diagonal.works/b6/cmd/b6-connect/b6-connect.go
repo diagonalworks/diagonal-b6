@@ -2,9 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"runtime"
 	"sync"
 
@@ -16,6 +18,9 @@ import (
 	"diagonal.works/b6/ingest/compact"
 
 	"github.com/golang/geo/s1"
+
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/gcs"
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/local"
 )
 
 func connectFeatures(features b6.Features, network graph.PathIDSet, threshold s1.Angle, w b6.World, s graph.ConnectionStrategy, cores int) {
@@ -121,18 +126,24 @@ func main() {
 	connectFeatures(features, network, b6.MetersToAngle(*connectionThreshold), b, strategy, *cores)
 	log.Printf("Cluster")
 	strategy.Finish()
-	log.Printf(connections.String())
+	log.Printf("Connections: %s", connections.String())
 	log.Printf("Output")
 	t := compact.OutputTypeMemory
 	if !*memory {
 		t = compact.OutputTypeDisk
 	}
 	options := compact.Options{
-		OutputFilename:       *output,
-		Goroutines:           *cores,
-		WorkDirectory:        *scratch,
-		PointsWorkOutputType: t,
+		OutputFilename:          *output,
+		Goroutines:              *cores,
+		ScratchDirectory:        *scratch,
+		PointsScratchOutputType: t,
 	}
+	finish, err := compact.MaybeWriteToCloud(&options)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
 	if i == b {
 		if compact.Build(strategy.Output(), &options); err != nil {
 			log.Fatal(err)
@@ -142,5 +153,9 @@ func main() {
 		if compact.BuildOverlay(strategy.Output(), &options, overlay); err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	if err := finish(); err != nil {
+		log.Fatal(err)
 	}
 }

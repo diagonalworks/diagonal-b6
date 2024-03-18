@@ -84,10 +84,10 @@ func main() {
 	}
 
 	config := compact.Options{
-		OutputFilename:       *outputFlag,
-		Goroutines:           *cores,
-		WorkDirectory:        "",
-		PointsWorkOutputType: compact.OutputTypeMemory,
+		OutputFilename:          *outputFlag,
+		Goroutines:              *cores,
+		ScratchDirectory:        "",
+		PointsScratchOutputType: compact.OutputTypeMemory,
 	}
 	if err := compact.Build(toIndex, &config); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
