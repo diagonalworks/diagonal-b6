@@ -19,7 +19,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 
 	osmSource := ingest.MemoryOSMSource{Nodes: nodes, Ways: ways, Relations: relations}
 	source, err := ingest.NewFeatureSourceFromPBF(&osmSource, &ingest.BuildOptions{Cores: 2}, context.Background())
-	options := Options{Goroutines: 2, PointsWorkOutputType: OutputTypeMemory}
+	options := Options{Goroutines: 2, PointsScratchOutputType: OutputTypeMemory}
 	index, err := BuildInMemory(source, &options)
 	if err != nil {
 		t.Fatalf("Failed to build base index: %s", err)

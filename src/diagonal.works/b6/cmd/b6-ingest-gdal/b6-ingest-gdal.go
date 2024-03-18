@@ -127,10 +127,10 @@ func main() {
 	}
 
 	options := compact.Options{
-		OutputFilename:       *outputFlag,
-		Goroutines:           *coresFlag,
-		WorkDirectory:        "",
-		PointsWorkOutputType: compact.OutputTypeMemory,
+		OutputFilename:          *outputFlag,
+		Goroutines:              *coresFlag,
+		ScratchDirectory:        "",
+		PointsScratchOutputType: compact.OutputTypeMemory,
 	}
 
 	if err := compact.Build(source, &options); err != nil {

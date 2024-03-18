@@ -2,6 +2,7 @@ package compact
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"path"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -19,6 +21,7 @@ import (
 	"diagonal.works/b6/osm"
 	pb "diagonal.works/b6/proto"
 
+	"github.com/apache/beam/sdks/go/pkg/beam/io/filesystem"
 	"github.com/golang/geo/s2"
 	"golang.org/x/exp/mmap"
 )
@@ -119,21 +122,21 @@ const (
 )
 
 type Options struct {
-	Goroutines           int
-	WorkDirectory        string
-	OutputFilename       string
-	PointsWorkOutputType OutputType
+	Goroutines              int
+	ScratchDirectory        string
+	OutputFilename          string
+	PointsScratchOutputType OutputType
 }
 
 func (o *Options) Output() Output {
 	return FileOutput(o.OutputFilename)
 }
 
-func (o *Options) PointsWorkOutput() Output {
-	if o.PointsWorkOutputType == OutputTypeMemory {
+func (o *Options) PointsScratchOutput() Output {
+	if o.PointsScratchOutputType == OutputTypeMemory {
 		return &MemoryOutput{}
 	} else {
-		return FileOutput(path.Join(o.WorkDirectory, "points.work"))
+		return FileOutput(path.Join(o.ScratchDirectory, "points.scratch"))
 	}
 }
 
@@ -276,18 +279,18 @@ func newFeatureBlockBuilders(nt *NamespaceTable, summary *Summary) FeatureBlockB
 	return builders
 }
 
-func writePointsWork(source ingest.FeatureSource, o *Options, strings *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, w io.WriterAt) error {
+func writePointsScratch(source ingest.FeatureSource, o *Options, strings *encoding.StringTableBuilder, nt *NamespaceTable, summary *Summary, w io.WriterAt) error {
 	builders := newFeatureBlockBuilders(nt, summary)
 	emit := func(id FeatureID, tag encoding.Tag, buffer []byte) error {
 		builders.Reserve(id, tag, len(buffer))
 		return nil
 	}
-	log.Printf("writePointsWork: reserve")
+	log.Printf("writePointsScratch: reserve")
 	if err := emitPoints(source, o, strings, nt, emit); err != nil {
 		return err
 	}
 
-	log.Printf("writePointsWork: write header")
+	log.Printf("writePointsScratch: write header")
 	if _, err := builders.WriteHeaders(w, 0); err != nil {
 		return err
 	}
@@ -295,7 +298,7 @@ func writePointsWork(source ingest.FeatureSource, o *Options, strings *encoding.
 	emit = func(id FeatureID, tag encoding.Tag, buffer []byte) error {
 		return builders.WriteItem(id, tag, buffer, w)
 	}
-	log.Printf("writePointsWork: write entries")
+	log.Printf("writePointsScratch: write entries")
 	if err := emitPoints(source, o, strings, nt, emit); err != nil {
 		return err
 	}
@@ -865,14 +868,14 @@ func fillNamespaceTableFromSummary(summary *Summary, nt *NamespaceTable) {
 }
 
 func buildFeatures(source ingest.FeatureSource, o *Options, sb *encoding.StringTableBuilder, strings []byte, nt *NamespaceTable, summary *Summary, header *Header, base b6.LocationsByID, w io.WriterAt) (encoding.Offset, error) {
-	work := o.PointsWorkOutput()
+	work := o.PointsScratchOutput()
 	workW, err := work.Write()
 	if err != nil {
 		return 0, err
 	}
 
 	log.Printf("buildFeatures: points")
-	err = writePointsWork(source, o, sb, nt, summary, workW)
+	err = writePointsScratch(source, o, sb, nt, summary, workW)
 	if err != nil {
 		return 0, err
 	}
@@ -976,7 +979,6 @@ func buildIndex(byID *FeaturesByID, output Output) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("offset: %d", size)
 	offset := encoding.Offset(size)
 
 	index := make(map[string]*FeatureIDs)
@@ -1127,4 +1129,47 @@ func BuildInMemory(source ingest.FeatureSource, o *Options) ([]byte, error) {
 	}
 	bytes, _, _ := output.Bytes()
 	return bytes, nil
+}
+
+func isCloudFilename(filename string) bool {
+	return strings.Contains(filename, "://")
+}
+
+func MaybeWriteToCloud(options *Options) (func() error, error) {
+	if isCloudFilename(options.OutputFilename) {
+		originalOutputFilename := options.OutputFilename
+		if options.ScratchDirectory == "" {
+			return nil, errors.New("need scratch directory")
+		}
+		f, err := os.CreateTemp(options.ScratchDirectory, "*.index")
+		if err != nil {
+			return nil, err
+		}
+		options.OutputFilename = f.Name()
+		f.Close()
+		ctx := context.Background()
+		fs, err := filesystem.New(context.Background(), originalOutputFilename)
+		if err != nil {
+			os.Remove(options.OutputFilename)
+			return nil, err
+		}
+		w, err := fs.OpenWrite(ctx, originalOutputFilename)
+		if err != nil {
+			os.Remove(options.OutputFilename)
+			return nil, err
+		}
+		return func() error {
+			log.Printf("copy: %s", originalOutputFilename)
+			var r io.ReadCloser
+			if r, err = os.Open(options.OutputFilename); err == nil {
+				if _, err = io.Copy(w, r); err == nil {
+					err = w.Close()
+					os.Remove(options.OutputFilename)
+				}
+			}
+			return err
+		}, nil
+	} else {
+		return func() error { return nil }, nil
+	}
 }
