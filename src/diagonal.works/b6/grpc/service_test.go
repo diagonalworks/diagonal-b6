@@ -34,11 +34,13 @@ func TestGRPC(t *testing.T) {
 
 	base := camden.BuildGranarySquareForTests(t)
 
-	w := ingest.NewMutableOverlayWorld(base)
+	w := &ingest.MutableWorlds{
+		Base: ingest.NewMutableOverlayWorld(base),
+	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.f(NewB6Service(w, api.Options{Cores: 1}, &sync.RWMutex{}), w, t)
+			test.f(NewB6Service(w, api.Options{Cores: 1}, &sync.RWMutex{}), w.Base, t)
 		})
 	}
 }

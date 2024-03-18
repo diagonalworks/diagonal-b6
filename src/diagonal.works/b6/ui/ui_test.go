@@ -7,12 +7,15 @@ import (
 	"testing"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/ingest"
 )
 
 func TestStateFilledFromStartupQuery(t *testing.T) {
 	handler := StartupHandler{
 		UI: &OpenSourceUI{
-			World: b6.EmptyWorld{},
+			Worlds: &ingest.MutableWorlds{
+				Base: b6.EmptyWorld{},
+			},
 		},
 	}
 

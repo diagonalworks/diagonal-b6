@@ -98,15 +98,21 @@ function newGeoJSONStyle(_, styles) {
     };
 }
 
-function setupMap(target, state, styles, mapCenter, mapZoom) {
+function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
     const zoom = new Zoom({
         zoomInLabel: '',
         zoomOutLabel: '',
     });
 
+    var tileURL = '/tiles/base/{z}/{x}/{y}.mvt';
+    if (uiContext) {
+        const params = new URLSearchParams({ r: idTokenFromProto(uiContext) });
+        tileURL += '?' + params.toString();
+    }
+
     const baseSource = new VectorTileSource({
         format: new MVT(),
-        url: '/tiles/base/{z}/{x}/{y}.mvt',
+        url: tileURL,
         minZoom: 10,
         maxZoom: 16,
     });
@@ -1603,6 +1609,9 @@ class UI {
 
     createQueryLayer(query, before) {
         const params = new URLSearchParams({ q: query });
+        if (this.uiContext) {
+            params.append('r', idTokenFromProto(this.uiContext));
+        }
         const source = new VectorTileSource({
             format: new MVT(),
             url: '/tiles/query/{z}/{x}/{y}.mvt?' + params.toString(),
@@ -2156,6 +2165,7 @@ function setup(selector, startupResponse, logger) {
         styles,
         mapCenter,
         mapZoom,
+        startupResponse.context,
     );
     const queryStyle = newQueryStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);

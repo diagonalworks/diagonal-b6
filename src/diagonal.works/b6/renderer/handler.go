@@ -15,6 +15,7 @@ import (
 type TileArgs struct {
 	Q string
 	V string
+	R b6.FeatureID
 }
 
 type TileHandler struct {
@@ -33,7 +34,7 @@ func (h *TileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	query := r.URL.Query()
-	args := TileArgs{Q: query.Get("q"), V: query.Get("v")}
+	args := TileArgs{Q: query.Get("q"), V: query.Get("v"), R: b6.FeatureIDFromString(query.Get("r"))}
 	rendered, err := h.Renderer.Render(tile, &args)
 	if err != nil {
 		log.Printf("Failed to render tile: %v", err)

@@ -38,10 +38,12 @@ func TestFillColourFromFeature(t *testing.T) {
 }
 
 func TestFeaturesHaveTagsForNamespaceAndID(t *testing.T) {
-	granarySquare := camden.BuildGranarySquareForTests(t)
+	w := &ingest.MutableWorlds{
+		Base: camden.BuildGranarySquareForTests(t),
+	}
 
 	projection := b6.NewTileMercatorProjection(16)
-	r := BasemapRenderer{RenderRules: BasemapRenderRules, World: granarySquare}
+	r := BasemapRenderer{RenderRules: BasemapRenderRules, Worlds: w}
 	tile, err := r.Render(projection.TileFromLatLng(s2.LatLngFromDegrees(51.53531, -0.12434)), &TileArgs{})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -73,7 +75,11 @@ func TestFeaturesHaveTagsForNamespaceAndID(t *testing.T) {
 func TestFeaturesAreOrderedByLayerTag(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
 
-	mutable := ingest.NewMutableOverlayWorld(granarySquare)
+	w := &ingest.MutableWorlds{
+		Base: ingest.NewMutableOverlayWorld(granarySquare),
+	}
+
+	mutable := w.FindOrCreateWorld(ingest.DefaultWorldFeatureID)
 
 	// Add a roof terrace and second floor to the Lighterman
 	lighterman := b6.FindAreaByID(camden.LightermanID, mutable)
@@ -91,7 +97,7 @@ func TestFeaturesAreOrderedByLayerTag(t *testing.T) {
 	}
 
 	projection := b6.NewTileMercatorProjection(16)
-	r := BasemapRenderer{RenderRules: BasemapRenderRules, World: mutable}
+	r := BasemapRenderer{RenderRules: BasemapRenderRules, Worlds: w}
 	tile, err := r.Render(projection.TileFromLatLng(s2.LatLngFromDegrees(51.53531, -0.12434)), &TileArgs{})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)

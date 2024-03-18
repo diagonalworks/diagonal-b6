@@ -51,11 +51,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	var w ingest.MutableWorld
+
+	var worlds ingest.Worlds
 	if *readOnlyFlag {
-		w = ingest.ReadOnlyWorld{World: base}
+		worlds = ingest.ReadOnlyWorlds{Base: base}
 	} else {
-		w = ingest.NewMutableOverlayWorld(base)
+		worlds = &ingest.MutableWorlds{Base: base}
 	}
 
 	apiOptions := api.Options{
@@ -69,7 +70,7 @@ func main() {
 		StaticV2Path:    *staticV2Flag,
 		StorybookPath:   *storybookFlag,
 		EnableStorybook: *enableStorybookFlag,
-		World:           w,
+		Worlds:          worlds,
 		APIOptions:      apiOptions,
 	}
 
@@ -96,7 +97,7 @@ func main() {
 	if *grpcFlag != "" {
 		log.Printf("Listening for GRPC on %s", *grpcFlag)
 		grpcServer = grpc.NewServer(grpc.MaxRecvMsgSize(*grpcSizeFlag), grpc.MaxSendMsgSize(*grpcSizeFlag))
-		pb.RegisterB6Server(grpcServer, b6grpc.NewB6Service(w, apiOptions, &lock))
+		pb.RegisterB6Server(grpcServer, b6grpc.NewB6Service(worlds, apiOptions, &lock))
 		go func() {
 			listener, err := net.Listen("tcp", *grpcFlag)
 			if err == nil {

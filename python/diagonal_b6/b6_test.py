@@ -39,9 +39,10 @@ def angle_to_meters(angle):
 
 class B6Test(unittest.TestCase):
 
-    def __init__(self, name, connection):
+    def __init__(self, name, connection, grpc_address):
         unittest.TestCase.__init__(self, name)
         self.connection = connection
+        self.grpc_address = grpc_address
 
     def test_get_tag(self):
         name = b6.find_feature(b6.osm_way_area_id(LIGHTERMAN_WAY_ID)).get("name")
@@ -598,6 +599,15 @@ class B6Test(unittest.TestCase):
         # we're just verifying that the API works.
         self.assertGreater(self.connection(count), 0)
 
+    def test_modify_different_world(self):
+        bridge = b6.osm_way_id(STABLE_STREET_BRIDGE_ID)
+        self.connection(b6.add_tag(bridge, b6.tag("maxspeed", "10")))
+        root = b6.FeatureID(b6.FEATURE_TYPE_COLLECTION, "diagonal.works/test/world", 0)
+        new_connection = b6.connect_insecure(self.grpc_address, root=root)
+        new_connection(b6.add_tag(bridge, b6.tag("maxspeed", "5")))
+        self.assertEqual(self.connection(b6.get_string(bridge, "maxspeed")), "10")
+        self.assertEqual(new_connection(b6.get_string(bridge, "maxspeed")), "5")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")
@@ -623,11 +633,11 @@ def main():
     suite = unittest.TestSuite()
     if len(args.tests) > 0:
         for test in args.tests:
-            suite.addTest(B6Test(test, connection))
+            suite.addTest(B6Test(test, connection, grpc_address))
     else:
         for method in dir(B6Test):
             if method.startswith("test_"):
-                suite.addTest(B6Test(method, connection))
+                suite.addTest(B6Test(method, connection, grpc_address))
     runner = unittest.TextTestRunner()
     result = runner.run(suite)
     p.terminate()
