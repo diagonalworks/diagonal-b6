@@ -456,7 +456,13 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 
 	result, err := api.Evaluate(expression, &vmContext)
 	if err == nil {
-		err = ui.Render(response, result, rootCollection, request.Locked, ui)
+		if change, ok := result.(ingest.Change); ok {
+			_, err = change.Apply(w)
+			response.Proto.TilesChanged = true
+		}
+		if err == nil {
+			err = ui.Render(response, result, rootCollection, request.Locked, ui)
+		}
 	}
 	if err != nil {
 		ui.Render(response, err, rootCollection, request.Locked, ui)

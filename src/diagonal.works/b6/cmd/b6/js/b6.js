@@ -410,6 +410,11 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
         view: view,
     });
 
+    const tilesChanged = () => {
+        baseSource.refresh();
+        baseSource.changed();
+    }
+
     const highlightChanged = () => {
         boundaries.changed();
         buildings.changed();
@@ -417,7 +422,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
         points.changed();
     };
 
-    return [map, highlightChanged];
+    return [map, tilesChanged, highlightChanged];
 }
 
 function lonLatToLiteral(ll) {
@@ -1316,6 +1321,7 @@ class UI {
         state,
         queryStyle,
         geojsonStyle,
+        tilesChanged,
         highlightChanged,
         session,
         logger,
@@ -1324,6 +1330,7 @@ class UI {
         (this.dockTarget = dockTarget), (this.state = state);
         this.queryStyle = queryStyle;
         this.geojsonStyle = geojsonStyle;
+        this.basemapTilesChanged = tilesChanged;
         this.basemapHighlightChanged = highlightChanged;
         this.session = session;
         this.logger = logger;
@@ -1570,6 +1577,10 @@ class UI {
                     duration: 500,
                 });
             }
+        }
+
+        if (response && response.proto.tilesChanged) {
+            this.basemapTilesChanged();
         }
 
         if (this.needHighlightRedraw) {
@@ -2173,7 +2184,7 @@ function setup(selector, startupResponse, logger) {
     const styles = new Styles(StyleClasses);
     const mapCenter = startupResponse.mapCenter || InitialCenter;
     const mapZoom = startupResponse.mapZoom || InitalZoom;
-    const [map, highlightChanged] = setupMap(
+    const [map, tilesChanged, highlightChanged] = setupMap(
         mapTarget,
         state,
         styles,
@@ -2189,6 +2200,7 @@ function setup(selector, startupResponse, logger) {
         state,
         queryStyle,
         geojsonStyle,
+        tilesChanged,
         highlightChanged,
         startupResponse.session,
         logger,

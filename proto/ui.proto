@@ -30,6 +30,7 @@ message UIResponseProto {
     bool locked = 9;
     repeated int32 chipValues = 10;
     string logDetail = 11;
+    bool tilesChanged = 12;
 }
 
 enum MapLayerPosition {

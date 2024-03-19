@@ -10,7 +10,6 @@ import (
 	"os"
 	"runtime"
 	rpprof "runtime/pprof"
-	"sync"
 
 	"diagonal.works/b6/api"
 	b6grpc "diagonal.works/b6/grpc"
@@ -93,11 +92,10 @@ func main() {
 	}
 
 	var grpcServer *grpc.Server
-	var lock sync.RWMutex
 	if *grpcFlag != "" {
 		log.Printf("Listening for GRPC on %s", *grpcFlag)
 		grpcServer = grpc.NewServer(grpc.MaxRecvMsgSize(*grpcSizeFlag), grpc.MaxSendMsgSize(*grpcSizeFlag))
-		pb.RegisterB6Server(grpcServer, b6grpc.NewB6Service(worlds, apiOptions, &lock))
+		pb.RegisterB6Server(grpcServer, b6grpc.NewB6Service(worlds, apiOptions))
 		go func() {
 			listener, err := net.Listen("tcp", *grpcFlag)
 			if err == nil {
