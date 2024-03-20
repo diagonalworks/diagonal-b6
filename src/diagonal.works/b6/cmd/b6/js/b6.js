@@ -229,10 +229,18 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
     const roadFills = new VectorTileLayer({
         source: baseSource,
         style: function (feature, resolution) {
-            if (feature.get('layer') == 'road' && feature.get('highway')) {
+            if (feature.get('layer') == 'road' && feature.get('highway') && feature.getGeometry().getType() == 'LineString') {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
                     const id = idKeyFromFeature(feature);
+                    const bucket = state.bucketed[id];
+
+                    if (bucket && Object.keys(state.bucketed).length > 0) {
+                        if (state.showBucket < 0 || state.showBucket == bucket) {
+                            return styles.lookupStyleWithStokeWidth(`bucketed-road-fill-${bucket}`, width);
+                        }
+                    }
+    
                     if (state.highlighted[id]) {
                         return styles.lookupStyleWithStokeWidth(
                             'highlighted-road-fill',
@@ -289,10 +297,6 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
         return styles.lookupStyle(`bucketed-${b}`);
     });
 
-    const bucketedPoint = Array.from(Array(6).keys()).map((b) => {
-        return styles.lookupCircle(`bucketed-${b}`);
-    });
-
     const buildings = new VectorTileLayer({
         source: baseSource,
         style: function (feature) {
@@ -331,6 +335,10 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
     });
     buildings.set('position', 'MapLayerPositionBuildings');
     buildings.set('clickable', true);
+
+    const bucketedPoint = Array.from(Array(6).keys()).map((b) => {
+        return styles.lookupCircle(`bucketed-${b}`);
+    });
 
     const points = new VectorTileLayer({
         source: baseSource,
@@ -1953,6 +1961,12 @@ const StyleClasses = [
     'bucketed-3',
     'bucketed-4',
     'bucketed-5',
+    'bucketed-road-fill-0',
+    'bucketed-road-fill-1',
+    'bucketed-road-fill-2',
+    'bucketed-road-fill-3',
+    'bucketed-road-fill-4',
+    'bucketed-road-fill-5',
     'geojson-area',
     'geojson-path',
     'geojson-point',

@@ -274,6 +274,17 @@ func AtomFromValue(value interface{}, w b6.World) *pb.AtomProto {
 					},
 				}
 			}
+		case b6.Geometry:
+			switch v.GeometryType() {
+			case b6.GeometryTypePoint:
+				ll := v.Location()
+				return AtomFromString(fmt.Sprintf("%f,%f", ll.Lat.Degrees(), ll.Lng.Degrees()))
+			case b6.GeometryTypePath:
+				return AtomFromString("Path")
+			case b6.GeometryTypeArea:
+				return AtomFromString("Area")
+			}
+			return AtomFromString("Geometry")
 		case b6.Tag:
 			return AtomFromString(api.UnparseTag(v))
 		default:
