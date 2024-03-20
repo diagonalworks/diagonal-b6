@@ -1,13 +1,17 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
+	"diagonal.works/b6/test/camden"
 )
 
 func TestStateFilledFromStartupQuery(t *testing.T) {
@@ -52,5 +56,47 @@ func TestStateFilledFromStartupQuery(t *testing.T) {
 
 	if expected := "find-feature /n/3501612811"; startupResponse.Expression != expected {
 		t.Errorf("Expected expression %q, found %q", expected, startupResponse.Expression)
+	}
+}
+
+func TestEvaluateFunctionThatChangesWorld(t *testing.T) {
+	worlds := &ingest.MutableWorlds{
+		Base: camden.BuildGranarySquareForTests(t),
+	}
+	handler := StackHandler{
+		UI: &OpenSourceUI{
+			Worlds:          worlds,
+			FunctionSymbols: functions.Functions(),
+		},
+	}
+
+	root := b6.FeatureID{Type: b6.FeatureTypeCollection, Namespace: "diagonal.works/test/world", Value: 0}
+
+	url := "http://b6.diagonal.works/stack"
+	j := map[string]interface{}{
+		"expression": fmt.Sprintf("add-tag /%s building:levels=\"25\"", camden.LightermanID),
+		"context": map[string]interface{}{
+			"type":      root.Type,
+			"namespace": root.Namespace,
+			"value":     root.Value,
+		},
+	}
+	body, _ := json.Marshal(j)
+	request := httptest.NewRequest("POST", url, bytes.NewBuffer(body))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	result := response.Result()
+	if result.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status %d, found %d", http.StatusOK, result.StatusCode)
+	}
+
+	modified := worlds.FindOrCreateWorld(root)
+	f := modified.FindFeatureByID(camden.LightermanID.FeatureID())
+	if f == nil {
+		t.Fatal("failed to find expected feature")
+	}
+	expected := b6.Tag{Key: "building:levels", Value: b6.String("25")}
+	if levels := f.Get(expected.Key); levels != expected {
+		t.Errorf("expected tag %s, found %s", expected, levels)
 	}
 }

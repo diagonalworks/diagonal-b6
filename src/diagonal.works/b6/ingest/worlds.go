@@ -33,7 +33,7 @@ func (m *MutableWorlds) FindOrCreateWorld(id b6.FeatureID) MutableWorld {
 		if m.Mutable == nil {
 			m.Mutable = make(map[b6.FeatureID]MutableWorld)
 		}
-		w = NewMutableOverlayWorld(m.Base)
+		w = NewLockedWorld(NewMutableOverlayWorld(m.Base))
 		m.Mutable[id] = w
 	}
 	return w
