@@ -392,6 +392,30 @@ form.shell-form > input {
     stroke-width: 0.3;
 }
 
+.palette > .bucketed-road-fill-0 {
+    stroke: var(--bucket-0);
+}
+
+.palette > .bucketed-road-fill-1 {
+    stroke: var(--bucket-1);
+}
+
+.palette > .bucketed-road-fill-2 {
+    stroke: var(--bucket-2);
+}
+
+.palette > .bucketed-road-fill-3 {
+    stroke: var(--bucket-3);
+}
+
+.palette > .bucketed-road-fill-4 {
+    stroke: var(--bucket-4);
+}
+
+.palette > .bucketed-road-fill-5 {
+    stroke: var(--bucket-5);
+}
+
 .atom-labelled-icon > img {
     vertical-align: text-bottom;
     padding-right: 9px; /* Inset squish XS */
