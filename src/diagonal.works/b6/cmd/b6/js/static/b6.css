@@ -464,7 +464,6 @@ form.shell-form > input {
 }
 
 .line {
-    max-width: 282px;
     height: 20px;
     box-sizing: content-box;
     padding: 12px; /* Inset square S */
@@ -485,7 +484,6 @@ form.shell-form > input {
     display: flex;
     flex-direction: row;
     overflow: clip;
-    width: 100%;
 }
 
 .line-left-right-value > span {
@@ -752,6 +750,7 @@ form.shell-form > input {
 .stack {
     border: 1px solid #8990ac;
     border-radius: 4px;
+    width: 306px;
 }
 
 .stack-featured {

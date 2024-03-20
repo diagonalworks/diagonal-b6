@@ -58,7 +58,7 @@ func clamp(context *api.Context, v int, low int, high int) (int, error) {
 
 // Return true if a is greater than b.
 func gt(context *api.Context, a interface{}, b interface{}) (bool, error) {
-	return api.Greater(a, b)
+	return b6.Greater(a, b)
 }
 
 type byIndex struct {
@@ -113,16 +113,5 @@ func percentiles(context *api.Context, collection b6.Collection[interface{}, flo
 // The function will not evaluate and traverse the entire collection if it's possible to count
 // the collection efficiently.
 func count(context *api.Context, collection b6.Collection[any, any]) (int, error) {
-	if n, ok := collection.Count(); ok {
-		return n, nil
-	}
-	n := 0
-	i := collection.BeginUntyped()
-	for {
-		ok, err := i.Next()
-		if !ok || err != nil {
-			return n, err
-		}
-		n++
-	}
+	return b6.Count(collection)
 }

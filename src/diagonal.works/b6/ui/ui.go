@@ -132,6 +132,11 @@ func RegisterTiles(root *http.ServeMux, options *Options) {
 		query = options.InstrumentHandler(query, "tiles_query")
 	}
 	root.Handle("/tiles/query/", query)
+	histogram := http.Handler(&renderer.TileHandler{Renderer: renderer.NewHistogramRenderer(rules, options.Worlds)})
+	if options.InstrumentHandler != nil {
+		histogram = options.InstrumentHandler(histogram, "tiles_histogram")
+	}
+	root.Handle("/tiles/histogram/", histogram)
 }
 
 type StartupRequest struct {
@@ -397,12 +402,12 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 }
 
 func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIResponseJSON, ui UI) error {
-	root := b6.NewFeatureIDFromProto(request.Context)
-	w := o.Worlds.FindOrCreateWorld(root)
+	rootID := b6.NewFeatureIDFromProto(request.Context)
+	w := o.Worlds.FindOrCreateWorld(rootID)
 
-	var rootCollection b6.CollectionFeature
+	var root b6.CollectionFeature
 	if request.Context != nil && request.Context.Type == pb.FeatureType_FeatureTypeCollection {
-		rootCollection = b6.FindCollectionByID(b6.NewFeatureIDFromProto(request.Context).ToCollectionID(), w)
+		root = b6.FindCollectionByID(b6.NewFeatureIDFromProto(request.Context).ToCollectionID(), w)
 	}
 
 	var expression b6.Expression
@@ -417,7 +422,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 			}
 		}
 		if err != nil {
-			ui.Render(response, err, rootCollection, request.Locked, ui)
+			ui.Render(response, err, root, request.Locked, ui)
 			var substack pb.SubstackProto
 			fillSubstackFromError(&substack, err)
 			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
@@ -442,7 +447,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 
 	var err error
 	if response.Proto.Node, err = expression.ToProto(); err != nil {
-		ui.Render(response, err, rootCollection, request.Locked, ui)
+		ui.Render(response, err, root, request.Locked, ui)
 		return nil
 	}
 
@@ -457,17 +462,37 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 	result, err := api.Evaluate(expression, &vmContext)
 	if err == nil {
 		if change, ok := result.(ingest.Change); ok {
-			_, err = change.Apply(w)
-			response.Proto.TilesChanged = true
-		}
-		if err == nil {
-			err = ui.Render(response, result, rootCollection, request.Locked, ui)
+			var changed b6.Collection[b6.FeatureID, b6.FeatureID]
+			if changed, err = change.Apply(w); err == nil {
+				if first, ok := firstValueIfOnlyItem(changed); ok {
+					err = ui.Render(response, first, root, request.Locked, ui)
+				} else {
+					err = ui.Render(response, changed, root, request.Locked, ui)
+				}
+				response.Proto.TilesChanged = true
+			}
+		} else {
+			err = ui.Render(response, result, root, request.Locked, ui)
 		}
 	}
 	if err != nil {
-		ui.Render(response, err, rootCollection, request.Locked, ui)
+		ui.Render(response, err, root, request.Locked, ui)
 	}
 	return nil
+}
+
+func firstValueIfOnlyItem(c b6.UntypedCollection) (any, bool) {
+	i := c.BeginUntyped()
+	ok, err := i.Next()
+	if !ok || err != nil {
+		return nil, false
+	}
+	first := i.Value()
+	ok, err = i.Next()
+	if !ok && err == nil {
+		return first, true
+	}
+	return nil, false
 }
 
 func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root b6.CollectionFeature, locked bool, ui UI) error {
@@ -521,8 +546,19 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			}
 		}
 	case b6.Feature:
+		if c, ok := r.(b6.CollectionFeature); ok {
+			if b6 := c.Get("b6"); b6.Value.String() == "histogram" {
+				return fillResponseFromHistogramFeature(response, c, w)
+			}
+		}
 		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, r, w)
 		highlightInResponse(p, r.FeatureID())
+	case b6.FeatureID:
+		if f := w.FindFeatureByID(r); f != nil {
+			return o.fillResponseFromResult(response, f, w)
+		} else {
+			return o.fillResponseFromResult(response, r.String(), w)
+		}
 	case b6.Query:
 		if q, ok := api.UnparseQuery(r); ok {
 			var substack pb.SubstackProto
@@ -544,12 +580,12 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 				if r.Key == "#boundary" {
 					before = pb.MapLayerPosition_MapLayerPositionBuildings
 				}
-				p.Layers = append(p.Layers, &pb.MapLayerProto{Query: q, Before: before})
+				p.Layers = append(p.Layers, &pb.MapLayerProto{
+					Path:   "query",
+					Q:      q,
+					Before: before,
+				})
 			}
-		}
-	case *api.HistogramCollection:
-		if err := fillResponseFromHistogram(p, r, w); err != nil {
-			return err
 		}
 	case b6.UntypedCollection:
 		substack := &pb.SubstackProto{}
@@ -583,6 +619,21 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 		fillSubstackFromAtom(&substack, atom)
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		response.AddGeoJSON(r.ToGeoJSON())
+	case b6.Geometry:
+		if r.GeometryType() == b6.GeometryTypePoint {
+			ll := r.Location()
+			atom := &pb.AtomProto{
+				Atom: &pb.AtomProto_Value{
+					Value: fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees()),
+				},
+			}
+			var substack pb.SubstackProto
+			fillSubstackFromAtom(&substack, atom)
+			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
+			response.AddGeoJSON(r.ToGeoJSON())
+		} else {
+			return o.fillResponseFromResult(response, r.ToGeoJSON(), w)
+		}
 	case *geojson.FeatureCollection:
 		var label string
 		if n := len(r.Features); n == 1 {

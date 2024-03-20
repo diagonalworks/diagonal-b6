@@ -1,4 +1,4 @@
-package api
+package b6
 
 import (
 	"testing"

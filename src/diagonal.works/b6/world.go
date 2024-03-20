@@ -369,6 +369,7 @@ const (
 	NamespacePrivate      Namespace = "diagonal.works/ns/private"
 	NamespaceLatLng       Namespace = "diagonal.works/ns/ll"
 	NamespaceMaterialised Namespace = "diagonal.works/ns/m"
+	NamespaceUI           Namespace = "diagonal.works/ns/ui"
 
 	// Used when connecting features to the street network
 	NamespaceDiagonalEntrances    Namespace = "diagonal.works/ns/entrance"
@@ -1075,6 +1076,8 @@ type CollectionFeature interface {
 	Feature
 	UntypedCollection
 	CollectionID() CollectionID
+	IsSortedByKey() bool
+	FindValue(key any) (any, bool)
 }
 
 type ExpressionFeature interface {

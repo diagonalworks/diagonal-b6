@@ -3,9 +3,11 @@ package functions
 import (
 	"container/heap"
 	"fmt"
+	"math/rand"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
+	"diagonal.works/b6/ingest"
 )
 
 // Return a collection of the given key value pairs.
@@ -305,7 +307,13 @@ func flatten(_ *api.Context, collection b6.Collection[any, b6.UntypedCollection]
 	}, nil
 }
 
-// Cause the given collection to be rendered as a histogram in the b6 UI, returning the same collection.
-func histogram(c *api.Context, collection b6.UntypedCollection) (b6.UntypedCollection, error) {
-	return &api.HistogramCollection{UntypedCollection: collection}, nil
+// Return a change that adds a histogram for the given collection.
+func histogram(c *api.Context, collection b6.Collection[any, any]) (ingest.Change, error) {
+	id := b6.CollectionID{Namespace: b6.NamespaceUI, Value: rand.Uint64()}
+
+	histogram, err := api.NewHistogramFromCollection(collection, id)
+	if err != nil {
+		return nil, err
+	}
+	return &ingest.AddFeatures{histogram}, nil
 }

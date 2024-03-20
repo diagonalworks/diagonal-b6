@@ -667,6 +667,7 @@ type CollectionFeature struct {
 
 	Keys   []interface{}
 	Values []interface{}
+	sorted bool
 }
 
 func (c *CollectionFeature) References() []b6.Reference {
@@ -685,6 +686,7 @@ func (c *CollectionFeature) Clone() Feature {
 		Tags:         c.Tags.Clone(),
 		Keys:         c.Keys,
 		Values:       c.Values,
+		sorted:       c.sorted,
 	}
 }
 
@@ -701,6 +703,7 @@ func (c *CollectionFeature) MergeFromCollectionFeature(other *CollectionFeature)
 	c.Tags = other.Tags
 	c.Keys = other.Keys
 	c.Values = other.Values
+	c.sorted = other.sorted
 }
 
 func (c *CollectionFeature) SetFeatureID(id b6.FeatureID) {
@@ -711,6 +714,7 @@ func NewCollectionFeatureFromWorld(c b6.CollectionFeature) *CollectionFeature {
 	feature := &CollectionFeature{
 		CollectionID: c.CollectionID(),
 		Tags:         NewTagsFromWorld(c),
+		sorted:       c.IsSortedByKey(),
 	}
 
 	i := c.BeginUntyped()
@@ -725,6 +729,56 @@ func NewCollectionFeatureFromWorld(c b6.CollectionFeature) *CollectionFeature {
 	}
 
 	return feature
+}
+
+func (c *CollectionFeature) IsSortedByKey() bool {
+	return c.sorted
+}
+
+func (c *CollectionFeature) FindValue(key any) (any, bool) {
+	// TODO: we shouldn't need to cast the keys and values
+	// on every comparison, since they're all the same time.
+	// We could replace Keys and Values with a generic type,
+	// building from, eg, b6.ArrayCollection
+	if c.sorted {
+		i := sort.Search(len(c.Keys), func(i int) bool {
+			greater, _ := b6.Less(c.Keys[i], key)
+			return !greater
+		})
+		if i < len(c.Keys) {
+			if equal, _ := b6.Equal(c.Keys[i], key); equal {
+				return c.Values[i], true
+			}
+		}
+	} else {
+		for i := range c.Keys {
+			if equal, _ := b6.Equal(c.Keys[i], key); equal {
+				return c.Values[i], true
+			}
+		}
+	}
+	return nil, false
+}
+
+func (c *CollectionFeature) Sort() {
+	sort.Sort(byCollectionFeatureKey(*c))
+	c.sorted = true
+}
+
+type byCollectionFeatureKey CollectionFeature
+
+func (b byCollectionFeatureKey) Len() int {
+	return len(b.Keys)
+}
+
+func (b byCollectionFeatureKey) Swap(i, j int) {
+	b.Keys[i], b.Keys[j] = b.Keys[j], b.Keys[i]
+	b.Values[i], b.Values[j] = b.Values[j], b.Values[i]
+}
+
+func (b byCollectionFeatureKey) Less(i, j int) bool {
+	less, _ := b6.Less(b.Keys[i], b.Keys[j])
+	return less
 }
 
 func (c *CollectionFeature) MarshalYAML() (interface{}, error) {
