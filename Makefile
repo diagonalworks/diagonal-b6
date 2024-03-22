@@ -96,7 +96,8 @@ python/pyproject.toml: python/pyproject.toml.template python/VERSION
 python/VERSION:
 	bin/${TARGETPLATFORM}/b6-api --pip-version > $@
 
-python-test: python b6-backend
+python-test: python b6-backend b6-ingest-osm
+	bin/${TARGETPLATFORM}/b6-ingest-osm --input=data/tests/granary-square.osm.pbf --output=data/tests/granary-square.index
 	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/diagonal_b6/b6_test.py
 
 test: proto-go src/diagonal.works/b6/api/y.go
