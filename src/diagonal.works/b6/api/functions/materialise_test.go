@@ -96,3 +96,56 @@ func DiffCollections(a b6.UntypedCollection, b b6.UntypedCollection) string {
 		diffs += cmp.Diff(ai.Value(), bi.Value())
 	}
 }
+
+func TestMaterialiseMap(t *testing.T) {
+	w := camden.BuildGranarySquareForTests(t)
+
+	id := b6.MakeCollectionID("diagonal.works/test", 0)
+	e := b6.NewCallExpression(
+		b6.NewSymbolExpression("materialise-map"),
+		[]b6.Expression{
+			b6.NewCallExpression(
+				b6.NewSymbolExpression("find"),
+				[]b6.Expression{b6.NewQueryExpression(b6.Keyed{Key: "#building"})},
+			),
+			b6.NewFeatureIDExpression(id.FeatureID()),
+			b6.NewSymbolExpression("all-tags"),
+		},
+	)
+
+	change, err := api.Evaluate(e, NewContext(w))
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	mutable := ingest.NewMutableOverlayWorld(w)
+	if _, err := change.(ingest.Change).Apply(mutable); err != nil {
+		t.Fatalf("Expected no error applying change, found: %s", err)
+	}
+
+	materialised := b6.FindCollectionByID(id, mutable)
+	if materialised == nil {
+		t.Fatalf("Failed to find materialsed collection")
+	}
+
+	entries := make(map[b6.FeatureID]b6.CollectionID)
+	if err := api.FillMap(materialised, entries); err != nil {
+		t.Fatalf("Failed to fill map: %s", err)
+	}
+
+	if lighterman, ok := entries[camden.LightermanID.FeatureID()]; ok {
+		c := b6.FindCollectionByID(lighterman, mutable)
+		if c == nil {
+			t.Fatalf("No collection for id %s", lighterman)
+		}
+		if tags, err := b6.AdaptCollection[int, b6.Tag](c).AllValues(nil); err != nil {
+			t.Fatalf("Failed to fill values: %s", err)
+		} else {
+			if website := b6.Tags(tags).Get("website"); website.Value.String() != "https://thelighterman.co.uk/" {
+				t.Errorf("Failed to find expected website tag in %s", tags)
+			}
+		}
+	} else {
+		t.Fatalf("No materialised collection for %s", camden.LightermanID)
+	}
+}

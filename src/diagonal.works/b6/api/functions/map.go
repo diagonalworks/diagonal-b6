@@ -174,15 +174,9 @@ func (m *mapParallelCollection) Value() interface{} {
 
 func (m *mapParallelCollection) run() {
 	g, c := errgroup.WithContext(m.context.Context)
-	vms := m.context.VM.Fork(m.context.Cores)
-	contexts := make([]api.Context, m.context.Cores)
-	for i := range contexts {
-		contexts[i] = *m.context
-		contexts[i].Context = c
-		contexts[i].VM = &vms[i]
-	}
+	contexts := m.context.Fork(m.context.Cores)
 	for i := range m.in {
-		in, out, context := m.in[i], m.out[i], &contexts[i]
+		in, out, context := m.in[i], m.out[i], contexts[i]
 		g.Go(func() error {
 			for pair := range in {
 				v, err := m.f(context, pair.Second())

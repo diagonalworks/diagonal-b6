@@ -366,8 +366,9 @@ const (
 	NamespaceOSMRelation Namespace = "openstreetmap.org/relation"
 
 	// Used internally
-	NamespacePrivate Namespace = "diagonal.works/ns/private"
-	NamespaceLatLng  Namespace = "diagonal.works/ns/ll"
+	NamespacePrivate      Namespace = "diagonal.works/ns/private"
+	NamespaceLatLng       Namespace = "diagonal.works/ns/ll"
+	NamespaceMaterialised Namespace = "diagonal.works/ns/m"
 
 	// Used when connecting features to the street network
 	NamespaceDiagonalEntrances    Namespace = "diagonal.works/ns/entrance"
