@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"sort"
 	"sync"
 
@@ -639,15 +640,43 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 }
 
 func (f *FeaturesByID) FindPathsByPoint(id b6.FeatureID) b6.PathFeatures {
-	pids := f.findPathsByPoint(id, make([]b6.PathID, 0, 2))
-	paths := make([]b6.PathFeature, len(pids))
-	for i, pid := range pids {
-		paths[i] = f.FindFeatureByID(pid.FeatureID()).(b6.PathFeature)
+	ids := f.findPathsByPoint(id, make([]b6.FeatureID, 0, 2))
+	paths := make([]b6.PathFeature, 0, len(ids))
+	for _, id := range ids {
+		if path, ok := f.FindFeatureByID(id).(b6.PathFeature); ok {
+			paths = append(paths, path)
+		}
 	}
 	return ingest.NewPathFeatureIterator(paths)
 }
 
-func (f *FeaturesByID) findPathsByPoint(id b6.FeatureID, paths []b6.PathID) []b6.PathID {
+func (f *FeaturesByID) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
+	// TODO: provide an implementation that handles collections etc
+	// when we move to a unified way of storing feature references in
+	// the compact index
+	features := make([]b6.Feature, 0)
+	if id.Type == b6.FeatureTypePoint && (len(typed) == 0 || slices.Contains(typed, b6.FeatureTypePath)) {
+		i := f.FindPathsByPoint(id)
+		for i.Next() {
+			features = append(features, i.Feature())
+		}
+	}
+	if len(typed) == 0 || slices.Contains(typed, b6.FeatureTypeRelation) {
+		i := f.FindRelationsByFeature(id)
+		for i.Next() {
+			features = append(features, i.Feature())
+		}
+	}
+	if id.Type == b6.FeatureTypePoint && (len(typed) == 0 || slices.Contains(typed, b6.FeatureTypeArea)) {
+		i := f.FindAreasByPoint(id)
+		for i.Next() {
+			features = append(features, i.Feature())
+		}
+	}
+	return b6.NewFeatureIterator(features)
+}
+
+func (f *FeaturesByID) findPathsByPoint(id b6.FeatureID, paths []b6.FeatureID) []b6.FeatureID {
 	for _, fb := range f.features[b6.FeatureTypePoint] {
 		if ns, ok := fb.NamespaceTable.MaybeEncode(id.Namespace); ok && ns == fb.Namespaces[b6.FeatureTypePoint] {
 			t, ok := fb.Map.FindFirst(id.Value)
@@ -656,18 +685,18 @@ func (f *FeaturesByID) findPathsByPoint(id b6.FeatureID, paths []b6.PathID) []b6
 				case PointTagCommon:
 					var p CommonPoint
 					p.Unmarshal(&fb.Namespaces, t.Data)
-					paths = append(paths, b6.MakePathID(fb.NamespaceTable.Decode(p.Path.Namespace), p.Path.Value))
+					paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(p.Path.Namespace), Value: p.Path.Value})
 				case PointTagFull:
 					var p FullPoint
 					p.Unmarshal(&fb.Namespaces, t.Data)
 					for _, path := range p.Paths {
-						paths = append(paths, b6.MakePathID(fb.NamespaceTable.Decode(path.Namespace), path.Value))
+						paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(path.Namespace), Value: path.Value})
 					}
 				case PointTagReferencesOnly:
 					var r PointReferences
 					r.Unmarshal(&fb.Namespaces, t.Data)
 					for _, path := range r.Paths {
-						paths = append(paths, b6.MakePathID(fb.NamespaceTable.Decode(path.Namespace), path.Value))
+						paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(path.Namespace), Value: path.Value})
 					}
 				}
 			}
@@ -723,10 +752,10 @@ func (f *FeaturesByID) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 }
 
 func (f *FeaturesByID) Traverse(id b6.FeatureID) b6.Segments {
-	pids := f.findPathsByPoint(id, make([]b6.PathID, 0, 2))
-	segments := make([]b6.Segment, 0, len(pids)*2)
-	for _, pid := range pids {
-		segments = f.fillPathSegments(id, pid, segments)
+	paths := f.findPathsByPoint(id, make([]b6.FeatureID, 0, 2))
+	segments := make([]b6.Segment, 0, len(paths)*2)
+	for _, path := range paths {
+		segments = f.fillPathSegments(id, path.ToPathID(), segments)
 	}
 	return ingest.NewSegmentIterator(segments)
 }
@@ -979,7 +1008,7 @@ func (w *World) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 }
 
 func (w *World) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
-	return b6.EmptyFeatures{} // TODO(mari)
+	return w.byID.FindReferences(id, typed...)
 }
 
 func (w *World) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {

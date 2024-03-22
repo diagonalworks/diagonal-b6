@@ -622,7 +622,7 @@ def main():
         "bin/%s/b6" % platform,
         "--http=%s" % http_address,
         "--grpc=%s" % grpc_address,
-        "--world=osm:data/tests/granary-square.osm.pbf"
+        "--world=data/tests/granary-square.index"
     ])
 
     ready, response = wait_until_ready(p, http_address)
