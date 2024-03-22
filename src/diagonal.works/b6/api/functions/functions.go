@@ -150,7 +150,8 @@ var functions = api.FunctionSymbols{
 	"changes-to-file":   changesToFile,
 	"changes-from-file": changesFromFile,
 	// materialise
-	"materialise": materialise,
+	"materialise":     materialise,
+	"materialise-map": materialiseMap,
 	// debug
 	"debug-tokens":    debugTokens,
 	"debug-all-query": debugAllQuery,

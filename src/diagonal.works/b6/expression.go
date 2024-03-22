@@ -41,6 +41,10 @@ type Expression struct {
 	End   int
 }
 
+func (e *Expression) IsValid() bool {
+	return e.AnyExpression != nil
+}
+
 type expressionChoices struct {
 	Symbol     *SymbolExpression
 	Int        *IntExpression
