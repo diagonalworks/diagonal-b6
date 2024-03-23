@@ -317,3 +317,15 @@ func histogram(c *api.Context, collection b6.Collection[any, any]) (ingest.Chang
 	}
 	return &ingest.AddFeatures{histogram}, nil
 }
+
+// Return a change that adds a histogram with only colour swatches for the given collection.
+func histogramSwatch(c *api.Context, collection b6.Collection[any, any]) (ingest.Change, error) {
+	id := b6.CollectionID{Namespace: b6.NamespaceUI, Value: rand.Uint64()}
+
+	histogram, err := api.NewHistogramFromCollection(collection, id)
+	if err != nil {
+		return nil, err
+	}
+	histogram.AddTag(b6.Tag{Key: "b6:histogram", Value: b6.String("swatch")})
+	return &ingest.AddFeatures{histogram}, nil
+}

@@ -64,6 +64,7 @@ var functionDocs = map[string]Doc{
 	"get-string": Doc{Doc: "Return the value of tag with the given key on the given feature as a string.\nReturns an empty string if there isn't a tag with that key.\n", ArgNames: []string{"id","key"}},
 	"gt": Doc{Doc: "Return true if a is greater than b.\n", ArgNames: []string{"a","b"}},
 	"histogram": Doc{Doc: "Return a change that adds a histogram for the given collection.\n", ArgNames: []string{"collection"}},
+	"histogram-swatch": Doc{Doc: "Return a change that adds a histogram with only colour swatches for the given collection.\n", ArgNames: []string{"collection"}},
 	"id-to-relation-id": Doc{Doc: "Deprecated.\n", ArgNames: []string{"namespace","id"}},
 	"import-geojson": Doc{Doc: "Add features from the given geojson to the world.\nIDs are formed from the given namespace, and the index of the feature\nwithin the geojson collection (or 0, if a single feature is used).\n", ArgNames: []string{"features","namespace"}},
 	"import-geojson-file": Doc{Doc: "Add features from the given geojson file to the world.\nIDs are formed from the given namespace, and the index of the feature\nwithin the geojson collection (or 0, if a single feature is used).\nAs the file is read by the b6 server process, the filename it relative\nto the filesystems it sees. Reading from files on cloud storage is\nsupported.\n", ArgNames: []string{"filename","namespace"}},
