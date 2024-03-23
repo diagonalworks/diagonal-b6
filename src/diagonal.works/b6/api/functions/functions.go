@@ -189,7 +189,7 @@ var functionAdaptors = []interface{}{
 			if err != nil {
 				return false, err
 			}
-			return api.IsTrue(r), nil
+			return b6.IsTrue(r), nil
 		}
 	},
 	func(c api.Callable) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
@@ -236,7 +236,7 @@ var functionAdaptors = []interface{}{
 	func(c api.Callable) func(*api.Context, b6.Feature) (bool, error) {
 		return func(context *api.Context, f b6.Feature) (bool, error) {
 			if result, err := api.Call1(context, f, c); result != nil {
-				return api.IsTrue(result), err
+				return b6.IsTrue(result), err
 			} else {
 				return false, err
 			}
@@ -245,7 +245,7 @@ var functionAdaptors = []interface{}{
 	func(c api.Callable) func(*api.Context, b6.PhysicalFeature) (bool, error) {
 		return func(context *api.Context, f b6.PhysicalFeature) (bool, error) {
 			if result, err := api.Call1(context, f, c); result != nil {
-				return api.IsTrue(result), err
+				return b6.IsTrue(result), err
 			} else {
 				return false, err
 			}
@@ -254,7 +254,7 @@ var functionAdaptors = []interface{}{
 	func(c api.Callable) func(*api.Context, b6.PathFeature) (bool, error) {
 		return func(context *api.Context, f b6.PathFeature) (bool, error) {
 			if result, err := api.Call1(context, f, c); result != nil {
-				return api.IsTrue(result), err
+				return b6.IsTrue(result), err
 			} else {
 				return false, err
 			}
@@ -263,7 +263,7 @@ var functionAdaptors = []interface{}{
 	func(c api.Callable) func(*api.Context, b6.AreaFeature) (bool, error) {
 		return func(context *api.Context, f b6.AreaFeature) (bool, error) {
 			if result, err := api.Call1(context, f, c); result != nil {
-				return api.IsTrue(result), err
+				return b6.IsTrue(result), err
 			} else {
 				return false, err
 			}
@@ -272,7 +272,7 @@ var functionAdaptors = []interface{}{
 	func(c api.Callable) func(*api.Context, b6.RelationFeature) (bool, error) {
 		return func(context *api.Context, f b6.RelationFeature) (bool, error) {
 			if result, err := api.Call1(context, f, c); err == nil && result != nil {
-				return api.IsTrue(result), err
+				return b6.IsTrue(result), err
 			} else {
 				return false, err
 			}

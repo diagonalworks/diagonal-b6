@@ -208,6 +208,20 @@ func AdaptCollection[Key any, Value any](c UntypedCollection) Collection[Key, Va
 	}
 }
 
+func CanAdaptCollection[Key any, Value any](c UntypedCollection) bool {
+	i := c.BeginUntyped()
+	if ok, err := i.Next(); !ok || err != nil {
+		return true
+	}
+	if _, ok := i.Key().(Key); !ok {
+		return false
+	}
+	if _, ok := i.Value().(Value); !ok {
+		return false
+	}
+	return true
+}
+
 type ArrayCollection[Key any, Value any] struct {
 	Keys   []Key
 	Values []Value
@@ -331,3 +345,18 @@ func (a ArrayFeatureCollection[Value]) Collection() Collection[FeatureID, Value]
 }
 
 var _ AnyCollection[FeatureID, PhysicalFeature] = &ArrayFeatureCollection[PhysicalFeature]{}
+
+func Count(collection UntypedCollection) (int, error) {
+	if n, ok := collection.Count(); ok {
+		return n, nil
+	}
+	n := 0
+	i := collection.BeginUntyped()
+	for {
+		ok, err := i.Next()
+		if !ok || err != nil {
+			return n, err
+		}
+		n++
+	}
+}

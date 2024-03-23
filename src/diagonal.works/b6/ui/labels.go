@@ -121,7 +121,7 @@ func LabelForTag(t b6.Tag) (Label, bool) {
 
 func LabelForFeature(f b6.Feature) Label {
 	for _, t := range labelsForTag {
-		if tt := f.Get(t.Tag.Key); tt.IsValid() && (t.Tag.Value.String() == "" || t.Tag.Value == tt.Value) {
+		if tt := f.Get(t.Tag.Key); tt.IsValid() && (t.Tag.Value == nil || t.Tag.Value == tt.Value) {
 			return t.Labels[0]
 		}
 	}

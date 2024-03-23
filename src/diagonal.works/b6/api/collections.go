@@ -96,6 +96,6 @@ func CollectionToTags(c b6.UntypedCollection) (b6.Tags, error) {
 				continue
 			}
 		}
-		return nil, fmt.Errorf("Expected tag values, or string keys and values, found %T and %T", i.Key(), i.Value())
+		return nil, fmt.Errorf("expected tag values, or string keys and values, found %T and %T", i.Key(), i.Value())
 	}
 }

@@ -24,7 +24,6 @@ message UIResponseProto {
     string expression = 3;
     FeatureIDsProto highlighted = 4;
     repeated GeoJSONProto geoJSON = 5; // References geojson array in response
-    repeated BucketedProto bucketed = 6;
     repeated MapLayerProto layers = 7;
     geometry.PointProto mapCenter = 8;
     bool locked = 9;
@@ -40,8 +39,10 @@ enum MapLayerPosition {
 }
 
 message MapLayerProto {
-    string query = 1;
-    MapLayerPosition before = 2;
+    string path = 1;
+    string q = 2;
+    string v = 3;
+    MapLayerPosition before = 4;
 }
 
 message StackProto {
@@ -169,11 +170,6 @@ message ConditionalProto {
 message GeoJSONProto {
     ConditionProto condition = 1;
     int32 index = 2;
-}
-
-message BucketedProto {
-    ConditionProto condition = 1;
-    repeated FeatureIDsProto buckets = 2;
 }
 
 message FeatureIDsProto {

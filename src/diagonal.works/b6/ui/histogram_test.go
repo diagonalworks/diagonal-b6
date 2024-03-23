@@ -5,6 +5,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
+	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/test/camden"
 	"github.com/google/go-cmp/cmp"
@@ -13,13 +14,19 @@ import (
 
 func TestHistogramWithStrings(t *testing.T) {
 	collection := b6.ArrayCollection[string, string]{
-		Keys:   []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"},
-		Values: []string{"heath", "fold", "heath", "fold", "epping", "fold", "epping", "briki", "epping", "briki", "fold", "unfold", "heath", "fold", "epping", "home"},
+		Keys:   []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"},
+		Values: []string{"heath", "fold", "heath", "fold", "epping", "fold", "epping", "briki", "epping", "briki", "fold", "unfold", "heath", "fold", "epping", "home", "victoria"},
 	}
 
-	histogram := api.HistogramCollection{UntypedCollection: collection.Collection()}
-	response := &pb.UIResponseProto{}
-	if err := fillResponseFromHistogram(response, &histogram, b6.EmptyWorld{}); err != nil {
+	id := b6.CollectionID{Namespace: "diagonal.works/test", Value: 0}
+	histogram, err := api.NewHistogramFromCollection(collection.Collection(), id)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	wrapped := ingest.WrapCollectionFeature(histogram, b6.EmptyWorld{})
+
+	response := NewUIResponseJSON()
+	if err := fillResponseFromHistogramFeature(response, wrapped, b6.EmptyWorld{}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -71,10 +78,20 @@ func TestHistogramWithStrings(t *testing.T) {
 					{
 						Line: &pb.LineProto_HistogramBar{
 							HistogramBar: &pb.HistogramBarLineProto{
+								Range: AtomFromString("unfold"),
+								Value: 1,
+								Total: total,
+								Index: 4,
+							},
+						},
+					},
+					{
+						Line: &pb.LineProto_HistogramBar{
+							HistogramBar: &pb.HistogramBarLineProto{
 								Range: AtomFromString("other"),
 								Value: 2,
 								Total: total,
-								Index: 4,
+								Index: 5,
 							},
 						},
 					},
@@ -83,7 +100,7 @@ func TestHistogramWithStrings(t *testing.T) {
 		},
 	}
 
-	if diff := cmp.Diff(expected, response.Stack, protocmp.Transform()); diff != "" {
+	if diff := cmp.Diff(expected, response.Proto.Stack, protocmp.Transform()); diff != "" {
 		t.Errorf("Unexpected diff: %s", diff)
 	}
 }
@@ -94,9 +111,15 @@ func TestHistogramWithIntegers(t *testing.T) {
 		Values: []int{1, 1, 1, 1, 1, 1, 2},
 	}
 
-	histogram := api.HistogramCollection{UntypedCollection: collection.Collection()}
-	response := &pb.UIResponseProto{}
-	if err := fillResponseFromHistogram(response, &histogram, b6.EmptyWorld{}); err != nil {
+	id := b6.CollectionID{Namespace: "diagonal.works/test", Value: 0}
+	histogram, err := api.NewHistogramFromCollection(collection.Collection(), id)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	wrapped := ingest.WrapCollectionFeature(histogram, b6.EmptyWorld{})
+
+	response := NewUIResponseJSON()
+	if err := fillResponseFromHistogramFeature(response, wrapped, b6.EmptyWorld{}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -129,20 +152,26 @@ func TestHistogramWithIntegers(t *testing.T) {
 			},
 		},
 	}
-
-	if diff := cmp.Diff(expected, response.Stack, protocmp.Transform()); diff != "" {
+	//log.Println(prototext.Format(response.Proto.Stack))
+	if diff := cmp.Diff(expected, response.Proto.Stack, protocmp.Transform()); diff != "" {
 		t.Errorf("Unexpected diff: %s", diff)
 	}
 }
 
-func TestHistogramWithIntegersAndMoreThan5Buckets(t *testing.T) {
+func TestHistogramWithIntegersAndMoreThan6Buckets(t *testing.T) {
 	collection := b6.ArrayValuesCollection[int]{
 		1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7,
 	}
 
-	histogram := api.HistogramCollection{UntypedCollection: collection.Collection()}
-	response := &pb.UIResponseProto{}
-	if err := fillResponseFromHistogram(response, &histogram, b6.EmptyWorld{}); err != nil {
+	id := b6.CollectionID{Namespace: "diagonal.works/test", Value: 0}
+	histogram, err := api.NewHistogramFromCollection(collection.Collection(), id)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	wrapped := ingest.WrapCollectionFeature(histogram, b6.EmptyWorld{})
+
+	response := NewUIResponseJSON()
+	if err := fillResponseFromHistogramFeature(response, wrapped, b6.EmptyWorld{}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
@@ -184,10 +213,20 @@ func TestHistogramWithIntegersAndMoreThan5Buckets(t *testing.T) {
 					{
 						Line: &pb.LineProto_HistogramBar{
 							HistogramBar: &pb.HistogramBarLineProto{
-								Range: AtomFromString("4-6"),
-								Value: 2,
+								Range: AtomFromString("4-5"),
+								Value: 1,
 								Total: total,
 								Index: 3,
+							},
+						},
+					},
+					{
+						Line: &pb.LineProto_HistogramBar{
+							HistogramBar: &pb.HistogramBarLineProto{
+								Range: AtomFromString("5-6"),
+								Value: 1,
+								Total: total,
+								Index: 4,
 							},
 						},
 					},
@@ -197,7 +236,7 @@ func TestHistogramWithIntegersAndMoreThan5Buckets(t *testing.T) {
 								Range: AtomFromString("6-"),
 								Value: 2,
 								Total: total,
-								Index: 4,
+								Index: 5,
 							},
 						},
 					},
@@ -206,7 +245,7 @@ func TestHistogramWithIntegersAndMoreThan5Buckets(t *testing.T) {
 		},
 	}
 
-	if diff := cmp.Diff(expected, response.Stack, protocmp.Transform()); diff != "" {
+	if diff := cmp.Diff(expected, response.Proto.Stack, protocmp.Transform()); diff != "" {
 		t.Errorf("Unexpected diff: %s", diff)
 	}
 }
@@ -217,36 +256,23 @@ func TestHistogramWithFeatures(t *testing.T) {
 		Values: []string{"amenity", "amenity", "highway"},
 	}
 
-	histogram := api.HistogramCollection{UntypedCollection: collection.Collection()}
-	response := &pb.UIResponseProto{}
-	if err := fillResponseFromHistogram(response, &histogram, b6.EmptyWorld{}); err != nil {
+	id := b6.CollectionID{Namespace: "diagonal.works/test", Value: 0}
+	histogram, err := api.NewHistogramFromCollection(collection.Collection(), id)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	wrapped := ingest.WrapCollectionFeature(histogram, b6.EmptyWorld{})
+
+	response := NewUIResponseJSON()
+	if err := fillResponseFromHistogramFeature(response, wrapped, b6.EmptyWorld{}); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	expected := []*pb.BucketedProto{{
-		Buckets: []*pb.FeatureIDsProto{
-			{
-				Namespaces: []string{
-					"/point/openstreetmap.org/node",
-					"/area/openstreetmap.org/way",
-				},
-				Ids: []*pb.IDsProto{
-					{Ids: []uint64{camden.VermuteriaID.Value}},
-					{Ids: []uint64{camden.LightermanID.Value}},
-				},
-			},
-			{
-				Namespaces: []string{
-					"/area/openstreetmap.org/way",
-				},
-				Ids: []*pb.IDsProto{
-					{Ids: []uint64{camden.GranarySquareID.Value}},
-				},
-			},
-		},
-	}}
-
-	if diff := cmp.Diff(expected, response.Bucketed, protocmp.Transform()); diff != "" {
-		t.Errorf("Unexpected diff: %s", diff)
+	if l := len(response.Proto.Layers); l != 1 {
+		t.Fatalf("Expected 1 map layer, found %d", l)
+	}
+	expectedQ := "collection/diagonal.works/test/0"
+	if q := response.Proto.Layers[0].Q; q != expectedQ {
+		t.Errorf("Expected query %q, found %q", expectedQ, q)
 	}
 }

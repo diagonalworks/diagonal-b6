@@ -19,7 +19,7 @@ type QueryRenderer struct {
 	a      api.Adaptors
 }
 
-// QueryRenderRules is used to fill in an tile feature attributre
+// QueryRenderRules is used to fill in a tile feature attributre
 // describing the type of the feature, similar to BasemapRenderer
 var QueryRenderRules = RenderRules{
 	{Tag: b6.Tag{Key: "#amenity"}},

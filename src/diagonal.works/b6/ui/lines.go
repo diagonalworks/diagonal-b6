@@ -244,9 +244,9 @@ func AtomFromString(value string) *pb.AtomProto {
 }
 
 func AtomFromValue(value interface{}, w b6.World) *pb.AtomProto {
-	if i, ok := api.ToInt(value); ok {
+	if i, ok := b6.ToInt(value); ok {
 		return AtomFromString(strconv.Itoa(i))
-	} else if f, err := api.ToFloat64(value); err == nil {
+	} else if f, err := b6.ToFloat64(value); err == nil {
 		return AtomFromString(fmt.Sprintf("%f", f))
 	} else {
 		switch v := value.(type) {

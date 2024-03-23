@@ -18,6 +18,7 @@ import Stroke from 'ol/style/Stroke';
 import Style from 'ol/style/Style';
 import Text from 'ol/style/Text';
 
+const HistogramBucketCount = 6;
 const LineHeight = 20 + 2 * 12;
 const LineBorderWidth = 1;
 const InsetSquishXS = 8;
@@ -233,13 +234,6 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
                     const id = idKeyFromFeature(feature);
-                    const bucket = state.bucketed[id];
-
-                    if (bucket && Object.keys(state.bucketed).length > 0) {
-                        if (state.showBucket < 0 || state.showBucket == bucket) {
-                            return styles.lookupStyleWithStokeWidth(`bucketed-road-fill-${bucket}`, width);
-                        }
-                    }
     
                     if (state.highlighted[id]) {
                         return styles.lookupStyleWithStokeWidth(
@@ -293,39 +287,11 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
 
     const highlightedBuildingFill = styles.lookupStyle('highlighted-area');
 
-    const bucketedBuildingFill = Array.from(Array(6).keys()).map((b) => {
-        return styles.lookupStyle(`bucketed-${b}`);
-    });
-
     const buildings = new VectorTileLayer({
         source: baseSource,
         style: function (feature) {
             if (feature.get('layer') === 'building') {
                 const id = idKeyFromFeature(feature);
-                const bucket = state.bucketed[id];
-
-                if (bucket && Object.keys(state.bucketed).length > 0) {
-                    if (state.showBucket < 0) {
-                        return bucketedBuildingFill[bucket];
-                    }
-
-                    const color = bucketedBuildingFill[bucket]
-                        .getFill()
-                        .getColor();
-
-                    if (state.showBucket == bucket && state.showBucket > -1) {
-                        return new Style({
-                            fill: new Fill({ color }),
-                            stroke: new Stroke({ color: '#4f5a7d', width: 1 }),
-                        });
-                    }
-
-                    return new Style({
-                        fill: new Fill({ color: withAlpha(color, 0.42) }),
-                        stroke: new Stroke({ color: '#4f5a7d', width: 0.3 }),
-                    });
-                }
-
                 if (state.highlighted[id]) {
                     return highlightedBuildingFill;
                 }
@@ -336,22 +302,11 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
     buildings.set('position', 'MapLayerPositionBuildings');
     buildings.set('clickable', true);
 
-    const bucketedPoint = Array.from(Array(6).keys()).map((b) => {
-        return styles.lookupCircle(`bucketed-${b}`);
-    });
-
     const points = new VectorTileLayer({
         source: baseSource,
         style: function (feature) {
             if (feature.get('layer') == 'point') {
                 const id = idKeyFromFeature(feature);
-                const bucket = state.bucketed[id];
-                if (
-                    bucket &&
-                    (state.showBucket < 0 || state.showBucket == bucket)
-                ) {
-                    return bucketedPoint[bucket];
-                }
                 if (state.highlighted[id]) {
                     return styles.lookupStyle('highlighted-point');
                 }
@@ -477,12 +432,14 @@ class Stack {
     setup() {
         this.layers = [];
         this.setupGeoJSON(this.response.proto.geoJSON, this.response.geoJSON);
-        const queryLayers = this.response.proto.layers;
-        for (const i in queryLayers) {
+        const layers = this.response.proto.layers;
+        for (const i in layers) {
             this.layers.push(
-                this.ui.createQueryLayer(
-                    queryLayers[i].query,
-                    queryLayers[i].before,
+                this.ui.createLayer(
+                    layers[i].path,
+                    layers[i].q,
+                    layers[i].v,
+                    layers[i].before,
                 ),
             );
         }
@@ -586,25 +543,6 @@ class Stack {
         }
     }
 
-    _addBucketed() {
-        const bucketed = this.response.proto.bucketed;
-        for (const i in bucketed) {
-            if (!this.stateMatchesCondition(bucketed[i].condition)) {
-                continue;
-            }
-            const buckets = bucketed[i].buckets;
-            for (const j in buckets) {
-                for (const k in buckets[j].namespaces) {
-                    const namespace = buckets[j].namespaces[k];
-                    const values = buckets[j].ids[k].ids;
-                    for (const l in values) {
-                        this.ui.addBucketed(namespace + '/' + values[l], j);
-                    }
-                }
-            }
-        }
-    }
-
     _addHighlighted() {
         const highlighted = this.response.proto.highlighted;
         if (highlighted) {
@@ -637,7 +575,6 @@ class Stack {
             this.ui.addLayer(this.layers[i]);
         }
         this._addHighlighted();
-        this._addBucketed();
         this.ui.basemapHighlightChanged();
     }
 
@@ -650,7 +587,6 @@ class Stack {
             this.ui.removeLayer(this.layers[i]);
         }
         this._removeHighlighted();
-        this.ui.clearBucketed();
         for (const i in this.layers) {
             this.ui.removeLayer(this.layers[i]);
         }
@@ -697,7 +633,6 @@ class Stack {
         this.render();
         this.setupGeoJSON();
         if (onMap) {
-            this.ui.clearBucketed();
             this.addToMap();
         }
     }
@@ -1027,6 +962,14 @@ class HistogramBarLineRenderer {
                     ((d.histogramBar.value || 0) / d.histogramBar.total) * 100.0
                 }%;`,
         );
+
+        const index = line.datum().histogramBar.index || 0;
+        if (index >= 0) {
+            line.on('click', function (e) {
+                e.stopPropagation();
+                stack.toggleShowBucket(index);
+            });
+        }
     }
 }
 
@@ -1319,7 +1262,7 @@ class UI {
         map,
         dockTarget,
         state,
-        queryStyle,
+        overlayStyle,
         geojsonStyle,
         tilesChanged,
         highlightChanged,
@@ -1328,7 +1271,7 @@ class UI {
     ) {
         this.map = map;
         (this.dockTarget = dockTarget), (this.state = state);
-        this.queryStyle = queryStyle;
+        this.overlayStyle = overlayStyle;
         this.geojsonStyle = geojsonStyle;
         this.basemapTilesChanged = tilesChanged;
         this.basemapHighlightChanged = highlightChanged;
@@ -1407,7 +1350,6 @@ class UI {
             d3.select(docked).classed('closed', false);
             this.openDockIndex = index;
             if (docked.__stack__) {
-                this.state.bucketed = {};
                 docked.__stack__.toggleShowBucket(-1);
                 docked.__stack__.addToMap();
             }
@@ -1618,28 +1560,27 @@ class UI {
         this.basemapHighlightChanged();
     }
 
-    clearBucketed() {
-        this.state.bucketed = {};
-    }
-
-    addBucketed(idKey, bucket) {
-        this.state.bucketed[idKey] = bucket;
-    }
-
-    createQueryLayer(query, before) {
-        const params = new URLSearchParams({ q: query });
+    createLayer(path, q, v, before) {
+        const params = new URLSearchParams();
+        if (q) {
+            params.append('q', q);
+        }
+        if (v) {
+            params.append('v', v);
+        }
         if (this.uiContext) {
             params.append('r', idTokenFromProto(this.uiContext));
         }
         const source = new VectorTileSource({
             format: new MVT(),
-            url: '/tiles/query/{z}/{x}/{y}.mvt?' + params.toString(),
+            url: `/tiles/${path}/{z}/{x}/{y}.mvt?${params.toString()}`,
             minZoom: 14,
         });
         const layer = new VectorTileLayer({
             source: source,
-            style: this.queryStyle,
+            style: this.overlayStyle,
         });
+        layer.set('path', path);
         layer.set('clickable', true);
         if (before) {
             layer.set('before', before);
@@ -1764,7 +1705,13 @@ class UI {
         } else {
             this.state.showBucket = bucket;
         }
-        this.basemapHighlightChanged();
+        const layers = this.map.getLayers();
+        for (let i = 0; i < layers.getLength(); i++) {
+            const layer = layers.item(i);
+            if (layer.get('path') == 'histogram') {
+                layer.changed();
+            }
+        }
     }
 
     _logEvent(event, options) {
@@ -1917,7 +1864,7 @@ function setupShell(target, ui) {
     });
 }
 
-function newQueryStyle(state, styles) {
+function newOverlayStyle(state, styles) {
     const point = styles.lookupCircle('query-point');
     const highlightedPoint = styles.lookupCircle('highlighted-point');
     const path = styles.lookupStyle('query-path');
@@ -1927,12 +1874,50 @@ function newQueryStyle(state, styles) {
     const boundary = styles.lookupStyle('query-boundary');
     const highlightedBoundary = styles.lookupStyle('highlighted-boundary');
 
-    const bucketedArea = Array.from(Array(6).keys()).map((b) => {
+    const bucketedPoint = Array.from(Array(HistogramBucketCount).keys()).map((b) => {
+        return styles.lookupCircle(`bucketed-${b}`);
+    });
+
+    const highlightBucketedPoint = bucketedPoint.map((s) => {
+        return new Style({
+            image: new Circle({
+                radius: 4,
+                stroke: new Stroke({ color: '#4f5a7d', width: 1 }),
+                fill: new Fill({ color: s.getImage().getFill().getColor() }),
+            }),
+        });
+    });
+
+    const lowlightBucketedPoint = bucketedPoint.map((s) => {
+        return new Style({
+            image: new Circle({
+                radius: 4,
+                stroke: new Stroke({ color: '#4f5a7d', width: 0.3 }),
+                fill: new Fill({ color: withAlpha(s.getImage().getFill().getColor(), 0.42) }),
+            }),
+        });
+    });
+
+    const bucketedArea = Array.from(Array(HistogramBucketCount).keys()).map((b) => {
         return styles.lookupStyle(`bucketed-${b}`);
     });
 
-    return function (feature) {
-        if (feature.get('layer') != 'background') {
+    const highlightBucketedArea = bucketedArea.map((s) => {
+        return new Style({
+            fill: new Fill({ color: s.getFill().getColor() }),
+            stroke: new Stroke({ color: '#4f5a7d', width: 1 }),
+        });
+    });
+
+    const lowlightBucketedArea = bucketedArea.map((s) => {
+        return new Style({
+            fill: new Fill({ color: withAlpha(s.getFill().getColor(), 0.42) }),
+            stroke: new Stroke({ color: '#4f5a7d', width: 0.3 }),
+        });
+    });
+
+    return function (feature, resolution) {
+        if (feature.get('layer') == 'query') {
             const id = idKeyFromFeature(feature);
             const highlighted = state.highlighted[id];
             switch (feature.getGeometry().getType()) {
@@ -1943,23 +1928,47 @@ function newQueryStyle(state, styles) {
                 case 'MultiLineString':
                     return highlighted ? highlightedPath : path;
                 case 'Polygon':
-                    if (state.bucketed[id]) {
-                        return bucketedArea[state.bucketed[id]];
-                    }
                     if (feature.get('boundary')) {
                         return highlighted ? highlightedBoundary : boundary;
                     } else {
                         return highlighted ? highlightedArea : area;
                     }
                 case 'MultiPolygon':
-                    if (state.bucketed[id]) {
-                        return bucketedArea[state.bucketed[id]];
-                    }
                     if (feature.get('boundary')) {
                         return highlighted ? highlightedBoundary : boundary;
                     } else {
                         return highlighted ? highlightedArea : area;
                     }
+            }
+        } else if (feature.get('layer') == 'histogram') {
+            const bucket = feature.get('bucket')
+            if (bucket >= 0 && bucket < HistogramBucketCount) {
+                if (feature.get('highway') && feature.getGeometry().getType() == 'LineString') {
+                    if (state.showBucket < 0 || state.showBucket == bucket) {
+                        const width = roadWidth(feature, resolution);
+                        if (width > 0) {
+                            return styles.lookupStyleWithStokeWidth(`bucketed-road-fill-${bucket}`, width);
+                        }
+                    }
+                } else if (feature.getGeometry().getType() == 'Polygon') {
+                    if (state.showBucket >= 0) {
+                        if (state.showBucket == bucket) {
+                            return highlightBucketedArea[bucket];
+                        } else {
+                            return lowlightBucketedArea[bucket];
+                        }
+                    }
+                    return bucketedArea[bucket];
+                } else if (feature.getGeometry().getType() == 'Point') {
+                    if (state.showBucket >= 0) {
+                        if (state.showBucket == bucket) {
+                            return highlightBucketedPoint[bucket];
+                        } else {
+                            return lowlightBucketedPoint[bucket];
+                        }
+                    }
+                    return bucketedPoint[bucket];
+                }
             }
         }
     };
@@ -2180,7 +2189,7 @@ function setup(selector, startupResponse, logger) {
         showMessage(startupResponse.error);
         return;
     }
-    const state = { highlighted: {}, bucketed: {}, showBucket: -1 };
+    const state = { highlighted: {}, showBucket: -1 };
     const styles = new Styles(StyleClasses);
     const mapCenter = startupResponse.mapCenter || InitialCenter;
     const mapZoom = startupResponse.mapZoom || InitalZoom;
@@ -2192,13 +2201,13 @@ function setup(selector, startupResponse, logger) {
         mapZoom,
         startupResponse.context,
     );
-    const queryStyle = newQueryStyle(state, styles);
+    const overlayStyle = newOverlayStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);
     const ui = new UI(
         map,
         dockTarget,
         state,
-        queryStyle,
+        overlayStyle,
         geojsonStyle,
         tilesChanged,
         highlightChanged,
