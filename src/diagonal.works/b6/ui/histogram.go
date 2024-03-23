@@ -23,17 +23,30 @@ func fillResponseFromHistogramFeature(response *UIResponseJSON, c b6.CollectionF
 	}
 
 	substack := &pb.SubstackProto{}
-	for i, label := range labels {
-		substack.Lines = append(substack.Lines, &pb.LineProto{
-			Line: &pb.LineProto_HistogramBar{
-				HistogramBar: &pb.HistogramBarLineProto{
-					Range: AtomFromValue(label, w),
-					Value: int32(counts[i]),
-					Index: int32(i),
-					Total: int32(total),
+	if h := c.Get("b6:histogram"); h.Value.String() == "swatch" {
+		for i, label := range labels {
+			substack.Lines = append(substack.Lines, &pb.LineProto{
+				Line: &pb.LineProto_Swatch{
+					Swatch: &pb.SwatchLineProto{
+						Label: AtomFromValue(label, w),
+						Index: int32(i),
+					},
 				},
-			},
-		})
+			})
+		}
+	} else {
+		for i, label := range labels {
+			substack.Lines = append(substack.Lines, &pb.LineProto{
+				Line: &pb.LineProto_HistogramBar{
+					HistogramBar: &pb.HistogramBarLineProto{
+						Range: AtomFromValue(label, w),
+						Value: int32(counts[i]),
+						Index: int32(i),
+						Total: int32(total),
+					},
+				},
+			})
+		}
 	}
 	p.Stack.Substacks = append(p.Stack.Substacks, substack)
 

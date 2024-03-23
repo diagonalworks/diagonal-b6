@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
@@ -86,16 +87,10 @@ type bound struct {
 type buckets []bound
 
 func xBound(lower, upper interface{}) bound {
-	var label string
-	if upper != nil {
-		label = fmt.Sprint(lower) + "-" + fmt.Sprint(upper)
-	} else {
-		label = fmt.Sprint(lower) + "-"
-	}
 	return bound{
 		lower: lower,
 		upper: upper,
-		label: label,
+		label: formatLabel(lower, upper),
 		within: func(v interface{}) (bool, error) {
 			below, err := b6.Less(v, lower)
 			if err != nil {
@@ -112,6 +107,27 @@ func xBound(lower, upper interface{}) bound {
 			return !below && notAbove, nil
 		},
 	}
+}
+
+func formatLabel(lower, upper interface{}) string {
+	if upper != nil {
+		if l, lok := lower.(int); lok {
+			if u, uok := upper.(int); uok {
+				if u == l+1 {
+					return strconv.Itoa(l)
+				}
+			}
+		}
+		return formatLabelValue(lower) + "-" + formatLabelValue(upper)
+	}
+	return formatLabelValue(lower) + "-"
+}
+
+func formatLabelValue(value interface{}) string {
+	if f, ok := value.(float64); ok {
+		return fmt.Sprintf("%.3g", f)
+	}
+	return fmt.Sprintf("%v", value)
 }
 
 func (b buckets) bucket(v interface{}) (int, error) {

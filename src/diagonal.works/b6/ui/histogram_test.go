@@ -183,7 +183,7 @@ func TestHistogramWithIntegersAndMoreThan6Buckets(t *testing.T) {
 					{
 						Line: &pb.LineProto_HistogramBar{
 							HistogramBar: &pb.HistogramBarLineProto{
-								Range: AtomFromString("1-2"),
+								Range: AtomFromString("1"),
 								Value: 4,
 								Total: total,
 								Index: 0,
@@ -193,7 +193,7 @@ func TestHistogramWithIntegersAndMoreThan6Buckets(t *testing.T) {
 					{
 						Line: &pb.LineProto_HistogramBar{
 							HistogramBar: &pb.HistogramBarLineProto{
-								Range: AtomFromString("2-3"),
+								Range: AtomFromString("2"),
 								Value: 3,
 								Total: total,
 								Index: 1,
@@ -203,7 +203,7 @@ func TestHistogramWithIntegersAndMoreThan6Buckets(t *testing.T) {
 					{
 						Line: &pb.LineProto_HistogramBar{
 							HistogramBar: &pb.HistogramBarLineProto{
-								Range: AtomFromString("3-4"),
+								Range: AtomFromString("3"),
 								Value: 2,
 								Total: total,
 								Index: 2,
@@ -213,7 +213,7 @@ func TestHistogramWithIntegersAndMoreThan6Buckets(t *testing.T) {
 					{
 						Line: &pb.LineProto_HistogramBar{
 							HistogramBar: &pb.HistogramBarLineProto{
-								Range: AtomFromString("4-5"),
+								Range: AtomFromString("4"),
 								Value: 1,
 								Total: total,
 								Index: 3,
@@ -223,7 +223,7 @@ func TestHistogramWithIntegersAndMoreThan6Buckets(t *testing.T) {
 					{
 						Line: &pb.LineProto_HistogramBar{
 							HistogramBar: &pb.HistogramBarLineProto{
-								Range: AtomFromString("5-6"),
+								Range: AtomFromString("5"),
 								Value: 1,
 								Total: total,
 								Index: 4,

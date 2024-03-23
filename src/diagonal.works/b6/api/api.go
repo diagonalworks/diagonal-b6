@@ -174,8 +174,10 @@ func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (refl
 			} else {
 				return reflect.Value{}, fmt.Errorf("expected a collection, found %s", v.Type())
 			}
+		} else if c, ok := v.Interface().(b6.CollectionFeature); ok && t == untypedCollectionInterface {
+			return reflect.ValueOf(c.(b6.UntypedCollection)), nil
 		} else {
-			return reflect.Value{}, fmt.Errorf("No collection adaptor for %s", t)
+			return reflect.Value{}, fmt.Errorf("no collection adaptor for %s", t)
 		}
 	}
 	return Convert(v, t, context.World)
