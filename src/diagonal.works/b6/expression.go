@@ -292,6 +292,11 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case Feature:
 		f := FeatureExpression{Feature: l}
 		return Literal{AnyLiteral: &f}, nil
+	case LatLng:
+		// TODO: Remove and only use Geo(metry). Needed because
+		// tag values can current be LatLng.
+		ll := PointExpression(l)
+		return Literal{AnyLiteral: &ll}, nil
 	case Geo:
 		ll := PointExpression(l.Location())
 		return Literal{AnyLiteral: &ll}, nil

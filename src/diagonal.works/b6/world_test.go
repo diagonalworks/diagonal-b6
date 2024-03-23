@@ -37,7 +37,7 @@ func TestTagToAndFromStringHappyPath(t *testing.T) {
 			t.Errorf("Expected %s, found %s", c.s, s)
 		}
 		var tag Tag
-		tag.FromString(c.s, ValueTypeString)
+		tag.FromString(c.s)
 		if tag.Key != c.tag.Key {
 			t.Errorf("Expected key %s, found %s", c.tag.Key, tag.Key)
 		}
@@ -58,7 +58,7 @@ func TestTagToAndFromStringBrokenStrings(t *testing.T) {
 	}
 	for _, c := range cases {
 		var tag Tag
-		tag.FromString(c.s, ValueTypeString)
+		tag.FromString(c.s)
 		if tag.Key != c.tag.Key {
 			t.Errorf("Expected key %s, found %s", c.tag.Key, tag.Key)
 		}
