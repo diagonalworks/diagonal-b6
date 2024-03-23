@@ -45,6 +45,22 @@ func findRelationFeature(context *api.Context, id b6.FeatureID) (b6.RelationFeat
 	return nil, fmt.Errorf("%s isn't a relation", id)
 }
 
+// Return the collection feature with the given ID.
+func findCollectionFeature(context *api.Context, id b6.FeatureID) (b6.CollectionFeature, error) {
+	if id.Type == b6.FeatureTypeCollection {
+		return b6.FindCollectionByID(id.ToCollectionID(), context.World), nil
+	}
+	return nil, fmt.Errorf("%s isn't a collection", id)
+}
+
+// Return the expression feature with the given ID.
+func findExpressionFeature(context *api.Context, id b6.FeatureID) (b6.ExpressionFeature, error) {
+	if id.Type == b6.FeatureTypeCollection {
+		return b6.FindExpressionByID(id.ToExpressionID(), context.World), nil
+	}
+	return nil, fmt.Errorf("%s isn't an expression", id)
+}
+
 func areaContainsAnyPoint(area b6.AreaFeature, points []s2.Point) (s2.Point, bool) {
 	for i := 0; i < area.Len(); i++ {
 		polygon := area.Polygon(i)

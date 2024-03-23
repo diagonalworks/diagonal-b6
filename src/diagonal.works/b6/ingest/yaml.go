@@ -254,11 +254,20 @@ func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
 		values = append(values, i.Value())
 	}
 
+	sorted := true
+	for j := 1; j < len(keys); j++ {
+		if less, err := b6.Less(keys[j], keys[j-1]); less || err != nil {
+			sorted = false
+			break
+		}
+	}
+
 	return &CollectionFeature{
 		CollectionID: y.ID.ToCollectionID(),
 		Keys:         keys,
 		Values:       values,
 		Tags:         y.Tags,
+		sorted:       sorted,
 	}, nil
 }
 

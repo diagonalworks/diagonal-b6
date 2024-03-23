@@ -49,6 +49,8 @@ var functionDocs = map[string]Doc{
 	"find": Doc{Doc: "Return a collection of the features present in the world that match the given query.\nKeys are IDs, and values are features.\n", ArgNames: []string{"query"}},
 	"find-area": Doc{Doc: "Return the area feature with the given ID.\n", ArgNames: []string{"id"}},
 	"find-areas": Doc{Doc: "Return a collection of the area features present in the world that match the given query.\nKeys are IDs, and values are features.\n", ArgNames: []string{"query"}},
+	"find-collection": Doc{Doc: "Return the collection feature with the given ID.\n", ArgNames: []string{"id"}},
+	"find-expression": Doc{Doc: "Return the expression feature with the given ID.\n", ArgNames: []string{"id"}},
 	"find-feature": Doc{Doc: "Return the feature with the given ID.\n", ArgNames: []string{"id"}},
 	"find-path": Doc{Doc: "Return the path feature with the given ID.\n", ArgNames: []string{"id"}},
 	"find-paths": Doc{Doc: "Return a collection of the path features present in the world that match the given query.\nKeys are IDs, and values are features.\n", ArgNames: []string{"query"}},

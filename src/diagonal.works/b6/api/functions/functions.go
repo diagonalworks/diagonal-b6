@@ -42,6 +42,8 @@ var functions = api.FunctionSymbols{
 	"find-path":        findPathFeature,
 	"find-area":        findAreaFeature,
 	"find-relation":    findRelationFeature,
+	"find-expression":  findExpressionFeature,
+	"find-collection":  findCollectionFeature,
 	"find":             find,
 	"find-paths":       findPathFeatures,
 	"find-areas":       findAreaFeatures,

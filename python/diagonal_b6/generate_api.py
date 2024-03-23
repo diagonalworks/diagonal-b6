@@ -20,6 +20,7 @@ GENERIC_COLLECTION_COLLECTION_RESULT = "AnyAnyAnyCollectionCollectionResult"
 
 EXTRA_TRAITS = {
     "QueryResult": ["QueryConversionTraits"],
+    "CollectionFeatureResult": ["CollectionFeatureResultTraits"],
 }
 
 def escape_name(name):
@@ -159,6 +160,7 @@ def main():
     print("")
     print("import diagonal_b6.expression")
     print("from diagonal_b6.expression import Call, Symbol, Lambda, Result, QueryConversionTraits, register_builtin_result")
+    print("from diagonal_b6.features import CollectionFeatureResultTraits")
     print("")
     print("VERSION = %s" % repr(api["Version"]))
     print("")

@@ -52,7 +52,7 @@ func nameForType(t reflect.Type) string {
 		return "Any"
 	} else if t == UntypedCollectionType {
 		return "AnyAnyCollection"
-	} else if t.Implements(UntypedCollectionType) {
+	} else if t.Implements(UntypedCollectionType) && t != CollectionFeatureType {
 		return collectionForType(t).Name
 	} else if t.Kind() == reflect.Func {
 		name := "Function"
@@ -103,6 +103,7 @@ func collectionForType(t reflect.Type) Collection {
 
 var AnyType = reflect.TypeOf((*interface{})(nil)).Elem()
 var UntypedCollectionType = reflect.TypeOf((*b6.UntypedCollection)(nil)).Elem()
+var CollectionFeatureType = reflect.TypeOf((*b6.CollectionFeature)(nil)).Elem()
 
 func outputFunctions() error {
 	var output API
@@ -141,7 +142,7 @@ func outputFunctions() error {
 	}
 
 	for t := range types {
-		if t.Implements(UntypedCollectionType) {
+		if t.Implements(UntypedCollectionType) && t != CollectionFeatureType {
 			output.Collections = append(output.Collections, collectionForType(t))
 		} else if t.Kind() == reflect.Func {
 			f := Function{Name: nameForType(t), ArgTypes: []string{}}
