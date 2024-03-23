@@ -197,6 +197,12 @@ class CollectionFeature(Feature):
         for (key, value) in zip(self._pb.collection.keys, self._pb.collection.values):
             yield (expression.from_literal_node_proto(key), expression.from_literal_node_proto(value))
 
+class CollectionFeatureResultTraits:
+
+    @classmethod
+    def _values(cls):
+        return expression.Result
+
 class ExpressionFeature(Feature):
 
     def __init__(self, pb):
