@@ -3,11 +3,13 @@ package ingest
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"testing"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/osm"
 	"diagonal.works/b6/test"
+	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -224,6 +226,9 @@ func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
 		// TODO: implement a cmp.Diff transformer for expressions
 		diffs += cmp.Diff(ee, ae, protocmp.Transform())
 	}
-	diffs += cmp.Diff(expected.AllTags(), actual.AllTags())
+	approxAngles := cmp.Comparer(func(a s1.Angle, b s1.Angle) bool {
+		return math.Abs(float64(a-b)) < 0.001
+	})
+	diffs += cmp.Diff(expected.AllTags(), actual.AllTags(), approxAngles)
 	return diffs
 }

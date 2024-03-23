@@ -15,6 +15,7 @@ import (
 	"github.com/golang/geo/s2"
 )
 
+// TODO: harmonise Value and Literal in expression.go
 type ValueType int
 
 const (
@@ -25,19 +26,6 @@ const (
 type Value interface {
 	String() string
 	Type() ValueType
-}
-
-func ValueFromString(s string, t ValueType) Value {
-	switch t {
-	case ValueTypeString:
-		return String(s)
-	case ValueTypeLatLng:
-		if ll, err := LatLngFromString(s); err == nil {
-			return LatLng(ll)
-		}
-	}
-
-	return nil
 }
 
 type String string
@@ -73,30 +61,52 @@ func (t Tag) String() string {
 	return escapeTagPart(t.Key) + "=" + escapeTagPart(t.Value.String())
 }
 
-func (t *Tag) FromString(s string, typ ValueType) {
+func (t *Tag) FromString(s string) {
 	var rest string
 	t.Key, rest = consumeTagPart(s)
 	value, _ := consumeTagPart(rest)
-	t.Value = ValueFromString(value, typ)
+	t.Value = String(value)
+}
+
+type tagYAML struct {
+	Key   string `yaml:"key,omitempty`
+	Value Literal
 }
 
 func (t Tag) MarshalYAML() (interface{}, error) {
-	return fmt.Sprint(t.Value.Type()) + "|" + t.String(), nil
+	if s, ok := t.Value.(String); ok {
+		return escapeTagPart(t.Key) + "=" + escapeTagPart(s.String()), nil
+	}
+	// TODO: harmonise Value and Literal in expression.go
+	literal, err := FromLiteral(t.Value)
+	if err != nil {
+		return nil, err
+	}
+	return &tagYAML{Key: t.Key, Value: literal}, nil
 }
 
 func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var s string
-	if err := unmarshal(&s); err != nil {
+	if err := unmarshal(&s); err == nil {
+		t.FromString(s)
+		return nil
+	}
+	var y tagYAML
+	if err := unmarshal(&y); err != nil {
 		return err
 	}
-
-	typ, tag := consumeTagPart(s)
-	valueType, _ := strconv.Atoi(typ)
-	t.FromString(tag, ValueType(valueType))
-
+	t.Key = y.Key
+	// TODO: harmonise Value and Literal in expression.go
+	switch l := y.Value.AnyLiteral.(type) {
+	case *PointExpression:
+		t.Value = LatLng(*l)
+	default:
+		return fmt.Errorf("can't use %T as tag values", l)
+	}
 	return nil
 }
 
+/*
 func (t Tags) MarshalYAML() (interface{}, error) {
 	tags := make([]interface{}, len(t))
 	for i, tag := range t {
@@ -125,6 +135,7 @@ func (t *Tags) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	return nil
 }
+*/
 
 func escapeTagPart(s string) string {
 	if tagPartNeedsQuotes(s) {
