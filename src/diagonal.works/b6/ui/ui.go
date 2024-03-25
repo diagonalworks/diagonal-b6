@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -41,6 +42,7 @@ type Options struct {
 	Worlds            ingest.Worlds
 	APIOptions        api.Options
 	InstrumentHandler func(handler http.Handler, name string) http.Handler
+	Lock              *sync.RWMutex
 }
 
 type DropPrefixFilesystem struct {
@@ -101,6 +103,7 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 			FunctionSymbols: functions.Functions(),
 			Adaptors:        functions.Adaptors(),
 			BasemapRules:    renderer.BasemapRenderRules,
+			Lock:            options.Lock,
 		}
 	}
 	startup := http.Handler(&StartupHandler{UI: ui})
@@ -117,22 +120,37 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	return nil
 }
 
+type lockedHandler struct {
+	handler http.Handler
+	lock    *sync.RWMutex
+}
+
+func (l *lockedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	l.handler.ServeHTTP(w, r)
+}
+
+func lockHandler(handler http.Handler, lock *sync.RWMutex) http.Handler {
+	return &lockedHandler{handler: handler, lock: lock}
+}
+
 func RegisterTiles(root *http.ServeMux, options *Options) {
 	rules := renderer.BasemapRenderRules
 	if options.BasemapRules != nil {
 		rules = options.BasemapRules
 	}
-	base := http.Handler(&renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: rules, Worlds: options.Worlds}})
+	base := http.Handler(lockHandler(&renderer.TileHandler{Renderer: &renderer.BasemapRenderer{RenderRules: rules, Worlds: options.Worlds}}, options.Lock))
 	if options.InstrumentHandler != nil {
 		base = options.InstrumentHandler(base, "tiles_base")
 	}
 	root.Handle("/tiles/base/", base)
-	query := http.Handler(&renderer.TileHandler{Renderer: renderer.NewQueryRenderer(options.Worlds, options.APIOptions.Cores)})
+	query := http.Handler(lockHandler(&renderer.TileHandler{Renderer: renderer.NewQueryRenderer(options.Worlds, options.APIOptions.Cores)}, options.Lock))
 	if options.InstrumentHandler != nil {
 		query = options.InstrumentHandler(query, "tiles_query")
 	}
 	root.Handle("/tiles/query/", query)
-	histogram := http.Handler(&renderer.TileHandler{Renderer: renderer.NewHistogramRenderer(rules, options.Worlds)})
+	histogram := http.Handler(lockHandler(&renderer.TileHandler{Renderer: renderer.NewHistogramRenderer(rules, options.Worlds)}, options.Lock))
 	if options.InstrumentHandler != nil {
 		histogram = options.InstrumentHandler(histogram, "tiles_histogram")
 	}
@@ -227,7 +245,7 @@ func (u *UIResponseJSON) AddGeoJSON(g geojson.GeoJSON) {
 type UI interface {
 	ServeStartup(request *StartupRequest, response *StartupResponseJSON, ui UI) error
 	ServeStack(request *pb.UIRequestProto, response *UIResponseJSON, ui UI) error
-	Render(response *UIResponseJSON, value interface{}, context b6.CollectionFeature, locked bool, ui UI) error
+	Render(response *UIResponseJSON, value interface{}, root b6.CollectionID, locked bool, ui UI) error
 }
 
 type FeatureIDProtoJSON pb.FeatureIDProto
@@ -343,10 +361,14 @@ type OpenSourceUI struct {
 	Options         api.Options
 	FunctionSymbols api.FunctionSymbols
 	Adaptors        api.Adaptors
+	Lock            *sync.RWMutex
 }
 
 func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupResponseJSON, ui UI) error {
-	w := o.Worlds.FindOrCreateWorld(request.RenderContext.FeatureID())
+	o.Lock.RLock()
+	defer o.Lock.RUnlock()
+	root := request.RenderContext.FeatureID()
+	w := o.Worlds.FindOrCreateWorld(root)
 	if context := b6.FindCollectionByID(request.RenderContext, w); context != nil {
 		if context, ok := context.(b6.CollectionFeature); ok {
 			c := b6.AdaptCollection[string, b6.FeatureID](context)
@@ -371,7 +393,7 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 				} else if i.Key() == "docked" {
 					if docked := w.FindFeatureByID(i.Value()); docked != nil {
 						uiResponse := NewUIResponseJSON()
-						if err := ui.Render(uiResponse, docked, context, true, ui); err == nil {
+						if err := ui.Render(uiResponse, docked, root.ToCollectionID(), true, ui); err == nil {
 							response.Docked = append(response.Docked, uiResponse)
 						} else {
 							return fmt.Errorf("%s: %w", i.Value(), err)
@@ -402,13 +424,10 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 }
 
 func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIResponseJSON, ui UI) error {
-	rootID := b6.NewFeatureIDFromProto(request.Context)
-	w := o.Worlds.FindOrCreateWorld(rootID)
-
-	var root b6.CollectionFeature
-	if request.Context != nil && request.Context.Type == pb.FeatureType_FeatureTypeCollection {
-		root = b6.FindCollectionByID(b6.NewFeatureIDFromProto(request.Context).ToCollectionID(), w)
-	}
+	o.Lock.RLock()
+	defer o.Lock.RUnlock()
+	root := b6.NewFeatureIDFromProto(request.Context)
+	w := o.Worlds.FindOrCreateWorld(root)
 
 	var expression b6.Expression
 	if request.Expression != "" {
@@ -422,7 +441,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 			}
 		}
 		if err != nil {
-			ui.Render(response, err, root, request.Locked, ui)
+			ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
 			var substack pb.SubstackProto
 			fillSubstackFromError(&substack, err)
 			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
@@ -447,7 +466,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 
 	var err error
 	if response.Proto.Node, err = expression.ToProto(); err != nil {
-		ui.Render(response, err, root, request.Locked, ui)
+		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
 		return nil
 	}
 
@@ -462,21 +481,25 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 	result, err := api.Evaluate(expression, &vmContext)
 	if err == nil {
 		if change, ok := result.(ingest.Change); ok {
+			o.Lock.RUnlock()
+			o.Lock.Lock()
 			var changed b6.Collection[b6.FeatureID, b6.FeatureID]
 			if changed, err = change.Apply(w); err == nil {
 				if first, ok := firstValueIfOnlyItem(changed); ok {
-					err = ui.Render(response, first, root, request.Locked, ui)
+					err = ui.Render(response, first, root.ToCollectionID(), request.Locked, ui)
 				} else {
-					err = ui.Render(response, changed, root, request.Locked, ui)
+					err = ui.Render(response, changed, root.ToCollectionID(), request.Locked, ui)
 				}
 				response.Proto.TilesChanged = true
 			}
+			o.Lock.Unlock()
+			o.Lock.RLock()
 		} else {
-			err = ui.Render(response, result, root, request.Locked, ui)
+			err = ui.Render(response, result, root.ToCollectionID(), request.Locked, ui)
 		}
 	}
 	if err != nil {
-		ui.Render(response, err, root, request.Locked, ui)
+		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
 	}
 	return nil
 }
@@ -495,12 +518,8 @@ func firstValueIfOnlyItem(c b6.UntypedCollection) (any, bool) {
 	return nil, false
 }
 
-func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root b6.CollectionFeature, locked bool, ui UI) error {
-	id := b6.FeatureIDInvalid
-	if root != nil {
-		id = root.FeatureID()
-	}
-	if err := o.fillResponseFromResult(response, value, o.Worlds.FindOrCreateWorld(id)); err == nil {
+func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root b6.CollectionID, locked bool, ui UI) error {
+	if err := o.fillResponseFromResult(response, value, o.Worlds.FindOrCreateWorld(root.FeatureID())); err == nil {
 		shell := &pb.ShellLineProto{
 			Functions: make([]string, 0),
 		}
@@ -510,7 +529,7 @@ func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root 
 		})
 		return nil
 	} else {
-		return o.fillResponseFromResult(response, err, o.Worlds.FindOrCreateWorld(id))
+		return o.fillResponseFromResult(response, err, o.Worlds.FindOrCreateWorld(root.FeatureID()))
 	}
 }
 

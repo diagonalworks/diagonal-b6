@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"diagonal.works/b6"
@@ -15,11 +16,13 @@ import (
 )
 
 func TestStateFilledFromStartupQuery(t *testing.T) {
+	var lock sync.RWMutex
 	handler := StartupHandler{
 		UI: &OpenSourceUI{
 			Worlds: &ingest.MutableWorlds{
 				Base: b6.EmptyWorld{},
 			},
+			Lock: &lock,
 		},
 	}
 
@@ -63,10 +66,12 @@ func TestEvaluateFunctionThatChangesWorld(t *testing.T) {
 	worlds := &ingest.MutableWorlds{
 		Base: camden.BuildGranarySquareForTests(t),
 	}
+	var lock sync.RWMutex
 	handler := StackHandler{
 		UI: &OpenSourceUI{
 			Worlds:          worlds,
 			FunctionSymbols: functions.Functions(),
+			Lock:            &lock,
 		},
 	}
 
