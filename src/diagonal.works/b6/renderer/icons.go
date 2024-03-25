@@ -1,4 +1,4 @@
-package ui
+package renderer
 
 import (
 	"diagonal.works/b6"
@@ -68,20 +68,20 @@ var iconsForTag = []struct {
 	{b6.Tag{Key: "#leisure", Value: b6.String("allotments")}, "garden"},
 }
 
-func IconForTag(t b6.Tag) string {
+func IconForTag(t b6.Tag) (string, bool) {
 	for _, i := range iconsForTag {
-		if i.Tag.Key == t.Key && (i.Tag.Value == t.Value || i.Tag.Value == nil) {
-			return i.Icon
+		if i.Tag.Key == t.Key && (i.Tag.Value == nil || i.Tag.Value.String() == t.Value.String()) {
+			return i.Icon, true
 		}
 	}
-	return "dot"
+	return "dot", false
 }
 
-func IconForFeature(f b6.Feature) string {
+func IconForFeature(f b6.Feature) (string, bool) {
 	for _, i := range iconsForTag {
-		if t := f.Get(i.Tag.Key); t.IsValid() && (i.Tag.Value == nil || i.Tag.Value == t.Value) {
-			return i.Icon
+		if t := f.Get(i.Tag.Key); t.IsValid() && (i.Tag.Value == nil || i.Tag.Value.String() == t.Value.String()) {
+			return i.Icon, true
 		}
 	}
-	return "dot"
+	return "dot", false
 }

@@ -1922,6 +1922,9 @@ function newOverlayStyle(state, styles) {
             const highlighted = state.highlighted[id];
             switch (feature.getGeometry().getType()) {
                 case 'Point':
+                    if (feature.get('icon') && !highlighted) {
+                        return styles.lookupIcon(feature.get('icon'));
+                    }
                     return highlighted ? highlightedPoint : point;
                 case 'LineString':
                     return highlighted ? highlightedPath : path;
