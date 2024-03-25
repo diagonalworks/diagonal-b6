@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -19,9 +20,12 @@ type service struct {
 	fs      api.FunctionSymbols
 	a       api.Adaptors
 	options api.Options
+	lock    *sync.RWMutex
 }
 
 func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto) (*pb.EvaluateResponseProto, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	w := s.worlds.FindOrCreateWorld(b6.NewFeatureIDFromProto(request.Root))
 
 	apply := func(change ingest.Change) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
@@ -53,7 +57,11 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 	}
 
 	if change, ok := v.(ingest.Change); ok {
+		s.lock.RUnlock()
+		s.lock.Lock()
 		v, err = apply(change)
+		s.lock.Unlock()
+		s.lock.RLock()
 		if err != nil {
 			return nil, err
 		}
@@ -79,11 +87,12 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 	}, nil
 }
 
-func NewB6Service(worlds ingest.Worlds, options api.Options) pb.B6Server {
+func NewB6Service(worlds ingest.Worlds, options api.Options, lock *sync.RWMutex) pb.B6Server {
 	return &service{
 		worlds:  worlds,
 		fs:      functions.Functions(),
 		a:       functions.Adaptors(),
 		options: options,
+		lock:    lock,
 	}
 }

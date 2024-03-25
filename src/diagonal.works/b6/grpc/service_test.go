@@ -40,7 +40,8 @@ func TestGRPC(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.f(NewB6Service(w, api.Options{Cores: 1}), w.Base, t)
+			var lock sync.RWMutex
+			test.f(NewB6Service(w, api.Options{Cores: 1}, &lock), w.Base, t)
 		})
 	}
 }

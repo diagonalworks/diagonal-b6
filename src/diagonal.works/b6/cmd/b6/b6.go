@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	rpprof "runtime/pprof"
+	"sync"
 
 	"diagonal.works/b6/api"
 	b6grpc "diagonal.works/b6/grpc"
@@ -63,6 +64,8 @@ func main() {
 		FileIOAllowed: *fileIOFlag,
 	}
 
+	var lock sync.RWMutex
+
 	options := ui.Options{
 		StaticPath:      *staticFlag,
 		JavaScriptPath:  *jsFlag,
@@ -71,6 +74,7 @@ func main() {
 		EnableStorybook: *enableStorybookFlag,
 		Worlds:          worlds,
 		APIOptions:      apiOptions,
+		Lock:            &lock,
 	}
 
 	handler := http.NewServeMux()
@@ -95,7 +99,7 @@ func main() {
 	if *grpcFlag != "" {
 		log.Printf("Listening for GRPC on %s", *grpcFlag)
 		grpcServer = grpc.NewServer(grpc.MaxRecvMsgSize(*grpcSizeFlag), grpc.MaxSendMsgSize(*grpcSizeFlag))
-		pb.RegisterB6Server(grpcServer, b6grpc.NewB6Service(worlds, apiOptions))
+		pb.RegisterB6Server(grpcServer, b6grpc.NewB6Service(worlds, apiOptions, &lock))
 		go func() {
 			listener, err := net.Listen("tcp", *grpcFlag)
 			if err == nil {

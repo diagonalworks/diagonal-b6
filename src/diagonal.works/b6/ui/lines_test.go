@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 
 	"diagonal.works/b6/api"
@@ -43,6 +44,7 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 		Base: camden.BuildGranarySquareForTests(t),
 	}
 
+	var lock sync.RWMutex
 	handler := StackHandler{
 		UI: &OpenSourceUI{
 			Worlds:          w,
@@ -51,6 +53,7 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 			Options: api.Options{
 				Cores: 2,
 			},
+			Lock: &lock,
 		},
 	}
 
