@@ -106,37 +106,6 @@ func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-/*
-func (t Tags) MarshalYAML() (interface{}, error) {
-	tags := make([]interface{}, len(t))
-	for i, tag := range t {
-		if m, err := tag.MarshalYAML(); err != nil {
-			return tags, err
-		} else {
-			tags[i] = m
-		}
-	}
-
-	return tags, nil
-}
-
-func (t *Tags) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var s []string
-	if err := unmarshal(&s); err != nil {
-		return err
-	}
-
-	*t = make([]Tag, len(s))
-	for i, tag := range s {
-		typ, tag := consumeTagPart(tag)
-		valueType, _ := strconv.Atoi(typ)
-		(*t)[i].FromString(tag, ValueType(valueType))
-	}
-
-	return nil
-}
-*/
-
 func escapeTagPart(s string) string {
 	if tagPartNeedsQuotes(s) {
 		escaped := "\""
