@@ -149,3 +149,55 @@ func TestMaterialiseMap(t *testing.T) {
 		t.Fatalf("No materialised collection for %s", camden.LightermanID)
 	}
 }
+
+func TestMaterialiseMapMergesExistingCollectionItems(t *testing.T) {
+	w := camden.BuildGranarySquareForTests(t)
+
+	mutable := ingest.NewMutableOverlayWorld(w)
+
+	id := b6.MakeCollectionID("diagonal.works/test", 0)
+	collection := &ingest.CollectionFeature{
+		CollectionID: id,
+		Keys:         []interface{}{camden.StableStreetBridgeID.FeatureID()},
+		Values:       []interface{}{b6.MakeCollectionID("diagonal.works/test", 1)},
+	}
+	if err := mutable.AddFeature(collection); err != nil {
+		t.Fatalf("Failed to add feature: %s", err)
+	}
+
+	e := b6.NewCallExpression(
+		b6.NewSymbolExpression("materialise-map"),
+		[]b6.Expression{
+			b6.NewCallExpression(
+				b6.NewSymbolExpression("find"),
+				[]b6.Expression{b6.NewQueryExpression(b6.Keyed{Key: "#building"})},
+			),
+			b6.NewFeatureIDExpression(id.FeatureID()),
+			b6.NewSymbolExpression("all-tags"),
+		},
+	)
+
+	change, err := api.Evaluate(e, NewContext(mutable))
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	if _, err := change.(ingest.Change).Apply(mutable); err != nil {
+		t.Fatalf("Expected no error applying change, found: %s", err)
+	}
+	materialised := b6.FindCollectionByID(id, mutable)
+	if materialised == nil {
+		t.Fatalf("Failed to find materialsed collection")
+	}
+
+	entries := make(map[b6.FeatureID]b6.CollectionID)
+	if err := api.FillMap(materialised, entries); err != nil {
+		t.Fatalf("Failed to fill map: %s", err)
+	}
+	// The materialised collection should contain Stable Street,
+	// because although it's not a building (and so wan't matched by)
+	// the expression we evaluated, it was present in the existing
+	// collection.
+	if _, ok := entries[camden.StableStreetBridgeID.FeatureID()]; !ok {
+		t.Errorf("Failed to find entry for %s", camden.StableStreetBridgeID.FeatureID())
+	}
+}

@@ -80,8 +80,9 @@ func materialiseMap(context *api.Context, collection b6.Collection[any, b6.Featu
 		CollectionID: id,
 	}
 	change := ingest.AddFeatures{results}
-	var lock sync.Mutex
 
+	var lock sync.Mutex
+	seen := make(map[b6.FeatureID]struct{})
 	g, c := errgroup.WithContext(context.Context)
 	contexts := context.Fork(cores)
 	in := make(chan b6.Feature)
@@ -121,6 +122,7 @@ func materialiseMap(context *api.Context, collection b6.Collection[any, b6.Featu
 				if bound != nil {
 					change = append(change, bound)
 				}
+				seen[f.FeatureID()] = struct{}{}
 				lock.Unlock()
 			}
 			return nil
@@ -147,5 +149,23 @@ func materialiseMap(context *api.Context, collection b6.Collection[any, b6.Featu
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+
+	if existing := b6.FindCollectionByID(id, context.World); existing != nil {
+		c := b6.AdaptCollection[b6.FeatureID, any](existing)
+		i := c.Begin()
+		for {
+			ok, err := i.Next()
+			if err != nil {
+				return nil, err
+			} else if !ok {
+				break
+			}
+			if _, ok := seen[i.Key()]; !ok {
+				results.Keys = append(results.Keys, i.Key())
+				results.Values = append(results.Values, i.Value())
+			}
+		}
+	}
+
 	return &change, nil
 }
