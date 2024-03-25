@@ -109,6 +109,7 @@ type RenderRule struct {
 	MaxZoom uint `yaml:"max,omitempty"`
 	Layer   BasemapLayer
 	Label   bool `yaml:",omitempty"`
+	Icon    bool `yaml:",omitempty"`
 }
 
 func (r *RenderRule) ToQuery(zoom uint) (b6.Query, bool) {
@@ -241,6 +242,7 @@ func fillFeaturesFromPoint(point b6.PhysicalFeature, tags []b6.Tag, fs []*Featur
 		f.Tags[t.Key] = t.Value.String()
 	}
 	fillTagsFromTags(f, point, rule)
+	fillTagsFromIcon(f, point, rule)
 	return append(fs, f)
 }
 
@@ -255,6 +257,20 @@ func fillFeaturesFromPath(path b6.PathFeature, tags []b6.Tag, fs []*Feature, rul
 }
 
 func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
+	if highway := area.Get("#highway"); highway.IsValid() {
+		if a := area.Get("area"); !a.IsValid() || a.Value.String() == "no" {
+			for i := 0; i < area.Len(); i++ {
+				for _, path := range area.Feature(i) {
+					f := NewFeature(NewLineString(path.Polyline()))
+					f.ID = api.TileFeatureID(path.FeatureID())
+					fillTagsFromTags(f, area, rule)
+					fs = append(fs, f)
+				}
+			}
+			return fs
+		}
+	}
+
 	for i := 0; i < area.Len(); i++ {
 		f := NewFeature(NewPolygon(area.Polygon(i)))
 		f.ID = api.TileFeatureIDForPolygon(area.FeatureID(), i)
@@ -264,7 +280,40 @@ func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature, rul
 		fillTagsFromTags(f, area, rule)
 		fs = append(fs, f)
 	}
+	if rule.Icon {
+		if point, ok := findIconPoint(area); ok {
+			f := NewFeature(NewPoint(point))
+			f.ID = api.TileFeatureID(area.FeatureID())
+			fillTagsFromIcon(f, area, rule)
+			if _, ok := f.Tags["icon"]; ok {
+				fs = append(fs, f)
+			}
+		}
+	}
 	return fs
+}
+
+func findIconPoint(area b6.AreaFeature) (s2.Point, bool) {
+	for i := 0; i < area.Len(); i++ {
+		paths := area.Feature(i)
+		for _, path := range paths {
+			for j := 0; j < path.Len(); j++ {
+				if point := path.Feature(j); point != nil {
+					if entrance := point.Get("entrance"); entrance.IsValid() {
+						return path.Point(j), true
+					}
+				}
+			}
+		}
+	}
+	if area.Len() > 0 {
+		if paths := area.Feature(0); len(paths) > 0 {
+			if paths[0].Len() > 0 {
+				return paths[0].Point(0), true
+			}
+		}
+	}
+	return s2.Point{}, false
 }
 
 func fillTagsFromTags(tf *Feature, f b6.Feature, rule *RenderRule) {
@@ -273,6 +322,14 @@ func fillTagsFromTags(tf *Feature, f b6.Feature, rule *RenderRule) {
 	}
 	fillColourFromFeature(tf, f)
 	fillIDFromFeature(tf, f)
+}
+
+func fillTagsFromIcon(tf *Feature, f b6.Feature, rule *RenderRule) {
+	if rule.Icon {
+		if icon, ok := IconForFeature(f); ok {
+			tf.Tags["icon"] = icon
+		}
+	}
 }
 
 func fillNameFromFeature(tf *Feature, f b6.Feature) {

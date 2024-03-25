@@ -564,6 +564,11 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			var substack pb.SubstackProto
 			fillSubstackFromAtom(&substack, AtomFromString(q))
 			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
+			p.Layers = append(p.Layers, &pb.MapLayerProto{
+				Path:   "query",
+				Q:      q,
+				Before: pb.MapLayerPosition_MapLayerPositionEnd,
+			})
 		} else {
 			// TODO: Improve the rendering of queries
 			var substack pb.SubstackProto
