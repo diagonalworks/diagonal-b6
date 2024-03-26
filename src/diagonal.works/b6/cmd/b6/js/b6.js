@@ -99,15 +99,15 @@ function newGeoJSONStyle(_, styles) {
     };
 }
 
-function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
+function setupMap(target, state, styles, mapCenter, mapZoom, root) {
     const zoom = new Zoom({
         zoomInLabel: '',
         zoomOutLabel: '',
     });
 
     var tileURL = '/tiles/base/{z}/{x}/{y}.mvt';
-    if (uiContext) {
-        const params = new URLSearchParams({ r: idTokenFromProto(uiContext) });
+    if (root) {
+        const params = new URLSearchParams({ r: idTokenFromProto(root) });
         tileURL += '?' + params.toString();
     }
 
@@ -1338,7 +1338,8 @@ class UI {
         this.basemapHighlightChanged = highlightChanged;
         this.session = session;
         this.logger = logger;
-        this.uiContext = null;
+        this.root = null;
+        this.locked = false;
         this.dragging = null;
         this.shellHistory = [];
         this.html = d3.select('html');
@@ -1359,7 +1360,8 @@ class UI {
     }
 
     handleStartupResponse(response) {
-        this.uiContext = response.context;
+        this.root = response.root;
+        this.locked = response.locked;
         if (response.docked) {
             this._renderDock(response.docked);
         }
@@ -1367,12 +1369,11 @@ class UI {
             this.toggleDockedAtIndex(response.openDockIndex);
         }
         if (response.expression) {
-            const locked = this.uiContext !== undefined;
             const position = null;
             this.evaluateExpressionInNewStack(
                 response.expression,
                 null,
-                locked,
+                this.locked,
                 position,
                 EventTypeStartup,
             );
@@ -1437,8 +1438,8 @@ class UI {
             ll: `${Number(ll[1].toFixed(7))},${Number(ll[0].toFixed(7))}`,
             z: `${Number(this.map.getView().getZoom().toFixed(2))}`,
         });
-        if (this.uiContext) {
-            params.set('r', idTokenFromProto(this.uiContext));
+        if (this.root) {
+            params.set('r', idTokenFromProto(this.root));
         }
         if (this.openDockIndex >= 0) {
             params.set('d', this.openDockIndex);
@@ -1490,8 +1491,8 @@ class UI {
             logMapZoom: this.map.getView().getZoom(),
             session: this.session,
         };
-        if (this.uiContext) {
-            request.context = this.uiContext;
+        if (this.root) {
+            request.root = this.root;
         }
         const body = JSON.stringify(request);
         const post = {
@@ -1629,8 +1630,8 @@ class UI {
         if (v) {
             params.append('v', v);
         }
-        if (this.uiContext) {
-            params.append('r', idTokenFromProto(this.uiContext));
+        if (this.root) {
+            params.append('r', idTokenFromProto(this.root));
         }
         const source = new VectorTileSource({
             format: new MVT(),
@@ -1691,14 +1692,14 @@ class UI {
             this.evaluateExpressionInNewStack(
                 ll,
                 null,
-                true,
+                this.locked && !event.originalEvent.ctrlKey,
                 position,
                 EventTypeMapLatLngClick,
             );
         } else {
             showFeatureAtPixel(
                 event.pixel,
-                false,
+                this.locked && !event.originalEvent.ctrlKey,
                 position,
                 this.map,
                 this,
@@ -1775,8 +1776,8 @@ class UI {
     }
 
     _logEvent(event, options) {
-        if (this.uiContext) {
-            options.r = idTokenFromProto(this.uiContext);
+        if (this.root) {
+            options.r = idTokenFromProto(this.root);
         }
         const ll = toLonLat(this.map.getView().getCenter());
         options.lc = `${Number(ll[1].toFixed(7))},${Number(ll[0].toFixed(7))}`;
@@ -2274,7 +2275,7 @@ function setup(selector, startupResponse, logger) {
         styles,
         mapCenter,
         mapZoom,
-        startupResponse.context,
+        startupResponse.root,
     );
     const overlayStyle = newOverlayStyle(state, styles);
     const geojsonStyle = newGeoJSONStyle(state, styles);

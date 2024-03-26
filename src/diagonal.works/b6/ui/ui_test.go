@@ -80,7 +80,7 @@ func TestEvaluateFunctionThatChangesWorld(t *testing.T) {
 	url := "http://b6.diagonal.works/stack"
 	j := map[string]interface{}{
 		"expression": fmt.Sprintf("add-tag /%s building:levels=\"25\"", camden.LightermanID),
-		"context": map[string]interface{}{
+		"root": map[string]interface{}{
 			"type":      root.Type,
 			"namespace": root.Namespace,
 			"value":     root.Value,

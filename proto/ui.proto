@@ -10,7 +10,7 @@ option go_package = "diagonal.works/b6/proto";
 message UIRequestProto {
     api.NodeProto node = 1;
     string expression = 2;
-    api.FeatureIDProto context = 3;
+    api.FeatureIDProto root = 3;
     bool locked = 4;
     string logEvent = 5;
     geometry.PointProto logMapCenter = 6;
