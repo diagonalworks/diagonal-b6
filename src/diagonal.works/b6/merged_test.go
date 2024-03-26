@@ -20,6 +20,10 @@ func (t testFeature) Get(string) Tag {
 	return Tag{}
 }
 
+func (t testFeature) GetString(string) string {
+	return ""
+}
+
 func TestMergedFeatures(t *testing.T) {
 	a := []Feature{
 		testFeature(FeatureID{FeatureTypePoint, NamespaceOSMNode, 1447052072}),

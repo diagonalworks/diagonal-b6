@@ -577,6 +577,14 @@ func (m MarshalledTags) Get(key string) b6.Tag {
 	return b6.InvalidTag()
 }
 
+func (m MarshalledTags) GetString(key string) string {
+	tag := m.Get(key)
+	if s, ok := tag.Value.(b6.String); ok {
+		return string(s)
+	}
+	return ""
+}
+
 func (m MarshalledTags) Length() int {
 	l, i := binary.Uvarint(m.Tags)
 	return i + int(l)

@@ -116,7 +116,7 @@ func (r *RenderRule) ToQuery(zoom uint) (b6.Query, bool) {
 	if (r.MinZoom > 0 && zoom < r.MinZoom) || (r.MaxZoom > 0 && zoom > r.MaxZoom) {
 		return nil, false
 	}
-	if r.Tag.Value != nil {
+	if r.Tag.StringValue() != "" {
 		return b6.Tagged(r.Tag), true
 	} else {
 		return b6.Keyed{Key: r.Tag.Key}, true
@@ -138,7 +138,7 @@ func (rs RenderRules) ToQuery(zoom uint) b6.Query {
 func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 	for _, r := range rs {
 		if r.Tag.Key == tag.Key {
-			if r.Tag.Value == nil || r.Tag.Value == tag.Value {
+			if r.Tag.StringValue() == "" || r.Tag.StringValue() == tag.StringValue() {
 				return true
 			}
 		}
@@ -211,7 +211,7 @@ func (b *BasemapRenderer) findFeatures(root b6.FeatureID, tile b6.Tile) []b6.Fea
 func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs []*Feature) []*Feature {
 	var tags [1]b6.Tag
 	for _, rule := range b.RenderRules {
-		if t := f.Get(rule.Tag.Key); t.IsValid() && rule.Tag.Value == nil || t.Value == rule.Tag.Value {
+		if t := f.Get(rule.Tag.Key); t.IsValid() && (rule.Tag.StringValue() == "" || t.StringValue() == rule.Tag.StringValue()) {
 			tags[0] = b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value}
 			fs = FillFeaturesFromFeature(f, tags[0:], fs, &rule)
 			layers[rule.Layer].AddFeatures(fs)

@@ -288,6 +288,10 @@ func (m *marshalledPath) Get(key string) b6.Tag {
 	return m.path.Tags(m.fb.Strings).Get(key)
 }
 
+func (m *marshalledPath) GetString(key string) string {
+	return m.path.Tags(m.fb.Strings).GetString(key)
+}
+
 func (m *marshalledPath) Len() int {
 	return m.path.Len()
 }
@@ -429,6 +433,10 @@ func (m *marshalledArea) Get(key string) b6.Tag {
 	return m.area.Tags(m.fb.Strings).Get(key)
 }
 
+func (m *marshalledArea) GetString(key string) string {
+	return m.area.Tags(m.fb.Strings).GetString(key)
+}
+
 func (m *marshalledArea) Len() int {
 	return m.area.Len()
 }
@@ -542,6 +550,10 @@ func (m *marshalledRelation) AllTags() []b6.Tag {
 
 func (m *marshalledRelation) Get(key string) b6.Tag {
 	return m.relation.Tags(m.fb.Strings).Get(key)
+}
+
+func (m *marshalledRelation) GetString(key string) string {
+	return m.relation.Tags(m.fb.Strings).GetString(key)
 }
 
 func (m *marshalledRelation) Len() int {
