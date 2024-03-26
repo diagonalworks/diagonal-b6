@@ -66,6 +66,7 @@ message LineProto {
         ChoiceLineProto choice = 8;
         HeaderLineProto header = 9;
         ErrorLineProto error = 10;
+        ActionLineProto action = 11;
     }
 }
 
@@ -133,6 +134,12 @@ message HeaderLineProto {
 
 message ErrorLineProto {
     string error = 1;
+}
+
+message ActionLineProto {
+    AtomProto atom = 1;
+    api.NodeProto clickExpression = 2;
+    bool inContext = 3;
 }
 
 message AtomProto {
