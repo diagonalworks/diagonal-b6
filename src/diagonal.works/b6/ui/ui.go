@@ -313,7 +313,6 @@ func FillStackRequest(request *pb.UIRequestProto, w http.ResponseWriter, r *http
 		}
 		if err != nil {
 			log.Println(err.Error())
-			log.Printf("%s", body)
 			log.Printf("Bad request body")
 			http.Error(w, "Bad request body", http.StatusBadRequest)
 			return false
@@ -372,34 +371,32 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 	root := request.RenderContext.FeatureID()
 	w := o.Worlds.FindOrCreateWorld(root)
 	if context := b6.FindCollectionByID(request.RenderContext, w); context != nil {
-		if context, ok := context.(b6.CollectionFeature); ok {
-			c := b6.AdaptCollection[string, b6.FeatureID](context)
-			i := c.Begin()
-			for {
-				ok, err := i.Next()
-				if err != nil {
-					return fmt.Errorf("%s: %w", request.RenderContext, err)
-				} else if !ok {
-					break
-				}
-				if i.Key() == "centroid" {
-					if centroid := w.FindFeatureByID(i.Value()); centroid != nil {
-						if p, ok := centroid.(b6.PhysicalFeature); ok {
-							response.MapCenter = &LatLngJSON{
-								LatE7: int(p.Location().Lat.E7()),
-								LngE7: int(p.Location().Lng.E7()),
-							}
-							response.MapZoom = DefaultMapZoom
+		c := b6.AdaptCollection[string, b6.FeatureID](context)
+		i := c.Begin()
+		for {
+			ok, err := i.Next()
+			if err != nil {
+				return fmt.Errorf("%s: %w", request.RenderContext, err)
+			} else if !ok {
+				break
+			}
+			if i.Key() == "centroid" {
+				if centroid := w.FindFeatureByID(i.Value()); centroid != nil {
+					if p, ok := centroid.(b6.PhysicalFeature); ok {
+						response.MapCenter = &LatLngJSON{
+							LatE7: int(p.Location().Lat.E7()),
+							LngE7: int(p.Location().Lng.E7()),
 						}
+						response.MapZoom = DefaultMapZoom
 					}
-				} else if i.Key() == "docked" {
-					if docked := w.FindFeatureByID(i.Value()); docked != nil {
-						uiResponse := NewUIResponseJSON()
-						if err := ui.Render(uiResponse, docked, root.ToCollectionID(), true, ui); err == nil {
-							response.Docked = append(response.Docked, uiResponse)
-						} else {
-							return fmt.Errorf("%s: %w", i.Value(), err)
-						}
+				}
+			} else if i.Key() == "docked" {
+				if docked := w.FindFeatureByID(i.Value()); docked != nil {
+					uiResponse := NewUIResponseJSON()
+					if err := ui.Render(uiResponse, docked, root.ToCollectionID(), true, ui); err == nil {
+						response.Docked = append(response.Docked, uiResponse)
+					} else {
+						return fmt.Errorf("%s: %w", i.Value(), err)
 					}
 				}
 			}

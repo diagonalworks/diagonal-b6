@@ -146,6 +146,7 @@ var functions = api.FunctionSymbols{
 	"add-tags":          addTags,
 	"remove-tag":        removeTag,
 	"remove-tags":       removeTags,
+	"add-point":         addPoint,
 	"add-relation":      addRelation,
 	"add-collection":    addCollection,
 	"merge-changes":     mergeChanges,

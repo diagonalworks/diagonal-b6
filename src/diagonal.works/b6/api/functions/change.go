@@ -65,6 +65,29 @@ func removeTags(c *api.Context, collection b6.Collection[b6.FeatureID, string]) 
 	return tags, nil
 }
 
+// Adds a point feature with the given id, tags and members.
+func addPoint(_ *api.Context, point b6.Geometry, id b6.FeatureID, tags b6.Collection[interface{}, b6.Tag]) (ingest.Change, error) {
+	p := &ingest.GenericFeature{
+		ID: id,
+		Tags: []b6.Tag{
+			{Key: b6.LatLngTag, Value: b6.LatLng(point.Location())},
+		}}
+
+	t := tags.Begin()
+	for {
+		ok, err := t.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		p.Tags = append(p.Tags, t.Value())
+	}
+
+	add := ingest.AddFeatures([]ingest.Feature{p})
+	return &add, nil
+}
+
 // Add a relation feature with the given id, tags and members.
 func addRelation(c *api.Context, id b6.RelationID, tags b6.Collection[interface{}, b6.Tag], members b6.Collection[b6.Identifiable, string]) (ingest.Change, error) {
 	r := &ingest.RelationFeature{

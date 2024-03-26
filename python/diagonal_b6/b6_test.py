@@ -565,6 +565,12 @@ class B6Test(unittest.TestCase):
         parks_and_grass = b6.map([parks, grass], lambda q: b6.find(q)).flatten()
         self.assertEqual(parks_count + grass_count, self.connection(parks_and_grass.count()))
 
+    def test_add_point(self):
+        id = b6.FeatureID(b6.FEATURE_TYPE_POINT, "diagonal.works/restaurants", 0)
+        add = b6.add_point(b6.ll(51.537165, -0.125737), id, [b6.tag("#amenity", "restaurant"), b6.tag("name", "noma")])
+        names = self.connection(b6.with_change(add, lambda: b6.map(b6.find(b6.tagged("#amenity", "restaurant")), lambda r: b6.get_string(r, "name"))))
+        self.assertIn("noma", [name for (id, name) in names])
+
     def test_add_relation(self):
         id = b6.id_to_relation_id("diagonal.works/test", b6.osm_way_id(STABLE_STREET_BRIDGE_ID))
         add = b6.add_relation(id, [b6.tag("#route", "bicycle")], {b6.osm_way_id(STABLE_STREET_BRIDGE_ID): "forwards"})

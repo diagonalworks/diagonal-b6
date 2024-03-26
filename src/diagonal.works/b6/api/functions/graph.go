@@ -524,14 +524,15 @@ func connect(c *api.Context, a b6.Feature, b b6.Feature) (ingest.Change, error) 
 // network path at the projection of the origin point on that path, unless
 // that point is within 4m of an existing path point.
 func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error) {
-	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
-	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
-	connections := graph.NewConnections()
-	strategy := graph.InsertNewPointsIntoPaths{
-		Connections:      connections,
-		World:            c.World,
-		ClusterThreshold: b6.MetersToAngle(4.0),
+	q := b6.Intersection{b6.Keyed{Key: "#highway"}}
+	if p, ok := feature.(b6.PhysicalFeature); ok {
+		q = append(q, b6.NewIntersectsCap(s2.CapFromCenterAngle(b6.Centroid(p), b6.MetersToAngle(500.0))))
+	} else {
+		return nil, fmt.Errorf("expected a PhysicalFeature, found: %T", feature)
 	}
+	highways := b6.FindPaths(q, c.World)
+	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
+	strategy := graph.UseExisitingPoints{Connections: graph.NewConnections()}
 	graph.ConnectFeature(feature, network, b6.MetersToAngle(500.0), c.World, strategy)
 	strategy.Finish()
 	return strategy.Connections.Change(c.World), nil
@@ -544,12 +545,7 @@ func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error)
 func connectToNetworkAll(c *api.Context, features b6.Collection[any, b6.FeatureID]) (ingest.Change, error) {
 	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
-	connections := graph.NewConnections()
-	strategy := graph.InsertNewPointsIntoPaths{
-		Connections:      connections,
-		World:            c.World,
-		ClusterThreshold: b6.MetersToAngle(4.0),
-	}
+	strategy := graph.UseExisitingPoints{Connections: graph.NewConnections()}
 	i := features.Begin()
 	for {
 		ok, err := i.Next()
