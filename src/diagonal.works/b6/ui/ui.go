@@ -657,7 +657,6 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			fillSubstackFromAtom(&substack1, atom)
 			p.Stack.Substacks = append(p.Stack.Substacks, &substack1)
 			var substack2 pb.SubstackProto
-			fillSubstackFromActions(&substack2)
 			p.Stack.Substacks = append(p.Stack.Substacks, &substack2)
 			response.AddGeoJSON(r.ToGeoJSON())
 		} else {

@@ -1685,16 +1685,6 @@ class UI {
     handleMapClick(event) {
         const position = d3.pointer(event.originalEvent, d3.select('html'));
         if (event.originalEvent.shiftKey) {
-            showFeatureAtPixel(
-                event.pixel,
-                false,
-                position,
-                this.map,
-                this,
-                EventTypeMapFeatureClick,
-            );
-            event.stopPropagation();
-        } else {
             const ll = lonLatToLiteral(
                 toLonLat(this.map.getCoordinateFromPixel(event.pixel)),
             );
@@ -1705,8 +1695,17 @@ class UI {
                 position,
                 EventTypeMapLatLngClick,
             );
-            event.stopPropagation();
+        } else {
+            showFeatureAtPixel(
+                event.pixel,
+                false,
+                position,
+                this.map,
+                this,
+                EventTypeMapFeatureClick,
+            );
         }
+        event.stopPropagation();
     }
 
     // Start dragging root. If the mouse button is raised without the

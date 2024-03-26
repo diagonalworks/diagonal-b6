@@ -57,6 +57,15 @@ func (t Tag) IsValid() bool {
 	return t.Key != ""
 }
 
+func (t Tag) StringValue() string {
+	if t.Value != nil {
+		if s, ok := t.Value.(String); ok {
+			return string(s)
+		}
+	}
+	return ""
+}
+
 func (t Tag) String() string {
 	return escapeTagPart(t.Key) + "=" + escapeTagPart(t.Value.String())
 }
@@ -76,6 +85,8 @@ type tagYAML struct {
 func (t Tag) MarshalYAML() (interface{}, error) {
 	if s, ok := t.Value.(String); ok {
 		return escapeTagPart(t.Key) + "=" + escapeTagPart(s.String()), nil
+	} else if t.Value == nil {
+		return escapeTagPart(t.Key) + "=\"\"", nil
 	}
 	// TODO: harmonise Value and Literal in expression.go
 	literal, err := FromLiteral(t.Value)
@@ -183,6 +194,7 @@ func InvalidTag() Tag {
 type Taggable interface {
 	AllTags() []Tag
 	Get(key string) Tag
+	GetString(key string) string
 }
 
 type Tags []Tag
@@ -198,6 +210,15 @@ func (t Tags) Get(key string) Tag {
 		}
 	}
 	return InvalidTag()
+}
+
+func (t Tags) GetString(key string) string {
+	for _, tag := range t {
+		if tag.Key == key {
+			return tag.StringValue()
+		}
+	}
+	return ""
 }
 
 func (t Tags) TagOrFallback(key string, fallback string) Tag {
