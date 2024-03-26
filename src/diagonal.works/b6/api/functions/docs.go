@@ -8,6 +8,7 @@ var functionDocs = map[string]Doc{
 	"add": Doc{Doc: "Return a added to b.\n", ArgNames: []string{"a","b"}},
 	"add-collection": Doc{Doc: "Add a collection feature with the given id, tags and items.\n", ArgNames: []string{"id","tags","collection"}},
 	"add-ints": Doc{Doc: "Deprecated.\n", ArgNames: []string{"a","b"}},
+	"add-point": Doc{Doc: "Adds a point feature with the given id, tags and members.\n", ArgNames: []string{"point","id","tags"}},
 	"add-relation": Doc{Doc: "Add a relation feature with the given id, tags and members.\n", ArgNames: []string{"id","tags","members"}},
 	"add-tag": Doc{Doc: "Add the given tag to the given feature.\n", ArgNames: []string{"id","tag"}},
 	"add-tags": Doc{Doc: "Add the given tags to the given features.\nThe keys of the given collection specify the features to change, the\nvalues provide the tag to be added.\n", ArgNames: []string{"collection"}},
