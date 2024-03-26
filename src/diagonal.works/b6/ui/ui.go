@@ -312,6 +312,8 @@ func FillStackRequest(request *pb.UIRequestProto, w http.ResponseWriter, r *http
 			err = protojson.Unmarshal(body, request)
 		}
 		if err != nil {
+			log.Println(err.Error())
+			log.Printf("%s", body)
 			log.Printf("Bad request body")
 			http.Error(w, "Bad request body", http.StatusBadRequest)
 			return false
@@ -651,9 +653,12 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 					Value: fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees()),
 				},
 			}
-			var substack pb.SubstackProto
-			fillSubstackFromAtom(&substack, atom)
-			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
+			var substack1 pb.SubstackProto
+			fillSubstackFromAtom(&substack1, atom)
+			p.Stack.Substacks = append(p.Stack.Substacks, &substack1)
+			var substack2 pb.SubstackProto
+			fillSubstackFromActions(&substack2)
+			p.Stack.Substacks = append(p.Stack.Substacks, &substack2)
 			response.AddGeoJSON(r.ToGeoJSON())
 		} else {
 			return o.fillResponseFromResult(response, r.ToGeoJSON(), w)

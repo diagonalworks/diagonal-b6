@@ -230,11 +230,15 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
     const roadFills = new VectorTileLayer({
         source: baseSource,
         style: function (feature, resolution) {
-            if (feature.get('layer') == 'road' && feature.get('highway') && feature.getGeometry().getType() == 'LineString') {
+            if (
+                feature.get('layer') == 'road' &&
+                feature.get('highway') &&
+                feature.getGeometry().getType() == 'LineString'
+            ) {
                 const width = roadWidth(feature, resolution);
                 if (width > 0) {
                     const id = idKeyFromFeature(feature);
-    
+
                     if (state.highlighted[id]) {
                         return styles.lookupStyleWithStokeWidth(
                             'highlighted-road-fill',
@@ -368,7 +372,7 @@ function setupMap(target, state, styles, mapCenter, mapZoom, uiContext) {
     const tilesChanged = () => {
         baseSource.refresh();
         baseSource.changed();
-    }
+    };
 
     const highlightChanged = () => {
         boundaries.changed();
@@ -593,11 +597,11 @@ class Stack {
         this.ui.basemapHighlightChanged();
     }
 
-    evaluateNode(node, logEvent) {
+    evaluateExpressionProto(expression, logEvent) {
         const position = null;
         this.ui.evaluateExpressionInNewStack(
             '',
-            node,
+            expression,
             this.response.proto.locked,
             position,
             logEvent,
@@ -608,6 +612,22 @@ class Stack {
         this.ui.evaluateExpression(
             expression,
             this.response.proto.node,
+            this.response.proto.locked,
+            logEvent,
+            this.target,
+        );
+    }
+
+    evaluateExpressionProtoInContext(expression, logEvent) {
+        this.ui.evaluateExpression(
+            '',
+            {
+                call: {
+                    function: expression,
+                    args: [this.response.proto.node],
+                    pipelined: true,
+                },
+            },
             this.response.proto.locked,
             logEvent,
             this.target,
@@ -800,7 +820,7 @@ class ValueLineRenderer {
         clickable.on('mousedown', (e, d) => {
             e.stopPropagation();
             const clickHandler = () => {
-                stack.evaluateNode(
+                stack.evaluateExpressionProto(
                     d.value.clickExpression,
                     EventTypeOutlinerClick,
                 );
@@ -856,7 +876,7 @@ class LeftRightValueLineRenderer {
             e.stopPropagation();
             if (d) {
                 const clickHandler = () => {
-                    stack.evaluateNode(d, EventTypeOutlinerClick);
+                    stack.evaluateExpressionProto(d, EventTypeOutlinerClick);
                 };
                 stack.handleDragStart(e, clickHandler);
             }
@@ -919,7 +939,10 @@ class TagsLineRenderer {
         clickable.on('mousedown', (e, d) => {
             e.stopPropagation();
             const clickHandler = () => {
-                stack.evaluateNode(d.clickExpression, EventTypeOutlinerClick);
+                stack.evaluateExpressionProto(
+                    d.clickExpression,
+                    EventTypeOutlinerClick,
+                );
             };
             stack.handleDragStart(e, clickHandler);
         });
@@ -1202,6 +1225,43 @@ class ErrorLineRenderer {
     }
 }
 
+class ActionLineRenderer {
+    getCSSClass() {
+        return 'line-action';
+    }
+
+    enter(line) {
+        line.append('div').attr('class', 'line-action-outline');
+    }
+
+    update(line, stack) {
+        const atoms = line
+            .select('.line-action-outline')
+            .selectAll('span')
+            .data((d) => [d.action.atom])
+            .join('span');
+        renderFromProto(atoms, 'atom', stack);
+        line.classed('clickable', true);
+        line.on('mousedown', (e, d) => {
+            e.stopPropagation();
+            const clickHandler = () => {
+                if (d.action.inContext) {
+                    stack.evaluateExpressionProtoInContext(
+                        d.action.clickExpression,
+                        EventTypeOutlinerClick,
+                    );
+                } else {
+                    stack.evaluateExpressionProto(
+                        d.action.clickExpression,
+                        EventTypeOutlinerClick,
+                    );
+                }
+            };
+            stack.handleDragStart(e, clickHandler);
+        });
+    }
+}
+
 const Renderers = {
     atom: {
         value: new ValueAtomRenderer(),
@@ -1221,6 +1281,7 @@ const Renderers = {
         choice: new ChoiceLineRenderer(),
         header: new HeaderLineRenderer(),
         error: new ErrorLineRenderer(),
+        action: new ActionLineRenderer(),
     },
 };
 
@@ -1874,9 +1935,11 @@ function newOverlayStyle(state, styles) {
     const boundary = styles.lookupStyle('query-boundary');
     const highlightedBoundary = styles.lookupStyle('highlighted-boundary');
 
-    const bucketedPoint = Array.from(Array(HistogramBucketCount).keys()).map((b) => {
-        return styles.lookupCircle(`bucketed-${b}`);
-    });
+    const bucketedPoint = Array.from(Array(HistogramBucketCount).keys()).map(
+        (b) => {
+            return styles.lookupCircle(`bucketed-${b}`);
+        },
+    );
 
     const highlightBucketedPoint = bucketedPoint.map((s) => {
         return new Style({
@@ -1893,14 +1956,18 @@ function newOverlayStyle(state, styles) {
             image: new Circle({
                 radius: 4,
                 stroke: new Stroke({ color: '#4f5a7d', width: 0.3 }),
-                fill: new Fill({ color: withAlpha(s.getImage().getFill().getColor(), 0.42) }),
+                fill: new Fill({
+                    color: withAlpha(s.getImage().getFill().getColor(), 0.42),
+                }),
             }),
         });
     });
 
-    const bucketedArea = Array.from(Array(HistogramBucketCount).keys()).map((b) => {
-        return styles.lookupStyle(`bucketed-${b}`);
-    });
+    const bucketedArea = Array.from(Array(HistogramBucketCount).keys()).map(
+        (b) => {
+            return styles.lookupStyle(`bucketed-${b}`);
+        },
+    );
 
     const highlightBucketedArea = bucketedArea.map((s) => {
         return new Style({
@@ -1944,13 +2011,19 @@ function newOverlayStyle(state, styles) {
                     }
             }
         } else if (feature.get('layer') == 'histogram') {
-            const bucket = feature.get('bucket')
+            const bucket = feature.get('bucket');
             if (bucket >= 0 && bucket < HistogramBucketCount) {
-                if (feature.get('highway') && feature.getGeometry().getType() == 'LineString') {
+                if (
+                    feature.get('highway') &&
+                    feature.getGeometry().getType() == 'LineString'
+                ) {
                     if (state.showBucket < 0 || state.showBucket == bucket) {
                         const width = roadWidth(feature, resolution);
                         if (width > 0) {
-                            return styles.lookupStyleWithStokeWidth(`bucketed-road-fill-${bucket}`, width);
+                            return styles.lookupStyleWithStokeWidth(
+                                `bucketed-road-fill-${bucket}`,
+                                width,
+                            );
                         }
                     }
                 } else if (feature.getGeometry().getType() == 'Polygon') {

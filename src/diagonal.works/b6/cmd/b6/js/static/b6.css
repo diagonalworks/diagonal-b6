@@ -747,6 +747,18 @@ form.shell-form > input {
     background: #ed968a;
 }
 
+.line-action {
+    padding: 6px;
+    height: 32px;
+}
+
+.line-action-outline {
+    border: 1px solid #dbdeec; /* Graphite 30 */
+    padding: 5px;
+    border-radius: 4px;
+    background: #f8f9fc; /* Graphite 10 */
+}
+
 .stack {
     border: 1px solid #8990ac;
     border-radius: 4px;

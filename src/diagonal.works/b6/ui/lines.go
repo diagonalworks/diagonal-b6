@@ -451,3 +451,23 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 	}
 	return substacks
 }
+
+func fillSubstackFromActions(substack *pb.SubstackProto) {
+	e := b6.NewCallExpression(
+		b6.NewSymbolExpression("sightline"),
+		[]b6.Expression{
+			b6.NewIntExpression(200),
+		},
+	)
+	if p, err := e.ToProto(); err == nil {
+		substack.Lines = append(substack.Lines, &pb.LineProto{
+			Line: &pb.LineProto_Action{
+				Action: &pb.ActionLineProto{
+					Atom:            AtomFromString("Sightline"),
+					ClickExpression: p,
+					InContext:       true,
+				},
+			},
+		})
+	}
+}
