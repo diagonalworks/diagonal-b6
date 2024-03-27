@@ -936,6 +936,14 @@ func unparseQuery(q b6.Query) (string, bool) {
 			}
 		}
 		return strings.Join(qs, " | "), true
+	case *b6.Tagged:
+		return unparseQuery(*q)
+	case *b6.Keyed:
+		return unparseQuery(*q)
+	case *b6.Intersection:
+		return unparseQuery(*q)
+	case *b6.Union:
+		return unparseQuery(*q)
 	}
 	return "", false
 }
