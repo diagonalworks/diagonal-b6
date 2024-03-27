@@ -158,7 +158,7 @@ func RegisterTiles(root *http.ServeMux, options *Options) {
 }
 
 type StartupRequest struct {
-	RenderContext b6.CollectionID
+	Root          b6.CollectionID
 	MapCenter     *LatLngJSON
 	MapZoom       *int
 	OpenDockIndex *int
@@ -168,7 +168,7 @@ type StartupRequest struct {
 func (s *StartupRequest) FillFromURL(url *url.URL) {
 	if r := url.Query().Get("r"); len(r) > 0 {
 		if id := b6.FeatureIDFromString(r[1:]); id.IsValid() && id.Type == b6.FeatureTypeCollection {
-			s.RenderContext = id.ToCollectionID()
+			s.Root = id.ToCollectionID()
 		}
 	}
 
@@ -206,10 +206,11 @@ type StartupResponseJSON struct {
 	OpenDockIndex *int                `json:"openDockIndex,omitempty"`
 	MapCenter     *LatLngJSON         `json:"mapCenter,omitempty"`
 	MapZoom       int                 `json:"mapZoom,omitempty"`
-	Context       *FeatureIDProtoJSON `json:"context,omitempty"`
+	Root          *FeatureIDProtoJSON `json:"context,omitempty"`
 	Expression    string              `json:"expression,omitempty"`
 	Error         string              `json:"error,omitempty"`
 	Session       uint64              `json:"session,omitempty"`
+	Locked        bool                `json:"locked,omitempty"`
 }
 
 type UIResponseProtoJSON pb.UIResponseProto
@@ -368,15 +369,15 @@ type OpenSourceUI struct {
 func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupResponseJSON, ui UI) error {
 	o.Lock.RLock()
 	defer o.Lock.RUnlock()
-	root := request.RenderContext.FeatureID()
-	w := o.Worlds.FindOrCreateWorld(root)
-	if context := b6.FindCollectionByID(request.RenderContext, w); context != nil {
-		c := b6.AdaptCollection[string, b6.FeatureID](context)
+	w := o.Worlds.FindOrCreateWorld(request.Root.FeatureID())
+	if root := b6.FindCollectionByID(request.Root, w); root != nil {
+		response.Locked = root.GetString("locked") == "yes"
+		c := b6.AdaptCollection[string, b6.FeatureID](root)
 		i := c.Begin()
 		for {
 			ok, err := i.Next()
 			if err != nil {
-				return fmt.Errorf("%s: %w", request.RenderContext, err)
+				return fmt.Errorf("%s: %w", request.Root, err)
 			} else if !ok {
 				break
 			}
@@ -393,7 +394,7 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 			} else if i.Key() == "docked" {
 				if docked := w.FindFeatureByID(i.Value()); docked != nil {
 					uiResponse := NewUIResponseJSON()
-					if err := ui.Render(uiResponse, docked, root.ToCollectionID(), true, ui); err == nil {
+					if err := ui.Render(uiResponse, docked, request.Root, true, ui); err == nil {
 						response.Docked = append(response.Docked, uiResponse)
 					} else {
 						return fmt.Errorf("%s: %w", i.Value(), err)
@@ -403,9 +404,9 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 		}
 	}
 
-	if request.RenderContext.IsValid() {
-		id := b6.NewProtoFromFeatureID(request.RenderContext.FeatureID())
-		response.Context = (*FeatureIDProtoJSON)(id)
+	if request.Root.IsValid() {
+		id := b6.NewProtoFromFeatureID(request.Root.FeatureID())
+		response.Root = (*FeatureIDProtoJSON)(id)
 	}
 
 	if request.MapCenter != nil {
@@ -425,7 +426,7 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIResponseJSON, ui UI) error {
 	o.Lock.RLock()
 	defer o.Lock.RUnlock()
-	root := b6.NewFeatureIDFromProto(request.Context)
+	root := b6.NewFeatureIDFromProto(request.Root)
 	w := o.Worlds.FindOrCreateWorld(root)
 
 	var expression b6.Expression
