@@ -77,6 +77,23 @@ func (t *Tag) FromString(s string) {
 	t.Value = String(value)
 }
 
+func (t Tag) Equal(other Tag) bool {
+	if t.Key != other.Key {
+		return false
+	}
+	switch v := t.Value.(type) {
+	case String:
+		if o, ok := other.Value.(String); ok {
+			return string(v) == string(o)
+		}
+	case LatLng:
+		if o, ok := other.Value.(LatLng); ok {
+			return s2.LatLng(v) == s2.LatLng(o)
+		}
+	}
+	return false
+}
+
 type tagYAML struct {
 	Key   string `yaml:"key,omitempty`
 	Value Literal

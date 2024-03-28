@@ -109,9 +109,14 @@ func materialiseMap(context *api.Context, collection b6.Collection[any, b6.Featu
 						ExpressionID: b6.ExpressionID(id),
 						Expression: b6.NewCallExpression(
 							expression,
-							// TODO: actually the function is passed the feature, not the feature ID, but
-							// we're removing the option to pass features shortly.
-							[]b6.Expression{b6.NewFeatureIDExpression(f.FeatureID())},
+							[]b6.Expression{
+								b6.NewCallExpression(
+									b6.NewSymbolExpression("find-feature"),
+									[]b6.Expression{
+										b6.NewFeatureIDExpression(f.FeatureID()),
+									},
+								),
+							},
 						),
 					}
 				}

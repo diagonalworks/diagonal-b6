@@ -97,7 +97,7 @@ func (t Tagged) Compile(i FeatureIndex, w World) search.Iterator {
 }
 
 func (t Tagged) Matches(f Feature, w World) bool {
-	return f.Get(t.Key) == Tag(t)
+	return f.Get(t.Key).Equal(Tag(t))
 }
 
 func (t Tagged) String() string {
