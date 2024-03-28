@@ -449,6 +449,13 @@ class Stack {
         }
     }
 
+    basemapTilesChanged() {
+        for (const i in this.layers) {
+            this.layers[i].getSource().refresh();
+            this.layers[i].getSource().changed();
+        }
+    }
+
     render() {
         const substacks = this.target
             .selectAll('.substack')
@@ -1585,6 +1592,9 @@ class UI {
 
         if (response && response.proto.tilesChanged) {
             this.basemapTilesChanged();
+            for (const i in this.stacks) {
+                this.stacks[i].basemapTilesChanged();
+            }
         }
 
         if (this.needHighlightRedraw) {
