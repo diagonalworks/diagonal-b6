@@ -41,7 +41,7 @@ func (s String) Type() ValueType {
 type LatLng s2.LatLng
 
 func (ll LatLng) String() string {
-	return strconv.FormatFloat(ll.Lat.Degrees(), 'f', -1, 64) + "," + strconv.FormatFloat(ll.Lng.Degrees(), 'f', -1, 64)
+	return LatLngToString(s2.LatLng(ll))
 }
 
 func (ll LatLng) Type() ValueType {
@@ -75,6 +75,23 @@ func (t *Tag) FromString(s string) {
 	t.Key, rest = consumeTagPart(s)
 	value, _ := consumeTagPart(rest)
 	t.Value = String(value)
+}
+
+func (t Tag) Equal(other Tag) bool {
+	if t.Key != other.Key {
+		return false
+	}
+	switch v := t.Value.(type) {
+	case String:
+		if o, ok := other.Value.(String); ok {
+			return string(v) == string(o)
+		}
+	case LatLng:
+		if o, ok := other.Value.(LatLng); ok {
+			return s2.LatLng(v) == s2.LatLng(o)
+		}
+	}
+	return false
 }
 
 type tagYAML struct {
@@ -1770,4 +1787,8 @@ func LatLngFromString(s string) (s2.LatLng, error) {
 		}
 	}
 	return s2.LatLng{}, fmt.Errorf("invalid lat,lng: %s", s)
+}
+
+func LatLngToString(ll s2.LatLng) string {
+	return strconv.FormatFloat(ll.Lat.Degrees(), 'f', -1, 64) + "," + strconv.FormatFloat(ll.Lng.Degrees(), 'f', -1, 64)
 }

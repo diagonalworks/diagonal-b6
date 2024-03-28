@@ -36,6 +36,7 @@ var functionDocs = map[string]Doc{
 	"convex-hull": Doc{Doc: "Return the convex hull of the given geometries.\n", ArgNames: []string{"c"}},
 	"count": Doc{Doc: "Return the number of items in the given collection.\nThe function will not evaluate and traverse the entire collection if it's possible to count\nthe collection efficiently.\n", ArgNames: []string{"collection"}},
 	"count-tag-value": Doc{Doc: "Deprecated.\n", ArgNames: []string{"id","key"}},
+	"count-valid-ids": Doc{Doc: "Return the number of valid feature IDs in the given collection\n", ArgNames: []string{"collection"}},
 	"count-values": Doc{Doc: "Return a collection of the number of occurances of each value in the given collection.\n", ArgNames: []string{"collection"}},
 	"debug-all-query": Doc{Doc: "Deprecated.\n", ArgNames: []string{"token"}},
 	"debug-tokens": Doc{Doc: "Return the search index tokens generated for the given feature.\nIntended for debugging use only.\n", ArgNames: []string{"id"}},
