@@ -512,8 +512,7 @@ func (m *marshalledArea) Location() s2.LatLng {
 }
 
 func (f *FeaturesByID) newArea(fb *featureBlock, id uint64) b6.AreaFeature {
-	b := fb.Map.FindFirstWithTag(id, encoding.NoTag)
-	if b != nil {
+	if b := fb.Map.FindFirstWithTag(id, encoding.NoTag); len(b) > 0 {
 		return f.newAreaFromBuffer(fb, id, b)
 	}
 	return nil
@@ -740,20 +739,23 @@ func (f *FeaturesByID) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 			for _, path := range paths {
 				for _, pm := range f.features[b6.FeatureTypePath] {
 					if pm.Namespaces[b6.FeatureTypePath] == path.Namespace {
-						b := pm.Map.FindFirstWithTag(path.Value, encoding.NoTag)
-						p.Unmarshal(&pm.Namespaces, b)
-						for _, area := range p.Areas {
-							areas[area] = struct{}{}
+						if b := pm.Map.FindFirstWithTag(path.Value, encoding.NoTag); len(b) > 0 {
+							p.Unmarshal(&pm.Namespaces, b)
+							for _, area := range p.Areas {
+								areas[area] = struct{}{}
+							}
+							break
 						}
-						break
 					}
 				}
 			}
 			for area := range areas {
 				for _, am := range f.features[b6.FeatureTypeArea] {
 					if am.Namespaces[b6.FeatureTypeArea] == area.Namespace {
-						features = append(features, f.newArea(am, area.Value))
-						break
+						if a := f.newArea(am, area.Value); a != nil {
+							features = append(features, a)
+							break
+						}
 					}
 				}
 			}
