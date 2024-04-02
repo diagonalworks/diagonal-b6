@@ -846,7 +846,7 @@ func (p *PointExpression) FromProto(node *pb.NodeProto) error {
 }
 
 func (p PointExpression) MarshalYAML() (interface{}, error) {
-	return fmt.Sprintf("%f, %f", p.Lat.Degrees(), p.Lng.Degrees()), nil
+	return LatLngToString(s2.LatLng(p)), nil
 }
 
 func (p *PointExpression) UnmarshalYAML(unmarshal func(interface{}) error) error {

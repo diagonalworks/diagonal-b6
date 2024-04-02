@@ -115,3 +115,21 @@ func percentiles(context *api.Context, collection b6.Collection[interface{}, flo
 func count(context *api.Context, collection b6.Collection[any, any]) (int, error) {
 	return b6.Count(collection)
 }
+
+// Return the number of valid feature IDs in the given collection
+func countValidIDs(context *api.Context, collection b6.Collection[any, b6.Identifiable]) (int, error) {
+	count := 0
+	i := collection.Begin()
+	var err error
+	for {
+		var ok bool
+		ok, err = i.Next()
+		if !ok || err != nil {
+			break
+		}
+		if i.Value().FeatureID().IsValid() {
+			count++
+		}
+	}
+	return count, err
+}

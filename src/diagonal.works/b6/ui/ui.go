@@ -206,7 +206,7 @@ type StartupResponseJSON struct {
 	OpenDockIndex *int                `json:"openDockIndex,omitempty"`
 	MapCenter     *LatLngJSON         `json:"mapCenter,omitempty"`
 	MapZoom       int                 `json:"mapZoom,omitempty"`
-	Root          *FeatureIDProtoJSON `json:"context,omitempty"`
+	Root          *FeatureIDProtoJSON `json:"root,omitempty"`
 	Expression    string              `json:"expression,omitempty"`
 	Error         string              `json:"error,omitempty"`
 	Session       uint64              `json:"session,omitempty"`
