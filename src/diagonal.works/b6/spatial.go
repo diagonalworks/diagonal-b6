@@ -125,12 +125,12 @@ func cellsIntersectFeature(cells []s2.Cell, feature Feature) bool {
 		switch f.GeometryType() {
 		case GeometryTypePoint:
 			for _, c := range cells {
-				if c.ContainsPoint(s2.PointFromLatLng(f.Location())) {
+				if c.ContainsPoint(f.Point()) {
 					return true
 				}
 			}
 		case GeometryTypePath:
-			polyline := feature.(PathFeature).Polyline()
+			polyline := f.Polyline()
 			for _, c := range cells {
 				if polyline.IntersectsCell(c) {
 					return true
@@ -242,11 +242,11 @@ func (i *IntersectsCap) Matches(feature Feature, w World) bool {
 	if f, ok := feature.(Geometry); ok {
 		switch f.GeometryType() {
 		case GeometryTypePoint:
-			if i.cap.ContainsPoint(s2.PointFromLatLng(f.Location())) {
+			if i.cap.ContainsPoint(f.Point()) {
 				return true
 			}
 		case GeometryTypePath:
-			projection, _ := feature.(PathFeature).Polyline().Project(i.cap.Center())
+			projection, _ := f.Polyline().Project(i.cap.Center())
 			if i.cap.ContainsPoint(projection) {
 				return true
 			}
@@ -399,9 +399,9 @@ func (i IntersectsFeature) toGeometryQuery(w World) Query {
 		if f, ok := f.(Geometry); ok {
 			switch f.GeometryType() {
 			case GeometryTypePoint:
-				return IntersectsPoint{s2.PointFromLatLng(f.Location())}
+				return IntersectsPoint{f.Point()}
 			case GeometryTypePath:
-				return IntersectsPolyline{f.(PathFeature).Polyline()}
+				return IntersectsPolyline{f.Polyline()}
 			case GeometryTypeArea:
 				return IntersectsMultiPolygon{MultiPolygon: f.(AreaFeature).MultiPolygon()}
 			}
@@ -474,9 +474,9 @@ func pointIntersectsFeature(point s2.Point, feature Feature) bool {
 	if f, ok := feature.(Geometry); ok {
 		switch f.GeometryType() {
 		case GeometryTypePoint:
-			return s2.PointFromLatLng(f.Location()) == point
+			return f.Point() == point
 		case GeometryTypePath:
-			projection, _ := feature.(PathFeature).Polyline().Project(point)
+			projection, _ := f.Polyline().Project(point)
 			// TODO: Define the tolerance with more rigour
 			return projection.Distance(point) < MetersToAngle(0.001)
 		case GeometryTypeArea:
@@ -574,11 +574,11 @@ func polylineIntersectsFeature(polyline *s2.Polyline, feature Feature) bool {
 	if f, ok := feature.(Geometry); ok {
 		switch f.GeometryType() {
 		case GeometryTypePoint:
-			projection, _ := polyline.Project(s2.PointFromLatLng(f.Location()))
+			projection, _ := polyline.Project(f.Point())
 			// TODO: Define the tolerance with more rigour
-			return projection.Distance(s2.PointFromLatLng(f.Location())) < MetersToAngle(0.001)
+			return projection.Distance(f.Point()) < MetersToAngle(0.001)
 		case GeometryTypePath:
-			return feature.(PathFeature).Polyline().Intersects(polyline)
+			return f.Polyline().Intersects(polyline)
 		case GeometryTypeArea:
 			for i := 0; i < feature.(AreaFeature).Len(); i++ {
 				if polylineIntersectsPolygon(polyline, feature.(AreaFeature).Polygon(i)) {
@@ -668,10 +668,10 @@ func multiPolygonIntersectsFeature(polygons geometry.MultiPolygon, feature Featu
 		switch f.GeometryType() {
 		case GeometryTypePoint:
 			for _, polygon := range polygons {
-				return polygon.ContainsPoint(s2.PointFromLatLng(f.Location()))
+				return polygon.ContainsPoint(f.Point())
 			}
 		case GeometryTypePath:
-			polyline := feature.(PathFeature).Polyline()
+			polyline := f.Polyline()
 			for _, polygon := range polygons {
 				if polylineIntersectsPolygon(polyline, polygon) {
 					return true

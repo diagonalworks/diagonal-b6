@@ -14,7 +14,7 @@ import (
 func TestMaterialiseFeatureIntCollection(t *testing.T) {
 	expected := b6.ArrayCollection[b6.FeatureID, int]{
 		Keys: []b6.FeatureID{
-			camden.VermuteriaID.FeatureID(),
+			camden.VermuteriaID,
 			camden.LightermanID.FeatureID(),
 		},
 		Values: []int{

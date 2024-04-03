@@ -303,7 +303,7 @@ func TestHistogramWithIntegersAndMoreThan6Buckets(t *testing.T) {
 
 func TestHistogramWithFeatures(t *testing.T) {
 	collection := b6.ArrayCollection[b6.FeatureID, string]{
-		Keys:   []b6.FeatureID{camden.VermuteriaID.FeatureID(), camden.LightermanID.FeatureID(), camden.GranarySquareID.FeatureID()},
+		Keys:   []b6.FeatureID{camden.VermuteriaID, camden.LightermanID.FeatureID(), camden.GranarySquareID.FeatureID()},
 		Values: []string{"amenity", "amenity", "highway"},
 	}
 

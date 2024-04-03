@@ -166,10 +166,10 @@ func applyToPoint(context *api.Context, f func(*api.Context, b6.Geometry) (b6.Ge
 }
 
 // Wrap the given function such that it will only be called when passed a path.
-func applyToPath(context *api.Context, f func(*api.Context, b6.Path) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
+func applyToPath(context *api.Context, f func(*api.Context, b6.Geometry) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
 	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
-		if path, ok := g.(b6.Path); ok {
-			return f(context, path)
+		if g.GeometryType() == b6.GeometryTypePath {
+			return f(context, g)
 		}
 		return g, nil
 	}
@@ -193,8 +193,6 @@ func mapGeometry(g b6.Geometry, f func(*api.Context, b6.Geometry) (b6.Geometry, 
 	}
 
 	switch g := g.(type) {
-	case b6.Path:
-		return geojson.FromPolyline(g.Polyline()), nil
 	case b6.Area:
 		if g.Len() == 1 {
 			return geojson.FromPolygon(g.Polygon(0)), nil
@@ -206,7 +204,14 @@ func mapGeometry(g b6.Geometry, f func(*api.Context, b6.Geometry) (b6.Geometry, 
 			return geojson.FromPolygons(polygons), nil
 		}
 	default:
-		return geojson.FromS2LatLng(g.Location()), nil
+		switch g.GeometryType() {
+		case b6.GeometryTypePoint:
+			return geojson.FromS2Point(g.Point()), nil
+		case b6.GeometryTypePath:
+			return geojson.FromPolyline(g.Polyline()), nil
+		default:
+			panic("not implemented")
+		}
 	}
 }
 
@@ -217,7 +222,7 @@ func mapGeometries(c *api.Context, g geojson.GeoJSON, f func(*api.Context, b6.Ge
 		case geojson.Point:
 			return mapGeometry(b6.GeometryFromLatLng(s2.LatLngFromPoint(cs.ToS2Point())), f, c)
 		case geojson.LineString:
-			return mapGeometry(b6.PathFromS2Points(cs.ToS2Polyline()), f, c)
+			return mapGeometry(b6.GeometryFromPoints(cs.ToS2Polyline()), f, c)
 		case geojson.Polygon:
 			return mapGeometry(b6.AreaFromS2Polygon(cs.ToS2Polygon()), f, c)
 		case geojson.MultiPolygon:

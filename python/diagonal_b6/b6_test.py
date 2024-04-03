@@ -98,7 +98,7 @@ class B6Test(unittest.TestCase):
         self.assertEqual(degree, self.connection(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID)).degree()))
 
     def test_path_lengths(self):
-        lengths = [length for (id, length) in self.connection(b6.find_paths(b6.keyed("#highway")).length())]
+        lengths = [length for (id, length) in self.connection(b6.find(b6.typed("path", b6.keyed("#highway"))).length())]
         self.assertGreater(len(lengths), 0)
         for l in lengths:
             self.assertGreater(l, 0)
@@ -171,7 +171,7 @@ class B6Test(unittest.TestCase):
 
     def test_count_features(self):
         self.assertEqual(self.connection(b6.find(b6.tagged("#amenity", "bicycle_parking")).count()), BIKE_PARKING_IN_GRANARY_SQUARE)
-        self.assertEqual(self.connection(b6.find_paths(b6.keyed("#highway")).count()), HIGHWAYS_IN_GRANARY_SQUARE)
+        self.assertEqual(self.connection(b6.find(b6.typed("path", b6.keyed("#highway"))).count()), HIGHWAYS_IN_GRANARY_SQUARE)
         self.assertEqual(self.connection(b6.find_areas(b6.keyed("#building")).count()), BUILDINGS_IN_GRANARY_SQUARE)
 
     def test_divide_count_features(self):
@@ -220,9 +220,9 @@ class B6Test(unittest.TestCase):
         self.assertEqual(len(applied), BUILDINGS_IN_GRANARY_SQUARE)
 
     def test_add_tags_with_filter(self):
-        applied = self.connection(b6.add_tags(b6.find_paths(b6.tagged("#highway", "footway")).filter(b6.keyed("bicycle")).map(lambda h: b6.tag("#bicycle", h.get_string("bicycle")))))
+        applied = self.connection(b6.add_tags(b6.find(b6.tagged("#highway", "footway")).filter(b6.keyed("bicycle")).map(lambda h: b6.tag("#bicycle", h.get_string("bicycle")))))
         self.assertGreater(len(applied), 0)
-        self.assertEqual(self.connection(b6.find_paths(b6.keyed("#bicycle")).count()), len(applied))
+        self.assertEqual(self.connection(b6.find(b6.keyed("#bicycle")).count()), len(applied))
 
     def test_search_for_newly_added_tag(self):
         reachable = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)).reachable({"mode": "walk"}, 1000.0, b6.keyed("#amenity"))
@@ -231,14 +231,14 @@ class B6Test(unittest.TestCase):
         self.assertEqual(self.connection(b6.find(b6.keyed("#reachable")).count()), len(modified))
 
     def test_sample_points_along_path(self):
-        count = len(self.connection(b6.find_path(b6.osm_way_id(STABLE_STREET_BRIDGE_ID)).sample_points(1.0)))
+        count = len(self.connection(b6.sample_points(b6.find_feature(b6.osm_way_id(STABLE_STREET_BRIDGE_ID)), 1.0)))
         self.assertGreater(count, 20)
         self.assertLess(count, 40)
 
     def test_sample_points_along_paths(self):
         count = 0
         center = s2sphere.LatLng.from_degrees(51.53539, -0.12537)
-        for _, ll in self.connection(b6.find_paths(b6.keyed("#highway")).sample_points_along_paths(20.0)):
+        for _, ll in self.connection(b6.find(b6.keyed("#highway")).sample_points_along_paths(20.0)):
             d = s2sphere.LatLng.from_degrees(ll[0], ll[1]).get_distance(center)
             self.assertLess(angle_to_meters(d), 500.0)
             count += 1
@@ -256,7 +256,7 @@ class B6Test(unittest.TestCase):
         self.assertEqual(geojson["type"], "Feature")
         self.assertEqual(geojson["geometry"]["type"], "Polygon")
         bridge = b6.osm_way_id(STABLE_STREET_BRIDGE_ID)
-        geojson = self.connection(b6.to_geojson_collection(b6.find_path(bridge).sample_points(5.0).map(lambda point: b6.sightline(point, 250.0))))
+        geojson = self.connection(b6.to_geojson_collection(b6.sample_points(b6.find_feature(bridge), 5.0).map(lambda point: b6.sightline(point, 250.0))))
         self.assertGreater(len(geojson["features"]), 5)
         self.assertLess(len(geojson["features"]), 10)
 
@@ -300,25 +300,25 @@ class B6Test(unittest.TestCase):
         self.assertLess(ll.get_distance(expected).radians, 0.000001)
 
     def test_join_paths(self):
-        a = self.connection(b6.find_path(b6.osm_way_id(377974549)))
-        b = self.connection(b6.find_path(b6.osm_way_id(834245629)))
-        joined = self.connection(b6.find_path(b6.osm_way_id(377974549)).join(b6.find_path(b6.osm_way_id(834245629))))
+        a = self.connection(b6.find_feature(b6.osm_way_id(377974549)))
+        b = self.connection(b6.find_feature(b6.osm_way_id(834245629)))
+        joined = self.connection(b6.join(b6.find_feature(b6.osm_way_id(377974549)), b6.find_feature(b6.osm_way_id(834245629))))
         self.assertLess(abs((joined.length_meters() / (a.length_meters() + b.length_meters())) - 1.0), 0.0001)
 
     def test_ordered_join_paths(self):
-        a = self.connection(b6.find_path(b6.osm_way_id(377974549)))
-        b = self.connection(b6.find_path(b6.osm_way_id(834245629)))
-        joined = self.connection(b6.find_path(b6.osm_way_id(377974549)).ordered_join(b6.find_path(b6.osm_way_id(834245629))))
+        a = self.connection(b6.find_feature(b6.osm_way_id(377974549)))
+        b = self.connection(b6.find_feature(b6.osm_way_id(834245629)))
+        joined = self.connection(b6.ordered_join(b6.find_feature(b6.osm_way_id(377974549)), b6.find_feature(b6.osm_way_id(834245629))))
         self.assertLess(abs((joined.length_meters() / (a.length_meters() + b.length_meters())) - 1.0), 0.0001)
 
     def test_points(self):
-        points = self.connection(b6.find_path(b6.osm_way_id(STABLE_STREET_BRIDGE_ID)).points())
+        points = self.connection(b6.points(b6.find_feature(b6.osm_way_id(STABLE_STREET_BRIDGE_ID))))
         expected = s2sphere.LatLng.from_degrees(51.535035, -0.1247934)
         ll = s2sphere.LatLng.from_degrees(*points[0][1])
         self.assertLess(ll.get_distance(expected).radians, 0.000001)
 
     def test_point_features(self):
-        points = self.connection(b6.find_path(b6.osm_way_id(STABLE_STREET_BRIDGE_ID)).point_features())
+        points = self.connection(b6.find_feature(b6.osm_way_id(STABLE_STREET_BRIDGE_ID)).point_features())
         self.assertEqual(len(points), 2)
         self.assertEqual(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID), points[0][0])
 
@@ -327,7 +327,7 @@ class B6Test(unittest.TestCase):
         self.assertIn(b6.osm_way_id(STABLE_STREET_BRIDGE_ID), [id for (id, _) in paths])
 
     def test_interpolate(self):
-        (lat, lng) = self.connection(b6.find_path(b6.osm_way_id(377974549)).interpolate(0.5))
+        (lat, lng) = self.connection(b6.interpolate(b6.find_feature(b6.osm_way_id(377974549)), 0.5))
         ll = s2sphere.LatLng.from_degrees(lat, lng)
         expected = s2sphere.LatLng.from_degrees(51.5361869, -0.1258445)
         self.assertLess(ll.get_distance(expected).radians, 0.000001)
@@ -354,7 +354,7 @@ class B6Test(unittest.TestCase):
         self.assertLess((collected_areas - summed_areas)/summed_areas, 0.0001)
 
     def test_distance_to_point_meters(self):
-        distance = self.connection(b6.find_path(b6.osm_way_id(377974549)).distance_to_point_meters(b6.ll(51.53586, -0.12564)))
+        distance = self.connection(b6.distance_to_point_meters(b6.find_feature(b6.osm_way_id(377974549)), b6.ll(51.53586, -0.12564)))
         self.assertGreater(distance, 24.0)
         self.assertLess(distance, 25.0)
 
@@ -382,7 +382,7 @@ class B6Test(unittest.TestCase):
             self.assertLess(area, 10000)
 
     def test_path_length(self):
-        bridge = self.connection(b6.find_path(b6.osm_way_id(STABLE_STREET_BRIDGE_ID)))
+        bridge = self.connection(b6.find_feature(b6.osm_way_id(STABLE_STREET_BRIDGE_ID)))
         self.assertGreater(bridge.length_meters(), 20.0)
         self.assertLess(bridge.length_meters(), 30.0)
 
@@ -443,7 +443,7 @@ class B6Test(unittest.TestCase):
         }
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
-        self.assertEqual(self.connection(b6.find_path(ids[0][1])).get_string("bridge"), "yes")
+        self.assertEqual(self.connection(b6.find_feature(ids[0][1])).get_string("bridge"), "yes")
 
     def test_import_geojson_polygon(self):
         g = {

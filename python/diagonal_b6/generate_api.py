@@ -10,7 +10,7 @@ SPECIAL_FUNCTIONS = ("map", "filter")
 
 COLLECTION_PARENTS = {
     "FeatureIDFeatureCollection": "AnyFeatureCollection",
-    "FeatureIDPathFeatureCollection": "FeatureIDPathCollection",
+    "FeatureIDPhysicalFeatureCollection": "FeatureIDGeometryCollection",
     "FeatureIDAreaFeatureCollection": "AnyAreaCollection",
 }
 
@@ -21,6 +21,7 @@ GENERIC_COLLECTION_COLLECTION_RESULT = "AnyAnyAnyCollectionCollectionResult"
 EXTRA_TRAITS = {
     "QueryResult": ["QueryConversionTraits"],
     "CollectionFeatureResult": ["CollectionFeatureResultTraits"],
+    "FeatureIDFeatureCollectionResult": ["FeatureIDPhysicalFeatureCollectionTraits"],
 }
 
 def escape_name(name):

@@ -5,7 +5,7 @@ import (
 )
 
 func TestFeatureIDToAndFromString(t *testing.T) {
-	id := MakePathID(NamespaceOSMWay, 687471322).FeatureID()
+	id := FeatureID{FeatureTypePath, NamespaceOSMWay, 687471322}
 	actual := FeatureIDFromString(id.String())
 	if actual != id {
 		t.Errorf("Expected %s, found %s", id, actual)
@@ -14,7 +14,7 @@ func TestFeatureIDToAndFromString(t *testing.T) {
 
 func TestFeatureFromStringHandlesLeadingSlash(t *testing.T) {
 	token := "/path/openstreetmap.org/way/687471322"
-	expected := MakePathID(NamespaceOSMWay, 687471322).FeatureID()
+	expected := FeatureID{FeatureTypePath, NamespaceOSMWay, 687471322}
 	actual := FeatureIDFromString(token)
 	if actual != expected {
 		t.Errorf("Expected %s, found: %s", expected, actual)
@@ -37,7 +37,7 @@ func TestTagToAndFromStringHappyPath(t *testing.T) {
 			t.Errorf("Expected %s, found %s", c.s, s)
 		}
 		var tag Tag
-		tag.FromString(c.s)
+		tag.FromString(c.s, ValueTypeString)
 		if tag.Key != c.tag.Key {
 			t.Errorf("Expected key %s, found %s", c.tag.Key, tag.Key)
 		}
@@ -58,7 +58,7 @@ func TestTagToAndFromStringBrokenStrings(t *testing.T) {
 	}
 	for _, c := range cases {
 		var tag Tag
-		tag.FromString(c.s)
+		tag.FromString(c.s, ValueTypeString)
 		if tag.Key != c.tag.Key {
 			t.Errorf("Expected key %s, found %s", c.tag.Key, tag.Key)
 		}

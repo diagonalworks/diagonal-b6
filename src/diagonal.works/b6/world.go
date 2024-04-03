@@ -15,17 +15,38 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-// TODO: harmonise Value and Literal in expression.go
+// TODO(mari): harmonise Value and Literal in expression.go
 type ValueType int
 
 const (
 	ValueTypeString ValueType = iota
 	ValueTypeLatLng
+	ValueTypeValues
+	ValueTypeFeatureID
 )
 
 type Value interface {
 	String() string
-	Type() ValueType
+	ValueType() ValueType
+}
+
+func ValueFromString(s string, t ValueType) Value {
+	switch t {
+	case ValueTypeString:
+		return String(s)
+	case ValueTypeLatLng:
+		if ll, err := LatLngFromString(s); err == nil {
+			return LatLng(ll)
+		}
+	case ValueTypeFeatureID:
+		if id := FeatureIDFromString(s); id.IsValid() {
+			return id
+		}
+	case ValueTypeValues:
+		return ValuesFromString(s)
+	}
+
+	panic("not implemented")
 }
 
 type String string
@@ -34,7 +55,7 @@ func (s String) String() string {
 	return string(s)
 }
 
-func (s String) Type() ValueType {
+func (s String) ValueType() ValueType {
 	return ValueTypeString
 }
 
@@ -44,37 +65,79 @@ func (ll LatLng) String() string {
 	return LatLngToString(s2.LatLng(ll))
 }
 
-func (ll LatLng) Type() ValueType {
+func (ll LatLng) ValueType() ValueType {
 	return ValueTypeLatLng
 }
 
+type Values []Value
+
+const valuesDelimiter = ";"
+
+func (v Values) String() string {
+	s := ""
+	for i, x := range v {
+		s += x.String()
+		if i < len(v)-1 {
+			s += valuesDelimiter
+		}
+	}
+	return s
+}
+
+func TryValueFromString(s string) Value {
+	if strings.Contains(s, valuesDelimiter) {
+		return ValuesFromString(s)
+	} else if ll, err := LatLngFromString(s); err == nil {
+		return LatLng(ll)
+	} else if id := FeatureIDFromString(s); id.IsValid() {
+		return id
+	} else {
+		return String(s)
+	}
+}
+
+func ValuesFromString(s string) Values {
+	parts := strings.Split(s, valuesDelimiter)
+	v := Values(make([]Value, 0, len(parts)))
+	for _, part := range parts {
+		v = append(v, TryValueFromString(part))
+	}
+	return v
+}
+
+func (v Values) ValueType() ValueType {
+	return ValueTypeValues
+}
+
+func Set(vs Values, v Value, i int) Values {
+	l := len(vs)
+	if l <= i {
+		l = i + 1
+	}
+	r := make([]Value, l)
+	copy(r, vs)
+	r[i] = v
+	return r
+}
+
 type Tag struct {
-	Key   string
-	Value Value
+	Key string
+	Value
 }
 
 func (t Tag) IsValid() bool {
-	return t.Key != ""
-}
-
-func (t Tag) StringValue() string {
-	if t.Value != nil {
-		if s, ok := t.Value.(String); ok {
-			return string(s)
-		}
-	}
-	return ""
+	return t.Key != "" && t.Value != nil
 }
 
 func (t Tag) String() string {
 	return escapeTagPart(t.Key) + "=" + escapeTagPart(t.Value.String())
 }
 
-func (t *Tag) FromString(s string) {
+func (t *Tag) FromString(s string, typ ValueType) {
 	var rest string
 	t.Key, rest = consumeTagPart(s)
 	value, _ := consumeTagPart(rest)
-	t.Value = String(value)
+	t.Value = ValueFromString(value, typ)
 }
 
 func (t Tag) Equal(other Tag) bool {
@@ -90,6 +153,8 @@ func (t Tag) Equal(other Tag) bool {
 		if o, ok := other.Value.(LatLng); ok {
 			return s2.LatLng(v) == s2.LatLng(o)
 		}
+	case Values:
+		return v.String() == other.Value.String()
 	}
 	return false
 }
@@ -105,8 +170,8 @@ func (t Tag) MarshalYAML() (interface{}, error) {
 	} else if t.Value == nil {
 		return escapeTagPart(t.Key) + "=\"\"", nil
 	}
-	// TODO: harmonise Value and Literal in expression.go
-	literal, err := FromLiteral(t.Value)
+	// TODO(mari): harmonise Value and Literal in expression.go
+	literal, err := FromLiteral(t.Value.String())
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +181,7 @@ func (t Tag) MarshalYAML() (interface{}, error) {
 func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var s string
 	if err := unmarshal(&s); err == nil {
-		t.FromString(s)
+		t.FromString(s, ValueTypeString)
 		return nil
 	}
 	var y tagYAML
@@ -128,6 +193,8 @@ func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	switch l := y.Value.AnyLiteral.(type) {
 	case *PointExpression:
 		t.Value = LatLng(*l)
+	case *StringExpression:
+		t.Value = TryValueFromString(string(*l))
 	default:
 		return fmt.Errorf("can't use %T as tag values", l)
 	}
@@ -209,14 +276,13 @@ func InvalidTag() Tag {
 }
 
 type Taggable interface {
-	AllTags() []Tag
+	AllTags() Tags
 	Get(key string) Tag
-	GetString(key string) string
 }
 
 type Tags []Tag
 
-func (t Tags) AllTags() []Tag {
+func (t Tags) AllTags() Tags {
 	return t
 }
 
@@ -229,13 +295,17 @@ func (t Tags) Get(key string) Tag {
 	return InvalidTag()
 }
 
-func (t Tags) GetString(key string) string {
-	for _, tag := range t {
-		if tag.Key == key {
-			return tag.StringValue()
+func (t Tags) GetAt(key string, i int) Value {
+	if i >= 0 {
+		for _, tag := range t {
+			if tag.Key == key {
+				if values, ok := tag.Value.(Values); ok && len(values) > i {
+					return values[i]
+				}
+			}
 		}
 	}
-	return ""
+	return InvalidTag()
 }
 
 func (t Tags) TagOrFallback(key string, fallback string) Tag {
@@ -267,6 +337,18 @@ func (t *Tags) ModifyOrAddTag(tag Tag) (bool, Value) {
 	return false, String("")
 }
 
+func (t *Tags) ModifyOrAddTagAt(tag Tag, index int) (bool, Value) {
+	for i := range *t {
+		if (*t)[i].Key == tag.Key && (*t)[i].Value.ValueType() == ValueTypeValues {
+			old := (*t)[i].Value
+			(*t)[i].Value = Set((*t)[i].Value.(Values), tag.Value, index)
+			return true, old
+		}
+	}
+	t.AddTag(Tag{tag.Key, Set(make([]Value, 0), tag.Value, index)})
+	return false, String("")
+}
+
 func (t *Tags) RemoveTag(key string) {
 	for i, tag := range *t {
 		if tag.Key == key {
@@ -285,15 +367,13 @@ func (t *Tags) RemoveTags(keys []string) {
 	}
 }
 
-func (t *Tags) RemoveAll() {
+func (t *Tags) RemoveAllTags() {
 	*t = []Tag{}
 }
 
 func (t Tags) Clone() Tags {
 	clone := make([]Tag, len(t))
-	for i, tag := range t {
-		clone[i] = tag
-	}
+	copy(clone, t)
 	return clone
 }
 
@@ -306,19 +386,47 @@ func (t *Tags) MergeFrom(other Tags) {
 	}
 }
 
-const LatLngTag = "latlng"
-
-func (t *Tags) Location() s2.LatLng {
-	ll, _ := LatLngFromString(t.Get(LatLngTag).Value.String())
-	return ll
+type IndexedReference interface {
+	Reference
+	Index() int
+	SetIndex(i int)
 }
 
-func (t *Tags) GeometryType() GeometryType {
-	if t.Get(LatLngTag) != InvalidTag() {
-		return GeometryTypePoint
+type IndexedFeatureID struct {
+	FeatureID
+	index int
+}
+
+func (r *IndexedFeatureID) Source() FeatureID {
+	return r.FeatureID
+}
+
+func (r *IndexedFeatureID) Index() int {
+	return r.index
+}
+
+func (r *IndexedFeatureID) SetIndex(i int) {
+	r.index = i
+}
+
+func (t *Tags) References() []Reference {
+	var refs []Reference
+	if r := t.Get(PathTag); r.IsValid() && r.Value != nil && r.ValueType() == ValueTypeValues {
+		for i, v := range r.Value.(Values) {
+			if v, ok := v.(FeatureID); ok && v.IsValid() {
+				refs = append(refs, &IndexedFeatureID{v, i})
+			}
+		}
 	}
 
-	return GeometryTypeInvalid
+	return refs
+}
+
+func (t *Tags) Reference(i int) Reference {
+	if id, ok := t.GetAt(PathTag, i).(Reference); ok {
+		return id
+	}
+	return FeatureIDInvalid
 }
 
 type FeatureType int
@@ -456,6 +564,10 @@ func (f FeatureID) String() string {
 	return fmt.Sprintf("%s/%s/%d", f.Type.String(), f.Namespace, f.Value)
 }
 
+func (f FeatureID) ValueType() ValueType {
+	return ValueTypeFeatureID
+}
+
 func (f FeatureID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(f.String())
 }
@@ -498,13 +610,6 @@ func (f *FeatureID) FromFeatureID(other FeatureID) {
 	f.Type = other.Type
 	f.Namespace = other.Namespace
 	f.Value = other.Value
-}
-
-func (f FeatureID) ToPathID() PathID {
-	if f.Type == FeatureTypePath || f.Type == FeatureTypeInvalid {
-		return PathID{Namespace: f.Namespace, Value: f.Value}
-	}
-	panic("Not a path")
 }
 
 func (f FeatureID) ToAreaID() AreaID {
@@ -573,7 +678,8 @@ func FeatureIDFromString(s string) FeatureID {
 
 var (
 	FeatureIDInvalid = FeatureID{Type: FeatureTypeInvalid, Namespace: NamespaceInvalid}
-	FeatureIDEnd     = FeatureID{Type: FeatureTypeEnd, Namespace: NamespaceInvalid} // For sentinels
+
+	FeatureIDEnd = FeatureID{Type: FeatureTypeEnd, Namespace: NamespaceInvalid} // For sentinels
 
 	FeatureIDPointBegin    = FeatureID{Type: FeatureTypePoint, Namespace: NamespaceInvalid, Value: 0}
 	FeatureIDPathBegin     = FeatureID{Type: FeatureTypePath, Namespace: NamespaceInvalid, Value: 0}
@@ -592,59 +698,6 @@ func (f FeatureIDs) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }
 func (f FeatureIDs) Less(i, j int) bool { return f[i].Less(f[j]) }
 
 type ID = FeatureID
-
-type PathID struct {
-	Namespace Namespace
-	Value     uint64
-}
-
-func MakePathID(ns Namespace, v uint64) PathID {
-	return PathID{Namespace: ns, Value: v}
-}
-
-func (p PathID) FeatureID() FeatureID {
-	return FeatureID{Type: FeatureTypePath, Namespace: p.Namespace, Value: p.Value}
-}
-
-func (p PathID) IsValid() bool {
-	return p.Namespace != NamespaceInvalid
-}
-
-func (p PathID) String() string {
-	return p.FeatureID().String()
-}
-
-func (p PathID) Less(other PathID) bool {
-	if p.Namespace == other.Namespace {
-		return p.Value < other.Value
-	} else {
-		return p.Namespace < other.Namespace
-	}
-}
-
-func (p *PathID) FromFeatureID(other FeatureID) error {
-	if other.Type != FeatureTypePath {
-		return errors.New("not a path ID")
-	}
-	p.Namespace = other.Namespace
-	p.Value = other.Value
-	return nil
-}
-
-func (p PathID) MarshalYAML() (interface{}, error) {
-	return p.FeatureID().MarshalYAML()
-}
-
-func (p *PathID) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var id FeatureID
-	err := unmarshal(&id)
-	if err == nil {
-		err = p.FromFeatureID(id)
-	}
-	return err
-}
-
-var PathIDInvalid = PathID{Namespace: NamespaceInvalid}
 
 type AreaID struct {
 	Namespace Namespace
@@ -865,14 +918,112 @@ const (
 
 type Geometry interface {
 	GeometryType() GeometryType
-	Location() s2.LatLng
+
+	Point() s2.Point
+
+	GeometryLen() int
+	PointAt(i int) s2.Point
+	Polyline() *s2.Polyline
+
 	ToGeoJSON() geojson.GeoJSON // TODO(mari): remove from interface / when u do wrapped generic feature
+}
+
+const (
+	PointTag = "point"
+	PathTag  = "path"
+)
+
+func (t *Tags) GeometryType() GeometryType {
+	if t.Get(PointTag) != InvalidTag() {
+		return GeometryTypePoint
+	} else if t.Get(PathTag) != InvalidTag() {
+		return GeometryTypePath
+	}
+
+	return GeometryTypeInvalid
+}
+
+func (t *Tags) Point() s2.Point {
+	ll, _ := LatLngFromString(t.Get(PointTag).Value.String())
+	return s2.PointFromLatLng(ll)
+}
+
+func (t *Tags) GeometryLen() int {
+	if v := t.Get(PointTag); v.IsValid() {
+		return 1
+	} else if v := t.Get(PathTag); v.IsValid() {
+		if v, ok := v.Value.(Values); ok {
+			return len(v)
+		}
+	}
+	return 0
+}
+
+func (t *Tags) PointAt(i int) s2.Point {
+	if ll, ok := t.GetAt(PathTag, i).(LatLng); ok {
+		return s2.PointFromLatLng(s2.LatLng(ll))
+	}
+
+	return s2.Point{}
+}
+
+func (t *Tags) Polyline() *s2.Polyline {
+	var ps []s2.Point
+	for i := 0; i < t.GeometryLen(); i++ {
+		ps = append(ps, t.PointAt(i))
+	}
+	return (*s2.Polyline)(&ps)
+}
+
+type Geo struct {
+	point s2.Point
+	path  []s2.Point
+}
+
+func (g Geo) GeometryType() GeometryType {
+	if len(g.path) > 0 {
+		return GeometryTypePath
+	} else {
+		return GeometryTypePoint
+	}
+}
+
+func (g Geo) Point() s2.Point {
+	return g.point
+}
+
+func (g Geo) PointAt(i int) s2.Point {
+	return g.path[i]
+}
+
+func (g Geo) Polyline() *s2.Polyline {
+	return (*s2.Polyline)(&g.path)
+}
+
+func (g Geo) GeometryLen() int {
+	return len(g.path)
+}
+
+func (g Geo) ToGeoJSON() geojson.GeoJSON {
+	return GeometryToGeoJSON(g)
+}
+
+func GeometryFromPoints(points []s2.Point) Geometry {
+	return Geo{path: points}
+}
+
+func GeometryFromLatLng(ll s2.LatLng) Geometry {
+	return Geo{point: s2.PointFromLatLng(ll)}
+}
+
+func PhysicalFeatureToGeoJSON(f PhysicalFeature) *geojson.Feature {
+	g := GeometryToGeoJSON(f)
+	fillPropertiesFromTags(f, g)
+	return g
 }
 
 func Covering(g Geometry, coverer s2.RegionCoverer) s2.CellUnion {
 	switch g := g.(type) {
-	case Path:
-		return coverer.Covering(g.Polyline())
 	case Area:
 		covering := make(s2.CellUnion, 0)
 		for i := 0; i < g.Len(); i++ {
@@ -880,13 +1031,111 @@ func Covering(g Geometry, coverer s2.RegionCoverer) s2.CellUnion {
 		}
 		return covering
 	default:
-		return coverer.Covering(s2.PointFromLatLng(g.Location()))
+		switch g.GeometryType() {
+		case GeometryTypePoint:
+			return coverer.Covering(g.Point())
+		case GeometryTypePath:
+			return coverer.Covering(g.Polyline())
+		}
+	}
+
+	return s2.CellUnion{}
+}
+
+func Centroid(geometry Geometry) s2.Point {
+	switch geometry.GeometryType() {
+	case GeometryTypePoint:
+		return geometry.Point()
+	case GeometryTypePath:
+		return s2.Point{Vector: geometry.Polyline().Centroid().Normalize()}
+	case GeometryTypeArea:
+		if geometry.(Area).Len() == 1 {
+			return s2.Point{Vector: geometry.(Area).Polygon(0).Loop(0).Centroid().Normalize()}
+		} else {
+			query := s2.NewConvexHullQuery()
+			for i := 0; i < geometry.(Area).Len(); i++ {
+				query.AddPolygon(geometry.(Area).Polygon(i))
+			}
+			return s2.Point{Vector: query.ConvexHull().Centroid().Normalize()}
+		}
+	}
+	return s2.Point{}
+}
+
+func GeometryToGeoJSON(g Geometry) *geojson.Feature {
+	switch g.GeometryType() {
+	case GeometryTypePoint:
+		return geojson.NewFeatureFromS2Point(g.Point())
+	case GeometryTypePath:
+		return geojson.NewFeatureWithGeometry(geojson.GeometryFromLineString(geojson.FromPolyline(g.Polyline())))
+	default:
+		panic("not implemented")
 	}
 }
 
 type Feature interface {
 	Identifiable
 	Taggable
+	References() []Reference
+	Reference(i int) Reference
+}
+
+type PhysicalFeature interface {
+	Feature
+	Geometry
+}
+
+type NestedPhysicalFeature interface { // TODO(mari): rethink this
+	PhysicalFeature
+	Feature(i int) PhysicalFeature
+}
+
+type wrappedFeature struct {
+	PhysicalFeature
+	FeaturesByID
+}
+
+func (p wrappedFeature) Feature(i int) PhysicalFeature {
+	if id := p.Reference(i).Source(); id.IsValid() {
+		if point := p.FindFeatureByID(id); point != nil {
+			return point.(PhysicalFeature)
+		}
+		panic(fmt.Sprintf("No point with ID %s", id))
+	}
+	return nil
+}
+
+func (p wrappedFeature) PointAt(i int) s2.Point {
+	if point := p.PhysicalFeature.PointAt(i); point.Norm() != 0 {
+		return point
+	}
+
+	id := p.Reference(i).Source()
+	if id.IsValid() {
+		if ll, err := p.FindLocationByID(id); err == nil {
+			return s2.PointFromLatLng(ll)
+		}
+	}
+
+	panic(fmt.Sprintf("No point with ID %s", id))
+}
+
+func (p wrappedFeature) Polyline() *s2.Polyline {
+	points := make([]s2.Point, 0, p.GeometryLen())
+	for i := 0; i < p.GeometryLen(); i++ {
+		points = append(points, p.PointAt(i))
+	}
+	return (*s2.Polyline)(&points)
+}
+
+func WrapPhysicalFeature(f PhysicalFeature, features FeaturesByID) NestedPhysicalFeature {
+	return wrappedFeature{f, features}
+}
+
+func (t Tags) ClosedPath() bool {
+	start := t.Reference(0).Source()
+	end := t.Reference(len(t.References()) - 1).Source()
+	return start == end && start.IsValid()
 }
 
 type iterator struct {
@@ -909,107 +1158,6 @@ func (i *iterator) FeatureID() FeatureID {
 func (i *iterator) Next() bool {
 	i.i++
 	return i.i <= len(i.features)
-}
-
-type PhysicalFeature interface {
-	Feature
-	Geometry
-}
-
-func Centroid(geometry Geometry) s2.Point {
-	switch geometry.GeometryType() {
-	case GeometryTypePoint:
-		return s2.PointFromLatLng(geometry.Location())
-	case GeometryTypePath:
-		return s2.Point{Vector: geometry.(Path).Polyline().Centroid().Normalize()}
-	case GeometryTypeArea:
-		if geometry.(Area).Len() == 1 {
-			return s2.Point{Vector: geometry.(Area).Polygon(0).Loop(0).Centroid().Normalize()}
-		} else {
-			query := s2.NewConvexHullQuery()
-			for i := 0; i < geometry.(Area).Len(); i++ {
-				query.AddPolygon(geometry.(Area).Polygon(i))
-			}
-			return s2.Point{Vector: query.ConvexHull().Centroid().Normalize()}
-		}
-	}
-	return s2.Point{}
-}
-
-type Geo struct {
-	ll s2.LatLng
-}
-
-func (g Geo) GeometryType() GeometryType {
-	return GeometryTypePoint
-}
-
-func (g Geo) Location() s2.LatLng {
-	return g.ll
-}
-
-func (g Geo) ToGeoJSON() geojson.GeoJSON {
-	return LocationToGeoJSON(g)
-}
-
-func GeometryFromLatLng(ll s2.LatLng) Geometry {
-	return Geo{ll: ll}
-}
-
-func LocationToGeoJSON(g Geometry) *geojson.Feature {
-	return geojson.NewFeatureFromS2LatLng(g.Location())
-}
-
-func PhysicalFeatureToGeoJSON(f PhysicalFeature) *geojson.Feature {
-	g := LocationToGeoJSON(f)
-	fillPropertiesFromTags(f, g)
-	return g
-}
-
-type Path interface {
-	Geometry
-	Len() int
-	Point(i int) s2.Point
-	Polyline() *s2.Polyline
-}
-
-type path struct {
-	ps []s2.Point
-}
-
-func (p path) Len() int {
-	return len(p.ps)
-}
-
-func (p path) GeometryType() GeometryType {
-	return GeometryTypePath
-}
-
-func (p path) Location() s2.LatLng {
-	return s2.LatLng{}
-}
-
-func (p path) Point(i int) s2.Point {
-	return p.ps[i]
-}
-
-func (p path) Polyline() *s2.Polyline {
-	return (*s2.Polyline)(&p.ps)
-}
-
-func (p path) ToGeoJSON() geojson.GeoJSON {
-	return PathToGeoJSON(p)
-}
-
-func PathFromS2Points(ps []s2.Point) Path {
-	return path{ps: ps}
-}
-
-type PathFeature interface {
-	Feature
-	Path
-	PathID() PathID
-	Feature(i int) PhysicalFeature
 }
 
 type Area interface {
@@ -1043,8 +1191,20 @@ func (a area) GeometryType() GeometryType {
 	return GeometryTypeArea
 }
 
-func (a area) Location() s2.LatLng {
-	return s2.LatLng{}
+func (a area) Point() s2.Point {
+	return s2.Point{}
+}
+
+func (a area) PointAt(i int) s2.Point {
+	panic("not implemented")
+}
+
+func (a area) Polyline() *s2.Polyline {
+	panic("not implemented")
+}
+
+func (a area) GeometryLen() int {
+	panic("not implemented")
 }
 
 func (a area) ToGeoJSON() geojson.GeoJSON {
@@ -1075,7 +1235,7 @@ type AreaFeature interface {
 	Feature
 	Area
 	AreaID() AreaID
-	Feature(i int) []PathFeature
+	Feature(i int) []NestedPhysicalFeature
 }
 
 type RelationMember struct {
@@ -1111,12 +1271,12 @@ type Features interface {
 }
 
 type SegmentKey struct {
-	ID    PathID
+	ID    FeatureID
 	First int
 	Last  int
 }
 
-func (s SegmentKey) ToPathSegment(path PathFeature) Segment {
+func (s SegmentKey) ToPathSegment(path PhysicalFeature) Segment {
 	return Segment{path, s.First, s.Last}
 }
 
@@ -1131,7 +1291,7 @@ func (s SegmentKey) Less(other SegmentKey) bool {
 }
 
 type Segment struct {
-	Feature PathFeature
+	Feature PhysicalFeature
 	First   int
 	Last    int
 }
@@ -1145,7 +1305,7 @@ func (s Segment) Len() int {
 }
 
 func (s Segment) ToKey() SegmentKey {
-	return SegmentKey{ID: s.Feature.PathID(), First: s.First, Last: s.Last}
+	return SegmentKey{ID: s.Feature.FeatureID(), First: s.First, Last: s.Last}
 }
 
 func (s Segment) pathIndex(i int) int {
@@ -1160,23 +1320,23 @@ func (s Segment) pathIndex(i int) int {
 }
 
 func (s Segment) SegmentPoint(i int) s2.Point {
-	return s.Feature.Point(s.pathIndex(i))
+	return s.Feature.PointAt(s.pathIndex(i))
 }
 
-func (s Segment) SegmentFeature(i int) PhysicalFeature {
-	return s.Feature.Feature(s.pathIndex(i))
+func (s Segment) SegmentFeatureID(i int) FeatureID {
+	return s.Feature.Reference(s.pathIndex(i)).Source()
 }
 
-func (s Segment) FirstFeature() PhysicalFeature {
-	return s.Feature.Feature(s.First)
+func (s Segment) FirstFeatureID() FeatureID {
+	return s.Feature.Reference(s.First).Source()
 }
 
-func (s Segment) LastFeature() PhysicalFeature {
-	return s.Feature.Feature(s.Last)
+func (s Segment) LastFeatureID() FeatureID {
+	return s.Feature.Reference(s.Last).Source()
 }
 
-func ToSegment(path PathFeature) Segment {
-	return Segment{path, 0, path.Len() - 1}
+func ToSegment(path PhysicalFeature) Segment {
+	return Segment{path, 0, path.GeometryLen() - 1}
 }
 
 func (s Segment) Polyline() *s2.Polyline {
@@ -1218,7 +1378,7 @@ func AllSegments(p Segments) []Segment {
 
 func FindPathSegmentByKey(key SegmentKey, w World) Segment {
 	return Segment{
-		Feature: FindPathByID(key.ID, w),
+		Feature: w.FindFeatureByID(key.ID).(PhysicalFeature),
 		First:   key.First,
 		Last:    key.Last,
 	}
@@ -1226,32 +1386,32 @@ func FindPathSegmentByKey(key SegmentKey, w World) Segment {
 
 type Step struct {
 	Destination FeatureID
-	Via         PathID
+	Via         FeatureID
 	Cost        float64
 }
 
 func (s *Step) ToSegment(previous FeatureID, w World) Segment {
 	// TODO: For long paths, it could be more efficient to use
 	// FindPathsByPoint
-	path := FindPathByID(s.Via, w)
+	path := w.FindFeatureByID(s.Via).(PhysicalFeature)
 	if path == nil {
 		return SegmentInvalid
 	}
 
-	for i := 0; i < path.Len(); i++ {
-		if point := path.Feature(i); point != nil {
-			if point.FeatureID() == previous {
-				if point.FeatureID() == s.Destination {
+	for i := 0; i < path.GeometryLen(); i++ {
+		if point := path.Reference(i).Source(); point.IsValid() {
+			if point == previous {
+				if point == s.Destination {
 					return Segment{Feature: path, First: i, Last: i}
 				}
-				for j := i; j < path.Len(); j++ {
-					if next := path.Feature(j); next != nil && next.FeatureID() == s.Destination {
+				for j := i; j < path.GeometryLen(); j++ {
+					if next := w.FindFeatureByID(path.Reference(j).Source()); next != nil && next.FeatureID() == s.Destination {
 						return Segment{Feature: path, First: i, Last: j}
 					}
 				}
-			} else if point.FeatureID() == s.Destination {
-				for j := i; j < path.Len(); j++ {
-					if next := path.Feature(j); next != nil && next.FeatureID() == previous {
+			} else if point == s.Destination {
+				for j := i; j < path.GeometryLen(); j++ {
+					if next := w.FindFeatureByID(path.Reference(j).Source()); next != nil && next.FeatureID() == previous {
 						return Segment{Feature: path, First: j, Last: i}
 					}
 				}
@@ -1324,7 +1484,6 @@ type World interface {
 	FindFeatures(query Query) Features
 	FindRelationsByFeature(id FeatureID) RelationFeatures
 	FindCollectionsByFeature(id FeatureID) CollectionFeatures
-	FindPathsByPoint(id FeatureID) PathFeatures
 	FindAreasByPoint(id FeatureID) AreaFeatures
 	FindReferences(id FeatureID, typed ...FeatureType) Features
 	Traverse(id FeatureID) Segments
@@ -1359,10 +1518,6 @@ func (EmptyWorld) FindRelationsByFeature(id FeatureID) RelationFeatures {
 
 func (EmptyWorld) FindCollectionsByFeature(id FeatureID) CollectionFeatures {
 	return EmptyCollectionFeatures{}
-}
-
-func (EmptyWorld) FindPathsByPoint(id FeatureID) PathFeatures {
-	return EmptyPathFeatures{}
 }
 
 func (EmptyWorld) FindAreasByPoint(id FeatureID) AreaFeatures {
@@ -1405,66 +1560,6 @@ func AllFeatures(f Features) []Feature {
 		features = append(features, f.Feature())
 	}
 	return features
-}
-
-func FindPathByID(id PathID, features FeaturesByID) PathFeature {
-	if path := features.FindFeatureByID(id.FeatureID()); path != nil {
-		return path.(PathFeature)
-	}
-	return nil
-}
-
-type pathFeatures struct {
-	features Features
-}
-
-func (p pathFeatures) Next() bool {
-	return p.features.Next()
-}
-
-func (p pathFeatures) Feature() PathFeature {
-	if path, ok := p.features.Feature().(PathFeature); ok {
-		return path
-	}
-	panic(fmt.Sprintf("Not a PathFeature: %T", p.features.Feature()))
-}
-
-func (p pathFeatures) FeatureID() FeatureID {
-	return p.features.FeatureID()
-}
-
-type PathFeatures interface {
-	Feature() PathFeature
-	FeatureID() FeatureID
-	Next() bool
-}
-
-func AllPaths(p PathFeatures) []PathFeature {
-	features := make([]PathFeature, 0, 8)
-	if p != nil {
-		for p.Next() {
-			features = append(features, p.Feature())
-		}
-	}
-	return features
-}
-
-func NewPathFeatures(features Features) PathFeatures {
-	return pathFeatures{features: features}
-}
-
-type EmptyPathFeatures struct{}
-
-func (EmptyPathFeatures) Feature() PathFeature {
-	panic("No PathFeatures")
-}
-
-func (EmptyPathFeatures) FeatureID() FeatureID {
-	panic("No PathFeatures")
-}
-
-func (EmptyPathFeatures) Next() bool {
-	return false
 }
 
 func FindAreaByID(id AreaID, features FeaturesByID) AreaFeature {
@@ -1632,11 +1727,6 @@ func FindExpressionByID(id ExpressionID, features FeaturesByID) ExpressionFeatur
 	return nil
 }
 
-func FindPaths(q Query, w World) PathFeatures {
-	q = Typed{Type: FeatureTypePath, Query: q}
-	return NewPathFeatures(w.FindFeatures(q))
-}
-
 func FindAreas(q Query, w World) AreaFeatures {
 	q = Typed{Type: FeatureTypeArea, Query: q}
 	return NewAreaFeatures(w.FindFeatures(q))
@@ -1690,18 +1780,6 @@ func fillPropertiesFromTags(t Taggable, feature *geojson.Feature) {
 	for _, tag := range t.AllTags() {
 		feature.Properties[tag.Key] = tag.Value.String()
 	}
-}
-
-func PathToGeoJSON(path Path) *geojson.Feature {
-	polyline := path.Polyline()
-	geometry := geojson.GeometryFromLineString(geojson.FromPolyline(polyline))
-	return geojson.NewFeatureWithGeometry(geometry)
-}
-
-func PathFeatureToGeoJSON(path PathFeature) *geojson.Feature {
-	g := PathToGeoJSON(path)
-	fillPropertiesFromTags(path, g)
-	return g
 }
 
 func AreaToGeoJSON(area Area) *geojson.Feature {

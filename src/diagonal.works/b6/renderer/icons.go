@@ -70,7 +70,7 @@ var iconsForTag = []struct {
 
 func IconForTag(t b6.Tag) (string, bool) {
 	for _, i := range iconsForTag {
-		if i.Tag.Key == t.Key && (i.Tag.StringValue() == "" || i.Tag.StringValue() == t.StringValue()) {
+		if i.Tag.Key == t.Key && (i.Tag.Value.String() == "" || i.Tag.Value.String() == t.Value.String()) {
 			return i.Icon, true
 		}
 	}
@@ -79,7 +79,7 @@ func IconForTag(t b6.Tag) (string, bool) {
 
 func IconForFeature(f b6.Feature) (string, bool) {
 	for _, i := range iconsForTag {
-		if t := f.Get(i.Tag.Key); t.IsValid() && (i.Tag.StringValue() == "" || i.Tag.StringValue() == t.StringValue()) {
+		if t := f.Get(i.Tag.Key); t.IsValid() && (i.Tag.Value.String() == "" || i.Tag.Value.String() == t.Value.String()) {
 			return i.Icon, true
 		}
 	}

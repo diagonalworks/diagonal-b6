@@ -39,13 +39,11 @@ var functions = api.FunctionSymbols{
 	"histogram-swatch": histogramSwatch,
 	// search
 	"find-feature":     findFeature,
-	"find-path":        findPathFeature,
 	"find-area":        findAreaFeature,
 	"find-relation":    findRelationFeature,
 	"find-expression":  findExpressionFeature,
 	"find-collection":  findCollectionFeature,
 	"find":             find,
-	"find-paths":       findPathFeatures,
 	"find-areas":       findAreaFeatures,
 	"find-relations":   findRelationFeatures,
 	"containing-areas": findAreasContainingPoints,
@@ -53,6 +51,7 @@ var functions = api.FunctionSymbols{
 	"intersecting-cap": intersectingCap,
 	"tagged":           tagged,
 	"keyed":            keyed,
+	"typed":            typed,
 	"and":              and,
 	"or":               or,
 	"all":              all,
@@ -207,15 +206,6 @@ var functionAdaptors = []interface{}{
 			}
 		}
 	},
-	func(c api.Callable) func(*api.Context, b6.Path) (b6.Geometry, error) {
-		return func(context *api.Context, p b6.Path) (b6.Geometry, error) {
-			if result, err := api.Call1(context, p, c); result != nil {
-				return result.(b6.Geometry), err
-			} else {
-				return nil, err
-			}
-		}
-	},
 	func(c api.Callable) func(*api.Context, b6.Area) (b6.Geometry, error) {
 		return func(context *api.Context, a b6.Area) (b6.Geometry, error) {
 			if result, err := api.Call1(context, a, c); result != nil {
@@ -257,8 +247,8 @@ var functionAdaptors = []interface{}{
 			}
 		}
 	},
-	func(c api.Callable) func(*api.Context, b6.PathFeature) (bool, error) {
-		return func(context *api.Context, f b6.PathFeature) (bool, error) {
+	func(c api.Callable) func(*api.Context, b6.NestedPhysicalFeature) (bool, error) {
+		return func(context *api.Context, f b6.NestedPhysicalFeature) (bool, error) {
 			if result, err := api.Call1(context, f, c); result != nil {
 				return b6.IsTrue(result), err
 			} else {
@@ -339,9 +329,8 @@ var collectionAdaptors = []interface{}{
 	b6.AdaptCollection[any, b6.FeatureID],
 	b6.AdaptCollection[any, b6.Geometry],
 	b6.AdaptCollection[any, b6.Identifiable],
-	b6.AdaptCollection[any, b6.Path],
-	b6.AdaptCollection[any, b6.PathFeature],
 	b6.AdaptCollection[any, b6.PhysicalFeature],
+	b6.AdaptCollection[any, b6.NestedPhysicalFeature],
 	b6.AdaptCollection[any, b6.Tag],
 	b6.AdaptCollection[any, b6.UntypedCollection],
 	b6.AdaptCollection[any, ingest.Change],
@@ -352,19 +341,17 @@ var collectionAdaptors = []interface{}{
 	b6.AdaptCollection[b6.FeatureID, b6.AreaFeature],
 	b6.AdaptCollection[b6.FeatureID, b6.Feature],
 	b6.AdaptCollection[b6.FeatureID, b6.Identifiable],
-	b6.AdaptCollection[b6.FeatureID, b6.Path],
-	b6.AdaptCollection[b6.FeatureID, b6.PathFeature],
 	b6.AdaptCollection[b6.FeatureID, b6.Geometry],
 	b6.AdaptCollection[b6.FeatureID, b6.PhysicalFeature],
+	b6.AdaptCollection[b6.FeatureID, b6.NestedPhysicalFeature],
 	b6.AdaptCollection[b6.FeatureID, b6.Tag],
 	b6.AdaptCollection[b6.FeatureID, string],
 	b6.AdaptCollection[b6.Identifiable, string],
 	b6.AdaptCollection[int, b6.Area],
 	b6.AdaptCollection[int, b6.AreaFeature],
-	b6.AdaptCollection[int, b6.Path],
-	b6.AdaptCollection[int, b6.PathFeature],
 	b6.AdaptCollection[int, b6.Geometry],
 	b6.AdaptCollection[int, b6.PhysicalFeature],
+	b6.AdaptCollection[int, b6.NestedPhysicalFeature],
 }
 
 var defaultAdaptors api.Adaptors

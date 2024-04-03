@@ -63,56 +63,6 @@ func (f *FeatureIndex) ID(v search.Value) b6.FeatureID {
 	panic(fmt.Sprintf("Bad feature type: %T", v))
 }
 
-type pathFeature struct {
-	*PathFeature
-	features b6.FeaturesByID
-}
-
-func (p pathFeature) PathID() b6.PathID {
-	return p.PathFeature.PathID
-}
-
-func (p pathFeature) Point(i int) s2.Point {
-	if point, ok := p.PathFeature.Point(i); ok {
-		return point
-	}
-	id, _ := p.PointID(i)
-
-	if ll, err := p.features.FindLocationByID(id); err == nil {
-		return s2.PointFromLatLng(ll)
-	}
-
-	panic(fmt.Sprintf("No point with ID %s", id))
-}
-
-func (p pathFeature) Polyline() *s2.Polyline {
-	points := make([]s2.Point, 0, p.Len())
-	for i := 0; i < p.Len(); i++ {
-		points = append(points, p.Point(i))
-	}
-	return (*s2.Polyline)(&points)
-}
-
-func (p pathFeature) Feature(i int) b6.PhysicalFeature {
-	if id, ok := p.PointID(i); ok {
-		if point := p.features.FindFeatureByID(id); point != nil {
-			return point.(b6.PhysicalFeature)
-		}
-		panic(fmt.Sprintf("No point with ID %s", id))
-	}
-	return nil
-}
-
-func (p pathFeature) ToGeoJSON() geojson.GeoJSON {
-	return b6.PathFeatureToGeoJSON(p)
-}
-
-var _ b6.PathFeature = (*pathFeature)(nil)
-
-func WrapPathFeature(p *PathFeature, features b6.FeaturesByID) b6.PathFeature {
-	return pathFeature{p, features}
-}
-
 type areaFeature struct {
 	*AreaFeature
 	features b6.FeaturesByID
@@ -133,10 +83,10 @@ func (a areaFeature) Polygon(i int) *s2.Polygon {
 	ids, _ := a.PathIDs(i)
 	loops := make([]*s2.Loop, 0, len(ids))
 	for _, id := range ids {
-		if path := b6.FindPathByID(id, a.features); path != nil {
-			loop := make([]s2.Point, path.Len()-1) // Paths are explicitly closed, so drop the duplicate last point
+		if path, ok := a.features.FindFeatureByID(id).(b6.PhysicalFeature); path != nil && ok {
+			loop := make([]s2.Point, path.GeometryLen()-1) // Paths are explicitly closed, so drop the duplicate last point
 			for j := range loop {
-				loop[j] = path.Point(j)
+				loop[j] = path.PointAt(j)
 			}
 			loops = append(loops, s2.LoopFromPoints(loop))
 		}
@@ -152,11 +102,11 @@ func (a areaFeature) MultiPolygon() geometry.MultiPolygon {
 	return m
 }
 
-func (a areaFeature) Feature(i int) []b6.PathFeature {
+func (a areaFeature) Feature(i int) []b6.NestedPhysicalFeature {
 	if ids, ok := a.PathIDs(i); ok {
-		paths := make([]b6.PathFeature, 0, len(ids))
+		paths := make([]b6.NestedPhysicalFeature, 0, len(ids))
 		for _, id := range ids {
-			if path := b6.FindPathByID(id, a.features); path != nil {
+			if path := a.features.FindFeatureByID(id).(b6.NestedPhysicalFeature); path != nil {
 				paths = append(paths, path)
 			}
 		}
@@ -278,28 +228,6 @@ func (s *segmentIterator) Segment() b6.Segment {
 	return s.segments[s.i-1]
 }
 
-type pathFeatureIterator struct {
-	paths []b6.PathFeature
-	i     int
-}
-
-func (p *pathFeatureIterator) Next() bool {
-	p.i++
-	return p.i <= len(p.paths)
-}
-
-func (p *pathFeatureIterator) FeatureID() b6.FeatureID {
-	return p.paths[p.i-1].FeatureID()
-}
-
-func (p *pathFeatureIterator) Feature() b6.PathFeature {
-	return p.paths[p.i-1]
-}
-
-func NewPathFeatureIterator(paths []b6.PathFeature) b6.PathFeatures {
-	return &pathFeatureIterator{paths: paths}
-}
-
 func traverse(originID b6.FeatureID, f b6.FeaturesByID, r *FeatureReferencesByID) []b6.Segment {
 	segments := make([]b6.Segment, 0, 2)
 	origin := f.FindFeatureByID(originID)
@@ -307,12 +235,11 @@ func traverse(originID b6.FeatureID, f b6.FeaturesByID, r *FeatureReferencesByID
 		return segments
 	}
 
-	references := r.FindReferences(originID.FeatureID(), b6.FeatureTypePath)
+	references := r.FindReferences(originID, b6.FeatureTypePath)
 	for _, reference := range references {
-		path := f.FindFeatureByID(reference.Source()).(b6.PathFeature)
-		members := path.(pathFeature).PathFeature.PathMembers // TODO(mari): get rid of these casts when cleaning up path features
+		path := f.FindFeatureByID(reference.Source()).(b6.PhysicalFeature)
 
-		reference, ok := reference.(IndexedReference)
+		reference, ok := reference.(b6.IndexedReference)
 		if !ok {
 			continue
 		}
@@ -326,9 +253,9 @@ func traverse(originID b6.FeatureID, f b6.FeaturesByID, r *FeatureReferencesByID
 			{index - 1, -1},
 		}
 		for _, traversal := range traversals {
-			for i := traversal.start; i >= 0 && i < path.Len(); i += traversal.delta {
-				if pointID, ok := members.PointID(i); ok {
-					isNode := i == 0 || i == path.Len()-1 || len(r.FindReferences(pointID.FeatureID(), b6.FeatureTypePath)) > 1
+			for i := traversal.start; i >= 0 && i < path.GeometryLen(); i += traversal.delta {
+				if pointID := path.Reference(i).Source(); pointID.IsValid() {
+					isNode := i == 0 || i == path.GeometryLen()-1 || len(r.FindReferences(pointID, b6.FeatureTypePath)) > 1
 					if !isNode {
 						if point := f.FindFeatureByID(pointID); point != nil {
 							isNode = len(point.AllTags()) > 1
@@ -470,16 +397,6 @@ func (b *basicWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeat
 	}
 
 	return NewCollectionFeatureIterator(features)
-}
-
-func (b *basicWorld) FindPathsByPoint(p b6.FeatureID) b6.PathFeatures {
-	references := b.FindReferences(p.FeatureID(), b6.FeatureTypePath)
-	var features []b6.PathFeature
-	for references.Next() {
-		features = append(features, references.Feature().(b6.PathFeature))
-	}
-
-	return NewPathFeatureIterator(features)
 }
 
 func (b *basicWorld) FindAreasByPoint(p b6.FeatureID) b6.AreaFeatures {

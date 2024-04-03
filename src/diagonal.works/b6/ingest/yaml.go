@@ -3,7 +3,6 @@ package ingest
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"diagonal.works/b6"
 	"github.com/golang/geo/s2"
@@ -102,12 +101,7 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 			return applied.Collection(), err
 		}
 		var err error
-		if y.Path != nil {
-			var p *PathFeature
-			if p, err = newPathFromYAML(&y); err == nil {
-				err = m.AddFeature(p)
-			}
-		} else if y.Area != nil {
+		if y.Area != nil {
 			var a *AreaFeature
 			if a, err = newAreaFromYAML(&y); err == nil {
 				err = m.AddFeature(a)
@@ -145,34 +139,6 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 	return applied.Collection(), nil
 }
 
-// TODO: find a neat way of moving these functions alongside MarshalYAML
-// on the feature implementations themselves.
-func newPathFromYAML(y *exportedYAML) (*PathFeature, error) {
-	if y.ID.Type != b6.FeatureTypePath {
-		return nil, fmt.Errorf("expected a path for %s", y.ID)
-	}
-
-	p := NewPathFeature(len(y.Path))
-	p.PathID = y.ID.ToPathID()
-	for i := range y.Path {
-		if s, ok := y.Path[i].(string); ok {
-			if strings.HasPrefix(s, "/") {
-				p.SetPointID(i, b6.FeatureIDFromString(s[1:]))
-			} else {
-				ll := LatLngYAML{}
-				if err := ll.UnmarshalYAMLString(s); err != nil {
-					return nil, err
-				}
-				p.SetLatLng(i, ll.LatLng)
-			}
-		} else {
-			return nil, fmt.Errorf("expected string, found %T", y.Path[i])
-		}
-	}
-	p.Tags = y.Tags
-	return p, nil
-}
-
 func newAreaFromYAML(y *exportedYAML) (*AreaFeature, error) {
 	if y.ID.Type != b6.FeatureTypeArea {
 		return nil, fmt.Errorf("expected an area for %s", y.ID)
@@ -184,10 +150,10 @@ func newAreaFromYAML(y *exportedYAML) (*AreaFeature, error) {
 		if loopsYAML, ok := y.Area[i].([]interface{}); ok {
 			if len(loopsYAML) > 0 {
 				if _, ok := loopsYAML[0].(string); ok {
-					pathIDs := make([]b6.PathID, len(loopsYAML))
+					pathIDs := make([]b6.FeatureID, len(loopsYAML))
 					for j := range loopsYAML {
 						if s, ok := loopsYAML[j].(string); ok {
-							pathIDs[j] = b6.FeatureIDFromString(s).ToPathID()
+							pathIDs[j] = b6.FeatureIDFromString(s)
 						} else {
 							return nil, fmt.Errorf("bad feature ID in polygon loops")
 						}

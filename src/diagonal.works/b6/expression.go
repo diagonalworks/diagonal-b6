@@ -276,8 +276,6 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case FeatureID:
 		id := FeatureIDExpression(l)
 		return Literal{AnyLiteral: &id}, nil
-	case PathID:
-		return FromLiteral(l.FeatureID())
 	case AreaID:
 		return FromLiteral(l.FeatureID())
 	case RelationID:
@@ -293,18 +291,20 @@ func FromLiteral(l interface{}) (Literal, error) {
 		f := FeatureExpression{Feature: l}
 		return Literal{AnyLiteral: &f}, nil
 	case LatLng:
-		// TODO: Remove and only use Geo(metry). Needed because
-		// tag values can current be LatLng.
+		// TODO(mari): Remove and only use Geo(metry). Needed because tag values can current be LatLng.
 		ll := PointExpression(l)
 		return Literal{AnyLiteral: &ll}, nil
-	case Geo:
-		ll := PointExpression(l.Location())
-		return Literal{AnyLiteral: &ll}, nil
+	case Geometry:
+		switch l.GeometryType() {
+		case GeometryTypePoint:
+			ll := PointExpression(s2.LatLngFromPoint(l.Point()))
+			return Literal{AnyLiteral: &ll}, nil
+		case GeometryTypePath:
+			return Literal{AnyLiteral: &PathExpression{Path: l}}, nil
+		}
 	case s2.LatLng:
 		ll := PointExpression(l)
 		return Literal{AnyLiteral: &ll}, nil
-	case Path:
-		return Literal{AnyLiteral: &PathExpression{Path: l}}, nil
 	case Area:
 		return Literal{AnyLiteral: &AreaExpression{Area: l}}, nil
 	case geojson.GeoJSON:
@@ -884,7 +884,7 @@ func NewPointExpressionFromLatLng(ll s2.LatLng) Expression {
 }
 
 type PathExpression struct {
-	Path Path
+	Path Geometry
 }
 
 func (p *PathExpression) ToProto() (*pb.NodeProto, error) {
@@ -901,14 +901,14 @@ func (p *PathExpression) ToProto() (*pb.NodeProto, error) {
 
 func (p *PathExpression) FromProto(node *pb.NodeProto) error {
 	path := node.GetLiteral().GetPathValue()
-	p.Path = PathFromS2Points(*PolylineProtoToS2Polyline(path))
+	p.Path = GeometryFromPoints(*PolylineProtoToS2Polyline(path))
 	return nil
 }
 
 func (p PathExpression) MarshalYAML() (interface{}, error) {
-	points := make([]PointExpression, p.Path.Len())
+	points := make([]PointExpression, p.Path.GeometryLen())
 	for i := 0; i < len(points); i++ {
-		points[i] = PointExpression(s2.LatLngFromPoint(p.Path.Point(i)))
+		points[i] = PointExpression(s2.LatLngFromPoint(p.Path.PointAt(i)))
 	}
 	return points, nil
 }
@@ -921,7 +921,7 @@ func (p *PathExpression) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		for i, p := range expressions {
 			points[i] = s2.PointFromLatLng(s2.LatLng(p))
 		}
-		p.Path = PathFromS2Points(points)
+		p.Path = GeometryFromPoints(points)
 	}
 	return err
 }

@@ -57,7 +57,7 @@ func (SimpleHighwayWeights) Weight(segment b6.Segment) float64 {
 	return weightFromSegment(segment)
 }
 
-func IsPathUsableByBus(path b6.PathFeature) bool {
+func IsPathUsableByBus(path b6.Feature) bool {
 	if path.Get("diagonal").Value.String() == "connection" {
 		return true
 	}
@@ -81,7 +81,7 @@ func IsPathUsableByBus(path b6.PathFeature) bool {
 	return false
 }
 
-func IsPathPreferredByBus(path b6.PathFeature) bool {
+func IsPathPreferredByBus(path b6.Feature) bool {
 	highway := path.Get("#highway").Value.String()
 	return highway == "primary" || highway == "secondary" || highway == "trunk"
 }
@@ -106,7 +106,7 @@ func (BusWeights) Weight(segment b6.Segment) float64 {
 	return weightFromSegment(segment)
 }
 
-func IsPathUsableByCar(path b6.PathFeature) bool {
+func IsPathUsableByCar(path b6.Feature) bool {
 	if path.Get("diagonal").Value.String() == "connection" {
 		return true
 	}
@@ -144,7 +144,7 @@ func (CarWeights) Weight(segment b6.Segment) float64 {
 	return weightFromSegment(segment)
 }
 
-func IsPathUsableByPedestrian(path b6.PathFeature) bool {
+func IsPathUsableByPedestrian(path b6.Feature) bool {
 	// Taken from the table here:
 	// https://wiki.openstreetmap.org/wiki/OSM_tags_for_routing/Access_restrictions#United_Kingdom
 	// TODO: Factor out the logic here and IsPathUsableByBus
@@ -161,6 +161,7 @@ func IsPathUsableByPedestrian(path b6.PathFeature) bool {
 type ElevationWeights struct {
 	UpHillHard   bool
 	DownHillHard bool
+	w            b6.World
 }
 
 func (ElevationWeights) IsUseable(segment b6.Segment) bool {
@@ -177,36 +178,37 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 		first, last = last, first
 	}
 
-	path := segment.Feature
 	for i := first; i < last; i++ {
-		start := path.Feature(i)
-		stop := path.Feature(i + 1)
+		if start, ok := e.w.FindFeatureByID(segment.Feature.Reference(i).Source()).(b6.PhysicalFeature); start != nil && ok {
+			if stop, ok := e.w.FindFeatureByID(segment.Feature.Reference(i + 1).Source()).(b6.PhysicalFeature); stop != nil && ok {
 
-		w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{s2.PointFromLatLng(start.Location()), s2.PointFromLatLng(stop.Location())}).Length())
+				w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{start.Point(), stop.Point()}).Length())
 
-		startElevation, err := strconv.ParseFloat(start.Get("ele").Value.String(), 64)
-		if err == nil {
-			elevation, fromMemory = startElevation, true
-		} else {
-			startElevation = elevation
-		}
+				startElevation, err := strconv.ParseFloat(start.Get("ele").Value.String(), 64)
+				if err == nil {
+					elevation, fromMemory = startElevation, true
+				} else {
+					startElevation = elevation
+				}
 
-		stopElevation, err := strconv.ParseFloat(stop.Get("ele").Value.String(), 64)
+				stopElevation, err := strconv.ParseFloat(stop.Get("ele").Value.String(), 64)
 
-		if fromMemory && err == nil {
-			if stopElevation > startElevation { // Ascending.
-				// Naismith’s Rule adds ~6s/m of elevation,
-				// which we're normalizing against 1.38m/s avg. walking speed.
-				w += (stopElevation - startElevation) * 6 * WalkingMetersPerSecond
+				if fromMemory && err == nil {
+					if stopElevation > startElevation { // Ascending.
+						// Naismith’s Rule adds ~6s/m of elevation,
+						// which we're normalizing against 1.38m/s avg. walking speed.
+						w += (stopElevation - startElevation) * 6 * WalkingMetersPerSecond
+					}
+
+					if (e.UpHillHard && stopElevation > startElevation) ||
+						(e.DownHillHard && stopElevation < startElevation) {
+						w *= 1.2 // Arbitrary coefficient.
+					}
+				}
+
+				weight += w
 			}
-
-			if (e.UpHillHard && stopElevation > startElevation) ||
-				(e.DownHillHard && stopElevation < startElevation) {
-				w *= 1.2 // Arbitrary coefficient.
-			}
 		}
-
-		weight += w
 	}
 
 	return weight
@@ -233,7 +235,7 @@ type TransitTimeWeights struct {
 }
 
 func (t TransitTimeWeights) IsUseable(segment b6.Segment) bool {
-	if strings.HasPrefix(segment.Feature.PathID().Namespace.String(), b6.NamespaceGTFS.String()) {
+	if strings.HasPrefix(segment.Feature.FeatureID().Namespace.String(), b6.NamespaceGTFS.String()) {
 		return segment.Last > segment.First // Respect direction.
 	}
 
@@ -241,7 +243,7 @@ func (t TransitTimeWeights) IsUseable(segment b6.Segment) bool {
 }
 
 func (t TransitTimeWeights) Weight(segment b6.Segment) float64 {
-	if strings.HasPrefix(segment.Feature.PathID().Namespace.String(), b6.NamespaceGTFS.String()) {
+	if strings.HasPrefix(segment.Feature.FeatureID().Namespace.String(), b6.NamespaceGTFS.String()) {
 		var tag string
 		if t.PeakTraffic {
 			tag = "gtfs:peak"
@@ -336,9 +338,9 @@ func NewShortestPathSearchFromPoint(from b6.FeatureID) *ShortestPathSearch {
 }
 
 func isConnected(p b6.FeatureID, weights Weights, w b6.World) bool {
-	ps := w.FindPathsByPoint(p)
+	ps := w.FindReferences(p, b6.FeatureTypePath)
 	for ps.Next() {
-		if weights.IsUseable(b6.ToSegment(ps.Feature())) {
+		if weights.IsUseable(b6.ToSegment(ps.Feature().(b6.PhysicalFeature))) {
 			return true
 		}
 	}
@@ -349,7 +351,7 @@ func NewShortestPathSearchFromBuilding(area b6.AreaFeature, weights Weights, w b
 	s := newShortestPathSearch()
 	for i := 0; i < area.Len(); i++ {
 		for _, path := range area.Feature(i) {
-			for j := 0; j < path.Len(); j++ {
+			for j := 0; j < path.GeometryLen(); j++ {
 				if point := path.Feature(j); point != nil {
 					if isConnected(point.FeatureID(), weights, w) {
 						r := &reachable{point: point.FeatureID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
@@ -403,7 +405,7 @@ func (s *ShortestPathSearch) Pop() interface{} {
 }
 
 func (s *ShortestPathSearch) AddOrUpdate(segment b6.Segment, distance float64, features ShortestPathFeatures, w b6.World) {
-	point := segment.LastFeature().FeatureID()
+	point := segment.LastFeatureID()
 	updated := false
 	var r *reachable
 	var ok bool
@@ -458,8 +460,8 @@ func (s *ShortestPathSearch) ExpandSearchTo(to b6.FeatureID, maxDistance float64
 		ss := w.Traverse(r.point)
 		for ss.Next() {
 			segment := ss.Segment()
-			point := segment.LastFeature()
-			if next, ok := s.byPoint[point.FeatureID()]; !ok || !next.visited {
+			point := segment.LastFeatureID()
+			if next, ok := s.byPoint[point]; !ok || !next.visited {
 				if weights.IsUseable(segment) {
 					weight := weights.Weight(segment)
 					if r.distance+weight < maxDistance {
@@ -483,8 +485,8 @@ func (s *ShortestPathSearch) ExpandSearch(maxDistance float64, weights Weights, 
 		ss := w.Traverse(r.point)
 		for ss.Next() {
 			segment := ss.Segment()
-			point := segment.LastFeature()
-			if next, ok := s.byPoint[point.FeatureID()]; !ok || !next.visited {
+			point := segment.LastFeatureID()
+			if next, ok := s.byPoint[point]; !ok || !next.visited {
 				if weights.IsUseable(segment) {
 					weight := weights.Weight(segment)
 					if r.distance+weight < maxDistance {
@@ -506,8 +508,8 @@ func (s *ShortestPathSearch) BuildRoute(destination b6.FeatureID) b6.Route {
 	point := destination
 	for {
 		if r, ok := s.byPoint[point]; ok && r.segment != b6.SegmentInvalid {
-			route.Steps = append(route.Steps, b6.Step{Destination: point, Via: r.segment.Feature.PathID(), Cost: r.distance})
-			point = r.segment.FirstFeature().FeatureID()
+			route.Steps = append(route.Steps, b6.Step{Destination: point, Via: r.segment.Feature.FeatureID(), Cost: r.distance})
+			point = r.segment.FirstFeatureID()
 		} else {
 			route.Origin = point
 			break
@@ -528,7 +530,7 @@ func (s *ShortestPathSearch) BuildPath(destination b6.FeatureID) []b6.Segment {
 	for {
 		if r, ok := s.byPoint[point]; ok && r.segment != b6.SegmentInvalid {
 			segments = append(segments, r.segment)
-			point = r.segment.FirstFeature().FeatureID()
+			point = r.segment.FirstFeatureID()
 		} else {
 			break
 		}
@@ -560,7 +562,7 @@ func (s *ShortestPathSearch) AreaDistances() map[b6.AreaID]float64 {
 func (s *ShortestPathSearch) AllRoutes() map[b6.FeatureID]b6.Route {
 	routes := make(map[b6.FeatureID]b6.Route)
 	for id := range s.byPoint {
-		routes[id.FeatureID()] = s.BuildRoute(id)
+		routes[id] = s.BuildRoute(id)
 	}
 	for id, r := range s.byArea {
 		routes[id.FeatureID()] = routes[r.point.FeatureID()]
@@ -584,7 +586,7 @@ func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.Segme
 			if last < first {
 				first, last = last, first
 			}
-			key := b6.SegmentKey{ID: segment.Feature.PathID(), First: first, Last: last}
+			key := b6.SegmentKey{ID: segment.Feature.FeatureID(), First: first, Last: last}
 			if count, ok := counts[key]; ok {
 				counts[key] = count + 1
 			} else {
@@ -594,15 +596,15 @@ func (s *ShortestPathSearch) FillCountsAndDistancesFromPaths(counts map[b6.Segme
 			// maybe by introducting Weights to calculate the distance along the segment when
 			// interpolating
 			firstDistance, lastDistance := s1.InfAngle(), s1.InfAngle()
-			if d, ok := distances[segment.FirstFeature().FeatureID()]; ok {
+			if d, ok := distances[segment.FirstFeatureID()]; ok {
 				firstDistance = b6.MetersToAngle(d)
 			}
-			if d, ok := distances[segment.LastFeature().FeatureID()]; ok {
+			if d, ok := distances[segment.LastFeatureID()]; ok {
 				lastDistance = b6.MetersToAngle(d)
 			}
 			ds := interpolateShortestPathDistances(segment, firstDistance, lastDistance)
 			for i := 0; i < segment.Len(); i++ {
-				distances[segment.SegmentFeature(i).FeatureID()] = b6.AngleToMeters(ds[i])
+				distances[segment.SegmentFeatureID(i)] = b6.AngleToMeters(ds[i])
 			}
 		}
 	}

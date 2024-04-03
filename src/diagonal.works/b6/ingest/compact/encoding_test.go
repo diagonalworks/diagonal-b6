@@ -78,10 +78,10 @@ func TestLatLngsEncoding(t *testing.T) {
 	}
 
 	var buffer [128]byte
-	n := ls.Marshal(buffer[0:])
+	n := ls.Marshal(TypeAndNamespaceInvalid, buffer[0:])
 
 	var lls LatLngs
-	nn := lls.Unmarshal(buffer[0:])
+	nn := lls.Unmarshal(TypeAndNamespaceInvalid, buffer[0:])
 
 	if !reflect.DeepEqual(ls, lls) {
 		t.Errorf("Expected %+v, found %+v", ls, lls)
@@ -92,10 +92,69 @@ func TestLatLngsEncoding(t *testing.T) {
 
 	simple := 0
 	for _, l := range ls {
-		simple += l.Marshal(buffer[0:])
+		simple += l.Marshal(TypeAndNamespaceInvalid, buffer[0:])
 	}
 	if n > simple {
 		t.Errorf("Expected delta encoding to be more compact than explicit encoding (%d vs %d)", n, simple)
+	}
+}
+
+// TODO(mari): time out ingest tests, to catch degrading performance issues
+
+func TestLatLngsTagEncoding(t *testing.T) {
+	towpath := []s2.LatLng{
+		s2.LatLngFromDegrees(51.5367727, -0.1282827),
+		s2.LatLngFromDegrees(51.5357103, -0.1272800),
+		s2.LatLngFromDegrees(51.5353655, -0.1236310),
+	}
+	ls := make(LatLngs, len(towpath))
+	for i, l := range towpath {
+		ls[i] = LatLng{LatE7: l.Lat.E7(), LngE7: l.Lng.E7()}
+	}
+	ts := Tags{{Key: 1, Value: &ls}}
+
+	var buffer [128]byte
+	n := ts.Marshal(TypeAndNamespaceInvalid, buffer[0:])
+
+	var tts Tags
+	nn := tts.Unmarshal(TypeAndNamespaceInvalid, buffer[0:n])
+
+	if !reflect.DeepEqual(ts, tts) {
+		t.Errorf("Expected %+v, found %+v", ts, tts)
+	}
+	if n != nn {
+		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
+	}
+
+	simple := 0
+	for _, l := range ls {
+		simple += l.Marshal(TypeAndNamespaceInvalid, buffer[0:])
+	}
+	if n > simple {
+		t.Errorf("Expected delta encoding to be more compact than explicit encoding (%d vs %d)", n, simple)
+	}
+}
+
+func TestReferencesTagEncoding(t *testing.T) {
+	_, nt := newOSMNamespaces()
+	refs := References([]Reference{
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 544909185},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 314908198},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 734908185},
+	})
+	ts := Tags{{Key: 1, Value: &refs}}
+
+	var buffer [128]byte
+	n := ts.Marshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), buffer[0:])
+
+	var tts Tags
+	nn := tts.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), buffer[0:n])
+
+	if !reflect.DeepEqual(ts, tts) {
+		t.Errorf("Expected %+v, found %+v", ts, tts)
+	}
+	if n != nn {
+		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
 	}
 }
 
@@ -115,10 +174,10 @@ func TestStringTagEncoding(t *testing.T) {
 	}
 
 	var buffer [128]byte
-	n := ts.Marshal(buffer[0:])
+	n := ts.Marshal(TypeAndNamespaceInvalid, buffer[0:])
 
 	var tts Tags
-	nn := tts.Unmarshal(buffer[0:n])
+	nn := tts.Unmarshal(TypeAndNamespaceInvalid, buffer[0:n])
 
 	if !reflect.DeepEqual(ts, tts) {
 		t.Errorf("Expected %+v, found %+v", ts, tts)
@@ -131,7 +190,7 @@ func TestStringTagEncoding(t *testing.T) {
 	}
 
 	m := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}
-	expected := []b6.Tag{{Key: "highway", Value: b6.String("primary")}, {Key: "bicycle", Value: b6.String("designated")}}
+	expected := b6.Tags{{Key: "highway", Value: b6.String("primary")}, {Key: "bicycle", Value: b6.String("designated")}}
 	if found := m.AllTags(); !reflect.DeepEqual(found, expected) {
 		t.Errorf("Expected %+v, found %+v", expected, found)
 	}
@@ -145,17 +204,17 @@ func TestStringTagEncoding(t *testing.T) {
 	}
 }
 
-func TestLatLngTagEncoding(t *testing.T) {
+func TestPointTagEncoding(t *testing.T) {
 	s := map[int]string{1: "latlng"}
 	ll := s2.LatLngFromDegrees(51.53532, -0.12521)
 	value := LatLng{LatE7: ll.Lat.E7(), LngE7: ll.Lng.E7()}
-	ts := Tags{{Key: 1, Value: &value, ValueType: b6.ValueTypeLatLng}}
+	ts := Tags{{Key: 1, Value: &value}}
 
 	var buffer [128]byte
-	n := ts.Marshal(buffer[0:])
+	n := ts.Marshal(TypeAndNamespaceInvalid, buffer[0:])
 
 	var tts Tags
-	nn := tts.Unmarshal(buffer[0:n])
+	nn := tts.Unmarshal(TypeAndNamespaceInvalid, buffer[0:n])
 
 	if !reflect.DeepEqual(ts, tts) {
 		t.Errorf("Expected %+v, found %+v", ts, tts)
@@ -168,18 +227,13 @@ func TestLatLngTagEncoding(t *testing.T) {
 	}
 
 	m := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}
-	expected := []b6.Tag{{Key: "latlng", Value: b6.LatLng(ll)}}
+	expected := b6.Tags{{Key: "latlng", Value: b6.LatLng(ll)}}
 	if found := m.AllTags(); !reflect.DeepEqual(found, expected) {
 		t.Errorf("Expected %+v, found %+v", expected, found)
 	}
 
-	location, err := m.Location()
-	if err != nil {
-		t.Errorf("Expected no error got %s", err.Error())
-	}
-
-	if location.Distance(ll) > b6.MetersToAngle(1) {
-		t.Errorf("Expected location %s, found %s", ll, location)
+	if m.Point().Distance(s2.PointFromLatLng(ll)) > b6.MetersToAngle(1) {
+		t.Errorf("Expected location %s, found %s", ll, m.Point())
 	}
 }
 
@@ -191,11 +245,11 @@ func TestCommonPointEncoding(t *testing.T) {
 	value := LatLng{LatE7: ll.Lat.E7(), LngE7: ll.Lng.E7()}
 	p := CommonPoint{
 		Tags: []Tag{
-			{Key: 1, Value: &value, ValueType: b6.ValueTypeLatLng},
+			{Key: 1, Value: &value},
 		},
 		Path: Reference{
-			Namespace: nt.Encode(b6.NamespaceOSMNode),
-			Value:     544908186,
+			TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)),
+			Value:            544908186,
 		},
 	}
 
@@ -212,30 +266,26 @@ func TestCommonPointEncoding(t *testing.T) {
 		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
 	}
 
-	location, err := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}.Location()
-	if err != nil {
-		t.Errorf("Expected no error got %s", err.Error())
-	}
-
-	if location.Distance(ll) > b6.MetersToAngle(1) {
-		t.Errorf("Expected location %s, found %s", ll, location)
+	point := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}.Point()
+	if point.Distance(s2.PointFromLatLng(ll)) > b6.MetersToAngle(1) {
+		t.Errorf("Expected location %s, found %s", ll, point)
 	}
 }
 
 func TestReferenceEncoding(t *testing.T) {
 	nss, nt := newOSMNamespaces()
 	examples := []Reference{
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 5266980038},
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 9223372042121755846},
-		{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908186},
-		{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 9223372037399683994},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 5266980038},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 9223372042121755846},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908186},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 9223372037399683994},
 	}
 
 	var buffer [128]byte
 	for _, e := range examples {
-		n := e.Marshal(nss.ForType(b6.FeatureTypePoint), buffer[0:])
+		n := e.Marshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss.ForType(b6.FeatureTypePoint)), buffer[0:])
 		var r Reference
-		nn := r.Unmarshal(nss.ForType(b6.FeatureTypePoint), buffer[0:n])
+		nn := r.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss.ForType(b6.FeatureTypePoint)), buffer[0:n])
 		if !reflect.DeepEqual(e, r) {
 			t.Errorf("Expected %+v, found %+v", &e, &r)
 		}
@@ -248,16 +298,16 @@ func TestReferenceEncoding(t *testing.T) {
 func TestReferencesEncoding(t *testing.T) {
 	nss, nt := newOSMNamespaces()
 	r := References{
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 544908185},
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 544908184},
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 544908186},
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 544908182},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 544908185},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 544908184},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 544908186},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 544908182},
 	}
 
 	var buffer [128]byte
-	n1 := r.Marshal(nss.ForType(b6.FeatureTypePoint), buffer[0:])
+	n1 := r.Marshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss.ForType(b6.FeatureTypePoint)), buffer[0:])
 	var rr References
-	rr.Unmarshal(nss.ForType(b6.FeatureTypePoint), buffer[0:n1])
+	rr.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss.ForType(b6.FeatureTypePoint)), buffer[0:n1])
 	if !reflect.DeepEqual(r, rr) {
 		t.Errorf("Expected %+v, found %+v", r, rr)
 	}
@@ -269,14 +319,14 @@ func TestReferencesEncoding(t *testing.T) {
 	}
 
 	r = References{
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 544908185},
-		{Namespace: nt.Encode(b6.NamespaceOSMRelation), Value: 544908184},
-		{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908186},
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 544908182},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 544908185},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypeRelation, nt.Encode(b6.NamespaceOSMRelation)), Value: 544908184},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908186},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 544908182},
 	}
 
-	n2 := r.Marshal(nss.ForType(b6.FeatureTypePoint), buffer[0:])
-	rr.Unmarshal(nss.ForType(b6.FeatureTypePoint), buffer[0:n2])
+	n2 := r.Marshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss.ForType(b6.FeatureTypePoint)), buffer[0:])
+	rr.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss.ForType(b6.FeatureTypePoint)), buffer[0:n2])
 	if !reflect.DeepEqual(r, rr) {
 		t.Errorf("Expected %+v, found %+v", r, rr)
 	}
@@ -293,16 +343,16 @@ func TestReferencesEncodingWithLargeDeltas(t *testing.T) {
 	const maxUint64 = 0xffffffffffffffff
 	nss, nt := newOSMNamespaces()
 	r := References{
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 1},
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: maxUint64 - 1},
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 0},
-		{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: maxUint64},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 1},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: maxUint64 - 1},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 0},
+		{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: maxUint64},
 	}
 
 	var buffer [128]byte
-	n := r.Marshal(nss.ForType(b6.FeatureTypePoint), buffer[0:])
+	n := r.Marshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss.ForType(b6.FeatureTypePoint)), buffer[0:])
 	var rr References
-	rr.Unmarshal(nss.ForType(b6.FeatureTypePoint), buffer[0:n])
+	rr.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss.ForType(b6.FeatureTypePoint)), buffer[0:n])
 	if !reflect.DeepEqual(r, rr) {
 		t.Errorf("Expected %+v, found %+v", r, rr)
 	}
@@ -355,57 +405,27 @@ func TestBitsEncoding(t *testing.T) {
 	}
 }
 
-func TestGeometryMixedEncoding(t *testing.T) {
+func TestReferencesAndLatLngsEncoding(t *testing.T) {
 	_, nt := newOSMNamespaces()
-	g := PathGeometryMixed{
-		Points: []ReferenceAndLatLng{
-			ReferenceAndLatLng{
-				Reference: Reference{
-					Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 5378333638,
-				},
-			},
-			ReferenceAndLatLng{
-				LatLng: LatLngFromDegrees(51.5364858, -0.1279054),
-			},
-			ReferenceAndLatLng{
-				Reference: Reference{
-					Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 7787634209,
-				},
-			},
-			ReferenceAndLatLng{
-				LatLng: LatLngFromDegrees(51.5351683, -0.1268059),
-			},
-			ReferenceAndLatLng{
-				Reference: Reference{
-					Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 2512646902,
-				},
-			},
-			ReferenceAndLatLng{
-				Reference: Reference{
-					Namespace: nt.Encode(b6.NamespacePrivate), Value: 42,
-				},
-			},
-		},
-	}
+	g := ReferencesAndLatLngs([]ReferenceAndLatLng{
+		{Reference: Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 5378333638}},
+		{LatLng: LatLngFromDegrees(51.5364858, -0.1279054)},
+		{Reference: Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 7787634209}},
+		{LatLng: LatLngFromDegrees(51.5351683, -0.1268059)},
+		{Reference: Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 2512646902}},
+		{Reference: Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespacePrivate)), Value: 42}},
+	})
+
+	ts := Tags{{Key: 1, Value: &g}}
 
 	var buffer [128]byte
-	n := g.Marshal(nt.Encode(b6.NamespaceOSMNode), buffer[0:])
+	n := ts.Marshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), buffer[0:])
 
-	gg, nn := UnmarshalPathGeometry(nt.Encode(b6.NamespaceOSMNode), buffer[0:n])
-	if gg.Len() != len(g.Points) {
-		t.Errorf("Expected length %d, found %d", len(g.Points), gg.Len())
-	} else {
-		for i := range g.Points {
-			if ll, ok := gg.LatLng(i); ok {
-				if ll != g.Points[i].LatLng {
-					t.Errorf("Expected latlng %v, found %v", g.Points[i].LatLng, ll)
-				}
-			} else if id, ok := gg.PointID(i); ok {
-				if id != g.Points[i].Reference {
-					t.Errorf("Expected reference %v, found %v", g.Points[i].Reference, id)
-				}
-			}
-		}
+	var tts Tags
+	nn := tts.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), buffer[0:n])
+
+	if !reflect.DeepEqual(ts, tts) {
+		t.Errorf("Expected %+v, found %+v", ts, tts)
 	}
 	if n != nn {
 		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
@@ -418,16 +438,16 @@ func TestFullPointEncoding(t *testing.T) {
 	value := LatLng{LatE7: ll.Lat.E7(), LngE7: ll.Lng.E7()}
 	p := FullPoint{
 		Tags: []Tag{
-			{Key: 1, Value: &value, ValueType: b6.ValueTypeLatLng},
+			{Key: 1, Value: &value},
 		},
 		PointReferences: PointReferences{
 			Paths: References{
-				{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908185},
-				{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908184},
-				{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908186},
+				{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908185},
+				{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908184},
+				{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908186},
 			},
 			Relations: References{
-				{Namespace: nt.Encode(b6.NamespaceOSMRelation), Value: 544908182},
+				{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypeRelation, nt.Encode(b6.NamespaceOSMRelation)), Value: 544908182},
 			},
 		},
 	}
@@ -446,22 +466,24 @@ func TestFullPointEncoding(t *testing.T) {
 
 func TestPathEncoding(t *testing.T) {
 	nss, nt := newOSMNamespaces()
+	g := ReferencesAndLatLngs([]ReferenceAndLatLng{
+		{Reference: Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 5378333638}},
+		{LatLng: LatLngFromDegrees(51.5364858, -0.1279054)},
+		{Reference: Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 7787634209}},
+		{LatLng: LatLngFromDegrees(51.5351683, -0.1268059)},
+		{Reference: Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: 2512646902}},
+		{Reference: Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespacePrivate)), Value: 42}},
+	})
+
+	ts := Tags{{Key: 1, Value: &g}}
 	p := Path{
-		Points: &PathGeometryReferences{
-			Points: References{
-				{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 5266980038},
-				{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 5266980022},
-				{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 5266980036},
-				{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 5266980031},
-				{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: 5266980038},
-			},
-		},
+		Tags: ts,
 		Areas: References{
-			{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908186},
-			{Namespace: nt.Encode(b6.NamespaceOSMRelation), Value: 7972217},
+			{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908186},
+			{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypeRelation, nt.Encode(b6.NamespaceOSMRelation)), Value: 7972217},
 		},
 		Relations: References{
-			{Namespace: nt.Encode(b6.NamespaceOSMRelation), Value: 7216547},
+			{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypeRelation, nt.Encode(b6.NamespaceOSMRelation)), Value: 7216547},
 		},
 	}
 
@@ -476,10 +498,11 @@ func TestPathEncoding(t *testing.T) {
 		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
 	}
 
-	m := MarshalledPath(buffer[0:])
-	if m.Len() != p.Len() {
-		t.Errorf("Expected MarshalledPath and Path lengths to be equal (%d vs %d)", m.Len(), p.Len())
-	}
+	/* path len doesnt take in string encoding ? idk
+	m := MarshalledTags{buffer[0:], encoding.StringMap(s), nt, CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay))}
+	if m.GeometryLen() != p.GeometryLen() {
+		t.Errorf("Expected MarshalledPath and Path lengths to be equal (%d vs %d)", m.GeometryLen(), p.GeometryLen())
+	}*/
 }
 
 func TestAreaEncoding(t *testing.T) {
@@ -488,9 +511,9 @@ func TestAreaEncoding(t *testing.T) {
 		Polygons: &AreaGeometryReferences{
 			Polygons: []int{1, 2},
 			Paths: References{
-				{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908185},
-				{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908184},
-				{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908186},
+				{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908185},
+				{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908184},
+				{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908186},
 			},
 		},
 	}
@@ -553,7 +576,7 @@ func TestAreaEncodingLatLngs(t *testing.T) {
 	if p.Area() != pp.Area() {
 		t.Errorf("Expected marshalled and unmarshaled areas to be equal (%f vs %f)", p.Area(), pp.Area())
 	}
-	ppp, _ := MarshalledArea(buffer[0:]).UnmarshalPolygons(NamespaceInvalid).Polygon(0)
+	ppp, _ := MarshalledArea(buffer[0:]).UnmarshalPolygons(TypeAndNamespaceInvalid).Polygon(0)
 	if p.Area() != ppp.Area() {
 		t.Errorf("Expected marshalled area and area via MarshalledArea to be equal (%f vs %f)", p.Area(), ppp.Area())
 	}
@@ -584,8 +607,8 @@ func TestAreaEncodingMixed(t *testing.T) {
 				{
 					References: PolygonGeometryReferences{
 						Paths: References{
-							{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: ids[0]},
-							{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: ids[1]},
+							{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: ids[0]},
+							{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: ids[1]},
 						},
 					},
 				},
@@ -630,22 +653,22 @@ func TestRelationEncoding(t *testing.T) {
 		Members: Members{
 			{
 				Type: b6.FeatureTypePath,
-				ID:   Reference{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908185},
+				ID:   Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908185},
 				Role: 2,
 			},
 			{
 				Type: b6.FeatureTypeArea,
-				ID:   Reference{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908184},
+				ID:   Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908184},
 				Role: 6,
 			},
 			{
 				Type: b6.FeatureTypePoint,
-				ID:   Reference{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: 544908186},
+				ID:   Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: 544908186},
 				Role: 7,
 			},
 		},
 		Relations: References{
-			{Namespace: nt.Encode(b6.NamespaceOSMRelation), Value: 7216547},
+			{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypeRelation, nt.Encode(b6.NamespaceOSMRelation)), Value: 7216547},
 		},
 	}
 

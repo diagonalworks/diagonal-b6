@@ -85,10 +85,6 @@ func (r ReadOnlyWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFe
 	return r.World.FindCollectionsByFeature(id)
 }
 
-func (r ReadOnlyWorld) FindPathsByPoint(id b6.FeatureID) b6.PathFeatures {
-	return r.World.FindPathsByPoint(id)
-}
-
 func (r ReadOnlyWorld) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 	return r.World.FindAreasByPoint(id)
 }
@@ -190,7 +186,7 @@ func (m *BasicMutableWorld) FindFeatures(q b6.Query) b6.Features {
 
 func (m *BasicMutableWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
 	var features []b6.RelationFeature
-	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeRelation)
+	references := m.FindReferences(id, b6.FeatureTypeRelation)
 	for references.Next() {
 		features = append(features, references.Feature().(b6.RelationFeature))
 	}
@@ -200,7 +196,7 @@ func (m *BasicMutableWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationF
 
 func (m *BasicMutableWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
 	var features []b6.CollectionFeature
-	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeCollection)
+	references := m.FindReferences(id, b6.FeatureTypeCollection)
 	for references.Next() {
 		features = append(features, references.Feature().(b6.CollectionFeature))
 	}
@@ -208,18 +204,8 @@ func (m *BasicMutableWorld) FindCollectionsByFeature(id b6.FeatureID) b6.Collect
 	return NewCollectionFeatureIterator(features)
 }
 
-func (m *BasicMutableWorld) FindPathsByPoint(id b6.FeatureID) b6.PathFeatures {
-	references := m.FindReferences(id.FeatureID(), b6.FeatureTypePath)
-	var features []b6.PathFeature
-	for references.Next() {
-		features = append(features, references.Feature().(b6.PathFeature))
-	}
-
-	return NewPathFeatureIterator(features)
-}
-
 func (m *BasicMutableWorld) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
-	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeArea)
+	references := m.FindReferences(id, b6.FeatureTypeArea)
 	var features []b6.AreaFeature
 	for references.Next() {
 		features = append(features, references.Feature().(b6.AreaFeature))
@@ -381,35 +367,35 @@ func modifyTag(t b6.Taggable, key string, modifications map[string]modifiedTag) 
 	return t.Get(key)
 }
 
-type modifiedTagsPhysicalFeature struct {
+type modifiedPhysicalFeature struct {
 	b6.PhysicalFeature
 	tags ModifiedTags
 }
 
-func (m *modifiedTagsPhysicalFeature) AllTags() []b6.Tag {
-	return modifyTags(m.PhysicalFeature, m.tags[m.PhysicalFeature.FeatureID()])
+func (m *modifiedPhysicalFeature) AllTags() b6.Tags {
+	return modifyTags(m.PhysicalFeature, m.tags[m.FeatureID()])
 }
 
-func (m *modifiedTagsPhysicalFeature) Get(key string) b6.Tag {
-	return modifyTag(m.PhysicalFeature, key, m.tags[m.PhysicalFeature.FeatureID()])
+func (m *modifiedPhysicalFeature) Get(key string) b6.Tag {
+	return modifyTag(m.PhysicalFeature, key, m.tags[m.FeatureID()])
 }
 
-type modifiedTagsPath struct {
-	b6.PathFeature
+type modifiedNestedPhysicalFeature struct {
+	b6.NestedPhysicalFeature
 	tags ModifiedTags
 }
 
-func (m *modifiedTagsPath) AllTags() []b6.Tag {
-	return modifyTags(m.PathFeature, m.tags[m.PathFeature.FeatureID()])
+func (m *modifiedNestedPhysicalFeature) AllTags() b6.Tags {
+	return modifyTags(m.NestedPhysicalFeature, m.tags[m.FeatureID()])
 }
 
-func (m *modifiedTagsPath) Get(key string) b6.Tag {
-	return modifyTag(m.PathFeature, key, m.tags[m.PathFeature.FeatureID()])
+func (m *modifiedNestedPhysicalFeature) Get(key string) b6.Tag {
+	return modifyTag(m.NestedPhysicalFeature, key, m.tags[m.FeatureID()])
 }
 
-func (m *modifiedTagsPath) Feature(i int) b6.PhysicalFeature {
-	if f := m.PathFeature.Feature(i); f != nil {
-		return &modifiedTagsPhysicalFeature{f, m.tags}
+func (m *modifiedNestedPhysicalFeature) Feature(i int) b6.PhysicalFeature {
+	if f := m.NestedPhysicalFeature.Feature(i); f != nil {
+		return &modifiedPhysicalFeature{f, m.tags}
 	}
 	return nil
 }
@@ -419,7 +405,7 @@ type modifiedTagsArea struct {
 	tags ModifiedTags
 }
 
-func (m *modifiedTagsArea) AllTags() []b6.Tag {
+func (m *modifiedTagsArea) AllTags() b6.Tags {
 	return modifyTags(m.AreaFeature, m.tags[m.AreaFeature.FeatureID()])
 }
 
@@ -427,11 +413,11 @@ func (m *modifiedTagsArea) Get(key string) b6.Tag {
 	return modifyTag(m.AreaFeature, key, m.tags[m.AreaFeature.FeatureID()])
 }
 
-func (m *modifiedTagsArea) Feature(i int) []b6.PathFeature {
+func (m *modifiedTagsArea) Feature(i int) []b6.NestedPhysicalFeature {
 	if f := m.AreaFeature.Feature(i); f != nil {
-		wrapped := make([]b6.PathFeature, len(f))
+		wrapped := make([]b6.NestedPhysicalFeature, len(f))
 		for j, p := range f {
-			wrapped[j] = &modifiedTagsPath{p, m.tags}
+			wrapped[j] = &modifiedNestedPhysicalFeature{p, m.tags}
 		}
 		return wrapped
 	}
@@ -443,7 +429,7 @@ type modifiedTagsRelation struct {
 	tags ModifiedTags
 }
 
-func (m *modifiedTagsRelation) AllTags() []b6.Tag {
+func (m *modifiedTagsRelation) AllTags() b6.Tags {
 	return modifyTags(m.RelationFeature, m.tags[m.RelationFeature.FeatureID()])
 }
 
@@ -456,7 +442,7 @@ type modifiedTagsCollection struct {
 	tags ModifiedTags
 }
 
-func (m *modifiedTagsCollection) AllTags() []b6.Tag {
+func (m *modifiedTagsCollection) AllTags() b6.Tags {
 	return modifyTags(m.CollectionFeature, m.tags[m.CollectionFeature.FeatureID()])
 }
 
@@ -469,7 +455,7 @@ type modifiedTagsExpression struct {
 	tags ModifiedTags
 }
 
-func (m *modifiedTagsExpression) AllTags() []b6.Tag {
+func (m *modifiedTagsExpression) AllTags() b6.Tags {
 	return modifyTags(m.ExpressionFeature, m.tags[m.ExpressionFeature.FeatureID()])
 }
 
@@ -511,29 +497,29 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 	if feature == nil {
 		return nil
 	}
-	switch feature.FeatureID().Type {
-	case b6.FeatureTypePoint:
-		return m.WrapPointFeature(feature.(b6.PhysicalFeature))
-	case b6.FeatureTypePath:
-		return m.WrapPathFeature(feature.(b6.PathFeature))
-	case b6.FeatureTypeArea:
-		return m.WrapAreaFeature(feature.(b6.AreaFeature))
-	case b6.FeatureTypeRelation:
-		return m.WrapRelationFeature(feature.(b6.RelationFeature))
-	case b6.FeatureTypeCollection:
-		return m.WrapCollectionFeature(feature.(b6.CollectionFeature))
-	case b6.FeatureTypeExpression:
-		return m.WrapExpressionFeature(feature.(b6.ExpressionFeature))
+	switch f := feature.(type) {
+	case b6.AreaFeature:
+		return m.WrapAreaFeature(f)
+	case b6.RelationFeature:
+		return m.WrapRelationFeature(f)
+	case b6.CollectionFeature:
+		return m.WrapCollectionFeature(f)
+	case b6.ExpressionFeature:
+		return m.WrapExpressionFeature(f)
+	case b6.NestedPhysicalFeature:
+		return m.WrapNestedPhysicalFeature(f)
+	case b6.PhysicalFeature:
+		return m.WrapPhysicalFeature(f)
 	}
 	panic(fmt.Sprintf("Can't wrap %T", feature))
 }
 
-func (m ModifiedTags) WrapPointFeature(f b6.PhysicalFeature) b6.PhysicalFeature {
-	return &modifiedTagsPhysicalFeature{PhysicalFeature: f, tags: m}
+func (m ModifiedTags) WrapPhysicalFeature(f b6.PhysicalFeature) b6.PhysicalFeature {
+	return &modifiedPhysicalFeature{PhysicalFeature: f, tags: m}
 }
 
-func (m ModifiedTags) WrapPathFeature(f b6.PathFeature) b6.PathFeature {
-	return &modifiedTagsPath{PathFeature: f, tags: m}
+func (m ModifiedTags) WrapNestedPhysicalFeature(f b6.NestedPhysicalFeature) b6.NestedPhysicalFeature {
+	return &modifiedNestedPhysicalFeature{NestedPhysicalFeature: f, tags: m}
 }
 
 func (m ModifiedTags) WrapAreaFeature(f b6.AreaFeature) b6.AreaFeature {
@@ -554,7 +540,7 @@ func (m ModifiedTags) WrapExpressionFeature(f b6.ExpressionFeature) b6.Expressio
 
 func (m ModifiedTags) WrapSegment(segment b6.Segment) b6.Segment {
 	return b6.Segment{
-		Feature: m.WrapPathFeature(segment.Feature),
+		Feature: m.WrapPhysicalFeature(segment.Feature),
 		First:   segment.First,
 		Last:    segment.Last,
 	}
@@ -562,10 +548,6 @@ func (m ModifiedTags) WrapSegment(segment b6.Segment) b6.Segment {
 
 func (m ModifiedTags) WrapFeatures(features b6.Features) b6.Features {
 	return &modifiedTagsFeatures{features: features, m: m}
-}
-
-func (m ModifiedTags) WrapPaths(paths b6.PathFeatures) b6.PathFeatures {
-	return &modifiedTagsPaths{paths: paths, m: m}
 }
 
 func (m ModifiedTags) WrapAreas(areas b6.AreaFeatures) b6.AreaFeatures {
@@ -634,23 +616,6 @@ func (m *modifiedTagsFeatures) Feature() b6.Feature {
 
 func (m *modifiedTagsFeatures) FeatureID() b6.FeatureID {
 	return m.features.FeatureID()
-}
-
-type modifiedTagsPaths struct {
-	paths b6.PathFeatures
-	m     ModifiedTags
-}
-
-func (m *modifiedTagsPaths) Next() bool {
-	return m.paths.Next()
-}
-
-func (m *modifiedTagsPaths) Feature() b6.PathFeature {
-	return m.m.WrapPathFeature(m.paths.Feature())
-}
-
-func (m *modifiedTagsPaths) FeatureID() b6.FeatureID {
-	return m.paths.FeatureID()
 }
 
 type modifiedTagsAreas struct {
@@ -803,7 +768,7 @@ func (m *MutableOverlayWorld) HasFeatureWithID(id b6.FeatureID) bool {
 
 func (m *MutableOverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.RelationFeatures {
 	features := make([]b6.RelationFeature, 0)
-	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeRelation)
+	references := m.FindReferences(id, b6.FeatureTypeRelation)
 	for references.Next() {
 		features = append(features, references.Feature().(b6.RelationFeature))
 	}
@@ -813,7 +778,7 @@ func (m *MutableOverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.Relatio
 
 func (m *MutableOverlayWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
 	var features []b6.CollectionFeature
-	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeCollection)
+	references := m.FindReferences(id, b6.FeatureTypeCollection)
 	for references.Next() {
 		features = append(features, references.Feature().(b6.CollectionFeature))
 	}
@@ -821,19 +786,9 @@ func (m *MutableOverlayWorld) FindCollectionsByFeature(id b6.FeatureID) b6.Colle
 	return NewCollectionFeatureIterator(features)
 }
 
-func (m *MutableOverlayWorld) FindPathsByPoint(id b6.FeatureID) b6.PathFeatures {
-	var features []b6.PathFeature
-	references := m.FindReferences(id.FeatureID(), b6.FeatureTypePath)
-	for references.Next() {
-		features = append(features, references.Feature().(b6.PathFeature))
-	}
-
-	return NewPathFeatureIterator(features)
-}
-
 func (m *MutableOverlayWorld) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 	var features []b6.AreaFeature
-	references := m.FindReferences(id.FeatureID(), b6.FeatureTypeArea)
+	references := m.FindReferences(id, b6.FeatureTypeArea)
 	for references.Next() {
 		features = append(features, references.Feature().(b6.AreaFeature))
 	}
@@ -1133,10 +1088,6 @@ func (m *ModifiedFeatures) Update(features *FeaturesByID, references *FeatureRef
 	var new Feature
 	if m.existing != nil {
 		switch existing := m.existing.(type) {
-		case *GenericFeature:
-			existing.MergeFrom(m.features[0].(*GenericFeature))
-		case *PathFeature:
-			existing.MergeFrom(m.features[0].(*PathFeature))
 		case *AreaFeature:
 			existing.MergeFrom(m.features[0].(*AreaFeature))
 		case *RelationFeature:
@@ -1145,6 +1096,8 @@ func (m *ModifiedFeatures) Update(features *FeaturesByID, references *FeatureRef
 			existing.MergeFrom(m.features[0].(*CollectionFeature))
 		case *ExpressionFeature:
 			existing.MergeFrom(m.features[0].(*ExpressionFeature))
+		default:
+			m.existing.MergeFrom(m.features[0])
 		}
 		new = m.existing
 	} else {
@@ -1276,10 +1229,6 @@ func (m *MutableTagsOverlayWorld) FindRelationsByFeature(id b6.FeatureID) b6.Rel
 
 func (m *MutableTagsOverlayWorld) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
 	return m.tags.WrapCollections(m.base.FindCollectionsByFeature(id))
-}
-
-func (m *MutableTagsOverlayWorld) FindPathsByPoint(id b6.FeatureID) b6.PathFeatures {
-	return m.tags.WrapPaths(m.base.FindPathsByPoint(id))
 }
 
 func (m *MutableTagsOverlayWorld) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {

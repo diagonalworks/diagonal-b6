@@ -122,9 +122,9 @@ func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines
 			return fmt.Errorf("Parsing longitude for %q: %s", row, err)
 		}
 
-		ps[slot].RemoveAll()
+		ps[slot].RemoveAllTags()
 		ps[slot].AddTag(b6.Tag{Key: "#place", Value: b6.String("uprn")})
-		ps[slot].ModifyOrAddTag(b6.Tag{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(lat, lng))})
+		ps[slot].ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(lat, lng))})
 		s.JoinTags.AddTags(row[columns[0]], ps[slot])
 		if len(ps[slot].AllTags()) > 1 {
 			joined++
@@ -191,7 +191,7 @@ func (s *ClusterSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx c
 			clusters++
 			features[slot].SetFeatureID(b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespaceDiagonalUPRNCluster, Value: uint64(c)})
 			features[slot].ModifyOrAddTag(b6.Tag{Key: "uprn_cluster:size", Value: b6.String(strconv.Itoa(int(count)))})
-			features[slot].ModifyOrAddTag(b6.Tag{Key: b6.LatLngTag, Value: b6.LatLng(c.LatLng())})
+			features[slot].ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(c.LatLng())})
 			if err := parallelised(features[slot], slot%goroutines); err != nil {
 				wait()
 				return err
@@ -219,7 +219,7 @@ func (s *ClusterSource) fillCentroids(options ingest.ReadOptions, ctx context.Co
 	}
 	addUprn := func(f ingest.Feature, goroutine int) error {
 		if f, ok := f.(b6.Geometry); ok && f.GeometryType() == b6.GeometryTypePoint {
-			centroid := s2.CellIDFromLatLng(f.Location()).Parent(ClusterSourceS2Level)
+			centroid := s2.CellIDFromLatLng(s2.LatLngFromPoint(f.Point())).Parent(ClusterSourceS2Level)
 			centroids[goroutine] = append(centroids[goroutine], centroid)
 		}
 		return nil

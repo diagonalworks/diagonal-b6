@@ -9,7 +9,7 @@ import (
 
 func TestMatches(t *testing.T) {
 	id := b6.FeatureID{b6.FeatureTypePoint, "diagonal.works/test", 0}
-	f := &GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5366567, -0.1263944))}}}
+	f := &GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5366567, -0.1263944))}}}
 	f.AddTag(b6.Tag{Key: "name", Value: b6.String("Vermuteria")})
 	f.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("cafe")})
 

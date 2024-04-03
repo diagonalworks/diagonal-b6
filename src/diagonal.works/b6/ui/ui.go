@@ -25,6 +25,7 @@ import (
 	"diagonal.works/b6/ingest"
 	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/renderer"
+	"github.com/golang/geo/s2"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -371,7 +372,7 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 	defer o.Lock.RUnlock()
 	w := o.Worlds.FindOrCreateWorld(request.Root.FeatureID())
 	if root := b6.FindCollectionByID(request.Root, w); root != nil {
-		response.Locked = root.GetString("locked") == "yes"
+		response.Locked = root.Get("locked").String() == "yes"
 		c := b6.AdaptCollection[string, b6.FeatureID](root)
 		i := c.Begin()
 		for {
@@ -384,9 +385,10 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 			if i.Key() == "centroid" {
 				if centroid := w.FindFeatureByID(i.Value()); centroid != nil {
 					if p, ok := centroid.(b6.PhysicalFeature); ok {
+						ll := s2.LatLngFromPoint(p.Point())
 						response.MapCenter = &LatLngJSON{
-							LatE7: int(p.Location().Lat.E7()),
-							LngE7: int(p.Location().Lng.E7()),
+							LatE7: int(ll.Lat.E7()),
+							LngE7: int(ll.Lng.E7()),
 						}
 						response.MapZoom = DefaultMapZoom
 					}
@@ -632,20 +634,10 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 		fillSubstackFromAtom(&substack, atom)
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 		response.AddGeoJSON(r.ToGeoJSON())
-	case b6.Path:
-		dimension := b6.AngleToMeters(r.Polyline().Length())
-		atom := &pb.AtomProto{
-			Atom: &pb.AtomProto_Download{
-				Download: fmt.Sprintf("%.2fm path", dimension),
-			},
-		}
-		var substack pb.SubstackProto
-		fillSubstackFromAtom(&substack, atom)
-		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-		response.AddGeoJSON(r.ToGeoJSON())
 	case b6.Geometry:
-		if r.GeometryType() == b6.GeometryTypePoint {
-			ll := r.Location()
+		switch r.GeometryType() {
+		case b6.GeometryTypePoint:
+			ll := s2.LatLngFromPoint(r.Point())
 			atom := &pb.AtomProto{
 				Atom: &pb.AtomProto_Value{
 					Value: fmt.Sprintf("%f, %f", ll.Lat.Degrees(), ll.Lng.Degrees()),
@@ -654,10 +646,19 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			var substack1 pb.SubstackProto
 			fillSubstackFromAtom(&substack1, atom)
 			p.Stack.Substacks = append(p.Stack.Substacks, &substack1)
-			var substack2 pb.SubstackProto
-			p.Stack.Substacks = append(p.Stack.Substacks, &substack2)
 			response.AddGeoJSON(r.ToGeoJSON())
-		} else {
+		case b6.GeometryTypePath:
+			dimension := b6.AngleToMeters(r.Polyline().Length())
+			atom := &pb.AtomProto{
+				Atom: &pb.AtomProto_Download{
+					Download: fmt.Sprintf("%.2fm path", dimension),
+				},
+			}
+			var substack pb.SubstackProto
+			fillSubstackFromAtom(&substack, atom)
+			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
+			response.AddGeoJSON(r.ToGeoJSON())
+		default:
 			return o.fillResponseFromResult(response, r.ToGeoJSON(), w)
 		}
 	case *geojson.FeatureCollection:

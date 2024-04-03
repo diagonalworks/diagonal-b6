@@ -116,7 +116,7 @@ func (r *RenderRule) ToQuery(zoom uint) (b6.Query, bool) {
 	if (r.MinZoom > 0 && zoom < r.MinZoom) || (r.MaxZoom > 0 && zoom > r.MaxZoom) {
 		return nil, false
 	}
-	if r.Tag.StringValue() != "" {
+	if r.Tag.IsValid() && r.Tag.Value.String() != "" {
 		return b6.Tagged(r.Tag), true
 	} else {
 		return b6.Keyed{Key: r.Tag.Key}, true
@@ -138,7 +138,7 @@ func (rs RenderRules) ToQuery(zoom uint) b6.Query {
 func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 	for _, r := range rs {
 		if r.Tag.Key == tag.Key {
-			if r.Tag.StringValue() == "" || r.Tag.StringValue() == tag.StringValue() {
+			if r.Tag.Value.String() == "" || r.Tag.Value.String() == tag.Value.String() {
 				return true
 			}
 		}
@@ -211,7 +211,7 @@ func (b *BasemapRenderer) findFeatures(root b6.FeatureID, tile b6.Tile) []b6.Fea
 func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs []*Feature) []*Feature {
 	var tags [1]b6.Tag
 	for _, rule := range b.RenderRules {
-		if t := f.Get(rule.Tag.Key); t.IsValid() && (rule.Tag.StringValue() == "" || t.StringValue() == rule.Tag.StringValue()) {
+		if t := f.Get(rule.Tag.Key); t.IsValid() && (!rule.Tag.IsValid() || t.Value.String() == rule.Tag.Value.String()) {
 			tags[0] = b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value}
 			fs = FillFeaturesFromFeature(f, tags[0:], fs, &rule)
 			layers[rule.Layer].AddFeatures(fs)
@@ -227,7 +227,7 @@ func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature, rule *
 		case b6.GeometryTypePoint:
 			tfs = fillFeaturesFromPoint(f, tags, tfs, rule)
 		case b6.GeometryTypePath:
-			tfs = fillFeaturesFromPath(f.(b6.PathFeature), tags, tfs, rule)
+			tfs = fillFeaturesFromPath(f, tags, tfs, rule)
 		case b6.GeometryTypeArea:
 			tfs = fillFeaturesFromArea(f.(b6.AreaFeature), tags, tfs, rule)
 		}
@@ -236,7 +236,7 @@ func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature, rule *
 }
 
 func fillFeaturesFromPoint(point b6.PhysicalFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
-	f := NewFeature(NewPoint(s2.PointFromLatLng(point.Location())))
+	f := NewFeature(NewPoint(point.Point()))
 	f.ID = api.TileFeatureID(point.FeatureID())
 	for _, t := range tags {
 		f.Tags[t.Key] = t.Value.String()
@@ -246,7 +246,7 @@ func fillFeaturesFromPoint(point b6.PhysicalFeature, tags []b6.Tag, fs []*Featur
 	return append(fs, f)
 }
 
-func fillFeaturesFromPath(path b6.PathFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
+func fillFeaturesFromPath(path b6.PhysicalFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
 	f := NewFeature(NewLineString(path.Polyline()))
 	f.ID = api.TileFeatureID(path.FeatureID())
 	for _, t := range tags {
@@ -297,10 +297,10 @@ func findIconPoint(area b6.AreaFeature) (s2.Point, bool) {
 	for i := 0; i < area.Len(); i++ {
 		paths := area.Feature(i)
 		for _, path := range paths {
-			for j := 0; j < path.Len(); j++ {
+			for j := 0; j < path.GeometryLen(); j++ {
 				if point := path.Feature(j); point != nil {
 					if entrance := point.Get("entrance"); entrance.IsValid() {
-						return path.Point(j), true
+						return path.PointAt(j), true
 					}
 				}
 			}
@@ -308,8 +308,8 @@ func findIconPoint(area b6.AreaFeature) (s2.Point, bool) {
 	}
 	if area.Len() > 0 {
 		if paths := area.Feature(0); len(paths) > 0 {
-			if paths[0].Len() > 0 {
-				return paths[0].Point(0), true
+			if paths[0].GeometryLen() > 0 {
+				return paths[0].PointAt(0), true
 			}
 		}
 	}

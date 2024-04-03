@@ -38,13 +38,13 @@ func collectAreas(context *api.Context, areas b6.Collection[any, b6.Area]) (b6.A
 
 // Return the distance in meters between the given points.
 func distanceMeters(context *api.Context, a b6.Geometry, b b6.Geometry) (float64, error) {
-	return b6.AngleToMeters(a.Location().Distance(b.Location())), nil
+	return b6.AngleToMeters(a.Point().Distance(b.Point())), nil
 }
 
 // Return the distance in meters between the given path, and the project of the give point onto it.
-func distanceToPointMeters(context *api.Context, path b6.Path, point b6.Geometry) (float64, error) {
+func distanceToPointMeters(context *api.Context, path b6.Geometry, point b6.Geometry) (float64, error) {
 	polyline := *path.Polyline()
-	projection, vertex := polyline.Project(s2.PointFromLatLng(point.Location()))
+	projection, vertex := polyline.Project(point.Point())
 	distance := polyline[vertex-1].Distance(projection)
 	if vertex > 1 {
 		p := polyline[0:vertex]
@@ -61,7 +61,7 @@ func centroid(context *api.Context, geometry b6.Geometry) (b6.Geometry, error) {
 	case b6.GeometryTypePoint:
 		return geometry, nil
 	case b6.GeometryTypePath:
-		return b6.GeometryFromLatLng(s2.LatLngFromPoint(geometry.(b6.Path).Polyline().Centroid())), nil
+		return b6.GeometryFromLatLng(s2.LatLngFromPoint(geometry.Polyline().Centroid())), nil
 	case b6.GeometryTypeArea:
 		query := s2.NewConvexHullQuery()
 		for i := 0; i < geometry.(b6.Area).Len(); i++ {
@@ -75,7 +75,7 @@ func centroid(context *api.Context, geometry b6.Geometry) (b6.Geometry, error) {
 }
 
 // Return the point at the given fraction along the given path.
-func interpolate(context *api.Context, path b6.Path, fraction float64) (b6.Geometry, error) {
+func interpolate(context *api.Context, path b6.Geometry, fraction float64) (b6.Geometry, error) {
 	polyline := path.Polyline()
 	point, _ := polyline.Interpolate(fraction)
 	return b6.GeometryFromLatLng(s2.LatLngFromPoint(point)), nil
@@ -107,7 +107,7 @@ func areaArea(context *api.Context, area b6.Area) (float64, error) {
 
 // Return a rectangle polygon with the given top left and bottom right points.
 func rectanglePolygon(context *api.Context, a b6.Geometry, b b6.Geometry) (b6.Area, error) {
-	r := s2.EmptyRect().AddPoint(a.Location()).AddPoint(b.Location())
+	r := s2.EmptyRect().AddPoint(s2.LatLngFromPoint(a.Point())).AddPoint(s2.LatLngFromPoint(b.Point()))
 	points := make([]s2.Point, 4)
 	for i := range points {
 		points[i] = s2.PointFromLatLng(r.Vertex(i))
@@ -117,7 +117,7 @@ func rectanglePolygon(context *api.Context, a b6.Geometry, b b6.Geometry) (b6.Ar
 
 // Return a polygon approximating a spherical cap with the given center and radius in meters.
 func capPolygon(context *api.Context, center b6.Geometry, radius float64) (b6.Area, error) {
-	return b6.AreaFromS2Loop(s2.RegularLoop(s2.PointFromLatLng(center.Location()), b6.MetersToAngle(radius), 128)), nil
+	return b6.AreaFromS2Loop(s2.RegularLoop(center.Point(), b6.MetersToAngle(radius), 128)), nil
 }
 
 func filterShortEdges(edges []s2.Edge, threshold s1.Angle) []s2.Edge {
@@ -164,9 +164,11 @@ func snapAreaEdges(context *api.Context, area b6.Area, query b6.Query, threshold
 		cap := polygon.CapBound()
 		buffered := s2.CapFromCenterAngle(cap.Center(), cap.Radius()+b6.MetersToAngle(threshold))
 		polylines := make([]*s2.Polyline, 0, 4)
-		paths := b6.FindPaths(b6.Intersection{query, b6.MightIntersect{Region: buffered}}, context.World)
+		paths := context.World.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Intersection{query, b6.MightIntersect{Region: buffered}}})
 		for paths.Next() {
-			polylines = append(polylines, paths.Feature().Polyline())
+			if path, ok := paths.Feature().(b6.PhysicalFeature); ok {
+				polylines = append(polylines, path.Polyline())
+			}
 		}
 		loops := make([]*s2.Loop, 0, polygon.NumLoops())
 		for j := 0; j < polygon.NumLoops(); j++ {
@@ -215,10 +217,10 @@ func convexHull(context *api.Context, c b6.Collection[any, b6.Geometry]) (b6.Are
 
 		switch i.Value().GeometryType() {
 		case b6.GeometryTypePoint:
-			query.AddPoint(s2.PointFromLatLng(i.Value().Location()))
+			query.AddPoint(i.Value().Point())
 		case b6.GeometryTypePath:
-			for j := 0; j < i.Value().(b6.Path).Len(); j++ {
-				query.AddPoint(i.Value().(b6.Path).Point(j))
+			for j := 0; j < i.Value().GeometryLen(); j++ {
+				query.AddPoint(i.Value().PointAt(j))
 			}
 		case b6.GeometryTypeArea:
 			for j := 0; j < i.Value().(b6.Area).Len(); j++ {
