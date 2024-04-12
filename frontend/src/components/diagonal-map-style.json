@@ -1,0 +1,316 @@
+{
+    "version": 8,
+    "name": "Diagonal",
+    "metadata": {
+        "maputnik:license": "https://github.com/maputnik/osm-liberty/blob/gh-pages/LICENSE.md",
+        "maputnik:renderer": "mbgljs",
+        "openmaptiles:version": "3.x"
+    },
+    "sources": {
+        "diagonal": {
+            "type": "vector",
+            "tiles": [
+                "https://baseline.diagonal.works/tiles/base/{z}/{x}/{y}.mvt"
+            ],
+            "minzoom": 10,
+            "maxzoom": 16
+        }
+    },
+    "sprite": "https://maputnik.github.io/osm-liberty/sprites/osm-liberty",
+    "glyphs": "src/assets/fonts/glyphs/{fontstack}/{range}.pbf",
+    "layers": [
+        {
+            "id": "background",
+            "type": "background",
+            "paint": { "background-color": "#eceff8" }
+        },
+        {
+            "id": "contour",
+            "type": "line",
+            "source": "diagonal",
+            "source-layer": "contour",
+            "paint": { "line-color": "#e1e1ed", "line-width": 1 }
+        },
+        {
+            "id": "water",
+            "type": "fill",
+            "source": "diagonal",
+            "source-layer": "water",
+            "filter": ["all"],
+            "paint": { "fill-color": "#e7efff" }
+        },
+        {
+            "id": "landuse-nature",
+            "type": "fill",
+            "source": "diagonal",
+            "source-layer": "landuse",
+            "filter": [
+                "any",
+                ["==", "landuse", "meadow"],
+                ["==", "landuse", "heath"]
+            ],
+            "paint": { "fill-color": "#dbdeeb" }
+        },
+        {
+            "id": "coastline",
+            "type": "line",
+            "source": "diagonal",
+            "source-layer": "boundary",
+            "filter": ["all", ["==", "natural", "coastline"]],
+            "paint": { "line-color": "#4f5a7d", "line-width": 0.3 }
+        },
+        {
+            "id": "landuse-forest",
+            "type": "fill",
+            "source": "diagonal",
+            "source-layer": "landuse",
+            "filter": ["any", ["==", "landuse", "forest"]],
+            "paint": { "fill-color": "#c5cadd" }
+        },
+        {
+            "id": "landuse-greenspaces",
+            "type": "fill",
+            "source": "diagonal",
+            "source-layer": "landuse",
+            "filter": [
+                "any",
+                ["==", "landuse", "park"],
+                ["==", "landuse", "grass"],
+                ["==", "leisure", "pitch"],
+                ["==", "leisure", "park"],
+                ["==", "leisure", "garden"],
+                ["==", "leisure", "playground"],
+                ["==", "leisure", "natural_reserve"]
+            ],
+            "paint": { "fill-color": "#e1e1ee" }
+        },
+        {
+            "id": "landuse-urban",
+            "type": "fill",
+            "source": "diagonal",
+            "source-layer": "landuse",
+            "filter": [
+                "any",
+                ["==", "landuse", "commercial"],
+                ["==", "landuse", "residential"],
+                ["==", "landuse", "industrial"]
+            ],
+            "paint": { "fill-color": "#c5cadd" }
+        },
+        {
+            "id": "building",
+            "type": "fill",
+            "source": "diagonal",
+            "source-layer": "building",
+            "filter": ["all"],
+            "paint": {
+                "fill-color": "rgba(255, 255, 255, 1)",
+                "fill-outline-color": "#4f5a7d"
+            }
+        },
+        {
+            "id": "road-outline",
+            "type": "line",
+            "source": "diagonal",
+            "source-layer": "road",
+            "paint": {
+                "line-color": "#9aa4cc",
+                "line-width": [
+                    "interpolate",
+                    ["exponential", 2],
+                    ["zoom"],
+                    12,
+                    [
+                        "*",
+                        [
+                            "match",
+                            ["get", "highway"],
+                            "trunk",
+                            1.5,
+                            "motorway",
+                            1.5,
+                            "primary",
+                            1.2,
+                            "tertiary",
+                            1.1,
+                            "secondary",
+                            1.1,
+                            "street",
+                            1.1,
+                            "unclassified",
+                            1,
+                            "residential",
+                            1,
+                            "service",
+                            1,
+                            "cycleway",
+                            0.5,
+                            "footway",
+                            0.5,
+                            "path",
+                            0.5,
+                            1
+                        ],
+                        ["^", 2, 1.2]
+                    ],
+                    20,
+                    [
+                        "*",
+                        [
+                            "match",
+                            ["get", "highway"],
+                            "trunk",
+                            1.5,
+                            "motorway",
+                            1.5,
+                            "primary",
+                            1.2,
+                            "tertiary",
+                            1.1,
+                            "secondary",
+                            1.1,
+                            "street",
+                            1.1,
+                            "unclassified",
+                            1,
+                            "residential",
+                            1,
+                            "service",
+                            1,
+                            "cycleway",
+                            0.5,
+                            "footway",
+                            0.5,
+                            "path",
+                            0.5,
+                            1
+                        ],
+                        ["^", 2, 5.5]
+                    ]
+                ]
+            }
+        },
+        {
+            "id": "road",
+            "type": "line",
+            "source": "diagonal",
+            "source-layer": "road",
+            "paint": {
+                "line-width": [
+                    "interpolate",
+                    ["exponential", 2],
+                    ["zoom"],
+                    12,
+                    [
+                        "*",
+                        [
+                            "match",
+                            ["get", "highway"],
+                            "trunk",
+                            1.5,
+                            "motorway",
+                            1.5,
+                            "primary",
+                            1.2,
+                            "tertiary",
+                            1.1,
+                            "secondary",
+                            1.1,
+                            "street",
+                            1.1,
+                            "unclassified",
+                            1,
+                            "residential",
+                            1,
+                            "service",
+                            1,
+                            "cycleway",
+                            0.5,
+                            "footway",
+                            0.5,
+                            "path",
+                            0.5,
+                            1
+                        ],
+                        ["^", 2, 0.8]
+                    ],
+                    20,
+                    [
+                        "*",
+                        [
+                            "match",
+                            ["get", "highway"],
+                            "trunk",
+                            1.5,
+                            "motorway",
+                            1.5,
+                            "primary",
+                            1.2,
+                            "tertiary",
+                            1.1,
+                            "secondary",
+                            1.1,
+                            "street",
+                            1.1,
+                            "unclassified",
+                            1,
+                            "residential",
+                            1,
+                            "service",
+                            1,
+                            "cycleway",
+                            0.5,
+                            "footway",
+                            0.5,
+                            "path",
+                            0.5,
+                            1
+                        ],
+                        ["^", 2, 5]
+                    ]
+                ],
+                "line-color": "#e1e1ee"
+            }
+        },
+        {
+            "id": "road-rail",
+            "type": "line",
+            "source": "diagonal",
+            "source-layer": "road",
+            "filter": ["all", ["has", "railway"]],
+            "paint": { "line-color": "#9aa4cc", "line-width": 2 }
+        },
+        {
+            "id": "road-label",
+            "type": "symbol",
+            "source": "diagonal",
+            "source-layer": "road",
+            "filter": ["all", ["has", "name"]],
+            "layout": {
+                "symbol-placement": "line-center",
+                "text-field": ["get", "name"],
+                "text-font": ["Unica77"],
+                "text-size": 11
+            },
+            "paint": {
+                "text-color": "#192939",
+                "text-halo-color": "rgba(255, 255, 255, 1)",
+                "text-halo-width": 1
+            }
+        },
+        {
+            "id": "labels",
+            "type": "symbol",
+            "source": "diagonal",
+            "source-layer": "label",
+            "filter": ["all", ["has", "name"]],
+            "layout": {
+                "text-field": { "type": "identity", "property": "name" },
+                "text-font": ["Unica77"],
+                "text-justify": "left",
+                "text-offset": [6, 1]
+            }
+        }
+    ],
+    "id": "osm-liberty"
+}
