@@ -5,6 +5,19 @@ import { defineConfig } from 'vite';
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react()],
+    server: {
+        // @TODO: This is a temporary proxy while the new frontend is not integrated
+        proxy: {
+            '/api': {
+                target: 'https://baseline.diagonal.works/',
+                changeOrigin: true,
+                rewrite: (path) => {
+                    console.log(path);
+                    return path.replace(/^\/api/, '');
+                },
+            },
+        },
+    },
     resolve: {
         alias: [
             {

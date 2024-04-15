@@ -42,7 +42,6 @@ export function Map({
                 }}
                 attributionControl={false}
                 mapStyle={diagonalBasemapStyle as StyleSpecification}
-                onSourceData={(e) => console.log(e)}
             />
         </div>
     );
