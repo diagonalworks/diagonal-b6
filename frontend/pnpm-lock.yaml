@@ -83,6 +83,9 @@ dependencies:
   jotai-immer:
     specifier: ^0.3.0
     version: 0.3.0(immer@10.0.4)(jotai@2.8.0)(react@18.2.0)
+  jotai-location:
+    specifier: ^0.5.4
+    version: 0.5.4(jotai@2.8.0)
   lodash:
     specifier: ^4.17.21
     version: 4.17.21
@@ -8406,6 +8409,14 @@ packages:
       immer: 10.0.4
       jotai: 2.8.0(@types/react@18.2.55)(react@18.2.0)
       react: 18.2.0
+    dev: false
+
+  /jotai-location@0.5.4(jotai@2.8.0):
+    resolution: {integrity: sha512-IqpyYLAF6HgoDoJVlX66IGvgrugCA1LJybT01NqenpdwypPtUB6u0cnJZMbN6axU+Yl2FTI6l+4x9IWh4WGFRA==}
+    peerDependencies:
+      jotai: '>=1.11.0'
+    dependencies:
+      jotai: 2.8.0(@types/react@18.2.55)(react@18.2.0)
     dev: false
 
   /jotai@2.8.0(@types/react@18.2.55)(react@18.2.0):

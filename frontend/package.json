@@ -41,6 +41,7 @@
         "immer": "^10.0.4",
         "jotai": "^2.8.0",
         "jotai-immer": "^0.3.0",
+        "jotai-location": "^0.5.4",
         "lodash": "^4.17.21",
         "maplibre-gl": "^4.1.2",
         "react": "^18.2.0",
