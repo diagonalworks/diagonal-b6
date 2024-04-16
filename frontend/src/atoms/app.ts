@@ -1,5 +1,5 @@
 import { urlSearchParamsStorage } from '@/lib/storage';
-import { UIResponseProto } from '@/types/generated/ui';
+import { StartupResponse } from '@/types/startup';
 import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
 
@@ -19,15 +19,13 @@ export const collectionAtom = atomWithStorage(
 );
 
 export const appAtom = atomWithImmer<{
-    docked?: UIResponseProto[];
-    session: number | null;
+    startup?: StartupResponse;
     scenarios: Scenarios;
     tabs: {
         left: keyof Scenarios;
         right?: keyof Scenarios;
     };
 }>({
-    session: null,
     tabs: {
         left: 'baseline',
     },

@@ -98,17 +98,6 @@
             "paint": { "fill-color": "#c5cadd" }
         },
         {
-            "id": "building",
-            "type": "fill",
-            "source": "diagonal",
-            "source-layer": "building",
-            "filter": ["all"],
-            "paint": {
-                "fill-color": "rgba(255, 255, 255, 1)",
-                "fill-outline-color": "#4f5a7d"
-            }
-        },
-        {
             "id": "road-outline",
             "type": "line",
             "source": "diagonal",
@@ -309,6 +298,17 @@
                 "text-font": ["Unica77"],
                 "text-justify": "left",
                 "text-offset": [6, 1]
+            }
+        },
+        {
+            "id": "building",
+            "type": "fill",
+            "source": "diagonal",
+            "source-layer": "building",
+            "filter": ["all"],
+            "paint": {
+                "fill-color": "rgba(255, 255, 255, 1)",
+                "fill-outline-color": "#4f5a7d"
             }
         }
     ],

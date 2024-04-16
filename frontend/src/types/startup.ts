@@ -8,6 +8,10 @@ export type LatLng = {
 
 export type StartupResponse = {
     version?: string;
+    context?: {
+        namespace: string;
+        type: string;
+    };
     docked?: UIResponseProto[];
     openDockIndex?: number;
     mapCenter?: LatLng;

@@ -56,8 +56,7 @@ const Workspace = () => {
                 ...(startup.data.mapZoom && { zoom: startup.data.mapZoom }),
             });
             setApp((draft) => {
-                draft.docked = startup.data.docked;
-                draft.session = startup.data.session;
+                draft.startup = startup.data;
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
