@@ -8,7 +8,10 @@ const INITIAL_COORDINATES = { latE7: 515361156, lngE7: -1255161 };
 export const zoomAtom = atomWithStorage<number>(
     'z',
     16,
-    urlSearchParamsStorage({})
+    urlSearchParamsStorage({}),
+    {
+        getOnInit: true,
+    }
 );
 
 export const centerAtom = atomWithStorage<{ lat: number; lng: number }>(
@@ -21,6 +24,7 @@ export const centerAtom = atomWithStorage<{ lat: number; lng: number }>(
         serialize: (value) =>
             value.lat && value.lng ? `${value.lat},${value.lng}` : '',
         deserialize: (value) => {
+            console.log({ value });
             if (!value)
                 return {
                     lat: INITIAL_COORDINATES.latE7 / 1e7,
@@ -29,7 +33,10 @@ export const centerAtom = atomWithStorage<{ lat: number; lng: number }>(
             const [lat, lng] = value.split(',').map(Number);
             return { lat, lng };
         },
-    })
+    }),
+    {
+        getOnInit: true,
+    }
 );
 
 export const viewAtom = atom(
