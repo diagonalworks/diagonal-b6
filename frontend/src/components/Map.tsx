@@ -2,9 +2,10 @@ import { appAtom } from '@/atoms/app';
 import { viewAtom } from '@/atoms/location';
 import { MapControls } from '@/components/system/MapControls';
 import { fetchB6 } from '@/lib/b6';
+import { StackWrapper } from '@/lib/renderer';
 import { useChartDimensions } from '@/lib/useChartDimensions';
 import { StackResponse } from '@/types/stack';
-import { FrameIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
+import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useAtom, useAtomValue } from 'jotai';
 import { debounce } from 'lodash';
@@ -17,12 +18,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { HTMLAttributes, useCallback, useState } from 'react';
 import { Map as MapLibre, ViewState, useMap } from 'react-map-gl/maplibre';
 import { twMerge } from 'tailwind-merge';
-import { match } from 'ts-pattern';
 import diagonalBasemapStyle from './diagonal-map-style.json';
-import { Header } from './system/Header';
-import { LabelledIcon } from './system/LabelledIcon';
-import { Line } from './system/Line';
-import { Stack } from './system/Stack';
 
 export function Map({
     id,
@@ -134,68 +130,16 @@ export function Map({
                         <MinusIcon />
                     </MapControls.Button>
                 </MapControls>
-                {stackQuery.data && (
-                    <Stack
+                {stackQuery.data && stackQuery.data.proto.stack && (
+                    <div
                         className="absolute"
                         style={{
                             left: selected?.coordinates.x,
                             top: selected?.coordinates.y,
                         }}
                     >
-                        {stackQuery.data.proto.stack?.substacks.map((s) => {
-                            return Object.entries(s).map(([k, v]) => {
-                                return match(k)
-                                    .with('lines', () => {
-                                        return v.map((l) => {
-                                            console.log(l);
-                                            return (
-                                                <Line>
-                                                    {Object.entries(l).map(
-                                                        ([lk, lv]) => {
-                                                            console.log(lk);
-                                                            return match(lk)
-                                                                .with(
-                                                                    'header',
-                                                                    () => {
-                                                                        console.log(
-                                                                            lv
-                                                                        );
-                                                                        return (
-                                                                            <Header>
-                                                                                <LabelledIcon>
-                                                                                    <LabelledIcon.Icon>
-                                                                                        <FrameIcon />
-                                                                                    </LabelledIcon.Icon>
-                                                                                    <LabelledIcon.Label>
-                                                                                        {
-                                                                                            lv
-                                                                                                .title
-                                                                                                .labelledIcon
-                                                                                                .label
-                                                                                        }
-                                                                                    </LabelledIcon.Label>
-                                                                                </LabelledIcon>
-                                                                            </Header>
-                                                                        );
-                                                                    }
-                                                                )
-                                                                .otherwise(
-                                                                    () => (
-                                                                        <span>
-                                                                            @TODO
-                                                                        </span>
-                                                                    )
-                                                                );
-                                                        }
-                                                    )}
-                                                </Line>
-                                            );
-                                        });
-                                    })
-                                    .otherwise(() => null);
-                            });
-                        })}
-                    </Stack>
+                        <StackWrapper stack={stackQuery.data.proto.stack} />
+                    </div>
                 )}
             </MapLibre>
         </div>
