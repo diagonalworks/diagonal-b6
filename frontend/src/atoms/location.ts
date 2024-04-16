@@ -24,7 +24,6 @@ export const centerAtom = atomWithStorage<{ lat: number; lng: number }>(
         serialize: (value) =>
             value.lat && value.lng ? `${value.lat},${value.lng}` : '',
         deserialize: (value) => {
-            console.log({ value });
             if (!value)
                 return {
                     lat: INITIAL_COORDINATES.latE7 / 1e7,
