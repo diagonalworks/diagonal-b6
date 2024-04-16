@@ -12,7 +12,6 @@ export default defineConfig({
                 target: 'https://baseline.diagonal.works/',
                 changeOrigin: true,
                 rewrite: (path) => {
-                    console.log(path);
                     return path.replace(/^\/api/, '');
                 },
             },
