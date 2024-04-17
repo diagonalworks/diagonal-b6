@@ -2,6 +2,7 @@ import { urlSearchParamsStorage } from '@/lib/storage';
 import { StartupResponse } from '@/types/startup';
 import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
+import { Point } from 'maplibre-gl';
 
 type Scenario = {
     name: string;
@@ -25,6 +26,14 @@ export const appAtom = atomWithImmer<{
         left: keyof Scenarios;
         right?: keyof Scenarios;
     };
+    stacks: Record<
+        string,
+        {
+            expression: string;
+            coordinates: Point;
+            tab?: keyof Scenarios;
+        }
+    >;
 }>({
     tabs: {
         left: 'baseline',
@@ -34,4 +43,5 @@ export const appAtom = atomWithImmer<{
             name: 'Baseline',
         },
     },
+    stacks: {},
 });

@@ -1,3 +1,4 @@
+import { appAtom } from '@/atoms/app';
 import { Header } from '@/components/system/Header';
 import { LabelledIcon } from '@/components/system/LabelledIcon';
 import { Line } from '@/components/system/Line';
@@ -12,16 +13,34 @@ import {
     SubstackProto,
 } from '@/types/generated/ui';
 import { DotIcon, FrameIcon, SquareIcon } from '@radix-ui/react-icons';
-import { useMemo, useState } from 'react';
+import { useSetAtom } from 'jotai';
+import { omit } from 'lodash';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { match } from 'ts-pattern';
 
-export const StackWrapper = ({ stack }: { stack: StackProto }) => {
+const StackContext = createContext<{
+    id?: string;
+}>({});
+
+const useStackContext = () => useContext(StackContext);
+
+export const StackWrapper = ({
+    stack,
+    id,
+}: {
+    stack: StackProto;
+    id: string;
+}) => {
     return (
-        <>
+        <StackContext.Provider
+            value={{
+                id,
+            }}
+        >
             {stack.substacks.map((substack, i) => {
                 return <SubstackWrapper key={i} substack={substack} />;
             })}
-        </>
+        </StackContext.Provider>
     );
 };
 
@@ -36,13 +55,30 @@ export const SubstackWrapper = ({ substack }: { substack: SubstackProto }) => {
 };
 
 export const LineWrapper = ({ line }: { line: LineProto }) => {
+    const setAppAtom = useSetAtom(appAtom);
+    const { id } = useStackContext();
     return (
         <Line>
             {line?.header && (
                 <Header>
                     {line.header.title && (
-                        <AtomWrapper atom={line.header.title} />
+                        <Header.Label>
+                            <AtomWrapper atom={line.header.title} />
+                        </Header.Label>
                     )}
+                    <Header.Actions
+                        close
+                        slotProps={{
+                            close: {
+                                onClick: () => {
+                                    if (!id) return;
+                                    setAppAtom((draft) => {
+                                        draft.stacks = omit(draft.stacks, id);
+                                    });
+                                },
+                            },
+                        }}
+                    />
                 </Header>
             )}
             {line.choice && <SelectWrapper choice={line.choice} />}

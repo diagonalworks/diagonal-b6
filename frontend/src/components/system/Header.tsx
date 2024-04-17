@@ -30,7 +30,11 @@ const Label = React.forwardRef<
     HtmlHTMLAttributes<HTMLSpanElement>
 >(({ children, className, ...props }, forwardedRef) => {
     return (
-        <span {...props} ref={forwardedRef} className={twMerge('', className)}>
+        <span
+            {...props}
+            ref={forwardedRef}
+            className={twMerge(' overflow-hidden', className)}
+        >
             {children}
         </span>
     );
@@ -46,29 +50,38 @@ const Label = React.forwardRef<
 const Actions = React.forwardRef<
     HTMLDivElement,
     Omit<HtmlHTMLAttributes<HTMLDivElement>, 'children'> & {
-        share: boolean;
-        close: boolean;
+        share?: boolean;
+        close?: boolean;
+        slotProps?: {
+            share?: React.HTMLAttributes<HTMLButtonElement>;
+            close?: React.HTMLAttributes<HTMLButtonElement>;
+        };
     }
->(({ className, ...props }, forwardedRef) => {
-    return (
-        <div
-            {...props}
-            ref={forwardedRef}
-            className={twMerge('flex items-center', className)}
-        >
-            {props.share && (
-                <IconButton>
-                    <Link2Icon />
-                </IconButton>
-            )}
-            {props.close && (
-                <IconButton>
-                    <Cross1Icon />
-                </IconButton>
-            )}
-        </div>
-    );
-});
+>(
+    (
+        { className, close = false, share = false, slotProps, ...props },
+        forwardedRef
+    ) => {
+        return (
+            <div
+                {...props}
+                ref={forwardedRef}
+                className={twMerge('flex items-center', className)}
+            >
+                {share && (
+                    <IconButton {...slotProps?.share}>
+                        <Link2Icon />
+                    </IconButton>
+                )}
+                {close && (
+                    <IconButton {...slotProps?.close}>
+                        <Cross1Icon />
+                    </IconButton>
+                )}
+            </div>
+        );
+    }
+);
 
 export const Header = Object.assign(Root, {
     Label,

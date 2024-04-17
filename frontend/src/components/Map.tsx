@@ -3,16 +3,24 @@ import { viewAtom } from '@/atoms/location';
 import { MapControls } from '@/components/system/MapControls';
 import { fetchB6 } from '@/lib/b6';
 import { StackWrapper } from '@/lib/renderer';
-import { useChartDimensions } from '@/lib/useChartDimensions';
+import { ChartDimensions, useChartDimensions } from '@/lib/useChartDimensions';
 import { StackResponse } from '@/types/stack';
 import {
     DndContext,
+    KeyboardSensor,
+    MouseSensor,
+    PointerSensor,
+    TouchSensor,
     UniqueIdentifier,
     useDraggable,
     useDroppable,
+    useSensor,
+    useSensors,
 } from '@dnd-kit/core';
+import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAtom, useAtomValue } from 'jotai';
 import { debounce, uniqueId } from 'lodash';
 import { MapLayerMouseEvent, Point, StyleSpecification } from 'maplibre-gl';
@@ -31,7 +39,7 @@ export function Map({
     id,
     ...props
 }: { id: string } & HTMLAttributes<HTMLDivElement>) {
-    const [ref] = useChartDimensions({
+    const [ref, dimensions] = useChartDimensions({
         marginTop: 0,
         marginRight: 0,
         marginBottom: 0,
@@ -42,12 +50,22 @@ export function Map({
         null
     );
 
-    const [stacks, setStacks] = useState<{
-        [key: UniqueIdentifier]: {
-            coordinates: Point;
-            expression: string;
-        };
-    }>({});
+    const [{ stacks }, setAppAtom] = useAtom(appAtom);
+
+    const pointerSensor = useSensor(PointerSensor, {
+        activationConstraint: {
+            distance: 5,
+        },
+    });
+    const keyboardSensor = useSensor(KeyboardSensor);
+    const mouseSensor = useSensor(MouseSensor);
+    const touchSensor = useSensor(TouchSensor);
+    const sensors = useSensors(
+        pointerSensor,
+        keyboardSensor,
+        mouseSensor,
+        touchSensor
+    );
 
     const [viewState, setViewState] = useAtom(viewAtom);
     const [mapViewState, setMapViewState] = useState<ViewState>(viewState);
@@ -67,22 +85,19 @@ export function Map({
 
             const stackId = uniqueId('stack_');
 
-            setStacks({
-                ...stacks,
-                [stackId]: {
+            setAppAtom((draft) => {
+                draft.stacks[stackId] = {
                     coordinates: evt.point,
                     expression: `${evt.lngLat.lat.toFixed(
                         6
                     )}, ${evt.lngLat.lng.toFixed(6)}`,
-                },
+                };
             });
 
             return;
         },
-        [stacks]
+        [stacks, setAppAtom]
     );
-
-    console.log(stacks);
 
     return (
         <div
@@ -119,32 +134,34 @@ export function Map({
                     </MapControls.Button>
                 </MapControls>
                 <DndContext
+                    sensors={sensors}
+                    modifiers={[restrictToWindowEdges]}
                     onDragStart={({ active }) => setActiveStackId(active.id)}
                     onDragEnd={({ active, delta }) => {
-                        setStacks({
-                            ...stacks,
-                            [active.id]: {
-                                ...stacks[active.id],
-                                coordinates: new Point(
-                                    stacks[active.id].coordinates.x + delta.x,
-                                    stacks[active.id].coordinates.y + delta.y
-                                ),
-                            },
+                        setAppAtom((draft) => {
+                            draft.stacks[active.id].coordinates = new Point(
+                                stacks[active.id].coordinates.x + delta.x,
+                                stacks[active.id].coordinates.y + delta.y
+                            );
                         });
+                        setActiveStackId(null);
                     }}
                 >
-                    <Droppable>
-                        {Object.entries(stacks).map(([stackId, stack]) => (
-                            <DraggableStack
-                                active={activeStackId === stackId}
-                                key={id}
-                                id={stackId}
-                                mapId={id}
-                                expression={stack.expression}
-                                top={stack.coordinates.y}
-                                left={stack.coordinates.x}
-                            />
-                        ))}
+                    <Droppable mapId={id}>
+                        <AnimatePresence>
+                            {Object.entries(stacks).map(([stackId, stack]) => (
+                                <DraggableStack
+                                    active={activeStackId === stackId}
+                                    key={stackId}
+                                    id={stackId}
+                                    mapId={id}
+                                    mapDimensions={dimensions}
+                                    expression={stack.expression}
+                                    top={stack.coordinates.y}
+                                    left={stack.coordinates.x}
+                                />
+                            ))}
+                        </AnimatePresence>
                     </Droppable>
                 </DndContext>
             </MapLibre>
@@ -152,9 +169,12 @@ export function Map({
     );
 }
 
-const Droppable = ({ children }: PropsWithChildren) => {
+const Droppable = ({
+    children,
+    mapId,
+}: PropsWithChildren & { mapId: string }) => {
     const { isOver, setNodeRef } = useDroppable({
-        id: 'droppable',
+        id: `droppable-${mapId}`,
     });
     const style = {
         color: isOver ? 'green' : undefined,
@@ -175,6 +195,10 @@ const DraggableStack = ({
     expression,
 }: PropsWithChildren & {
     mapId: string;
+    mapDimensions: ChartDimensions & {
+        width: number;
+        height: number;
+    };
     expression: string;
     id: string;
     top: number;
@@ -222,14 +246,17 @@ const DraggableStack = ({
             map?.getZoom() !== undefined,
     });
 
-    const style = transform
-        ? {
-              transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-          }
-        : undefined;
+    const style = {
+        transform: `${
+            transform
+                ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+                : ''
+        }`,
+    };
 
     return (
-        <button
+        <div
+            id={id}
             ref={setNodeRef}
             style={{
                 ...style,
@@ -238,34 +265,34 @@ const DraggableStack = ({
                 position: 'absolute',
             }}
             className={twMerge(
-                active && 'ring-2 ring-blue-500 ring-opacity-50'
+                active && 'ring-2 ring-ultramarine-50 ring-opacity-40'
             )}
             {...listeners}
             {...attributes}
         >
-            {stackQuery.data && stackQuery.data.proto.stack && (
-                <StackWrapper stack={stackQuery.data.proto.stack} />
-            )}
-        </button>
+            <motion.div
+                initial={{
+                    opacity: 0.4,
+                    scale: 0.8,
+                }}
+                animate={{
+                    opacity: 1,
+                    scale: 1,
+                }}
+                exit={{
+                    opacity: 0.4,
+                    scale: 0.8,
+                }}
+            >
+                <div>
+                    {stackQuery.data && stackQuery.data.proto.stack && (
+                        <StackWrapper
+                            id={id}
+                            stack={stackQuery.data.proto.stack}
+                        />
+                    )}
+                </div>
+            </motion.div>
+        </div>
     );
 };
-/* fetch(`/api/stack`, {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-        node: null,
-        locked: true,
-        logEvent: 'mlc',
-        ...(map?.getCenter() && {
-            logMapCenter: {
-                lat_e7: (map.getCenter().lat * 1e7).toFixed(0),
-                lng_e7: (map.getCenter().lng * 1e7).toFixed(0),
-            },
-        }),
-        context: startup?.context,
-        session: startup?.session,
-        expression: selected?.expression,
-    }),
-}).then((res) => res.json() as Promise<StackResponse>), */
