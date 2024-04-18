@@ -50,8 +50,8 @@ const Workspace = () => {
             setViewState({
                 ...viewState,
                 ...(startup.data.mapCenter && {
-                    latitude: startup.data.mapCenter.LatE7 / 1e7,
-                    longitude: startup.data.mapCenter.LngE7 / 1e7,
+                    latitude: startup.data.mapCenter.latE7 / 1e7,
+                    longitude: startup.data.mapCenter.lngE7 / 1e7,
                 }),
                 ...(startup.data.mapZoom && { zoom: startup.data.mapZoom }),
             });

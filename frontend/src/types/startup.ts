@@ -2,8 +2,8 @@ import { FeatureIDProto } from './generated/api';
 import { UIResponseProto } from './generated/ui';
 
 export type LatLng = {
-    LatE7: number;
-    LngE7: number;
+    latE7: number;
+    lngE7: number;
 };
 
 export type StartupResponse = {

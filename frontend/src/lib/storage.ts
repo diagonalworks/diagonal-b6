@@ -1,7 +1,7 @@
 // Storage object for jotai atomWithStorage that stores the value of the atom in the URL search params
 export const urlSearchParamsStorage = <T>({
     serialize = (value) => String(value),
-    deserialize = (value) => value as unknown as T,
+    deserialize = (value) => value as T,
 }: {
     serialize?: (value: T) => string;
     deserialize?: (value: string) => T;

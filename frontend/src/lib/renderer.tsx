@@ -1,3 +1,4 @@
+import * as circleIcons from '@/assets/icons/circle';
 import { appAtom } from '@/atoms/app';
 import { Header } from '@/components/system/Header';
 import { LabelledIcon } from '@/components/system/LabelledIcon';
@@ -57,6 +58,7 @@ export const SubstackWrapper = ({ substack }: { substack: SubstackProto }) => {
 export const LineWrapper = ({ line }: { line: LineProto }) => {
     const setAppAtom = useSetAtom(appAtom);
     const { id } = useStackContext();
+    console.log(line);
     return (
         <Line>
             {line?.header && (
@@ -84,6 +86,14 @@ export const LineWrapper = ({ line }: { line: LineProto }) => {
             {line.choice && <SelectWrapper choice={line.choice} />}
             {line.value && line.value.atom && (
                 <AtomWrapper atom={line.value.atom} />
+            )}
+            {line.leftRightValue && (
+                <div className=" justify-between flex items-center">
+                    {line.leftRightValue.left.map(({ atom }, i) => {
+                        if (!atom) return null;
+                        return <AtomWrapper key={i} atom={atom} />;
+                    })}
+                </div>
             )}
         </Line>
     );
@@ -146,7 +156,18 @@ const LabelledIconWrapper = ({
     const icon = match(labelledIcon.icon)
         .with('area', () => <FrameIcon />)
         .with('point', () => <DotIcon />)
-        .otherwise(() => <SquareIcon />);
+        .otherwise(() => {
+            const iconComponentName = `${labelledIcon.icon
+                .charAt(0)
+                .toUpperCase()}${labelledIcon.icon.slice(1)}`;
+
+            if (circleIcons[iconComponentName as keyof typeof circleIcons]) {
+                const Icon =
+                    circleIcons[iconComponentName as keyof typeof circleIcons];
+                return <Icon />;
+            }
+            return <SquareIcon />;
+        });
 
     return (
         <LabelledIcon>
