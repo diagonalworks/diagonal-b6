@@ -1,8 +1,8 @@
 import { appAtom } from '@/atoms/app';
 import { viewAtom } from '@/atoms/location';
+import { StackWrapper } from '@/components/Renderer';
 import { MapControls } from '@/components/system/MapControls';
 import { fetchB6 } from '@/lib/b6';
-import { StackWrapper } from '@/lib/renderer';
 import { ChartDimensions, useChartDimensions } from '@/lib/useChartDimensions';
 import { StackResponse } from '@/types/stack';
 import {

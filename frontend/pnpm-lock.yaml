@@ -125,6 +125,9 @@ dependencies:
   ts-proto:
     specifier: ^1.172.0
     version: 1.172.0
+  use-immer:
+    specifier: ^0.9.0
+    version: 0.9.0(immer@10.0.4)(react@18.2.0)
 
 devDependencies:
   '@storybook/addon-essentials':
@@ -11147,6 +11150,16 @@ packages:
       '@types/react': 18.2.55
       react: 18.2.0
       tslib: 2.6.2
+
+  /use-immer@0.9.0(immer@10.0.4)(react@18.2.0):
+    resolution: {integrity: sha512-/L+enLi0nvuZ6j4WlyK0US9/ECUtV5v9RUbtxnn5+WbtaXYUaOBoKHDNL9I5AETdurQ4rIFIj/s+Z5X80ATyKw==}
+    peerDependencies:
+      immer: '>=2.0.0'
+      react: ^16.8.0 || ^17.0.1 || ^18.0.0
+    dependencies:
+      immer: 10.0.4
+      react: 18.2.0
+    dev: false
 
   /use-resize-observer@9.1.0(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-R25VqO9Wb3asSD4eqtcxk8sJalvIOYBqS8MNZlpDSQ4l4xMQxC/J7Id9HoTqPq8FwULIn0PVW+OAqF2dyYbjow==}
