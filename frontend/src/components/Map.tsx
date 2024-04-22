@@ -198,7 +198,7 @@ export function Map({
                         <MinusIcon />
                     </MapControls.Button>
                 </MapControls>
-                <div className="absolute top-16 left-2 flex flex-col gap-2">
+                <div className="absolute top-16 left-2 flex flex-col gap-1">
                     {Object.entries(dockedStacks).map(([stackId, stack]) => {
                         return (
                             <StackWrapper

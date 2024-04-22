@@ -7,6 +7,7 @@ import { Select } from '@/components/system/Select';
 import { Stack } from '@/components/system/Stack';
 import { Tooltip } from '@/components/system/Tooltip';
 import { fetchB6 } from '@/lib/b6';
+import colors from '@/tokens/colors.json';
 import {
     AtomProto,
     ChipProto,
@@ -27,6 +28,8 @@ import {
     SquareIcon,
 } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
+import { scaleOrdinal } from '@visx/scale';
+import { interpolateRgbBasis } from 'd3-interpolate';
 import { useAtom, useSetAtom } from 'jotai';
 import { isObject, isUndefined, omit } from 'lodash';
 import React, {
@@ -41,6 +44,7 @@ import React, {
 import { useMap } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
 import { Updater, useImmer } from 'use-immer';
+import { Histogram } from './system/Histogram';
 
 const StackContext = createContext<{
     state: StackStore;
@@ -320,7 +324,7 @@ export const SubstackWrapper = ({
                     })}
                 {isHistogram && (
                     <HistogramWrapper
-                        swatches={contentLines as SwatchLineProto[]}
+                        swatches={contentLines.flatMap((l) => l.swatch ?? [])}
                     />
                 )}
             </Stack.Content>
@@ -328,18 +332,67 @@ export const SubstackWrapper = ({
     );
 };
 
+const colorInterpolator = interpolateRgbBasis([
+    '#fff',
+    colors.amber[20],
+    colors.violet[80],
+]);
+
 const HistogramWrapper = ({ swatches }: { swatches: SwatchLineProto[] }) => {
     const { state } = useStackContext();
     console.log({ state });
 
-    // @ts-ignore proto is not properly typed
+    console.log({ a: state.stack?.proto?.bucketed });
 
-    const data = swatches.map((swatch) => {
-        return {
-            label: swatch.label?.value ?? '',
-        };
+    // @ts-ignore proto no longer matches collection - should we update demo? where to get new collection
+
+    const matchedCondition = state.stack?.proto?.bucketed.find((b: $FixMe) => {
+        console.log({ b });
+        return b.condition.indices.every((index: number, i: number) => {
+            const chip = state.choiceChips[index];
+            console.log({ chip });
+            if (!chip) return false;
+            return chip.value === b.condition.values[i];
+        });
     });
-    return <div>hello histogram</div>;
+
+    const buckets = matchedCondition?.buckets ?? [];
+
+    const data = useMemo(() => {
+        return swatches.flatMap((swatch) => {
+            if (swatch.index === -1) return [];
+            return {
+                index: swatch.index,
+                label: swatch.label?.value ?? '',
+                count: buckets?.[swatch.index]?.ids
+                    ? // this is probably wrong, but just to get a value to show
+                      buckets?.[swatch.index]?.ids.reduce(
+                          (acc: number, curr: { ids: Array<$FixMe> }) =>
+                              acc + curr.ids.length,
+                          0
+                      ) ?? 0
+                    : 0,
+            };
+        });
+    }, [swatches, buckets]);
+
+    const histogramColorScale = useMemo(
+        () =>
+            scaleOrdinal({
+                domain: data.map((d) => `${d.index}`),
+                range: data.map((_, i) => colorInterpolator(i / data.length)),
+            }),
+        [data]
+    );
+    return (
+        <Histogram
+            data={data}
+            label={(d) => d.label}
+            bucket={(d) => d.index.toString()}
+            value={(d) => d.count}
+            color={(d) => histogramColorScale(`${d.index}`)}
+        />
+    );
 };
 
 export const HeaderWrapper = ({ header }: { header: HeaderLineProto }) => {

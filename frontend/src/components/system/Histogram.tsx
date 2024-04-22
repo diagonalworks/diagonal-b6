@@ -1,13 +1,14 @@
 import { useChartDimensions } from '@/lib/useChartDimensions';
 import { scaleLinear } from '@visx/scale';
 import { Text } from '@visx/text';
+import { motion } from 'framer-motion';
 import React, { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from './Line';
 
 const BAR_MARGIN = {
     marginTop: 1, // 1px to make space for the border
-    marginRight: 24,
+    marginRight: 32,
     marginBottom: 1,
     marginLeft: 1,
 };
@@ -76,7 +77,7 @@ export function Histogram<T>({
     const Wrapper = selectable ? Line.Button : React.Fragment;
 
     return (
-        <div className="flex flex-col [&_.line]:border-t-0 first:[&_.line]:border-t">
+        <div className="flex flex-col [&_.line]:border-t-0  last:[&_.line]:border-b-0">
             {data.map((d) => {
                 const isSelected =
                     selectedBucket && bucket(d) === bucket(selectedBucket);
@@ -111,31 +112,43 @@ export function Histogram<T>({
                                         {label ? label(d) : bucket(d)}
                                     </span>
                                 </div>
-                                <svg
-                                    width={dimensions.width}
-                                    height={dimensions.height}
-                                    className=" overflow-visible"
-                                >
-                                    <rect
-                                        x={dimensions.marginLeft}
-                                        y={dimensions.marginTop}
-                                        width={xScale(value(d))}
-                                        height={BAR_HEIGHT}
-                                        fill={color(d)}
-                                        rx={1}
-                                        className="stroke-graphite-80"
-                                        strokeWidth={0.7}
-                                    />
-                                    <Text
-                                        x={xScale(value(d)) + 5}
-                                        y={BAR_HEIGHT / 2}
-                                        className="  fill-graphite-50"
-                                        verticalAnchor="middle"
-                                        fontSize={10}
+                                {/* current hack to not show 0 bucket */}
+                                {value(d) > 0 && (
+                                    <svg
+                                        width={dimensions.width}
+                                        height={dimensions.height}
+                                        className=" overflow-visible"
                                     >
-                                        {value(d)}
-                                    </Text>
-                                </svg>
+                                        <motion.rect
+                                            animate={{
+                                                width: xScale(value(d)),
+                                            }}
+                                            x={dimensions.marginLeft}
+                                            y={dimensions.marginTop}
+                                            width={xScale(value(d))}
+                                            height={BAR_HEIGHT}
+                                            fill={color(d)}
+                                            rx={1}
+                                            className="stroke-graphite-80"
+                                            strokeWidth={0.7}
+                                        />
+                                        <motion.g
+                                            animate={{
+                                                translateX:
+                                                    xScale(value(d)) + 5,
+                                                translateY: BAR_HEIGHT / 2,
+                                            }}
+                                        >
+                                            <Text
+                                                className="  fill-graphite-50"
+                                                verticalAnchor="middle"
+                                                fontSize={10}
+                                            >
+                                                {value(d)}
+                                            </Text>
+                                        </motion.g>
+                                    </svg>
+                                )}
                             </div>
                         </Wrapper>
                     </Line>
