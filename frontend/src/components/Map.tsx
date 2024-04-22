@@ -1,6 +1,5 @@
 import { AppStore, appAtom } from '@/atoms/app';
 import { viewAtom } from '@/atoms/location';
-import { StackWrapper } from '@/components/Renderer';
 import { MapControls } from '@/components/system/MapControls';
 import { fetchB6 } from '@/lib/b6';
 import { ChartDimensions, useChartDimensions } from '@/lib/useChartDimensions';
@@ -35,6 +34,7 @@ import {
 } from 'react';
 import { Map as MapLibre, ViewState, useMap } from 'react-map-gl/maplibre';
 import { twMerge } from 'tailwind-merge';
+import { StackAdapter } from './adapters/StackAdapter';
 import diagonalBasemapStyle from './diagonal-map-style.json';
 
 export function Map({
@@ -201,9 +201,8 @@ export function Map({
                 <div className="absolute top-16 left-2 flex flex-col gap-1">
                     {Object.entries(dockedStacks).map(([stackId, stack]) => {
                         return (
-                            <StackWrapper
+                            <StackAdapter
                                 key={stackId}
-                                id={stackId}
                                 stack={stack}
                                 docked={true}
                                 mapId={id}
@@ -327,7 +326,7 @@ const DraggableStack = ({
                 }}
             >
                 <div>
-                    <StackWrapper id={id} stack={stack} mapId={mapId} />
+                    <StackAdapter stack={stack} mapId={mapId} />
                 </div>
             </motion.div>
         </div>

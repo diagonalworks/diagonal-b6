@@ -7,10 +7,11 @@ import { Select } from '@/components/system/Select';
 import { Stack } from '@/components/system/Stack';
 import { Tooltip } from '@/components/system/Tooltip';
 import { fetchB6 } from '@/lib/b6';
+import { LineContextProvider, useLineContext } from '@/lib/context/line';
+import { StackContextProvider, useStackContext } from '@/lib/context/stack';
 import colors from '@/tokens/colors.json';
 import {
     AtomProto,
-    ChipProto,
     ChoiceProto,
     ConditionalProto,
     HeaderLineProto,
@@ -19,7 +20,7 @@ import {
     SubstackProto,
     SwatchLineProto,
 } from '@/types/generated/ui';
-import { StackResponse } from '@/types/stack';
+import { Chip, StackResponse } from '@/types/stack';
 import { $FixMe } from '@/utils/defs';
 import {
     DotIcon,
@@ -31,223 +32,11 @@ import { useQuery } from '@tanstack/react-query';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
 import { useAtom, useSetAtom } from 'jotai';
-import { isObject, isUndefined, omit } from 'lodash';
-import React, {
-    PropsWithChildren,
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
-} from 'react';
+import { omit } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
-import { Updater, useImmer } from 'use-immer';
 import { Histogram } from './system/Histogram';
-
-const StackContext = createContext<{
-    state: StackStore;
-    setState: Updater<StackStore>;
-    setChoiceChipValue: (index: number, value: number) => void;
-}>({
-    state: {
-        mapId: 'baseline',
-        choiceChips: {},
-    },
-    setState: () => {},
-    setChoiceChipValue: () => {},
-});
-
-const useStackContext = () => useContext(StackContext);
-
-export type StackStore = {
-    mapId: string;
-    stack?: AppStore['stacks'][string];
-    choiceChips: Record<number, Chip>;
-};
-
-const StackContextProvider = ({
-    stack,
-    mapId,
-    children,
-}: {
-    stack: AppStore['stacks'][string];
-    mapId: string;
-} & PropsWithChildren) => {
-    const choiceChips = useMemo(() => {
-        const chips: Record<number, Chip> = {};
-        // Which substack is the choice line in? should substacks have their own context?
-        const allLines =
-            stack.proto.stack?.substacks.flatMap(
-                (substack) => substack.lines
-            ) ?? [];
-        const choiceLines = allLines.flatMap((line) => line.choice ?? []);
-
-        choiceLines.forEach((line) => {
-            line.chips.forEach((atom) => {
-                if (isUndefined(atom.chip?.index)) {
-                    console.warn(`Chip index is undefined`, { line, atom });
-                }
-                const chipIndex = atom.chip?.index ?? 0; // unsafe fallback
-                chips[chipIndex] = {
-                    atom: {
-                        labels: atom.chip?.labels ?? [],
-                        index: chipIndex,
-                    },
-                    value: 0,
-                };
-            });
-        });
-        return chips;
-    }, [stack]);
-
-    const [state, setState] = useImmer<StackStore>({
-        mapId,
-        stack,
-        choiceChips,
-    });
-
-    const setChoiceChipValue = useCallback(
-        (index: number, value: number) => {
-            setState((draft) => {
-                if (!draft.choiceChips[index]) return;
-                draft.choiceChips[index].value = value;
-            });
-        },
-        [setState]
-    );
-
-    const stackContextStoreData = useMemo(() => {
-        return {
-            state,
-            setState,
-            setChoiceChipValue,
-        };
-    }, [state, setState, setChoiceChipValue]);
-
-    return (
-        <StackContext.Provider value={stackContextStoreData}>
-            {children}
-        </StackContext.Provider>
-    );
-};
-
-const LineContext = createContext<{
-    state: LineStore;
-    setState: Updater<LineStore>;
-    setChipValue: (index: number, value: number) => void;
-}>({
-    state: { line: {}, chips: {} },
-    setState: () => {},
-    setChipValue: () => {},
-});
-
-const useLineContext = () => useContext(LineContext);
-
-/**
- * Recursively find atoms in a line. If a type is provided, only atoms of that type will be returned.
- * This function is currently a mess because types of line elements are loosely defined.
- */
-const findAtoms = (line: $FixMe, type?: keyof AtomProto): AtomProto[] => {
-    const atom = line?.atom;
-    if (atom) {
-        if (type) {
-            return atom?.[type] ? [atom] : [];
-        }
-        return [atom];
-    }
-
-    if (Array.isArray(line)) {
-        return line.flatMap((l) => findAtoms(l, type));
-    }
-
-    if (isObject(line)) {
-        return Object.keys(line).flatMap((key) =>
-            findAtoms((line as $FixMe)[key], type)
-        );
-    }
-    return [];
-};
-
-export type Chip = { atom: ChipProto; value: number };
-
-export type LineStore = {
-    line: LineProto;
-    chips: Record<number, Chip>;
-};
-
-const LineContextProvider = ({
-    line,
-    children,
-}: {
-    line: LineProto;
-} & PropsWithChildren) => {
-    const chips = useMemo(() => {
-        const chipMap: LineStore['chips'] = {};
-
-        findAtoms(line, 'chip').forEach((atom) => {
-            if (atom.chip) {
-                if (isUndefined(atom.chip.index)) {
-                    console.warn(`Chip index is undefined`, { line, atom });
-                }
-                chipMap[atom.chip.index] = {
-                    atom: {
-                        labels: atom.chip.labels ?? [],
-                        /* // unsafe fallback but looks like 0 is being considered as undefined and not coming through */
-                        index: atom.chip.index ?? 0,
-                    },
-                    value: 0,
-                };
-            }
-        });
-
-        if (line.choice) {
-            line.choice.chips.forEach((atom, i) => {
-                if (isUndefined(atom.chip?.index)) {
-                    console.warn(`Chip index is undefined`, { line, atom });
-                }
-                chipMap[i] = {
-                    atom: {
-                        labels: atom.chip?.labels ?? [],
-                        index: atom.chip?.index ?? i, // unsafe fallback
-                    },
-                    value: 0,
-                };
-            });
-        }
-
-        return chipMap;
-    }, [line]);
-
-    const [state, setState] = useImmer<LineStore>({
-        line,
-        chips,
-    });
-
-    const setChipValue = useCallback(
-        (index: number, value: number) => {
-            setState((draft) => {
-                if (!draft.chips[index]) return;
-                draft.chips[index].value = value;
-            });
-        },
-        [setState]
-    );
-
-    const lineContextStoreData = useMemo(() => {
-        return {
-            state,
-            setState,
-            setChipValue,
-        };
-    }, [state, setState, setChipValue]);
-    return (
-        <LineContext.Provider value={lineContextStoreData}>
-            {children}
-        </LineContext.Provider>
-    );
-};
 
 export const StackWrapper = ({
     stack,
@@ -340,12 +129,8 @@ const colorInterpolator = interpolateRgbBasis([
 
 const HistogramWrapper = ({ swatches }: { swatches: SwatchLineProto[] }) => {
     const { state } = useStackContext();
-    console.log({ state });
 
-    console.log({ a: state.stack?.proto?.bucketed });
-
-    // @ts-ignore proto no longer matches collection - should we update demo? where to get new collection
-
+    // @ts-expect-error: mismatch between current collection and new typed BE.
     const matchedCondition = state.stack?.proto?.bucketed.find((b: $FixMe) => {
         console.log({ b });
         return b.condition.indices.every((index: number, i: number) => {
