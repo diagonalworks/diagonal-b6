@@ -1,20 +1,24 @@
 import * as circleIcons from '@/assets/icons/circle';
-import { appAtom } from '@/atoms/app';
+import { AppStore, appAtom } from '@/atoms/app';
 import { Header } from '@/components/system/Header';
 import { LabelledIcon } from '@/components/system/LabelledIcon';
 import { Line } from '@/components/system/Line';
 import { Select } from '@/components/system/Select';
 import { Stack } from '@/components/system/Stack';
 import { Tooltip } from '@/components/system/Tooltip';
+import { fetchB6 } from '@/lib/b6';
 import {
     AtomProto,
     ChipProto,
+    ChoiceProto,
     ConditionalProto,
+    HeaderLineProto,
     LabelledIconProto,
     LineProto,
-    StackProto,
     SubstackProto,
+    SwatchLineProto,
 } from '@/types/generated/ui';
+import { StackResponse } from '@/types/stack';
 import { $FixMe } from '@/utils/defs';
 import {
     DotIcon,
@@ -22,23 +26,108 @@ import {
     FrameIcon,
     SquareIcon,
 } from '@radix-ui/react-icons';
-import { useSetAtom } from 'jotai';
+import { useQuery } from '@tanstack/react-query';
+import { useAtom, useSetAtom } from 'jotai';
 import { isObject, isUndefined, omit } from 'lodash';
-import {
+import React, {
     PropsWithChildren,
     createContext,
     useCallback,
     useContext,
+    useEffect,
     useMemo,
+    useState,
 } from 'react';
+import { useMap } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
 import { Updater, useImmer } from 'use-immer';
 
 const StackContext = createContext<{
-    id?: string;
-}>({});
+    state: StackStore;
+    setState: Updater<StackStore>;
+    setChoiceChipValue: (index: number, value: number) => void;
+}>({
+    state: {
+        mapId: 'baseline',
+        choiceChips: {},
+    },
+    setState: () => {},
+    setChoiceChipValue: () => {},
+});
 
 const useStackContext = () => useContext(StackContext);
+
+export type StackStore = {
+    mapId: string;
+    stack?: AppStore['stacks'][string];
+    choiceChips: Record<number, Chip>;
+};
+
+const StackContextProvider = ({
+    stack,
+    mapId,
+    children,
+}: {
+    stack: AppStore['stacks'][string];
+    mapId: string;
+} & PropsWithChildren) => {
+    const choiceChips = useMemo(() => {
+        const chips: Record<number, Chip> = {};
+        // Which substack is the choice line in? should substacks have their own context?
+        const allLines =
+            stack.proto.stack?.substacks.flatMap(
+                (substack) => substack.lines
+            ) ?? [];
+        const choiceLines = allLines.flatMap((line) => line.choice ?? []);
+
+        choiceLines.forEach((line) => {
+            line.chips.forEach((atom) => {
+                if (isUndefined(atom.chip?.index)) {
+                    console.warn(`Chip index is undefined`, { line, atom });
+                }
+                const chipIndex = atom.chip?.index ?? 0; // unsafe fallback
+                chips[chipIndex] = {
+                    atom: {
+                        labels: atom.chip?.labels ?? [],
+                        index: chipIndex,
+                    },
+                    value: 0,
+                };
+            });
+        });
+        return chips;
+    }, [stack]);
+
+    const [state, setState] = useImmer<StackStore>({
+        mapId,
+        stack,
+        choiceChips,
+    });
+
+    const setChoiceChipValue = useCallback(
+        (index: number, value: number) => {
+            setState((draft) => {
+                if (!draft.choiceChips[index]) return;
+                draft.choiceChips[index].value = value;
+            });
+        },
+        [setState]
+    );
+
+    const stackContextStoreData = useMemo(() => {
+        return {
+            state,
+            setState,
+            setChoiceChipValue,
+        };
+    }, [state, setState, setChoiceChipValue]);
+
+    return (
+        <StackContext.Provider value={stackContextStoreData}>
+            {children}
+        </StackContext.Provider>
+    );
+};
 
 const LineContext = createContext<{
     state: LineStore;
@@ -99,11 +188,30 @@ const LineContextProvider = ({
                     console.warn(`Chip index is undefined`, { line, atom });
                 }
                 chipMap[atom.chip.index] = {
-                    atom: atom.chip,
+                    atom: {
+                        labels: atom.chip.labels ?? [],
+                        /* // unsafe fallback but looks like 0 is being considered as undefined and not coming through */
+                        index: atom.chip.index ?? 0,
+                    },
                     value: 0,
                 };
             }
         });
+
+        if (line.choice) {
+            line.choice.chips.forEach((atom, i) => {
+                if (isUndefined(atom.chip?.index)) {
+                    console.warn(`Chip index is undefined`, { line, atom });
+                }
+                chipMap[i] = {
+                    atom: {
+                        labels: atom.chip?.labels ?? [],
+                        index: atom.chip?.index ?? i, // unsafe fallback
+                    },
+                    value: 0,
+                };
+            });
+        }
 
         return chipMap;
     }, [line]);
@@ -139,89 +247,278 @@ const LineContextProvider = ({
 
 export const StackWrapper = ({
     stack,
-    id,
+    docked = false,
+    mapId,
 }: {
-    stack: StackProto;
+    stack: AppStore['stacks'][string];
     id: string;
+    docked?: boolean;
+    mapId: string;
 }) => {
+    const [open, setOpen] = useState(docked ? false : true);
+    if (!stack.proto.stack) return null;
+
+    const firstSubstack = stack.proto.stack.substacks[0];
+    const otherSubstacks = stack.proto.stack.substacks.slice(1);
+
     return (
-        <StackContext.Provider
-            value={{
-                id,
-            }}
-        >
-            {stack.substacks.map((substack, i) => {
-                return <SubstackWrapper key={i} substack={substack} />;
-            })}
-        </StackContext.Provider>
+        <div>
+            <StackContextProvider stack={stack} mapId={mapId}>
+                <Stack collapsible={docked} open={open} onOpenChange={setOpen}>
+                    <Stack.Trigger>
+                        <SubstackWrapper
+                            substack={firstSubstack}
+                            collapsible={firstSubstack.collapsable}
+                        />
+                    </Stack.Trigger>
+                    <Stack.Content>
+                        {otherSubstacks.map((substack, i) => {
+                            return (
+                                <SubstackWrapper
+                                    key={i}
+                                    substack={substack}
+                                    collapsible={substack.collapsable}
+                                />
+                            );
+                        })}
+                    </Stack.Content>
+                </Stack>
+            </StackContextProvider>
+        </div>
     );
 };
 
-export const SubstackWrapper = ({ substack }: { substack: SubstackProto }) => {
+export const SubstackWrapper = ({
+    substack,
+    collapsible = false,
+}: {
+    substack: SubstackProto;
+    collapsible?: boolean;
+}) => {
+    const header = substack.lines[0]?.header;
+    const contentLines = substack.lines.slice(header ? 1 : 0);
+    const [open, setOpen] = useState(collapsible ? false : true);
+
+    const isHistogram =
+        contentLines.length > 1 && contentLines.every((line) => line.swatch);
+
     return (
-        <Stack collapsible={substack.collapsable}>
-            {substack.lines.map((l, i) => {
-                return <LineWrapper key={i} line={l} />;
-            })}
+        <Stack
+            collapsible={substack.collapsable}
+            open={open}
+            onOpenChange={setOpen}
+        >
+            {header && (
+                <Stack.Trigger asChild>
+                    <LineWrapper line={substack.lines[0]} />
+                </Stack.Trigger>
+            )}
+            <Stack.Content className="text-sm" header={!!header}>
+                {!isHistogram &&
+                    contentLines.map((l, i) => {
+                        return <LineWrapper key={i} line={l} />;
+                    })}
+                {isHistogram && (
+                    <HistogramWrapper
+                        swatches={contentLines as SwatchLineProto[]}
+                    />
+                )}
+            </Stack.Content>
         </Stack>
     );
 };
 
-export const LineWrapper = ({ line }: { line: LineProto }) => {
+const HistogramWrapper = ({ swatches }: { swatches: SwatchLineProto[] }) => {
+    const { state } = useStackContext();
+    console.log({ state });
+
+    // @ts-ignore proto is not properly typed
+
+    const data = swatches.map((swatch) => {
+        return {
+            label: swatch.label?.value ?? '',
+        };
+    });
+    return <div>hello histogram</div>;
+};
+
+export const HeaderWrapper = ({ header }: { header: HeaderLineProto }) => {
     const setAppAtom = useSetAtom(appAtom);
-    const { id } = useStackContext();
+    const {
+        state: { stack },
+    } = useStackContext();
+    const [sharePopoverOpen, setSharePopoverOpen] = useState(false);
+
+    return (
+        <Header>
+            {header.title && (
+                <Header.Label>
+                    <AtomWrapper atom={header.title} />
+                </Header.Label>
+            )}
+            <Header.Actions
+                close={header.close}
+                share={header.share}
+                slotProps={{
+                    share: {
+                        popover: {
+                            open: sharePopoverOpen,
+                            onOpenChange: setSharePopoverOpen,
+                            content: 'Copied to clipboard',
+                        },
+                        onClick: async (evt) => {
+                            evt.preventDefault();
+                            evt.stopPropagation();
+                            navigator.clipboard
+                                .writeText(header?.title?.value ?? '')
+                                .then(() => {
+                                    setSharePopoverOpen(true);
+                                })
+                                .catch((err) => {
+                                    console.error(
+                                        'Failed to copy to clipboard',
+                                        err
+                                    );
+                                });
+                        },
+                    },
+                    close: {
+                        onClick: (evt) => {
+                            evt.preventDefault();
+                            evt.stopPropagation();
+                            if (!stack?.id) return;
+                            setAppAtom((draft) => {
+                                draft.stacks = omit(draft.stacks, stack.id);
+                            });
+                        },
+                    },
+                }}
+            />
+        </Header>
+    );
+};
+
+export const LineWrapper = ({ line }: { line: LineProto }) => {
+    const clickable =
+        line.value?.clickExpression ?? line.action?.clickExpression;
+    const Wrapper = clickable ? Line.Button : React.Fragment;
+    const stack = useStackContext();
+    const [app, setApp] = useAtom(appAtom);
+    const { [stack.state.mapId]: map } = useMap();
+
+    const { data, refetch } = useQuery({
+        queryKey: ['stack', JSON.stringify(clickable)],
+        queryFn: () => {
+            if (
+                !app.startup?.session ||
+                !map?.getCenter() ||
+                map?.getZoom() === undefined
+            ) {
+                return null;
+            }
+            return fetchB6('stack', {
+                context: app.startup?.context,
+                root: undefined,
+                expression: '',
+                locked: true,
+                logEvent: 'oc',
+                logMapCenter: {
+                    latE7: Math.round(map.getCenter().lat * 1e7),
+                    lngE7: Math.round(map.getCenter().lng * 1e7),
+                },
+                logMapZoom: map.getZoom(),
+                node: clickable,
+                session: app.startup?.session,
+            }).then((res) => res.json() as Promise<StackResponse>);
+        },
+        enabled: false,
+    });
+
+    useEffect(() => {
+        if (data) {
+            setApp((draft) => {
+                draft.stacks[data.proto.expression] = {
+                    proto: data.proto,
+                    docked: !!stack.state.stack?.docked,
+                    id: data.proto.expression,
+                };
+            });
+        }
+    }, [data]);
 
     return (
         <LineContextProvider line={line}>
             <Line>
-                {line?.header && (
-                    <Header>
-                        {line.header.title && (
-                            <Header.Label>
-                                <AtomWrapper atom={line.header.title} />
-                            </Header.Label>
-                        )}
-                        <Header.Actions
-                            close
-                            slotProps={{
-                                close: {
-                                    onClick: () => {
-                                        if (!id) return;
-                                        setAppAtom((draft) => {
-                                            draft.stacks = omit(
-                                                draft.stacks,
-                                                id
-                                            );
-                                        });
-                                    },
-                                },
-                            }}
-                        />
-                    </Header>
-                )}
-                {/* {line.choice && <SelectWrapper choice={line.choice} />} */}
-                {line.value && line.value.atom && (
-                    <AtomWrapper atom={line.value.atom} />
-                )}
-                {line.leftRightValue && (
-                    <div className="justify-between flex items-center w-full">
-                        <div className="flex items-center gap-2 w-11/12 flex-grow-0">
-                            {line.leftRightValue.left.map(({ atom }, i) => {
-                                if (!atom) return null;
-                                return <AtomWrapper key={i} atom={atom} />;
-                            })}
-                        </div>
-                        {line.leftRightValue.right?.atom && (
-                            <div className="flex items-center gap-1">
-                                <AtomWrapper
-                                    atom={line.leftRightValue.right.atom}
-                                />
+                <Wrapper
+                    {...(clickable && {
+                        onClick: (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            refetch();
+                        },
+                    })}
+                >
+                    {line.header && <HeaderWrapper header={line.header} />}
+                    {/* {line.choice && <SelectWrapper choice={line.choice} />} */}
+                    {line.value && line.value.atom && (
+                        <AtomWrapper atom={line.value.atom} />
+                    )}
+                    {line.leftRightValue && (
+                        <div className="justify-between flex items-center w-full">
+                            <div className="flex items-center gap-2 w-11/12 flex-grow-0">
+                                {line.leftRightValue.left.map(({ atom }, i) => {
+                                    if (!atom) return null;
+                                    return <AtomWrapper key={i} atom={atom} />;
+                                })}
                             </div>
-                        )}
-                    </div>
-                )}
+                            {line.leftRightValue.right?.atom && (
+                                <div className="flex items-center gap-1">
+                                    <AtomWrapper
+                                        atom={line.leftRightValue.right.atom}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {line.choice && <ChoiceWrapper choice={line.choice} />}
+                </Wrapper>
             </Line>
         </LineContextProvider>
+    );
+};
+
+export const ChoiceWrapper = ({
+    choice,
+}: {
+    choice: {
+        chips: AtomProto[];
+        label: ChoiceProto['label'];
+    };
+}) => {
+    const stack = useStackContext();
+    return (
+        <>
+            {choice.label && <AtomWrapper atom={choice.label} />}
+            {choice.chips &&
+                choice.chips.map(({ chip }) => {
+                    if (!chip) return null;
+                    const stackChip = stack.state.choiceChips[chip.index ?? 0];
+                    if (stackChip) {
+                        return (
+                            <ChipWrapper
+                                key={chip.index}
+                                chip={stackChip}
+                                onChange={(value: number) =>
+                                    stack.setChoiceChipValue(
+                                        chip.index ?? 0, // same issue with the 0 index being undefined, maybe we should add zod to parse this values beforehand or fix in BE.
+                                        value
+                                    )
+                                }
+                            />
+                        );
+                    }
+                })}
+        </>
     );
 };
 
@@ -254,7 +551,7 @@ export const AtomWrapper = ({ atom }: { atom: AtomProto }) => {
     const line = useLineContext();
 
     if (atom.value) {
-        return <Line.Value>{atom.value}</Line.Value>;
+        return <Line.Value className="text-sm">{atom.value}</Line.Value>;
     }
 
     if (atom.labelledIcon) {

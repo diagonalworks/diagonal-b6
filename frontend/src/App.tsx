@@ -56,6 +56,14 @@ const Workspace = () => {
                 ...(startup.data.mapZoom && { zoom: startup.data.mapZoom }),
             });
             setApp((draft) => {
+                startup.data.docked?.forEach((dock, i) => {
+                    const id = `stack_docked_${i}`;
+                    draft.stacks[id] = {
+                        proto: dock.proto,
+                        docked: true,
+                        id,
+                    };
+                });
                 draft.startup = startup.data;
             });
         }

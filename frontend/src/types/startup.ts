@@ -1,3 +1,4 @@
+import { $FixMe } from '@/utils/defs';
 import { FeatureIDProto } from './generated/api';
 import { UIResponseProto } from './generated/ui';
 
@@ -12,7 +13,10 @@ export type StartupResponse = {
         namespace: string;
         type: string;
     };
-    docked?: UIResponseProto[];
+    docked?: {
+        geoJson: $FixMe;
+        proto: UIResponseProto;
+    }[];
     openDockIndex?: number;
     mapCenter?: LatLng;
     mapZoom?: number;

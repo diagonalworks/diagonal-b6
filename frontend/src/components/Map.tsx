@@ -1,4 +1,4 @@
-import { appAtom } from '@/atoms/app';
+import { AppStore, appAtom } from '@/atoms/app';
 import { viewAtom } from '@/atoms/location';
 import { StackWrapper } from '@/components/Renderer';
 import { MapControls } from '@/components/system/MapControls';
@@ -21,14 +21,16 @@ import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useAtom, useAtomValue } from 'jotai';
-import { debounce, uniqueId } from 'lodash';
+import { useAtom } from 'jotai';
+import { debounce, pickBy } from 'lodash';
 import { MapLayerMouseEvent, Point, StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
     HTMLAttributes,
     PropsWithChildren,
     useCallback,
+    useEffect,
+    useMemo,
     useState,
 } from 'react';
 import { Map as MapLibre, ViewState, useMap } from 'react-map-gl/maplibre';
@@ -50,7 +52,7 @@ export function Map({
         null
     );
 
-    const [{ stacks }, setAppAtom] = useAtom(appAtom);
+    const [{ stacks, startup }, setAppAtom] = useAtom(appAtom);
 
     const pointerSensor = useSensor(PointerSensor, {
         activationConstraint: {
@@ -76,141 +78,8 @@ export function Map({
         setViewState,
     ]);
 
-    const handleClick = useCallback(
-        (evt: MapLayerMouseEvent) => {
-            /* const feature = evt.features?.[0];
-        if (!feature) return;
-        const { ns, id } = feature.properties;
-        if (!ns || !id) return; */
-
-            const stackId = uniqueId('stack_');
-
-            setAppAtom((draft) => {
-                draft.stacks[stackId] = {
-                    coordinates: evt.point,
-                    expression: `${evt.lngLat.lat.toFixed(
-                        6
-                    )}, ${evt.lngLat.lng.toFixed(6)}`,
-                };
-            });
-
-            return;
-        },
-        [stacks, setAppAtom]
-    );
-
-    return (
-        <div
-            {...props}
-            ref={ref}
-            className={twMerge(
-                'h-full border-t border-graphite-20 relative',
-                props.className
-            )}
-        >
-            <MapLibre
-                id={id}
-                {...mapViewState}
-                onMove={(evt) => {
-                    setMapViewState(evt.viewState);
-                    debouncedSetViewState(evt.viewState);
-                }}
-                onClick={handleClick}
-                attributionControl={false}
-                mapStyle={diagonalBasemapStyle as StyleSpecification}
-                interactive={true}
-                interactiveLayerIds={['building', 'road']}
-            >
-                <MapControls>
-                    <MapControls.Button
-                        onClick={() => map?.zoomIn({ duration: 200 })}
-                    >
-                        <PlusIcon />
-                    </MapControls.Button>
-                    <MapControls.Button
-                        onClick={() => map?.zoomOut({ duration: 200 })}
-                    >
-                        <MinusIcon />
-                    </MapControls.Button>
-                </MapControls>
-                <DndContext
-                    sensors={sensors}
-                    modifiers={[restrictToWindowEdges]}
-                    onDragStart={({ active }) => setActiveStackId(active.id)}
-                    onDragEnd={({ active, delta }) => {
-                        setAppAtom((draft) => {
-                            draft.stacks[active.id].coordinates = new Point(
-                                stacks[active.id].coordinates.x + delta.x,
-                                stacks[active.id].coordinates.y + delta.y
-                            );
-                        });
-                        setActiveStackId(null);
-                    }}
-                >
-                    <Droppable mapId={id}>
-                        <AnimatePresence>
-                            {Object.entries(stacks).map(([stackId, stack]) => (
-                                <DraggableStack
-                                    active={activeStackId === stackId}
-                                    key={stackId}
-                                    id={stackId}
-                                    mapId={id}
-                                    mapDimensions={dimensions}
-                                    expression={stack.expression}
-                                    top={stack.coordinates.y}
-                                    left={stack.coordinates.x}
-                                />
-                            ))}
-                        </AnimatePresence>
-                    </Droppable>
-                </DndContext>
-            </MapLibre>
-        </div>
-    );
-}
-
-const Droppable = ({
-    children,
-    mapId,
-}: PropsWithChildren & { mapId: string }) => {
-    const { isOver, setNodeRef } = useDroppable({
-        id: `droppable-${mapId}`,
-    });
-    const style = {
-        color: isOver ? 'green' : undefined,
-    };
-    return (
-        <div ref={setNodeRef} style={style}>
-            {children}
-        </div>
-    );
-};
-
-const DraggableStack = ({
-    id,
-    top,
-    left,
-    mapId,
-    active = false,
-    expression,
-}: PropsWithChildren & {
-    mapId: string;
-    mapDimensions: ChartDimensions & {
-        width: number;
-        height: number;
-    };
-    expression: string;
-    id: string;
-    top: number;
-    left: number;
-    active?: boolean;
-}) => {
-    const { attributes, transform, setNodeRef, listeners } = useDraggable({
-        id,
-    });
-
-    const { startup } = useAtomValue(appAtom);
-    const { [mapId]: map } = useMap();
+    const [expression, setExpression] = useState<string | null>(null);
+    const [coordinates, setCoordinates] = useState<Point>();
 
     const stackQuery = useQuery({
         queryKey: ['stack', expression],
@@ -246,6 +115,176 @@ const DraggableStack = ({
             map?.getZoom() !== undefined,
     });
 
+    useEffect(() => {
+        if (!stackQuery.data) return;
+        const { proto } = stackQuery.data;
+        if (proto && coordinates && expression) {
+            setAppAtom((draft) => {
+                draft.stacks[proto.expression] = {
+                    coordinates,
+                    docked: false,
+                    expression: expression,
+                    proto,
+                    id: proto.expression,
+                };
+            });
+        }
+    }, [stackQuery.data]);
+
+    const handleClick = useCallback(
+        (evt: MapLayerMouseEvent) => {
+            setCoordinates(evt.point);
+            setExpression(
+                `${evt.lngLat.lat.toFixed(6)}, ${evt.lngLat.lng.toFixed(6)}`
+            );
+            /* const feature = evt.features?.[0];
+        if (!feature) return;
+        const { ns, id } = feature.properties;
+        if (!ns || !id) return; */
+
+            /* setAppAtom((draft) => {
+                draft.stacks[stackId] = {
+                    coordinates: evt.point,
+                    expression: `${evt.lngLat.lat.toFixed(
+                        6
+                    )}, ${evt.lngLat.lng.toFixed(6)}`,
+                };
+            }); */
+
+            return;
+        },
+        [setCoordinates, setExpression]
+    );
+
+    const draggableStacks = useMemo(() => {
+        return pickBy(stacks, (stack) => !stack.docked);
+    }, [stacks]);
+
+    const dockedStacks = useMemo(() => {
+        return pickBy(stacks, (stack) => stack.docked);
+    }, [stacks]);
+
+    return (
+        <div
+            {...props}
+            ref={ref}
+            className={twMerge(
+                'h-full border-t border-graphite-20 relative',
+                props.className
+            )}
+        >
+            <MapLibre
+                id={id}
+                {...mapViewState}
+                onMove={(evt) => {
+                    setMapViewState(evt.viewState);
+                    debouncedSetViewState(evt.viewState);
+                }}
+                onClick={handleClick}
+                attributionControl={false}
+                mapStyle={diagonalBasemapStyle as StyleSpecification}
+                interactive={true}
+                interactiveLayerIds={['building', 'road']}
+            >
+                <MapControls>
+                    <MapControls.Button
+                        onClick={() => map?.zoomIn({ duration: 200 })}
+                    >
+                        <PlusIcon />
+                    </MapControls.Button>
+                    <MapControls.Button
+                        onClick={() => map?.zoomOut({ duration: 200 })}
+                    >
+                        <MinusIcon />
+                    </MapControls.Button>
+                </MapControls>
+                <div className="absolute top-16 left-2 flex flex-col gap-2">
+                    {Object.entries(dockedStacks).map(([stackId, stack]) => {
+                        return (
+                            <StackWrapper
+                                key={stackId}
+                                id={stackId}
+                                stack={stack}
+                                docked={true}
+                                mapId={id}
+                            />
+                        );
+                    })}
+                </div>
+                <DndContext
+                    sensors={sensors}
+                    modifiers={[restrictToWindowEdges]}
+                    onDragStart={({ active }) => setActiveStackId(active.id)}
+                    onDragEnd={({ active, delta }) => {
+                        setAppAtom((draft) => {
+                            const { coordinates } = draft.stacks[active.id];
+                            if (!coordinates) return;
+                            draft.stacks[active.id].coordinates = new Point(
+                                coordinates.x + delta.x,
+                                coordinates.y + delta.y
+                            );
+                        });
+                        setActiveStackId(null);
+                    }}
+                >
+                    <Droppable mapId={id}>
+                        <AnimatePresence>
+                            {Object.entries(draggableStacks).map(
+                                ([stackId, stack]) => (
+                                    <DraggableStack
+                                        active={activeStackId === stackId}
+                                        key={stackId}
+                                        id={stackId}
+                                        mapId={id}
+                                        mapDimensions={dimensions}
+                                        stack={stack}
+                                    />
+                                )
+                            )}
+                        </AnimatePresence>
+                    </Droppable>
+                </DndContext>
+            </MapLibre>
+        </div>
+    );
+}
+
+const Droppable = ({
+    children,
+    mapId,
+}: PropsWithChildren & { mapId: string }) => {
+    const { isOver, setNodeRef } = useDroppable({
+        id: `droppable-${mapId}`,
+    });
+    const style = {
+        color: isOver ? 'green' : undefined,
+    };
+    return (
+        <div ref={setNodeRef} style={style}>
+            {children}
+        </div>
+    );
+};
+
+const DraggableStack = ({
+    id,
+    mapId,
+    active = false,
+    stack,
+}: PropsWithChildren & {
+    mapId: string;
+    mapDimensions: ChartDimensions & {
+        width: number;
+        height: number;
+    };
+    id: string;
+    stack: AppStore['stacks'][string];
+    active?: boolean;
+}) => {
+    const { attributes, transform, setNodeRef, listeners } = useDraggable({
+        id,
+    });
+
     const style = {
         transform: `${
             transform
@@ -260,8 +299,8 @@ const DraggableStack = ({
             ref={setNodeRef}
             style={{
                 ...style,
-                top,
-                left,
+                top: stack.coordinates?.y,
+                left: stack.coordinates?.x,
                 position: 'absolute',
             }}
             className={twMerge(
@@ -288,12 +327,7 @@ const DraggableStack = ({
                 }}
             >
                 <div>
-                    {stackQuery.data && stackQuery.data.proto.stack && (
-                        <StackWrapper
-                            id={id}
-                            stack={stackQuery.data.proto.stack}
-                        />
-                    )}
+                    <StackWrapper id={id} stack={stack} mapId={mapId} />
                 </div>
             </motion.div>
         </div>

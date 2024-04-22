@@ -9,7 +9,7 @@ export default defineConfig({
         // @TODO: This is a temporary proxy while the new frontend is not integrated
         proxy: {
             '/api': {
-                target: 'https://baseline.diagonal.works',
+                target: 'http://localhost:8001',
                 changeOrigin: true,
                 rewrite: (path) => {
                     return path.replace(/^\/api/, '');

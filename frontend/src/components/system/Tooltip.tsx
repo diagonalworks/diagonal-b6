@@ -1,5 +1,6 @@
 import { getNodeText } from '@/lib/text';
 import useOverflow from '@/lib/useOverflow';
+import * as PopoverPrimitive from '@radix-ui/react-popover';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { AnimatePresence, MotionProps, motion } from 'framer-motion';
 import React, { useImperativeHandle } from 'react';
@@ -44,8 +45,11 @@ export const TooltipOverflow = React.forwardRef<
 
 export const TooltipContent = React.forwardRef<
     HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement> & MotionProps
->(({ children }, forwardedRef) => {
+    React.HTMLAttributes<HTMLDivElement> &
+        MotionProps & { type?: 'tooltip' | 'popover' }
+>(({ children, type = 'tooltip' }, forwardedRef) => {
+    const ArrowComponent =
+        type === 'tooltip' ? TooltipPrimitive.Arrow : PopoverPrimitive.Arrow;
     return (
         <motion.div
             ref={forwardedRef}
@@ -59,7 +63,7 @@ export const TooltipContent = React.forwardRef<
             className="bg-graphite-80 text-graphite-10 px-2 shadow py-1 rounded text-sm"
         >
             {children}
-            <TooltipPrimitive.Arrow
+            <ArrowComponent
                 width={11}
                 height={5}
                 className=" fill-graphite-80 stroke stroke-graphite-80"

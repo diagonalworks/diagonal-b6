@@ -1,4 +1,5 @@
 import { urlSearchParamsStorage } from '@/lib/storage';
+import { UIResponseProto } from '@/types/generated/ui';
 import { StartupResponse } from '@/types/startup';
 import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
@@ -19,7 +20,7 @@ export const collectionAtom = atomWithStorage(
     }
 );
 
-export const appAtom = atomWithImmer<{
+export type AppStore = {
     startup?: StartupResponse;
     scenarios: Scenarios;
     tabs: {
@@ -29,12 +30,17 @@ export const appAtom = atomWithImmer<{
     stacks: Record<
         string,
         {
-            expression: string;
-            coordinates: Point;
+            id: string;
+            expression?: string;
+            coordinates?: Point;
+            docked: boolean;
+            proto: UIResponseProto;
             tab?: keyof Scenarios;
         }
     >;
-}>({
+};
+
+export const appAtom = atomWithImmer<AppStore>({
     tabs: {
         left: 'baseline',
     },
