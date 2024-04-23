@@ -1,6 +1,5 @@
 import { SubstackProto } from '@/types/generated/ui';
 import { useState } from 'react';
-import { LineWrapper } from '../Renderer';
 import { Stack } from '../system/Stack';
 import { HistogramAdaptor } from './HistogramAdapter';
 import { LineAdapter } from './LineAdapter';
@@ -33,7 +32,7 @@ export const SubstackAdapter = ({
             <Stack.Content className="text-sm" header={!!header}>
                 {!isHistogram &&
                     contentLines.map((l, i) => {
-                        return <LineWrapper key={i} line={l} />;
+                        return <LineAdapter key={i} line={l} />;
                     })}
                 {isHistogram && (
                     <HistogramAdaptor

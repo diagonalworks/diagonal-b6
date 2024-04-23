@@ -4,7 +4,6 @@ import { SwatchLineProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
-import { useMemo } from 'react';
 import { Histogram } from '../system/Histogram';
 
 const colorInterpolator = interpolateRgbBasis([
@@ -33,32 +32,27 @@ export const HistogramAdaptor = ({
 
     const buckets = matchedCondition?.buckets ?? [];
 
-    const data = useMemo(() => {
-        return swatches.flatMap((swatch) => {
-            if (swatch.index === -1) return [];
-            return {
-                index: swatch.index,
-                label: swatch.label?.value ?? '',
-                count: buckets?.[swatch.index]?.ids
-                    ? // this is probably wrong, but just to get a value to show
-                      buckets?.[swatch.index]?.ids.reduce(
-                          (acc: number, curr: { ids: Array<$FixMe> }) =>
-                              acc + curr.ids.length,
-                          0
-                      ) ?? 0
-                    : 0,
-            };
-        });
-    }, [swatches, buckets]);
+    const data = swatches.flatMap((swatch) => {
+        if (swatch.index === -1) return [];
+        return {
+            index: swatch.index,
+            label: swatch.label?.value ?? '',
+            count: buckets?.[swatch.index]?.ids
+                ? // this is probably wrong, but just to get a value to show
+                  buckets?.[swatch.index]?.ids.reduce(
+                      (acc: number, curr: { ids: Array<$FixMe> }) =>
+                          acc + curr.ids.length,
+                      0
+                  ) ?? 0
+                : 0,
+        };
+    });
 
-    const histogramColorScale = useMemo(
-        () =>
-            scaleOrdinal({
-                domain: data.map((d) => `${d.index}`),
-                range: data.map((_, i) => colorInterpolator(i / data.length)),
-            }),
-        [data]
-    );
+    const histogramColorScale = scaleOrdinal({
+        domain: data.map((d) => `${d.index}`),
+        range: data.map((_, i) => colorInterpolator(i / data.length)),
+    });
+
     return (
         <Histogram
             data={data}

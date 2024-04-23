@@ -9,14 +9,11 @@
     "sources": {
         "diagonal": {
             "type": "vector",
-            "tiles": [
-                "https://baseline.diagonal.works/tiles/base/{z}/{x}/{y}.mvt"
-            ],
+            "tiles": ["http://localhost:8001/tiles/base/{z}/{x}/{y}.mvt"],
             "minzoom": 10,
             "maxzoom": 16
         }
     },
-    "sprite": "https://maputnik.github.io/osm-liberty/sprites/osm-liberty",
     "glyphs": "src/assets/fonts/glyphs/{fontstack}/{range}.pbf",
     "layers": [
         {
@@ -306,8 +303,45 @@
             "source": "diagonal",
             "source-layer": "building",
             "filter": ["all"],
+
             "paint": {
-                "fill-color": "rgba(255, 255, 255, 1)",
+                "fill-color": [
+                    "case",
+                    ["boolean", ["feature-state", "highlighted"], false],
+                    "#b1c5fd",
+                    "rgba(255, 255, 255)"
+                ]
+            }
+        },
+        {
+            "id": "building-outline",
+            "type": "line",
+            "source": "diagonal",
+            "source-layer": "building",
+            "filter": ["all"],
+            "paint": {
+                "line-width": [
+                    "case",
+                    ["boolean", ["feature-state", "highlighted"], false],
+                    1,
+                    0.33
+                ],
+                "line-color": [
+                    "case",
+                    ["boolean", ["feature-state", "highlighted"], false],
+                    "#37589f",
+                    "#4f5a7d"
+                ]
+            }
+        },
+        {
+            "id": "query",
+            "type": "fill",
+            "source": "diagonal",
+            "source-layer": "query",
+            "filter": ["all"],
+            "paint": {
+                "fill-color": "red",
                 "fill-outline-color": "#4f5a7d"
             }
         }

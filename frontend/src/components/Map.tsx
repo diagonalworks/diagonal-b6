@@ -5,6 +5,10 @@ import { fetchB6 } from '@/lib/b6';
 import { ChartDimensions, useChartDimensions } from '@/lib/useChartDimensions';
 import { StackResponse } from '@/types/stack';
 import {
+    MapboxOverlay as DeckOverlay,
+    MapboxOverlayProps,
+} from '@deck.gl/mapbox';
+import {
     DndContext,
     KeyboardSensor,
     MouseSensor,
@@ -19,10 +23,16 @@ import {
 import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
+import { MVTLayer } from 'deck.gl/typed';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAtom } from 'jotai';
 import { debounce, pickBy } from 'lodash';
-import { MapLayerMouseEvent, Point, StyleSpecification } from 'maplibre-gl';
+import {
+    Feature,
+    MapLayerMouseEvent,
+    Point,
+    StyleSpecification,
+} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
     HTMLAttributes,
@@ -32,10 +42,21 @@ import {
     useMemo,
     useState,
 } from 'react';
-import { Map as MapLibre, ViewState, useMap } from 'react-map-gl/maplibre';
+import {
+    Map as MapLibre,
+    ViewState,
+    useControl,
+    useMap,
+} from 'react-map-gl/maplibre';
 import { twMerge } from 'tailwind-merge';
 import { StackAdapter } from './adapters/StackAdapter';
 import diagonalBasemapStyle from './diagonal-map-style.json';
+
+export function DeckGLOverlay(props: MapboxOverlayProps) {
+    const overlay = useControl(() => new DeckOverlay(props));
+    overlay.setProps(props);
+    return null;
+}
 
 export function Map({
     id,
@@ -48,6 +69,7 @@ export function Map({
         marginLeft: 0,
     });
     const { [id]: map } = useMap();
+    const [cursor, setCursor] = useState<'auto' | 'pointer'>('auto');
     const [activeStackId, setActiveStackId] = useState<UniqueIdentifier | null>(
         null
     );
@@ -164,6 +186,27 @@ export function Map({
         return pickBy(stacks, (stack) => stack.docked);
     }, [stacks]);
 
+    const mvt = new MVTLayer({
+        data: ['api/tiles/base/{z}/{x}/{y}.mvt'],
+        minZoom: 10,
+        maxZoom: 16,
+        /* getLineColor: (f: Feature) => {
+            return 'transparent';
+        }, */
+        getFillColor: (f: Feature) => {
+            if (f.properties.layerName === 'query') {
+                //console.log(f);
+            }
+            // console.log(f);
+            return 'transparent';
+        },
+
+        //onDataLoad: (data: $FixMe) => console.log(data),
+    });
+
+    const layers = [mvt];
+    console.log(layers);
+
     return (
         <div
             {...props}
@@ -181,6 +224,13 @@ export function Map({
                     debouncedSetViewState(evt.viewState);
                 }}
                 onClick={handleClick}
+                onMouseEnter={() => {
+                    setCursor('pointer');
+                }}
+                onMouseLeave={() => {
+                    setCursor('auto');
+                }}
+                cursor={cursor}
                 attributionControl={false}
                 mapStyle={diagonalBasemapStyle as StyleSpecification}
                 interactive={true}
@@ -198,6 +248,8 @@ export function Map({
                         <MinusIcon />
                     </MapControls.Button>
                 </MapControls>
+                {/*                 <DeckGLOverlay layers={layers} />
+                 */}
                 <div className="absolute top-16 left-2 flex flex-col gap-1">
                     {Object.entries(dockedStacks).map(([stackId, stack]) => {
                         return (
@@ -265,6 +317,17 @@ const Droppable = ({
     );
 };
 
+const variants = {
+    hidden: {
+        opacity: 0,
+        scale: 0,
+    },
+    visible: {
+        opacity: 1,
+        scale: 1,
+    },
+};
+
 const DraggableStack = ({
     id,
     mapId,
@@ -309,18 +372,10 @@ const DraggableStack = ({
             {...attributes}
         >
             <motion.div
-                initial={{
-                    opacity: 0,
-                    scale: 0,
-                }}
-                animate={{
-                    opacity: 1,
-                    scale: 1,
-                }}
-                exit={{
-                    opacity: 0,
-                    scale: 0,
-                }}
+                variants={variants}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
                 transition={{
                     duration: 0.1,
                 }}
