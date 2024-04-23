@@ -59,6 +59,9 @@ dependencies:
   '@tanstack/react-query-devtools':
     specifier: ^5.29.2
     version: 5.29.2(@tanstack/react-query@5.29.2)(react@18.2.0)
+  '@types/geojson':
+    specifier: ^7946.0.14
+    version: 7946.0.14
   '@visx/group':
     specifier: ^3.3.0
     version: 3.3.0(react@18.2.0)

@@ -1,3 +1,4 @@
+import * as circleIcons from '@/assets/icons/circle';
 import { AppStore, appAtom } from '@/atoms/app';
 import { viewAtom } from '@/atoms/location';
 import { MapControls } from '@/components/system/MapControls';
@@ -21,7 +22,7 @@ import {
     useSensors,
 } from '@dnd-kit/core';
 import { restrictToWindowEdges } from '@dnd-kit/modifiers';
-import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
+import { DotIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { MVTLayer } from 'deck.gl/typed';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -44,11 +45,14 @@ import {
 } from 'react';
 import {
     Map as MapLibre,
+    Marker,
+    Source,
     ViewState,
     useControl,
     useMap,
 } from 'react-map-gl/maplibre';
 import { twMerge } from 'tailwind-merge';
+import { match } from 'ts-pattern';
 import { StackAdapter } from './adapters/StackAdapter';
 import diagonalBasemapStyle from './diagonal-map-style.json';
 
@@ -74,7 +78,7 @@ export function Map({
         null
     );
 
-    const [{ stacks, startup }, setAppAtom] = useAtom(appAtom);
+    const [{ stacks, startup, geojson }, setAppAtom] = useAtom(appAtom);
 
     const pointerSensor = useSensor(PointerSensor, {
         activationConstraint: {
@@ -139,16 +143,22 @@ export function Map({
 
     useEffect(() => {
         if (!stackQuery.data) return;
-        const { proto } = stackQuery.data;
+        const { proto, geoJSON } = stackQuery.data;
         if (proto && coordinates && expression) {
             setAppAtom((draft) => {
+                draft.stacks = pickBy(
+                    stacks,
+                    (stack) => !stack.transient || stack.docked
+                );
                 draft.stacks[proto.expression] = {
                     coordinates,
                     docked: false,
                     expression: expression,
                     proto,
                     id: proto.expression,
+                    transient: true,
                 };
+                draft.geojson[proto.expression] = geoJSON;
             });
         }
     }, [stackQuery.data]);
@@ -207,6 +217,26 @@ export function Map({
     const layers = [mvt];
     console.log(layers);
 
+    /* 
+    not ideal that we're transforming to array and filtering such a large dataset here on every render. @TODO: improve performance 
+    */
+    const points = useMemo(() => {
+        const features = Object.values(geojson)
+            .flat()
+            .flatMap((f) => f?.features ?? [])
+            .filter(
+                (f) =>
+                    f.geometry.type === 'Point' &&
+                    map
+                        ?.getBounds()
+                        ?.contains(f.geometry.coordinates as [number, number])
+            );
+
+        return features;
+    }, [geojson, mapViewState]);
+
+    console.log(points);
+
     return (
         <div
             {...props}
@@ -236,6 +266,42 @@ export function Map({
                 interactive={true}
                 interactiveLayerIds={['building', 'road']}
             >
+                {points.map((point) => {
+                    if (point.geometry.type !== 'Point') return null;
+                    return (
+                        <Marker
+                            className="[&>svg]:fill-graphite-80"
+                            latitude={point.geometry.coordinates[1]}
+                            longitude={point.geometry.coordinates[0]}
+                        >
+                            {match(point.properties?.['-b6-icon'])
+                                .with('dot', () => {
+                                    return (
+                                        <DotIcon className="fill-graphite-80" />
+                                    );
+                                })
+                                .otherwise(() => {
+                                    const icon = point.properties?.['-b6-icon'];
+                                    if (!icon) return <DotIcon />;
+                                    const iconComponentName = `${icon
+                                        .charAt(0)
+                                        .toUpperCase()}${icon.slice(1)}`;
+                                    if (
+                                        circleIcons[
+                                            iconComponentName as keyof typeof circleIcons
+                                        ]
+                                    ) {
+                                        const Icon =
+                                            circleIcons[
+                                                iconComponentName as keyof typeof circleIcons
+                                            ];
+                                        return <Icon />;
+                                    }
+                                    return <DotIcon />;
+                                })}
+                        </Marker>
+                    );
+                })}
                 <MapControls>
                     <MapControls.Button
                         onClick={() => map?.zoomIn({ duration: 200 })}
@@ -248,6 +314,13 @@ export function Map({
                         <MinusIcon />
                     </MapControls.Button>
                 </MapControls>
+                <Source
+                    id="geojson"
+                    type="geojson"
+                    data={Object.values(geojson).flat()}
+                >
+                    {/* <Layer {...geojsonLayer} /> */}
+                </Source>
                 {/*                 <DeckGLOverlay layers={layers} />
                  */}
                 <div className="absolute top-16 left-2 flex flex-col gap-1">
@@ -265,7 +338,12 @@ export function Map({
                 <DndContext
                     sensors={sensors}
                     modifiers={[restrictToWindowEdges]}
-                    onDragStart={({ active }) => setActiveStackId(active.id)}
+                    onDragStart={({ active }) => {
+                        setActiveStackId(active.id);
+                        setAppAtom((draft) => {
+                            draft.stacks[active.id].transient = false;
+                        });
+                    }}
                     onDragEnd={({ active, delta }) => {
                         setAppAtom((draft) => {
                             const { coordinates } = draft.stacks[active.id];

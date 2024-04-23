@@ -57,12 +57,15 @@ const Workspace = () => {
             });
             setApp((draft) => {
                 startup.data.docked?.forEach((dock, i) => {
+                    console.log({ dock });
                     const id = `stack_docked_${i}`;
                     draft.stacks[id] = {
                         proto: dock.proto,
                         docked: true,
+                        transient: false,
                         id,
                     };
+                    draft.geojson[id] = dock.geoJSON;
                 });
                 draft.startup = startup.data;
             });

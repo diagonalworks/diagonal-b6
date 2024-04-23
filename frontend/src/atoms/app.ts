@@ -1,6 +1,7 @@
 import { urlSearchParamsStorage } from '@/lib/storage';
 import { UIResponseProto } from '@/types/generated/ui';
 import { StartupResponse } from '@/types/startup';
+import type { FeatureCollection } from 'geojson';
 import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
 import { Point } from 'maplibre-gl';
@@ -27,6 +28,7 @@ export type AppStore = {
         left: keyof Scenarios;
         right?: keyof Scenarios;
     };
+    geojson: Record<string, FeatureCollection[]>;
     stacks: Record<
         string,
         {
@@ -34,6 +36,7 @@ export type AppStore = {
             expression?: string;
             coordinates?: Point;
             docked: boolean;
+            transient?: boolean;
             proto: UIResponseProto;
             tab?: keyof Scenarios;
         }
@@ -50,4 +53,5 @@ export const appAtom = atomWithImmer<AppStore>({
         },
     },
     stacks: {},
+    geojson: {},
 });

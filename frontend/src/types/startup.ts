@@ -1,7 +1,6 @@
-import { $FixMe } from '@/utils/defs';
+import { FeatureCollection } from 'geojson';
 import { FeatureIDProto } from './generated/api';
 import { UIResponseProto } from './generated/ui';
-
 export type LatLng = {
     latE7: number;
     lngE7: number;
@@ -14,7 +13,7 @@ export type StartupResponse = {
         type: string;
     };
     docked?: {
-        geoJson: $FixMe;
+        geoJSON: FeatureCollection[];
         proto: UIResponseProto;
     }[];
     openDockIndex?: number;
