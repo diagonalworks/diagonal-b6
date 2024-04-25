@@ -16,17 +16,10 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-func newShortestPathSearch(origin b6.Feature, mode string, distance float64, features graph.ShortestPathFeatures, w b6.World) (*graph.ShortestPathSearch, error) {
-	var weights graph.Weights
-	switch mode {
-	case "bus":
-		weights = graph.BusWeights{}
-	case "car":
-		weights = graph.CarWeights{}
-	case "walk":
-		weights = graph.SimpleHighwayWeights{}
-	default:
-		return nil, fmt.Errorf("Unknown travel mode %q", mode)
+func newShortestPathSearch(origin b6.Feature, options b6.UntypedCollection, distance float64, features graph.ShortestPathFeatures, w b6.World) (*graph.ShortestPathSearch, error) {
+	weights, err := WeightsFromOptions(options)
+	if err != nil {
+		return nil, err
 	}
 
 	var s *graph.ShortestPathSearch
@@ -45,9 +38,9 @@ func newShortestPathSearch(origin b6.Feature, mode string, distance float64, fea
 	return nil, fmt.Errorf("Can't find paths from feature type %s", origin.FeatureID().Type)
 }
 
-func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (b6.Collection[b6.FeatureID, b6.Feature], error) {
+func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature, options b6.UntypedCollection, distance float64, query b6.Query, pathStates *geojson.FeatureCollection) (b6.Collection[b6.FeatureID, b6.Feature], error) {
 	features := b6.ArrayFeatureCollection[b6.Feature](make([]b6.Feature, 0))
-	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
+	s, err := newShortestPathSearch(origin, options, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		for id := range s.PointDistances() {
 			if point := context.World.FindFeatureByID(id); point != nil {
@@ -91,10 +84,10 @@ func FindReachableFeaturesWithPathStates(context *api.Context, origin b6.Feature
 }
 
 // Return the a collection of the features reachable from the given origin via the given mode, within the given distance in meters, that match the given query.
-// Mode can be 'bus', 'car' or 'walk'.
+// See accessible-all for options values.
 // Deprecated. Use accessible-all.
-func reachable(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, b6.Feature], error) {
-	return FindReachableFeaturesWithPathStates(context, origin, mode, distance, query, nil)
+func reachable(context *api.Context, origin b6.Feature, options b6.UntypedCollection, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, b6.Feature], error) {
+	return FindReachableFeaturesWithPathStates(context, origin, options, distance, query, nil)
 }
 
 type odCollection struct {
@@ -170,14 +163,16 @@ func (o *odCollection) Less(i, j int) bool {
 // Return the a collection of the features reachable from the given origins, within the given duration in seconds, that match the given query.
 // Keys of the collection are origins, values are reachable destinations.
 // Options are passed as tags containing the mode, and mode specific values. Examples include:
-// Walking, with the default speed of 4.5kmh⁻¹:
+// Walking, with the default speed of 4.5km/h:
 // mode=walk
-// Walking, a speed of 4.5kmh⁻¹:
-// mode=walk, speed=3.0
+// Walking, a speed of 3km/h:
+// mode=walk, walking speed=3.0
 // Transit at peak times:
 // mode=transit
 // Transit at off-peak times:
 // mode=transit, peak=no
+// Walking, accounting for elevation:
+// elevation=true (optional: uphill=hard downhill=hard)
 // Walking, with the resulting collection flipped such that keys are
 // destinations and values are origins. Useful for efficiency if you assume
 // symmetry, and the number of destinations is considerably smaller than the
@@ -188,7 +183,8 @@ func accessibleAll(context *api.Context, origins b6.Collection[any, b6.Identifia
 	if err != nil {
 		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
-	weights, err := optionsToWeights(tags)
+
+	weights, err := WeightsFromOptions(options)
 	if err != nil {
 		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
@@ -244,26 +240,43 @@ done:
 	}, err
 }
 
-func optionsToWeights(options b6.Taggable) (graph.Weights, error) {
-	walking := graph.WalkingTimeWeights{
-		Speed: graph.WalkingMetersPerSecond,
-	}
-
-	if speed := options.Get("speed"); speed.IsValid() {
-		if f, err := strconv.ParseFloat(speed.Value.String(), 64); err == nil {
-			walking.Speed = f
-		}
+func WeightsFromOptions(options b6.UntypedCollection) (graph.Weights, error) {
+	opts, err := api.CollectionToTags(options)
+	if err != nil {
+		return nil, err
 	}
 
 	var weights graph.Weights
-	switch m := options.Get("mode").Value.String(); m {
-	case "", "walk":
+
+	if opts.Get("elevation").IsValid() {
+		elevation := graph.ElevationWeights{}
+		if upHill := opts.Get("uphill"); upHill.IsValid() && upHill.Value.String() == "hard" {
+			elevation.UpHillHard = true
+		}
+		if downHill := opts.Get("downhill"); downHill.IsValid() && downHill.Value.String() == "hard" {
+			elevation.DownHillHard = true
+		}
+		weights = elevation
+	} else {
+		walking := graph.WalkingTimeWeights{
+			Speed: graph.WalkingMetersPerSecond,
+		}
+
+		if speed := opts.Get("walking speed"); speed.IsValid() {
+			if f, err := strconv.ParseFloat(speed.Value.String(), 64); err == nil {
+				walking.Speed = f
+			}
+		}
 		weights = walking
+	}
+
+	switch m := opts.Get("mode").Value.String(); m {
+	case "", "walk":
 	case "transit":
-		if p := options.Get("peak"); p.Value.String() == "no" {
-			weights = graph.TransitTimeWeights{PeakTraffic: false, Weights: walking}
+		if p := opts.Get("peak"); p.Value.String() == "no" {
+			weights = graph.TransitTimeWeights{PeakTraffic: false, Weights: weights}
 		} else {
-			weights = graph.TransitTimeWeights{PeakTraffic: true, Weights: walking}
+			weights = graph.TransitTimeWeights{PeakTraffic: true, Weights: weights}
 		}
 	default:
 		return nil, fmt.Errorf("Expected mode=walk or mode=transit, found %s", m)
@@ -278,11 +291,7 @@ func accessibleRoutes(context *api.Context, origin b6.Identifiable, destinations
 		return b6.Collection[b6.FeatureID, b6.Route]{}, nil
 	}
 
-	tags, err := api.CollectionToTags(options)
-	if err != nil {
-		return b6.Collection[b6.FeatureID, b6.Route]{}, err
-	}
-	weights, err := optionsToWeights(tags)
+	weights, err := WeightsFromOptions(options)
 	if err != nil {
 		return b6.Collection[b6.FeatureID, b6.Route]{}, err
 	}
@@ -364,34 +373,22 @@ func accessibleFromOrigin(ds []b6.FeatureID, origin b6.Feature, destinations b6.
 	return ds
 }
 
-func weightsFromMode(mode string) (graph.Weights, error) {
-	switch mode {
-	case "bus":
-		return graph.BusWeights{}, nil
-	case "car":
-		return graph.CarWeights{}, nil
-	case "walk":
-		return graph.SimpleHighwayWeights{}, nil
-	}
-	return nil, fmt.Errorf("Unknown travel mode %q", mode)
-}
-
 // Return the closest feature from the given origin via the given mode, within the given distance in meters, matching the given query.
-// See reachable for mode values.
-func closestFeature(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Feature, error) {
-	feature, _, err := findClosest(context, origin, mode, distance, query)
+// See accessible-all for options values.
+func closestFeature(context *api.Context, origin b6.Feature, options b6.UntypedCollection, distance float64, query b6.Query) (b6.Feature, error) {
+	feature, _, err := findClosest(context, origin, options, distance, query)
 	return feature, err
 }
 
 // Return the distance through the graph of the closest feature from the given origin via the given mode, within the given distance in meters, matching the given query.
-// See reachable for mode values.
-func closestFeatureDistance(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (float64, error) {
-	_, distance, err := findClosest(context, origin, mode, distance, query)
+// See accessible-all for options values.
+func closestFeatureDistance(context *api.Context, origin b6.Feature, options b6.UntypedCollection, distance float64, query b6.Query) (float64, error) {
+	_, distance, err := findClosest(context, origin, options, distance, query)
 	return distance, err
 }
 
-func findClosest(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Feature, float64, error) {
-	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
+func findClosest(context *api.Context, origin b6.Feature, options b6.UntypedCollection, distance float64, query b6.Query) (b6.Feature, float64, error) {
+	s, err := newShortestPathSearch(origin, options, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		// TODO: This expands the search everywhere up to the maximum distance, and we
 		// can actually stop early.
@@ -426,13 +423,13 @@ func findClosest(context *api.Context, origin b6.Feature, mode string, distance 
 
 // Return a collection of the paths used to reach all features matching the given query from the given origin via the given mode, within the given distance in meters.
 // Keys are the paths used, values are the number of times that path was used during traversal.
-// See reachable for mode values.
-func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, int], error) {
+// See accessible-all for options values.
+func pathsToReachFeatures(context *api.Context, origin b6.Feature, options b6.UntypedCollection, distance float64, query b6.Query) (b6.Collection[b6.FeatureID, int], error) {
 	features := &b6.ArrayCollection[b6.FeatureID, int]{
 		Keys:   make([]b6.FeatureID, 0),
 		Values: make([]int, 0),
 	}
-	s, err := newShortestPathSearch(origin, mode, distance, graph.PointsAndAreas, context.World)
+	s, err := newShortestPathSearch(origin, options, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		points := 0
 		counts := make(map[b6.PathID]int)
@@ -477,10 +474,11 @@ func pathsToReachFeatures(context *api.Context, origin b6.Feature, mode string, 
 	return features.Collection(), err
 }
 
-// Return the area formed by the convex hull of the features matching the given query reachable from the given origin via the given mode, within the given distance in meters.
-func reachableArea(context *api.Context, origin b6.Feature, mode string, distance float64) (float64, error) {
+// Return the area formed by the convex hull of the features matching the given query reachable from the given origin via the given mode specified in options, within the given distance in meters.
+// See accessible-all for options values.
+func reachableArea(context *api.Context, origin b6.Feature, options b6.UntypedCollection, distance float64) (float64, error) {
 	area := 0.0
-	s, err := newShortestPathSearch(origin, mode, distance, graph.Points, context.World)
+	s, err := newShortestPathSearch(origin, options, distance, graph.Points, context.World)
 	if err == nil {
 		distances := s.PointDistances()
 		query := s2.NewConvexHullQuery()
