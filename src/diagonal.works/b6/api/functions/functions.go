@@ -92,6 +92,7 @@ var functions = api.FunctionSymbols{
 	"gt":              gt,
 	"divide":          divide,
 	"divide-int":      divideInt,
+	"to-str":          toStr,
 	"add":             add,
 	"add-ints":        addInts,
 	"clamp":           clamp,
