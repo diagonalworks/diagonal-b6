@@ -66,7 +66,6 @@ export const StackAdapter = ({
     }, [stack.proto.highlighted]);
 
     if (!stack.proto.stack) return null;
-    //console.log(stack.proto);
 
     const firstSubstack = stack.proto.stack.substacks[0];
     const otherSubstacks = stack.proto.stack.substacks.slice(1);

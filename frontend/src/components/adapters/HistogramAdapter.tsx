@@ -1,9 +1,12 @@
+import { appAtom } from '@/atoms/app';
 import { useStackContext } from '@/lib/context/stack';
 import colors from '@/tokens/colors.json';
-import { SwatchLineProto } from '@/types/generated/ui';
-import { $FixMe } from '@/utils/defs';
+import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
+import { useAtom } from 'jotai';
+import { useEffect, useMemo } from 'react';
+import { match } from 'ts-pattern';
 import { Histogram } from '../system/Histogram';
 
 const colorInterpolator = interpolateRgbBasis([
@@ -13,48 +16,67 @@ const colorInterpolator = interpolateRgbBasis([
 ]);
 
 export const HistogramAdaptor = ({
+    type,
+    bars,
     swatches,
 }: {
-    swatches: SwatchLineProto[];
+    type: 'swatch' | 'histogram';
+    bars?: HistogramBarLineProto[];
+    swatches?: SwatchLineProto[];
 }) => {
-    const { state } = useStackContext();
+    const [app, setApp] = useAtom(appAtom);
+    const stack = useStackContext();
 
-    // @ts-expect-error: mismatch between current collection and new typed BE.
-    const matchedCondition = state.stack?.proto?.bucketed.find((b: $FixMe) => {
-        console.log({ b });
-        return b.condition.indices.every((index: number, i: number) => {
-            const chip = state.choiceChips[index];
-            console.log({ chip });
-            if (!chip) return false;
-            return chip.value === b.condition.values[i];
+    const data = useMemo(() => {
+        return match(type)
+            .with(
+                'histogram',
+                () =>
+                    bars?.flatMap((bar) => {
+                        return {
+                            index: bar.index,
+                            label: bar.range?.value ?? '',
+                            count: bar.value,
+                        };
+                    }) ?? []
+            )
+            .with(
+                'swatch',
+                () =>
+                    swatches?.flatMap((swatch) => {
+                        return {
+                            index: swatch.index,
+                            label: swatch.label?.value ?? '',
+                            /* Swatches do not have a count. Should be null but setting it to 0 
+                            for now to avoid type errors. */
+                            count: 0,
+                        };
+                    }) ?? []
+            )
+            .exhaustive();
+    }, [type, bars, swatches]);
+
+    const histogramColorScale = useMemo(() => {
+        return scaleOrdinal({
+            domain: data.map((d) => `${d.index}`),
+            range: data.map((_, i) => colorInterpolator(i / data.length)),
         });
-    });
+    }, [data]);
 
-    const buckets = matchedCondition?.buckets ?? [];
-
-    const data = swatches.flatMap((swatch) => {
-        if (swatch.index === -1) return [];
-        return {
-            index: swatch.index,
-            label: swatch.label?.value ?? '',
-            count: buckets?.[swatch.index]?.ids
-                ? // this is probably wrong, but just to get a value to show
-                  buckets?.[swatch.index]?.ids.reduce(
-                      (acc: number, curr: { ids: Array<$FixMe> }) =>
-                          acc + curr.ids.length,
-                      0
-                  ) ?? 0
-                : 0,
-        };
-    });
-
-    const histogramColorScale = scaleOrdinal({
-        domain: data.map((d) => `${d.index}`),
-        range: data.map((_, i) => colorInterpolator(i / data.length)),
-    });
+    useEffect(() => {
+        setApp((draft) => {
+            const id = stack.state.stack?.id;
+            if (id) {
+                draft.stacks[id].histogram = {
+                    colorScale: histogramColorScale,
+                };
+            }
+        });
+    }, [histogramColorScale]);
 
     return (
         <Histogram
+            type={type}
             data={data}
             label={(d) => d.label}
             bucket={(d) => d.index.toString()}

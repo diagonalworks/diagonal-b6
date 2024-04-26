@@ -33,9 +33,10 @@
             "type": "fill",
             "source": "diagonal",
             "source-layer": "water",
-            "filter": ["all"],
-            "paint": { "fill-color": "#e7efff" }
+            "filter": ["all", ["==", ["geometry-type"], "Polygon"]],
+            "paint": { "fill-color": "#B3BFE5" }
         },
+
         {
             "id": "landuse-nature",
             "type": "fill",

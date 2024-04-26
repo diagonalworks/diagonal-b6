@@ -99,7 +99,7 @@ const Content = React.forwardRef<
                         exit={collapsible ? 'collapsed' : 'open'}
                         transition={{ duration: 0.5, type: 'spring' }}
                         className={twMerge(
-                            'text-base overflow-hidden  max-h-80 overflow-y-auto',
+                            'text-base overflow-hidden overflow-y-auto',
                             header &&
                                 'group-[&_.line]:border-t-0 group-[&_.stack]:border-t-0',
                             className

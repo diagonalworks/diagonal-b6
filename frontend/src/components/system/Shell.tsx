@@ -45,7 +45,7 @@ export function Shell({
             /* Current filtering logic is a bit naive, but works for now. In the future we can
             integrate match-sorter https://github.com/kentcdodds/match-sorter */
             filter={(value, search) => (value.includes(search) ? 1 : 0)}
-            className="w-fit"
+            className="shell w-fit"
         >
             <Line className="flex gap-2 bg-ultramarine-10 hover:bg-ultramarine-10 ">
                 <span className="text-ultramarine-70 "> b6</span>
@@ -62,6 +62,9 @@ export function Shell({
                                 func: selectedFunction?.id ?? '',
                                 args: evt.currentTarget.value,
                             });
+
+                            setSelected(null);
+                            setInput('');
                         }
                     }}
                     className={twMerge(
@@ -73,6 +76,14 @@ export function Shell({
                             evt.currentTarget.value === ''
                         ) {
                             setSelected(null);
+                        }
+                        if (evt.key === 'Enter' && selectedFunction) {
+                            if (onSubmit) {
+                                onSubmit({
+                                    func: selectedFunction?.id ?? '',
+                                    args: evt.currentTarget.value,
+                                });
+                            }
                         }
                     }}
                     onValueChange={handleChange}

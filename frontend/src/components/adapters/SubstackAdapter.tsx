@@ -16,7 +16,9 @@ export const SubstackAdapter = ({
     const [open, setOpen] = useState(collapsible ? false : true);
 
     const isHistogram =
-        contentLines.length > 1 && contentLines.every((line) => line.swatch);
+        contentLines.length > 1 &&
+        (contentLines.every((line) => line.swatch) ||
+            contentLines.every((line) => line.histogramBar));
 
     return (
         <Stack
@@ -29,13 +31,15 @@ export const SubstackAdapter = ({
                     <LineAdapter line={substack.lines[0]} />
                 </Stack.Trigger>
             )}
-            <Stack.Content className="text-sm" header={!!header}>
+            <Stack.Content className="text-sm max-h-80 " header={!!header}>
                 {!isHistogram &&
                     contentLines.map((l, i) => {
                         return <LineAdapter key={i} line={l} />;
                     })}
                 {isHistogram && (
                     <HistogramAdaptor
+                        type={contentLines[0].swatch ? 'swatch' : 'histogram'}
+                        bars={contentLines.flatMap((l) => l.histogramBar ?? [])}
                         swatches={contentLines.flatMap((l) => l.swatch ?? [])}
                     />
                 )}

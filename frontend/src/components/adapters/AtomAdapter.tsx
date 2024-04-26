@@ -41,6 +41,7 @@ export const AtomAdapter = ({ atom }: { atom: AtomProto }) => {
             )}
             {atom.value && <Line.Value>{atom.value}</Line.Value>}
             {/* @TODO: render other primitive atom types */}
+            {atom.download && <span>{atom.download}</span>}
         </>
     );
 };

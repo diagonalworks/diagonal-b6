@@ -3,7 +3,9 @@ import { AppStore, appAtom } from '@/atoms/app';
 import { viewAtom } from '@/atoms/location';
 import { MapControls } from '@/components/system/MapControls';
 import { fetchB6 } from '@/lib/b6';
+import { isSamePositionPoints } from '@/lib/map';
 import { ChartDimensions, useChartDimensions } from '@/lib/useChartDimensions';
+import { Event } from '@/types/events';
 import { StackResponse } from '@/types/stack';
 import {
     MapboxOverlay as DeckOverlay,
@@ -11,7 +13,6 @@ import {
 } from '@deck.gl/mapbox';
 import {
     DndContext,
-    KeyboardSensor,
     MouseSensor,
     PointerSensor,
     TouchSensor,
@@ -24,16 +25,10 @@ import {
 import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { DotIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
-import { MVTLayer } from 'deck.gl/typed';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAtom } from 'jotai';
-import { debounce, pickBy } from 'lodash';
-import {
-    Feature,
-    MapLayerMouseEvent,
-    Point,
-    StyleSpecification,
-} from 'maplibre-gl';
+import { debounce, pickBy, uniqWith } from 'lodash';
+import { MapLayerMouseEvent, Point, StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
     HTMLAttributes,
@@ -46,7 +41,6 @@ import {
 import {
     Map as MapLibre,
     Marker,
-    Source,
     ViewState,
     useControl,
     useMap,
@@ -85,15 +79,9 @@ export function Map({
             distance: 5,
         },
     });
-    const keyboardSensor = useSensor(KeyboardSensor);
     const mouseSensor = useSensor(MouseSensor);
     const touchSensor = useSensor(TouchSensor);
-    const sensors = useSensors(
-        pointerSensor,
-        keyboardSensor,
-        mouseSensor,
-        touchSensor
-    );
+    const sensors = useSensors(pointerSensor, mouseSensor, touchSensor);
 
     const [viewState, setViewState] = useAtom(viewAtom);
     const [mapViewState, setMapViewState] = useState<ViewState>(viewState);
@@ -106,12 +94,15 @@ export function Map({
 
     const [expression, setExpression] = useState<string | null>(null);
     const [coordinates, setCoordinates] = useState<Point>();
+    const [eventType, setEventType] = useState<Event | null>(null);
+    const [locked, setLocked] = useState(false);
 
     const stackQuery = useQuery({
-        queryKey: ['stack', expression],
+        queryKey: ['stack', expression, locked, eventType],
         queryFn: () => {
             if (
                 !expression ||
+                !eventType ||
                 !startup?.session ||
                 !map?.getCenter() ||
                 map?.getZoom() === undefined
@@ -123,15 +114,14 @@ export function Map({
                 expression: expression,
                 node: undefined,
                 root: undefined,
-                locked: true,
+                locked,
                 session: startup.session,
                 logMapCenter: {
                     latE7: Math.round(map.getCenter().lat * 1e7),
                     lngE7: Math.round(map.getCenter().lng * 1e7),
                 },
-                logEvent: 'mlc',
+                logEvent: eventType,
                 logMapZoom: map.getZoom(),
-                context: startup.context,
             }).then((res) => res.json() as Promise<StackResponse>);
         },
         enabled:
@@ -165,27 +155,46 @@ export function Map({
 
     const handleClick = useCallback(
         (evt: MapLayerMouseEvent) => {
-            setCoordinates(evt.point);
-            setExpression(
-                `${evt.lngLat.lat.toFixed(6)}, ${evt.lngLat.lng.toFixed(6)}`
-            );
-            /* const feature = evt.features?.[0];
-        if (!feature) return;
-        const { ns, id } = feature.properties;
-        if (!ns || !id) return; */
+            const evaluateLatLon = () => {
+                setEventType('mlc');
+                setExpression(
+                    `${evt.lngLat.lat.toFixed(6)}, ${evt.lngLat.lng.toFixed(6)}`
+                );
+            };
 
-            /* setAppAtom((draft) => {
-                draft.stacks[stackId] = {
-                    coordinates: evt.point,
-                    expression: `${evt.lngLat.lat.toFixed(
-                        6
-                    )}, ${evt.lngLat.lng.toFixed(6)}`,
-                };
-            }); */
+            setCoordinates(evt.point);
+
+            if (evt.originalEvent.shiftKey) {
+                setLocked(false);
+                evaluateLatLon();
+            } else {
+                setLocked(true);
+                const features = map?.queryRenderedFeatures(evt.point);
+                const feature = features?.[0];
+
+                if (feature) {
+                    setEventType('mfc');
+                    const { ns, id } = feature.properties;
+                    const type = match(feature.geometry.type)
+                        .with('Point', () => 'point')
+                        .with('LineString', () => 'path')
+                        .with('Polygon', () => 'area')
+                        .with('MultiPolygon', () => 'area')
+                        .otherwise(() => null);
+
+                    if (ns && id && type) {
+                        setExpression(
+                            `find-feature /${type}/${ns}/${BigInt(`0x${id}`)}`
+                        );
+                    }
+                } else {
+                    evaluateLatLon();
+                }
+            }
 
             return;
         },
-        [setCoordinates, setExpression]
+        [setCoordinates, setExpression, map]
     );
 
     const draggableStacks = useMemo(() => {
@@ -196,46 +205,30 @@ export function Map({
         return pickBy(stacks, (stack) => stack.docked);
     }, [stacks]);
 
-    const mvt = new MVTLayer({
-        data: ['api/tiles/base/{z}/{x}/{y}.mvt'],
-        minZoom: 10,
-        maxZoom: 16,
-        /* getLineColor: (f: Feature) => {
-            return 'transparent';
-        }, */
-        getFillColor: (f: Feature) => {
-            if (f.properties.layerName === 'query') {
-                //console.log(f);
-            }
-            // console.log(f);
-            return 'transparent';
-        },
-
-        //onDataLoad: (data: $FixMe) => console.log(data),
-    });
-
-    const layers = [mvt];
-    console.log(layers);
+    //const layers = [mvt];
 
     /* 
     not ideal that we're transforming to array and filtering such a large dataset here on every render. @TODO: improve performance 
     */
     const points = useMemo(() => {
-        const features = Object.values(geojson)
-            .flat()
-            .flatMap((f) => f?.features ?? [])
-            .filter(
-                (f) =>
-                    f.geometry.type === 'Point' &&
-                    map
-                        ?.getBounds()
-                        ?.contains(f.geometry.coordinates as [number, number])
-            );
+        const features = uniqWith(
+            Object.values(geojson)
+                .flat()
+                .flatMap((f) => f?.features ?? [])
+                .filter(
+                    (f) =>
+                        f.geometry.type === 'Point' &&
+                        map
+                            ?.getBounds()
+                            ?.contains(
+                                f.geometry.coordinates as [number, number]
+                            )
+                ),
+            isSamePositionPoints
+        );
 
         return features;
     }, [geojson, mapViewState]);
-
-    console.log(points);
 
     return (
         <div
@@ -262,10 +255,27 @@ export function Map({
                 }}
                 cursor={cursor}
                 attributionControl={false}
-                mapStyle={diagonalBasemapStyle as StyleSpecification}
+                //mapStyle={diagonalBasemapStyle as StyleSpecification}
                 interactive={true}
                 interactiveLayerIds={['building', 'road']}
+                dragRotate={false}
+                mapStyle={diagonalBasemapStyle as StyleSpecification}
+                boxZoom={false} // https://github.com/mapbox/mapbox-gl-js/issues/6971s
             >
+                {/*  <Source
+                    id="diagonal"
+                    type="vector"
+                    minzoom={10}
+                    maxzoom={16}
+                    url={'http://localhost:5173/tiles/base/{z}/{x}/{y}.mvt'}
+                    //tiles={['http://localhost:5173/tiles/base/{z}/{x}/{y}.mvt']}
+                >
+                    {diagonalBasemapStyle.layers.map((layer) => {
+                        return (
+                            <Layer {...(layer as LayerProps)} key={layer.id} />
+                        );
+                    })}
+                </Source> */}
                 {points.map((point) => {
                     if (point.geometry.type !== 'Point') return null;
                     return (
@@ -314,13 +324,7 @@ export function Map({
                         <MinusIcon />
                     </MapControls.Button>
                 </MapControls>
-                <Source
-                    id="geojson"
-                    type="geojson"
-                    data={Object.values(geojson).flat()}
-                >
-                    {/* <Layer {...geojsonLayer} /> */}
-                </Source>
+
                 {/*                 <DeckGLOverlay layers={layers} />
                  */}
                 <div className="absolute top-16 left-2 flex flex-col gap-1">

@@ -3,15 +3,17 @@ import { Line } from '@/components/system/Line';
 import { fetchB6 } from '@/lib/b6';
 import { LineContextProvider } from '@/lib/context/line';
 import { useStackContext } from '@/lib/context/stack';
-import { LineProto } from '@/types/generated/ui';
+import { LineProto, TagsLineProto } from '@/types/generated/ui';
 import { StackResponse } from '@/types/stack';
 import { useQuery } from '@tanstack/react-query';
 import { useAtom } from 'jotai';
 import React, { useEffect } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
+import { TooltipOverflow } from '../system/Tooltip';
 import { AtomAdapter } from './AtomAdapter';
 import { ChoiceAdapter } from './ChoiceAdapter';
 import { HeaderAdapter } from './HeaderAdapter';
+import { ShellAdapter } from './ShellAdapter';
 
 export const LineAdapter = ({ line }: { line: LineProto }) => {
     const clickable =
@@ -22,7 +24,7 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
     const { [stack.state.mapId]: map } = useMap();
 
     const { data, refetch } = useQuery({
-        queryKey: ['stack', JSON.stringify(clickable)],
+        queryKey: ['stack-line', JSON.stringify(clickable)],
         queryFn: () => {
             if (
                 !app.startup?.session ||
@@ -32,7 +34,6 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
                 return null;
             }
             return fetchB6('stack', {
-                context: app.startup?.context,
                 root: undefined,
                 expression: '',
                 locked: true,
@@ -96,8 +97,37 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
                         </div>
                     )}
                     {line.choice && <ChoiceAdapter choice={line.choice} />}
+                    {line.shell && <ShellAdapter shell={line.shell} />}
+                    {line.expression && (
+                        <span className="expression">
+                            {line.expression.expression}
+                        </span>
+                    )}
+                    {line.tags && <Tags tagLine={line.tags} />}
                 </Wrapper>
             </Line>
         </LineContextProvider>
+    );
+};
+
+const Tags = ({ tagLine }: { tagLine: TagsLineProto }) => {
+    return (
+        <div className="tag w-full text-sm ">
+            {tagLine.tags.map((tag) => {
+                return (
+                    <div className="flex gap-4 justify-between border-b border-b-transparent  hover:border-b-graphite-30 transition-colors ">
+                        <div className="flex gap-2 text-graphite-80 ">
+                            <span className=" min-w-2 italic">
+                                {tag.prefix}
+                            </span>
+                            <span className="font-medium">{tag.key}</span>
+                        </div>
+                        <div className=" max-w-1/2 text-right font-medium">
+                            <TooltipOverflow>{tag.value}</TooltipOverflow>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
     );
 };

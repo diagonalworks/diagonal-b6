@@ -8,10 +8,6 @@ export type LatLng = {
 
 export type StartupResponse = {
     version?: string;
-    context?: {
-        namespace: string;
-        type: string;
-    };
     docked?: {
         geoJSON: FeatureCollection[];
         proto: UIResponseProto;

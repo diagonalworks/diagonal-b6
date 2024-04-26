@@ -1,6 +1,7 @@
 import { urlSearchParamsStorage } from '@/lib/storage';
 import { UIResponseProto } from '@/types/generated/ui';
 import { StartupResponse } from '@/types/startup';
+import { ScaleOrdinal } from 'd3-scale';
 import type { FeatureCollection } from 'geojson';
 import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
@@ -39,6 +40,9 @@ export type AppStore = {
             transient?: boolean;
             proto: UIResponseProto;
             tab?: keyof Scenarios;
+            histogram?: {
+                colorScale: ScaleOrdinal<string, string>;
+            };
         }
     >;
 };

@@ -14,7 +14,13 @@ import { viewAtom } from './atoms/location';
 import { Map } from './components/Map';
 import { StartupResponse } from './types/startup';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            staleTime: Infinity,
+        },
+    },
+});
 
 function App() {
     return (
@@ -46,6 +52,7 @@ const Workspace = () => {
     });
 
     useEffect(() => {
+        console.log({ startup: startup.data });
         if (startup.data) {
             setViewState({
                 ...viewState,
@@ -57,7 +64,6 @@ const Workspace = () => {
             });
             setApp((draft) => {
                 startup.data.docked?.forEach((dock, i) => {
-                    console.log({ dock });
                     const id = `stack_docked_${i}`;
                     draft.stacks[id] = {
                         proto: dock.proto,

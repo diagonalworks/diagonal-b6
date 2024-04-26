@@ -2,6 +2,7 @@ import { useChartDimensions } from '@/lib/useChartDimensions';
 import { scaleLinear } from '@visx/scale';
 import { Text } from '@visx/text';
 import { motion } from 'framer-motion';
+import { isNull } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from './Line';
@@ -29,13 +30,14 @@ export function Histogram<T>({
     selected,
     onSelect,
     selectable = false,
+    type = 'histogram',
 }: {
     /** The data to display. */
     data: T[];
     /** The accessor function for the bucket. */
     bucket: (d: T) => string;
     /** The accessor function for the value. */
-    value: (d: T) => number;
+    value: (d: T) => number | null;
     /** The accessor function for the color. */
     color: (d: T) => string;
     /** The accessor function for the label. */
@@ -45,7 +47,8 @@ export function Histogram<T>({
     selected?: T | null;
     /** Optional change handler for the value of the selected bucket. */
     onSelect?: (d: T | null) => void;
-    /** The width of the histogram. */
+    /** The type of histogram to display. */
+    type?: 'swatch' | 'histogram';
 }) {
     const [internalSelected, setInternalSelected] = useState<T | null>(null);
     const [ref, dimensions] = useChartDimensions({
@@ -54,8 +57,11 @@ export function Histogram<T>({
     });
 
     const xScale = useMemo(() => {
+        const domain = data
+            .filter((d) => !isNull(value(d)))
+            .map(value) as number[];
         return scaleLinear({
-            domain: [0, Math.max(...data.map(value))],
+            domain: [0, Math.max(...domain)],
             range: [0, dimensions.boundedWidth],
         });
     }, [data, dimensions.boundedWidth, value]);
@@ -81,6 +87,8 @@ export function Histogram<T>({
             {data.map((d) => {
                 const isSelected =
                     selectedBucket && bucket(d) === bucket(selectedBucket);
+
+                const lineValue = value(d);
 
                 return (
                     <Line>
@@ -113,42 +121,44 @@ export function Histogram<T>({
                                     </span>
                                 </div>
                                 {/* current hack to not show 0 bucket */}
-                                {value(d) > 0 && (
-                                    <svg
-                                        width={dimensions.width}
-                                        height={dimensions.height}
-                                        className=" overflow-visible"
-                                    >
-                                        <motion.rect
-                                            animate={{
-                                                width: xScale(value(d)),
-                                            }}
-                                            x={dimensions.marginLeft}
-                                            y={dimensions.marginTop}
-                                            width={xScale(value(d))}
-                                            height={BAR_HEIGHT}
-                                            fill={color(d)}
-                                            rx={1}
-                                            className="stroke-graphite-80"
-                                            strokeWidth={0.7}
-                                        />
-                                        <motion.g
-                                            animate={{
-                                                translateX:
-                                                    xScale(value(d)) + 5,
-                                                translateY: BAR_HEIGHT / 2,
-                                            }}
+                                {lineValue &&
+                                    lineValue > 0 &&
+                                    type === 'histogram' && (
+                                        <svg
+                                            width={dimensions.width}
+                                            height={dimensions.height}
+                                            className=" overflow-visible"
                                         >
-                                            <Text
-                                                className="  fill-graphite-50"
-                                                verticalAnchor="middle"
-                                                fontSize={10}
+                                            <motion.rect
+                                                animate={{
+                                                    width: xScale(lineValue),
+                                                }}
+                                                x={dimensions.marginLeft}
+                                                y={dimensions.marginTop}
+                                                width={xScale(lineValue)}
+                                                height={BAR_HEIGHT}
+                                                fill={color(d)}
+                                                rx={1}
+                                                className="stroke-graphite-80"
+                                                strokeWidth={0.7}
+                                            />
+                                            <motion.g
+                                                animate={{
+                                                    translateX:
+                                                        xScale(lineValue) + 5,
+                                                    translateY: BAR_HEIGHT / 2,
+                                                }}
                                             >
-                                                {value(d)}
-                                            </Text>
-                                        </motion.g>
-                                    </svg>
-                                )}
+                                                <Text
+                                                    className="  fill-graphite-50"
+                                                    verticalAnchor="middle"
+                                                    fontSize={10}
+                                                >
+                                                    {lineValue}
+                                                </Text>
+                                            </motion.g>
+                                        </svg>
+                                    )}
                             </div>
                         </Wrapper>
                     </Line>
