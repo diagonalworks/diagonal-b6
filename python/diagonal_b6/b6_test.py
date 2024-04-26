@@ -177,6 +177,10 @@ class B6Test(unittest.TestCase):
     def test_divide_count_features(self):
         self.assertAlmostEqual(self.connection(b6.find(b6.tagged("#amenity", "bicycle_parking")).count().divide(10.0)), BIKE_PARKING_IN_GRANARY_SQUARE / 10.0)
 
+    def test_to_str(self):
+        self.connection(b6.add_tags(b6.find_areas(b6.keyed("#building")).map(lambda building: b6.tag("#reachable-within-km", building.reachable("walk", 1000, b6.keyed("#highway")).count().to_str()))))
+        self.assertEqual(self.connection(b6.find_area(b6.osm_way_area_id(COAL_DROPS_YARD_WEST_BUILDING_ID)).get_string("#reachable-within-km")), "9")
+
     def test_filter(self):
         filtered = self.connection(b6.find_areas(b6.keyed("#amenity")).filter(lambda a: b6.matches(a, b6.keyed("addr:postcode"))))
         self.assertGreater(len(filtered), 0)

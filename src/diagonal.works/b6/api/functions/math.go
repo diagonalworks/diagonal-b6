@@ -3,6 +3,7 @@ package functions
 import (
 	"math"
 	"sort"
+	"strconv"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -25,6 +26,10 @@ func divide(context *api.Context, a b6.Number, b b6.Number) (b6.Number, error) {
 // Deprecated.
 func divideInt(context *api.Context, a int, b float64) (float64, error) {
 	return float64(a) / b, nil
+}
+
+func toStr(context *api.Context, a int) string {
+	return strconv.Itoa(a)
 }
 
 // Return a added to b.

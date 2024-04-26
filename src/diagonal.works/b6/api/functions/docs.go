@@ -122,6 +122,7 @@ var functionDocs = map[string]Doc{
 	"tile-paths": Doc{Doc: "Return the URL paths for the tiles containing the given geometry at the given zoom level.\n", ArgNames: []string{"geometry","zoom"}},
 	"to-geojson": Doc{Doc: "", ArgNames: []string{"renderable"}},
 	"to-geojson-collection": Doc{Doc: "", ArgNames: []string{"renderables"}},
+	"to-str": Doc{Doc: "", ArgNames: []string{"a"}},
 	"top": Doc{Doc: "Return a collection with the n entries from the given collection with the greatest values.\nRequires the values of the given collection to be integers or floats.\n", ArgNames: []string{"collection","n"}},
 	"type-area": Doc{Doc: "Return a query that will match area features.\n", ArgNames: []string{}},
 	"type-path": Doc{Doc: "Return a query that will match path features.\n", ArgNames: []string{}},
