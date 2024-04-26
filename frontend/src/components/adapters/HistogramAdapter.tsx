@@ -4,7 +4,7 @@ import colors from '@/tokens/colors.json';
 import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
-import { useAtom } from 'jotai';
+import { useSetAtom } from 'jotai';
 import { useEffect, useMemo } from 'react';
 import { match } from 'ts-pattern';
 import { Histogram } from '../system/Histogram';
@@ -24,7 +24,7 @@ export const HistogramAdaptor = ({
     bars?: HistogramBarLineProto[];
     swatches?: SwatchLineProto[];
 }) => {
-    const [app, setApp] = useAtom(appAtom);
+    const setApp = useSetAtom(appAtom);
     const stack = useStackContext();
 
     const data = useMemo(() => {

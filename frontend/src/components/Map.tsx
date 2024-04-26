@@ -27,7 +27,7 @@ import { DotIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAtom } from 'jotai';
-import { debounce, pickBy, uniqWith } from 'lodash';
+import { debounce, isUndefined, pickBy, uniqWith } from 'lodash';
 import { MapLayerMouseEvent, Point, StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
@@ -136,10 +136,16 @@ export function Map({
         const { proto, geoJSON } = stackQuery.data;
         if (proto && coordinates && expression) {
             setAppAtom((draft) => {
-                draft.stacks = pickBy(
-                    stacks,
-                    (stack) => !stack.transient || stack.docked
+                const stacksToRemove = Object.keys(stacks).filter(
+                    (stackId) =>
+                        stacks[stackId].transient || !stacks[stackId].docked
                 );
+
+                stacksToRemove.forEach((stackId) => {
+                    delete draft.stacks[stackId];
+                    delete draft.geojson[stackId];
+                });
+
                 draft.stacks[proto.expression] = {
                     coordinates,
                     docked: false,
@@ -148,6 +154,7 @@ export function Map({
                     id: proto.expression,
                     transient: true,
                 };
+
                 draft.geojson[proto.expression] = geoJSON;
             });
         }
@@ -214,7 +221,7 @@ export function Map({
         const features = uniqWith(
             Object.values(geojson)
                 .flat()
-                .flatMap((f) => f?.features ?? [])
+                .flatMap((f) => (isUndefined(f) ? [] : f?.features ?? [f]))
                 .filter(
                     (f) =>
                         f.geometry.type === 'Point' &&
@@ -292,7 +299,10 @@ export function Map({
                                 })
                                 .otherwise(() => {
                                     const icon = point.properties?.['-b6-icon'];
-                                    if (!icon) return <DotIcon />;
+                                    if (!icon)
+                                        return (
+                                            <div className="w-2 h-2 rounded-full bg-ultramarine-50 border border-ultramarine-80" />
+                                        );
                                     const iconComponentName = `${icon
                                         .charAt(0)
                                         .toUpperCase()}${icon.slice(1)}`;

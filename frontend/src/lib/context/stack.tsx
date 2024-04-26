@@ -44,7 +44,7 @@ export const StackContextProvider = ({
             stack.proto.stack?.substacks.flatMap(
                 (substack) => substack.lines
             ) ?? [];
-        const choiceLines = allLines.flatMap((line) => line.choice ?? []);
+        const choiceLines = allLines.flatMap((line) => line?.choice ?? []);
 
         choiceLines.forEach((line) => {
             line.chips.forEach((atom) => {

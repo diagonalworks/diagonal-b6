@@ -11,9 +11,10 @@ export const SubstackAdapter = ({
     substack: SubstackProto;
     collapsible?: boolean;
 }) => {
-    const header = substack.lines[0]?.header;
-    const contentLines = substack.lines.slice(header ? 1 : 0);
     const [open, setOpen] = useState(collapsible ? false : true);
+    if (!substack.lines) return null;
+    const header = substack.lines[0].header;
+    const contentLines = substack.lines.slice(header ? 1 : 0);
 
     const isHistogram =
         contentLines.length > 1 &&
