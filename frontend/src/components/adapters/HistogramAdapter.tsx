@@ -5,7 +5,7 @@ import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
 import { useSetAtom } from 'jotai';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { match } from 'ts-pattern';
 import { Histogram } from '../system/Histogram';
 
@@ -62,17 +62,6 @@ export const HistogramAdaptor = ({
             range: data.map((_, i) => colorInterpolator(i / data.length)),
         });
     }, [data]);
-
-    useEffect(() => {
-        setApp((draft) => {
-            const id = stack.state.stack?.id;
-            if (id) {
-                draft.stacks[id].histogram = {
-                    colorScale: histogramColorScale,
-                };
-            }
-        });
-    }, [histogramColorScale]);
 
     return (
         <Histogram

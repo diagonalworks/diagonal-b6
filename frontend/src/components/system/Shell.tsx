@@ -39,15 +39,27 @@ export function Shell({
         }
     };
 
+    const handleSubmit = (value: string) => {
+        if (onSubmit) {
+            onSubmit({
+                func: selectedFunction?.id ?? '',
+                args: value,
+            });
+
+            setSelected(null);
+            setInput('');
+        }
+    };
+
     return (
         <Command
             label="Shell"
             /* Current filtering logic is a bit naive, but works for now. In the future we can
             integrate match-sorter https://github.com/kentcdodds/match-sorter */
             filter={(value, search) => (value.includes(search) ? 1 : 0)}
-            className="shell w-fit"
+            className="shell"
         >
-            <Line className="flex gap-2 bg-ultramarine-10 hover:bg-ultramarine-10 ">
+            <Line className="flex gap-2 bg-ultramarine-10 hover:bg-ultramarine-10 w-full ">
                 <span className="text-ultramarine-70 "> b6</span>
                 {selectedFunction && (
                     <span className="text-graphite-100 italic ">
@@ -57,15 +69,7 @@ export function Shell({
                 <Command.Input
                     value={input}
                     onSubmit={(evt) => {
-                        if (onSubmit) {
-                            onSubmit({
-                                func: selectedFunction?.id ?? '',
-                                args: evt.currentTarget.value,
-                            });
-
-                            setSelected(null);
-                            setInput('');
-                        }
+                        handleSubmit(evt.currentTarget.value);
                     }}
                     className={twMerge(
                         'flex-grow caret-ultramarine-60 bg-transparent text-graphite-70 focus:outline-none'
@@ -77,13 +81,15 @@ export function Shell({
                         ) {
                             setSelected(null);
                         }
-                        if (evt.key === 'Enter' && selectedFunction) {
-                            if (onSubmit) {
-                                onSubmit({
-                                    func: selectedFunction?.id ?? '',
-                                    args: evt.currentTarget.value,
-                                });
-                            }
+                        if (
+                            evt.key === 'Enter' &&
+                            (selectedFunction ||
+                                functions.length === 0 ||
+                                functions.some((f) =>
+                                    evt.currentTarget.value.includes(f.id)
+                                ))
+                        ) {
+                            handleSubmit(evt.currentTarget.value);
                         }
                     }}
                     onValueChange={handleChange}

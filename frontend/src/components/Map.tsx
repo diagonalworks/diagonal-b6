@@ -38,6 +38,7 @@ import {
     useMemo,
     useState,
 } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 import {
     Map as MapLibre,
     Marker,
@@ -47,6 +48,7 @@ import {
 } from 'react-map-gl/maplibre';
 import { twMerge } from 'tailwind-merge';
 import { match } from 'ts-pattern';
+import { WorldShellAdapter } from './adapters/ShellAdapter';
 import { StackAdapter } from './adapters/StackAdapter';
 import diagonalBasemapStyle from './diagonal-map-style.json';
 
@@ -96,6 +98,12 @@ export function Map({
     const [coordinates, setCoordinates] = useState<Point>();
     const [eventType, setEventType] = useState<Event | null>(null);
     const [locked, setLocked] = useState(false);
+    const [showWorldShell, setShowWorldShell] = useState(false);
+
+    useHotkeys('shift+meta+b, `', () => {
+        console.log('here');
+        setShowWorldShell((prev) => !prev);
+    });
 
     const stackQuery = useQuery({
         queryKey: ['stack', expression, locked, eventType],
@@ -237,6 +245,13 @@ export function Map({
         return features;
     }, [geojson, mapViewState]);
 
+    const layers = useMemo(() => {
+        const layers = Object.values(stacks).flatMap(
+            (stack) => stack.proto.layers ?? []
+        );
+        return layers;
+    }, [stacks]);
+
     return (
         <div
             {...props}
@@ -262,13 +277,14 @@ export function Map({
                 }}
                 cursor={cursor}
                 attributionControl={false}
-                //mapStyle={diagonalBasemapStyle as StyleSpecification}
                 interactive={true}
                 interactiveLayerIds={['building', 'road']}
                 dragRotate={false}
                 mapStyle={diagonalBasemapStyle as StyleSpecification}
                 boxZoom={false} // https://github.com/mapbox/mapbox-gl-js/issues/6971s
             >
+                <GlobalShell show={showWorldShell} mapId={id} />
+
                 {/*  <Source
                     id="diagonal"
                     type="vector"
@@ -283,10 +299,11 @@ export function Map({
                         );
                     })}
                 </Source> */}
-                {points.map((point) => {
+                {points.map((point, i) => {
                     if (point.geometry.type !== 'Point') return null;
                     return (
                         <Marker
+                            key={i}
                             className="[&>svg]:fill-graphite-80"
                             latitude={point.geometry.coordinates[1]}
                             longitude={point.geometry.coordinates[0]}
@@ -477,5 +494,25 @@ const DraggableStack = ({
                 </div>
             </motion.div>
         </div>
+    );
+};
+
+const GlobalShell = ({ show, mapId }: { show: boolean; mapId: string }) => {
+    return (
+        <AnimatePresence>
+            {show && (
+                <motion.div
+                    initial={{
+                        translateX: -100,
+                    }}
+                    animate={{
+                        translateX: 0,
+                    }}
+                    className="absolute top-2 left-10 w-[95%] z-20 "
+                >
+                    <WorldShellAdapter mapId={mapId} />
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };

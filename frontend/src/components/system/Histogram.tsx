@@ -84,21 +84,19 @@ export function Histogram<T>({
 
     return (
         <div className="flex flex-col [&_.line]:border-t-0  last:[&_.line]:border-b-0">
-            {data.map((d) => {
+            {data.map((d, i) => {
                 const isSelected =
                     selectedBucket && bucket(d) === bucket(selectedBucket);
 
                 const lineValue = value(d);
+                const barLength = lineValue ? xScale(lineValue) : 0;
 
                 return (
-                    <Line>
+                    <Line key={i}>
                         <Wrapper
                             {...(selectable && {
                                 onClick: (e) => handleClick(e, d),
                             })}
-                            onClick={(e) =>
-                                selectable ? handleClick(e, d) : undefined
-                            }
                         >
                             <div
                                 ref={ref}
@@ -131,11 +129,10 @@ export function Histogram<T>({
                                         >
                                             <motion.rect
                                                 animate={{
-                                                    width: xScale(lineValue),
+                                                    width: barLength,
                                                 }}
                                                 x={dimensions.marginLeft}
                                                 y={dimensions.marginTop}
-                                                width={xScale(lineValue)}
                                                 height={BAR_HEIGHT}
                                                 fill={color(d)}
                                                 rx={1}
@@ -144,8 +141,7 @@ export function Histogram<T>({
                                             />
                                             <motion.g
                                                 animate={{
-                                                    translateX:
-                                                        xScale(lineValue) + 5,
+                                                    translateX: barLength + 5,
                                                     translateY: BAR_HEIGHT / 2,
                                                 }}
                                             >

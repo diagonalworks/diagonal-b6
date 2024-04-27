@@ -113,9 +113,12 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
 const Tags = ({ tagLine }: { tagLine: TagsLineProto }) => {
     return (
         <div className="tag w-full text-sm ">
-            {tagLine.tags.map((tag) => {
+            {tagLine.tags.map((tag, i) => {
                 return (
-                    <div className="flex gap-4 justify-between border-b border-b-transparent  hover:border-b-graphite-30 transition-colors ">
+                    <div
+                        key={i}
+                        className="flex gap-4 justify-between border-b border-b-transparent  hover:border-b-graphite-30 transition-colors "
+                    >
                         <div className="flex gap-2 text-graphite-80 ">
                             <span className=" min-w-2 italic">
                                 {tag.prefix}

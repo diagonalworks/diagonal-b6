@@ -1,5 +1,6 @@
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible';
 import { AnimatePresence, motion } from 'framer-motion';
+import { omit } from 'lodash';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
@@ -23,7 +24,7 @@ const Root = React.forwardRef<
             value={{ collapsible: props.collapsible ?? false }}
         >
             <CollapsiblePrimitive.Root
-                {...props}
+                {...omit(props, 'collapsible')}
                 ref={forwardedRef}
                 className={twMerge(
                     'border box-border border-graphite-30',
