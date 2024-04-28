@@ -6,7 +6,7 @@ import { ShellLineProto } from '@/types/generated/ui';
 import { StackResponse } from '@/types/stack';
 import { useQuery } from '@tanstack/react-query';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Point, useMap } from 'react-map-gl/maplibre';
 
 export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
@@ -64,19 +64,11 @@ export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
         return shell.functions.map((func) => {
             return {
                 id: func,
-                description: 'No description available',
             };
         });
     }, [shell?.functions]);
 
-    const onSubmitHandle = useCallback(
-        ({ func, args }: { func: string; args: string }) => {
-            setExpression(`${func} ${args}`);
-        },
-        [setExpression]
-    );
-
-    return <Shell functions={functions} onSubmit={onSubmitHandle} />;
+    return <Shell functions={functions} onSubmit={setExpression} />;
 };
 
 export const WorldShellAdapter = ({ mapId }: { mapId: string }) => {
@@ -126,12 +118,5 @@ export const WorldShellAdapter = ({ mapId }: { mapId: string }) => {
         }
     }, [expressionQuery.data]);
 
-    const onSubmitHandle = useCallback(
-        ({ func, args }: { func: string; args: string }) => {
-            setExpression(`${func} ${args}`);
-        },
-        [setExpression]
-    );
-
-    return <Shell functions={[]} onSubmit={onSubmitHandle} />;
+    return <Shell functions={[]} onSubmit={setExpression} />;
 };

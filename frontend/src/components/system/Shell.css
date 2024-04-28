@@ -1,0 +1,31 @@
+.keywords {
+    display: flex;
+    align-items: center;
+    overflow-x: scroll;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.input,
+.keywords {
+    width: 100%;
+    height: 100%;
+    white-space: nowrap;
+    /* IE and Firefox support */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.input::-webkit-scrollbar,
+.keywords::-webkit-scrollbar {
+    display: none;
+}
+
+.input {
+    background: transparent;
+    color: transparent;
+    resize: none;
+    position: relative;
+    vertical-align: middle;
+}

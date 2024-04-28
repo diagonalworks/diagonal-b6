@@ -1,13 +1,42 @@
 import { CaretRightIcon } from '@radix-ui/react-icons';
 import { Command } from 'cmdk';
-import { useMemo, useState } from 'react';
+import { isNil } from 'lodash';
+import { QuickScore } from 'quick-score';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from './Line';
+import './Shell.css';
 
 type FunctionB6 = {
     id: string;
-    description: string;
+    description?: string;
 };
+
+const getWordAt = (str: string, pos: number) => {
+    const left = str.slice(0, pos).search(/\S+$/);
+    const right = str.slice(pos).search(/\s/);
+    if (right < 0) {
+        return str.slice(left);
+    }
+    return str.slice(left, right + pos);
+};
+
+function highlighted(string: string, matches: [number, number][]) {
+    const substrings = [];
+    let previousEnd = 0;
+
+    for (let [start, end] of matches) {
+        const prefix = string.substring(previousEnd, start);
+        const match = <strong>{string.substring(start, end)}</strong>;
+
+        substrings.push(prefix, match);
+        previousEnd = end;
+    }
+
+    substrings.push(string.substring(previousEnd));
+
+    return <span>{React.Children.toArray(substrings)}</span>;
+}
 
 /**
  * A Shell component that can be used to execute B6 functions.
@@ -20,101 +49,138 @@ export function Shell({
     /** The list of functions that can be executed. */
     functions: FunctionB6[];
     /** Optional handler for the submit event. */
-    onSubmit?: ({ func, args }: { func: string; args: string }) => void;
+    onSubmit?: (expression: string) => void;
 }) {
-    const [selected, setSelected] = useState<string | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const keywordsRef = useRef<HTMLDivElement>(null);
+    const [currentWord, setCurrentWord] = useState<{
+        word: string;
+        pos: number;
+    } | null>(null);
+    const [scrollValue, setScrollValue] = useState(0);
     const [input, setInput] = useState('');
 
-    const selectedFunction = useMemo(() => {
-        return functions.find((f) => f.id === selected);
-    }, [functions, selected]);
+    const matcher = useMemo(() => {
+        const qs = new QuickScore(functions, ['id', 'description']);
+        return qs;
+    }, [functions]);
 
-    const handleChange = (value: string) => {
-        const match = functions.find((f) => f.id === value);
-        if (match) {
-            setSelected(match.id);
-            setInput('');
-        } else {
-            setInput(value);
+    const functionResults = useMemo(() => {
+        if (!currentWord) return [];
+        return matcher.search(currentWord.word);
+    }, [currentWord, matcher]);
+
+    useEffect(() => {
+        if (keywordsRef.current) {
+            keywordsRef.current.scrollLeft = scrollValue;
         }
-    };
-
-    const handleSubmit = (value: string) => {
-        if (onSubmit) {
-            onSubmit({
-                func: selectedFunction?.id ?? '',
-                args: value,
-            });
-
-            setSelected(null);
-            setInput('');
-        }
-    };
+    }, [scrollValue]);
 
     return (
         <Command
             label="Shell"
             /* Current filtering logic is a bit naive, but works for now. In the future we can
             integrate match-sorter https://github.com/kentcdodds/match-sorter */
-            filter={(value, search) => (value.includes(search) ? 1 : 0)}
+            shouldFilter={false}
             className="shell"
         >
             <Line className="flex gap-2 bg-ultramarine-10 hover:bg-ultramarine-10 w-full ">
                 <span className="text-ultramarine-70 "> b6</span>
-                {selectedFunction && (
-                    <span className="text-graphite-100 italic ">
-                        {selectedFunction.id}
-                    </span>
-                )}
-                <Command.Input
-                    value={input}
-                    onSubmit={(evt) => {
-                        handleSubmit(evt.currentTarget.value);
-                    }}
-                    className={twMerge(
-                        'flex-grow caret-ultramarine-60 bg-transparent text-graphite-70 focus:outline-none'
-                    )}
-                    onKeyDown={(evt) => {
-                        if (
-                            evt.key === 'Backspace' &&
-                            evt.currentTarget.value === ''
-                        ) {
-                            setSelected(null);
-                        }
-                        if (
-                            evt.key === 'Enter' &&
-                            (selectedFunction ||
-                                functions.length === 0 ||
-                                functions.some((f) =>
-                                    evt.currentTarget.value.includes(f.id)
-                                ))
-                        ) {
-                            handleSubmit(evt.currentTarget.value);
-                        }
-                    }}
-                    onValueChange={handleChange}
-                />
+                <div className="relative flex-grow">
+                    <div ref={keywordsRef} className="keywords">
+                        {input.split(' ').map((word, index) => {
+                            const isFunction = functions.some(
+                                (f) => f.id === word
+                            );
+                            const isPipe = word === '|';
+                            return (
+                                <span
+                                    key={index}
+                                    className={twMerge(
+                                        'text-graphite-70',
+                                        isFunction &&
+                                            'text-ultramarine-70 italic',
+                                        isPipe && ' text-graphite-100 '
+                                    )}
+                                >
+                                    {word}&nbsp;
+                                </span>
+                            );
+                        })}
+                    </div>
+                    <Command.Input
+                        ref={inputRef}
+                        value={input}
+                        onSubmit={() => {
+                            if (onSubmit) {
+                                onSubmit(input);
+                                setInput('');
+                            }
+                        }}
+                        className={twMerge(
+                            'input caret-ultramarine-60 bg-transparent text-transparent focus:outline-none'
+                        )}
+                        onKeyDown={(evt) => {
+                            if (
+                                evt.key === 'Enter' &&
+                                functionResults.length === 0 &&
+                                input !== '' &&
+                                onSubmit
+                            ) {
+                                onSubmit(input);
+                                setInput('');
+                            }
+                        }}
+                        onValueChange={(v) => setInput(v)}
+                        onSelect={() => {
+                            if (!inputRef.current) return;
+                            const s = inputRef.current.selectionEnd;
+                            if (isNil(s)) return;
+                            const word = getWordAt(input, s);
+                            setCurrentWord({
+                                word,
+                                pos: s,
+                            });
+                        }}
+                        onScroll={(e) => {
+                            setScrollValue(e.currentTarget.scrollLeft);
+                        }}
+                    />
+                </div>
             </Line>
-            {!selected && input !== '' && (
+            {input !== '' && (
                 <Command.List className="[&_.line]:border-t-0 w-80 first:border-t first:border-t-graphite-30  max-h-64 overflow-y-auto border-b border-b-graphite-30 ">
-                    <Command.Empty className="text-graphite-60 text-xs">
-                        <Line className="border-b-0">No function found</Line>
-                    </Command.Empty>
-                    {functions.map((f) => (
+                    {functionResults.map((f) => (
                         <Command.Item
                             className="[&_.line]:data-[selected=true]:bg-ultramarine-10 transition-colors [&_.line]:data-[selected=true]:border-l [&_.line]:data-[selected=true]:border-l-ultramarine-60 [&_.line]:last:border-b-0  "
-                            key={f.id}
+                            key={f.item.id}
+                            value={f.item.id}
                             onSelect={() => {
-                                setSelected(f.id);
-                                setInput('');
+                                const newInput = `${input.slice(
+                                    0,
+                                    currentWord!.pos - currentWord!.word.length
+                                )} ${f.item.id} ${input.slice(
+                                    currentWord!.pos
+                                )}`;
+                                console.log(newInput);
+
+                                setInput(newInput);
                             }}
                         >
                             <Line className="flex flex-row gap-1 items-start">
                                 <CaretRightIcon className=" text-ultramarine-60 mt-1.5 shrink-0" />
-                                <div className="flex gap-2 items-baseline">
-                                    <span>{f.id}</span>
+                                <div className="flex gap-2 items-baseline [&strong]:font-medium">
+                                    <span>
+                                        {highlighted(f.item.id, f.matches.id)}
+                                    </span>
+
                                     <span className="text-xs text-graphite-60 ">
-                                        {f.description}
+                                        {f.item?.description
+                                            ? highlighted(
+                                                  f.item.description,
+                                                  f.matches.description
+                                              )
+                                            : 'No description available'}
                                     </span>
                                 </div>
                             </Line>

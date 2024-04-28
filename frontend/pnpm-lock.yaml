@@ -122,6 +122,9 @@ importers:
       protobufjs:
         specifier: ^7.2.6
         version: 7.2.6
+      quick-score:
+        specifier: ^0.2.0
+        version: 0.2.0
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -5215,6 +5218,9 @@ packages:
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
+
+  quick-score@0.2.0:
+    resolution: {integrity: sha512-y9PW9rl7BhjTykkGYi4wh0FsXWrWFv3IJVxtAI9FMargSOhqzRN3OjO2itpw63PoSu1FY07i8B2aCwpolQucOQ==}
 
   quickselect@2.0.0:
     resolution: {integrity: sha512-RKJ22hX8mHe3Y6wH/N3wCM6BWtjaxIyyUIkpHOvfFnxdI4yD4tBXEBKSbriGujF6jnSVkJrffuo6vxACiSSxIw==}
@@ -11989,6 +11995,8 @@ snapshots:
       '@mapbox/tile-cover': 3.0.1
 
   queue-microtask@1.2.3: {}
+
+  quick-score@0.2.0: {}
 
   quickselect@2.0.0: {}
 
