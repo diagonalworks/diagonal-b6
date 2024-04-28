@@ -152,7 +152,58 @@ func TestHistogramWithIntegers(t *testing.T) {
 			},
 		},
 	}
-	//log.Println(prototext.Format(response.Proto.Stack))
+	if diff := cmp.Diff(expected, response.Proto.Stack, protocmp.Transform()); diff != "" {
+		t.Errorf("Unexpected diff: %s", diff)
+	}
+}
+
+func TestHistogramWithNumericalStrings(t *testing.T) {
+	collection := b6.ArrayCollection[string, string]{
+		Keys:   []string{"1", "2", "3", "4", "5", "6", "7"},
+		Values: []string{"2", "2", "2", "2", "2", "2", "1"},
+	}
+
+	id := b6.CollectionID{Namespace: "diagonal.works/test", Value: 0}
+	histogram, err := api.NewHistogramFromCollection(collection.Collection(), id)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	wrapped := ingest.WrapCollectionFeature(histogram, b6.EmptyWorld{})
+
+	response := NewUIResponseJSON()
+	if err := fillResponseFromHistogramFeature(response, wrapped, b6.EmptyWorld{}); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	total := int32(len(collection.Keys))
+	expected := &pb.StackProto{
+		Substacks: []*pb.SubstackProto{
+			{
+				Lines: []*pb.LineProto{
+					{
+						Line: &pb.LineProto_HistogramBar{
+							HistogramBar: &pb.HistogramBarLineProto{
+								Range: AtomFromString("1"),
+								Value: 1,
+								Total: total,
+								Index: 0,
+							},
+						},
+					},
+					{
+						Line: &pb.LineProto_HistogramBar{
+							HistogramBar: &pb.HistogramBarLineProto{
+								Range: AtomFromString("2"),
+								Value: 6,
+								Total: total,
+								Index: 1,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 	if diff := cmp.Diff(expected, response.Proto.Stack, protocmp.Transform()); diff != "" {
 		t.Errorf("Unexpected diff: %s", diff)
 	}
