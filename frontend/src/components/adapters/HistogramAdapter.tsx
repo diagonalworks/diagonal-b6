@@ -4,9 +4,9 @@ import colors from '@/tokens/colors.json';
 import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
-import { useSetAtom } from 'jotai';
+import { useAtom } from 'jotai';
 import { isNil } from 'lodash';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { match } from 'ts-pattern';
 import { Histogram } from '../system/Histogram';
 
@@ -15,6 +15,12 @@ const colorInterpolator = interpolateRgbBasis([
     colors.amber[20],
     colors.violet[80],
 ]);
+
+type HistogramData = {
+    index: number;
+    label: string;
+    count: number;
+};
 
 export const HistogramAdaptor = ({
     type,
@@ -25,9 +31,10 @@ export const HistogramAdaptor = ({
     bars?: HistogramBarLineProto[];
     swatches?: SwatchLineProto[];
 }) => {
-    const setApp = useSetAtom(appAtom);
+    const [app, setApp] = useAtom(appAtom);
     const stack = useStackContext();
     const stackId = stack.state.stack?.id;
+    const stackApp = stackId ? app.stacks[stackId] : null;
 
     const data = useMemo(() => {
         return match(type)
@@ -65,12 +72,41 @@ export const HistogramAdaptor = ({
         });
     }, [data]);
 
+    const handleSelect = useCallback(
+        (d: HistogramData | null) => {
+            if (isNil(stackId)) return;
+            setApp((draft) => {
+                const histogram = draft.stacks[stackId].histogram;
+                if (histogram) {
+                    histogram.selected = d?.index ?? null;
+                } else {
+                    draft.stacks[stackId].histogram = {
+                        colorScale: histogramColorScale,
+                        selected: d?.index ?? null,
+                    };
+                }
+            });
+        },
+        [stackId]
+    );
+
+    const selected = useMemo(() => {
+        if (isNil(stackId)) return null;
+        return data.find((d) => d.index === stackApp?.histogram?.selected);
+    }, [stackId, stackApp?.histogram?.selected]);
+
     useEffect(() => {
         if (isNil(stackId)) return;
         setApp((draft) => {
-            draft.stacks[stackId].histogram = {
-                colorScale: histogramColorScale,
-            };
+            const histogram = draft.stacks[stackId].histogram;
+            if (histogram) {
+                histogram.colorScale = histogramColorScale;
+            } else {
+                draft.stacks[stackId].histogram = {
+                    colorScale: histogramColorScale,
+                    selected: null,
+                };
+            }
         });
     }, [stackId, histogramColorScale]);
 
@@ -82,6 +118,9 @@ export const HistogramAdaptor = ({
             bucket={(d) => d.index.toString()}
             value={(d) => d.count}
             color={(d) => histogramColorScale(`${d.index}`)}
+            onSelect={handleSelect}
+            selected={selected}
+            selectable
         />
     );
 };

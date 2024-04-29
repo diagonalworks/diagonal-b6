@@ -66,10 +66,10 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
     return null;
 }
 
-const colorToRgbArray = (c: string) => {
+const colorToRgbArray = (c: string, alpha: number = 255) => {
     const rgbColor = color(c)?.rgb();
     if (!rgbColor) return undefined;
-    return [rgbColor.r, rgbColor.g, rgbColor.b];
+    return [rgbColor.r, rgbColor.g, rgbColor.b, alpha];
 };
 
 export function Map({
@@ -264,13 +264,14 @@ export function Map({
                 stack.proto.layers?.map((l) => {
                     return {
                         layer: l,
-                        colorScale: stack.histogram?.colorScale,
+                        ...stack.histogram,
                     };
                 }) ?? []
         );
 
         return stackLayers.map((stackLayer, i) => {
             const l = stackLayer.layer;
+
             const layer = new MVTLayer({
                 id: `${l.path}-${i}`,
                 data: [`/api/tiles/${l.path}/{z}/{x}/{y}.mvt?q=${l.q}`],
@@ -281,12 +282,18 @@ export function Map({
                         if (!c) {
                             return 0;
                         }
-                        return 0.3;
+                        const isSelected =
+                            stackLayer?.selected &&
+                            stackLayer.selected.toString() ===
+                                f.properties.bucket;
+
+                        return stackLayer?.selected
+                            ? isSelected
+                                ? 0.8
+                                : 0.2
+                            : 0.5;
                     }
                     return 0;
-                },
-                getOpacity: (f) => {
-                    f.properties.layerName === 'background' ? 0 : 1;
                 },
                 getLineColor: (f) => {
                     if (f.properties.layerName === l.path) {
@@ -294,9 +301,23 @@ export function Map({
                         if (!c) {
                             return [0, 0, 0, 0];
                         }
-                        const darken = color(c)?.darker(0.5).formatRgb();
+                        const isSelected =
+                            stackLayer?.selected &&
+                            stackLayer.selected.toString() ===
+                                f.properties.bucket;
 
-                        return colorToRgbArray(darken ?? c);
+                        const darken = color(c)
+                            ?.darker(isSelected ? 2 : 0.5)
+                            .formatRgb();
+
+                        return colorToRgbArray(
+                            darken ?? c,
+                            stackLayer?.selected
+                                ? isSelected
+                                    ? 255
+                                    : 155
+                                : 255
+                        );
                     }
                     return [0, 0, 0, 0];
                 },
@@ -310,8 +331,25 @@ export function Map({
                             return [0, 0, 0, 0];
                         }
 
-                        return colorToRgbArray(c);
+                        const isSelected =
+                            stackLayer?.selected &&
+                            stackLayer.selected.toString() ===
+                                f.properties.bucket;
+
+                        return colorToRgbArray(
+                            c,
+                            stackLayer?.selected
+                                ? isSelected
+                                    ? 255
+                                    : 155
+                                : 255
+                        );
                     }
+                },
+                updateTriggers: {
+                    getLineColor: [stackLayer.colorScale, stackLayer.selected],
+                    getFillColor: [stackLayer.colorScale, stackLayer.selected],
+                    getLineWidth: [stackLayer.selected],
                 },
                 getFilterCategory: (d: Feature) => d.properties.layerName,
                 filterCategories: [l.path],

@@ -52,7 +52,6 @@ const Workspace = () => {
     });
 
     useEffect(() => {
-        console.log({ startup: startup.data });
         if (startup.data) {
             setViewState({
                 ...viewState,

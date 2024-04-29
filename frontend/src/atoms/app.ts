@@ -42,6 +42,7 @@ export type AppStore = {
             tab?: keyof Scenarios;
             histogram?: {
                 colorScale: ScaleOrdinal<string, string>;
+                selected: string | number | null;
             };
         }
     >;

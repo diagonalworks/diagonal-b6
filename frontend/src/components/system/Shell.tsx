@@ -162,7 +162,6 @@ export function Shell({
                                 )} ${f.item.id} ${input.slice(
                                     currentWord!.pos
                                 )}`;
-                                console.log(newInput);
 
                                 setInput(newInput);
                             }}
