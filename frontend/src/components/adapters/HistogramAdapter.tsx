@@ -54,7 +54,7 @@ export const HistogramAdaptor = ({
                 () =>
                     swatches?.flatMap((swatch) => {
                         return {
-                            index: swatch.index,
+                            index: swatch.index ?? 0,
                             label: swatch.label?.value ?? '',
                             /* Swatches do not have a count. Should be null but setting it to 0 
                             for now to avoid type errors. */

@@ -120,41 +120,43 @@ export function Histogram<T>({
                                 </div>
                                 {/* current hack to not show 0 bucket */}
                                 {lineValue &&
-                                    lineValue > 0 &&
-                                    type === 'histogram' && (
-                                        <svg
-                                            width={dimensions.width}
-                                            height={dimensions.height}
-                                            className=" overflow-visible"
+                                lineValue > 0 &&
+                                type === 'histogram' ? (
+                                    <svg
+                                        width={dimensions.width}
+                                        height={dimensions.height}
+                                        className=" overflow-visible"
+                                    >
+                                        <motion.rect
+                                            animate={{
+                                                width: barLength,
+                                            }}
+                                            x={dimensions.marginLeft}
+                                            y={dimensions.marginTop}
+                                            height={BAR_HEIGHT}
+                                            fill={color(d)}
+                                            rx={1}
+                                            className="stroke-graphite-80"
+                                            strokeWidth={0.7}
+                                        />
+                                        <motion.g
+                                            animate={{
+                                                translateX: barLength + 5,
+                                                translateY: BAR_HEIGHT / 2,
+                                            }}
                                         >
-                                            <motion.rect
-                                                animate={{
-                                                    width: barLength,
-                                                }}
-                                                x={dimensions.marginLeft}
-                                                y={dimensions.marginTop}
-                                                height={BAR_HEIGHT}
-                                                fill={color(d)}
-                                                rx={1}
-                                                className="stroke-graphite-80"
-                                                strokeWidth={0.7}
-                                            />
-                                            <motion.g
-                                                animate={{
-                                                    translateX: barLength + 5,
-                                                    translateY: BAR_HEIGHT / 2,
-                                                }}
+                                            <Text
+                                                className="  fill-graphite-50"
+                                                verticalAnchor="middle"
+                                                fontSize={10}
                                             >
-                                                <Text
-                                                    className="  fill-graphite-50"
-                                                    verticalAnchor="middle"
-                                                    fontSize={10}
-                                                >
-                                                    {lineValue}
-                                                </Text>
-                                            </motion.g>
-                                        </svg>
-                                    )}
+                                                {lineValue}
+                                            </Text>
+                                        </motion.g>
+                                    </svg>
+                                ) : (
+                                    <></>
+                                )}
                             </div>
                         </Wrapper>
                     </Line>
