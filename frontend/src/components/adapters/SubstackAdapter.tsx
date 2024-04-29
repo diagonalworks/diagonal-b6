@@ -1,5 +1,5 @@
 import { SubstackProto } from '@/types/generated/ui';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Stack } from '../system/Stack';
 import { HistogramAdaptor } from './HistogramAdapter';
 import { LineAdapter } from './LineAdapter';
@@ -12,14 +12,34 @@ export const SubstackAdapter = ({
     collapsible?: boolean;
 }) => {
     const [open, setOpen] = useState(collapsible ? false : true);
-    if (!substack.lines) return null;
-    const header = substack.lines[0].header;
-    const contentLines = substack.lines.slice(header ? 1 : 0);
+
+    const header = useMemo(() => {
+        return substack.lines?.[0].header;
+    }, [substack.lines]);
+
+    const contentLines = useMemo(() => {
+        return substack.lines?.slice(header ? 1 : 0) ?? [];
+    }, [substack.lines, header]);
 
     const isHistogram =
         contentLines.length > 1 &&
         (contentLines.every((line) => line.swatch) ||
             contentLines.every((line) => line.histogramBar));
+
+    const histogramProps = useMemo(() => {
+        if (isHistogram) {
+            return {
+                type: (contentLines[0].swatch ? 'swatch' : 'histogram') as
+                    | 'swatch'
+                    | 'histogram',
+                bars: contentLines.flatMap((l) => l.histogramBar ?? []),
+                swatches: contentLines.flatMap((l) => l.swatch ?? []),
+            };
+        }
+        return null;
+    }, [contentLines]);
+
+    if (!substack.lines) return null;
 
     return (
         <Stack
@@ -37,12 +57,8 @@ export const SubstackAdapter = ({
                     contentLines.map((l, i) => {
                         return <LineAdapter key={i} line={l} />;
                     })}
-                {isHistogram && (
-                    <HistogramAdaptor
-                        type={contentLines[0].swatch ? 'swatch' : 'histogram'}
-                        bars={contentLines.flatMap((l) => l.histogramBar ?? [])}
-                        swatches={contentLines.flatMap((l) => l.swatch ?? [])}
-                    />
+                {isHistogram && histogramProps && (
+                    <HistogramAdaptor {...histogramProps} />
                 )}
             </Stack.Content>
         </Stack>

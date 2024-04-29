@@ -9,7 +9,7 @@
     "sources": {
         "diagonal": {
             "type": "vector",
-            "tiles": ["http://localhost:8001/tiles/base/{z}/{x}/{y}.mvt"],
+            "tiles": ["http://localhost:5173/api/tiles/base/{z}/{x}/{y}.mvt"],
             "minzoom": 10,
             "maxzoom": 16
         }

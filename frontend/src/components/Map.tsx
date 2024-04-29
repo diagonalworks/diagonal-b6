@@ -7,6 +7,8 @@ import { isSamePositionPoints } from '@/lib/map';
 import { ChartDimensions, useChartDimensions } from '@/lib/useChartDimensions';
 import { Event } from '@/types/events';
 import { StackResponse } from '@/types/stack';
+import { DataFilterExtension } from '@deck.gl/extensions';
+import { MVTLayer } from '@deck.gl/geo-layers/typed';
 import {
     MapboxOverlay as DeckOverlay,
     MapboxOverlayProps,
@@ -25,10 +27,16 @@ import {
 import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { DotIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
+import { color } from 'd3-color';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAtom } from 'jotai';
 import { debounce, isUndefined, pickBy, uniqWith } from 'lodash';
-import { MapLayerMouseEvent, Point, StyleSpecification } from 'maplibre-gl';
+import {
+    Feature,
+    MapLayerMouseEvent,
+    Point,
+    StyleSpecification,
+} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
     HTMLAttributes,
@@ -57,6 +65,12 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
     overlay.setProps(props);
     return null;
 }
+
+const colorToRgbArray = (c: string) => {
+    const rgbColor = color(c)?.rgb();
+    if (!rgbColor) return undefined;
+    return [rgbColor.r, rgbColor.g, rgbColor.b];
+};
 
 export function Map({
     id,
@@ -101,7 +115,6 @@ export function Map({
     const [showWorldShell, setShowWorldShell] = useState(false);
 
     useHotkeys('shift+meta+b, `', () => {
-        console.log('here');
         setShowWorldShell((prev) => !prev);
     });
 
@@ -246,10 +259,66 @@ export function Map({
     }, [geojson, mapViewState]);
 
     const layers = useMemo(() => {
-        const layers = Object.values(stacks).flatMap(
-            (stack) => stack.proto.layers ?? []
+        const stackLayers = Object.values(stacks).flatMap(
+            (stack) =>
+                stack.proto.layers?.map((l) => {
+                    return {
+                        layer: l,
+                        colorScale: stack.histogram?.colorScale,
+                    };
+                }) ?? []
         );
-        return layers;
+
+        return stackLayers.map((stackLayer, i) => {
+            const l = stackLayer.layer;
+            const layer = new MVTLayer({
+                id: `${l.path}-${i}`,
+                data: [`/api/tiles/${l.path}/{z}/{x}/{y}.mvt?q=${l.q}`],
+
+                getLineWidth: (f) => {
+                    if (f.properties.layerName === l.path) {
+                        const c = stackLayer.colorScale?.(f.properties.bucket);
+                        if (!c) {
+                            return 0;
+                        }
+                        return 0.3;
+                    }
+                    return 0;
+                },
+                getOpacity: (f) => {
+                    f.properties.layerName === 'background' ? 0 : 1;
+                },
+                getLineColor: (f) => {
+                    if (f.properties.layerName === l.path) {
+                        const c = stackLayer.colorScale?.(f.properties.bucket);
+                        if (!c) {
+                            return [0, 0, 0, 0];
+                        }
+                        const darken = color(c)?.darker(0.5).formatRgb();
+
+                        return colorToRgbArray(darken ?? c);
+                    }
+                    return [0, 0, 0, 0];
+                },
+                getFillColor: (f: Feature) => {
+                    if (f.properties.layerName === 'background') {
+                        return [0, 0, 0, 0];
+                    }
+                    if (f.properties.layerName === l.path) {
+                        const c = stackLayer.colorScale?.(f.properties.bucket);
+                        if (!c) {
+                            return [0, 0, 0, 0];
+                        }
+
+                        return colorToRgbArray(c);
+                    }
+                },
+                getFilterCategory: (d: Feature) => d.properties.layerName,
+                filterCategories: [l.path],
+                extensions: [new DataFilterExtension({ categorySize: 1 })],
+            });
+            return layer;
+        });
     }, [stacks]);
 
     return (
@@ -283,8 +352,30 @@ export function Map({
                 mapStyle={diagonalBasemapStyle as StyleSpecification}
                 boxZoom={false} // https://github.com/mapbox/mapbox-gl-js/issues/6971s
             >
+                <DeckGLOverlay layers={layers} interleaved />
+
                 <GlobalShell show={showWorldShell} mapId={id} />
 
+                {/* {layers.map((l) => {
+                    return (
+                        <Source
+                            id="histogram"
+                            key={l.path}
+                            type="vector"
+                            tiles={[
+                                `http://localhost:5173/tiles/base/{z}/{x}/{y}.mvt?q=${l.q}`,
+                            ]}
+                        >
+                            <Layer
+                                type="fill"
+                                id="histogram"
+                                source="histogram"
+                                source-layer="query"
+                            />
+                        </Source>
+                    );
+                })}
+ */}
                 {/*  <Source
                     id="diagonal"
                     type="vector"
@@ -352,8 +443,6 @@ export function Map({
                     </MapControls.Button>
                 </MapControls>
 
-                {/*                 <DeckGLOverlay layers={layers} />
-                 */}
                 <div className="absolute top-16 left-2 flex flex-col gap-1">
                     {Object.entries(dockedStacks).map(([stackId, stack]) => {
                         return (

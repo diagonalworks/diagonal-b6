@@ -5,7 +5,8 @@ import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
 import { useSetAtom } from 'jotai';
-import { useMemo } from 'react';
+import { isNil } from 'lodash';
+import { useEffect, useMemo } from 'react';
 import { match } from 'ts-pattern';
 import { Histogram } from '../system/Histogram';
 
@@ -26,6 +27,7 @@ export const HistogramAdaptor = ({
 }) => {
     const setApp = useSetAtom(appAtom);
     const stack = useStackContext();
+    const stackId = stack.state.stack?.id;
 
     const data = useMemo(() => {
         return match(type)
@@ -34,7 +36,7 @@ export const HistogramAdaptor = ({
                 () =>
                     bars?.flatMap((bar) => {
                         return {
-                            index: bar.index,
+                            index: bar.index ?? 0,
                             label: bar.range?.value ?? '',
                             count: bar.value,
                         };
@@ -62,6 +64,15 @@ export const HistogramAdaptor = ({
             range: data.map((_, i) => colorInterpolator(i / data.length)),
         });
     }, [data]);
+
+    useEffect(() => {
+        if (isNil(stackId)) return;
+        setApp((draft) => {
+            draft.stacks[stackId].histogram = {
+                colorScale: histogramColorScale,
+            };
+        });
+    }, [stackId, histogramColorScale]);
 
     return (
         <Histogram
