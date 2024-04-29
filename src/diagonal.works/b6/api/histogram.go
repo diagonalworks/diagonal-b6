@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"unicode"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
@@ -238,8 +239,15 @@ func countValues(c b6.UntypedCollection) ([]*kv, error) {
 }
 
 func numerical(any interface{}) bool {
-	switch any.(type) {
+	switch any := any.(type) {
 	case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64:
+		return true
+	case string: // TODO(mari): remove when tag values are literals / numbers are not converted to strings at any point.
+		for _, c := range any {
+			if !unicode.IsDigit(c) {
+				return false
+			}
+		}
 		return true
 	default: // Ignoring complex numbers.
 		return false
