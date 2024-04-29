@@ -256,7 +256,12 @@
                         ["^", 2, 5]
                     ]
                 ],
-                "line-color": "#e1e1ee"
+                "line-color": [
+                    "case",
+                    ["boolean", ["feature-state", "highlighted"], false],
+                    "#37589f",
+                    "#e1e1ee"
+                ]
             }
         },
         {

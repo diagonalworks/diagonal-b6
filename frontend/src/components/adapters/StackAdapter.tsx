@@ -2,6 +2,7 @@ import { AppStore } from '@/atoms/app';
 import { StackContextProvider } from '@/lib/context/stack';
 import { useEffect, useMemo, useState } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
+import { match } from 'ts-pattern';
 import { Stack } from '../system/Stack';
 import { SubstackAdapter } from './SubstackAdapter';
 
@@ -20,28 +21,74 @@ export const StackAdapter = ({
     const highlightedFeatures = useMemo(() => {
         if (!stack.proto.highlighted?.ids) return [];
 
-        return stack.proto.highlighted.ids.flatMap(({ ids }) => {
-            return ids.flatMap((id) => {
-                const queryFeatures = map?.querySourceFeatures('diagonal', {
-                    sourceLayer: 'building',
-                    filter: ['all'],
-                });
+        return stack.proto.highlighted.namespaces.flatMap((namespace, i) => {
+            console.log('namespace', namespace);
+            const nsType = namespace.match(/(?<=^\/)[a-z]+(?=\/)/)?.[0];
+            return match(nsType)
+                .with('path', () => {
+                    return stack.proto.highlighted?.ids[i].ids.flatMap((id) => {
+                        console.log('id', id);
+                        const queryFeatures = map?.querySourceFeatures(
+                            'diagonal',
+                            {
+                                sourceLayer: 'road',
+                                filter: ['all'],
+                            }
+                        );
 
-                // this is not ideal for performance, but it's fine for now
-                const feature = queryFeatures?.find((f) => {
-                    return parseInt(f.properties.id, 16) == id;
-                });
-                return feature ? [feature] : [];
-            });
+                        // this is not ideal for performance, but it's fine for now
+                        const feature = queryFeatures?.find((f) => {
+                            return parseInt(f.properties.id, 16) == id;
+                        });
+                        console.log('feature', feature);
+                        return feature
+                            ? [
+                                  {
+                                      feature,
+                                      layer: 'road',
+                                  },
+                              ]
+                            : [];
+                    });
+                })
+                .with('area', () => {
+                    return stack.proto.highlighted?.ids[i].ids.flatMap((id) => {
+                        console.log('id', id);
+                        const queryFeatures = map?.querySourceFeatures(
+                            'diagonal',
+                            {
+                                sourceLayer: 'building',
+                                filter: ['all'],
+                            }
+                        );
+
+                        // this is not ideal for performance, but it's fine for now
+                        const feature = queryFeatures?.find((f) => {
+                            return parseInt(f.properties.id, 16) == id;
+                        });
+                        return feature
+                            ? [
+                                  {
+                                      feature,
+                                      layer: 'building',
+                                  },
+                              ]
+                            : [];
+                    });
+                })
+                .otherwise(() => []);
         });
     }, [stack.proto.highlighted]);
 
     useEffect(() => {
-        highlightedFeatures.forEach((feature) => {
+        console.log('highlightedFeatures', highlightedFeatures);
+        highlightedFeatures.forEach((f) => {
+            if (!f) return;
+            const { feature, layer } = f;
             map?.setFeatureState(
                 {
                     source: 'diagonal',
-                    sourceLayer: 'building',
+                    sourceLayer: layer,
                     id: feature.id,
                 },
                 {
@@ -50,11 +97,13 @@ export const StackAdapter = ({
             );
         });
         return () => {
-            highlightedFeatures.forEach((feature) => {
+            highlightedFeatures.forEach((f) => {
+                if (!f) return;
+                const { feature, layer } = f;
                 map?.setFeatureState(
                     {
                         source: 'diagonal',
-                        sourceLayer: 'building',
+                        sourceLayer: layer,
                         id: feature.id,
                     },
                     {

@@ -28,15 +28,12 @@ import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { DotIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { useQuery } from '@tanstack/react-query';
 import { color } from 'd3-color';
+import { Color, GeoJsonLayer } from 'deck.gl/typed';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Feature } from 'geojson';
 import { useAtom } from 'jotai';
 import { debounce, isUndefined, pickBy, uniqWith } from 'lodash';
-import {
-    Feature,
-    MapLayerMouseEvent,
-    Point,
-    StyleSpecification,
-} from 'maplibre-gl';
+import { MapLayerMouseEvent, Point, StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
     HTMLAttributes,
@@ -60,6 +57,16 @@ import { WorldShellAdapter } from './adapters/ShellAdapter';
 import { StackAdapter } from './adapters/StackAdapter';
 import diagonalBasemapStyle from './diagonal-map-style.json';
 
+const getRoadWidth = (type: string) => {
+    return match(type)
+        .with('motorway', 'trunk', () => 1.5)
+        .with('primary', () => 1.2)
+        .with('secondary', 'tertiary', 'street', () => 0.8)
+        .with('unclassified', 'residential', 'service', () => 1)
+        .with('cycleway', 'footway', 'path', () => 0.8)
+        .otherwise(() => 1);
+};
+
 export function DeckGLOverlay(props: MapboxOverlayProps) {
     const overlay = useControl(() => new DeckOverlay(props));
     overlay.setProps(props);
@@ -68,8 +75,8 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
 
 const colorToRgbArray = (c: string, alpha: number = 255) => {
     const rgbColor = color(c)?.rgb();
-    if (!rgbColor) return undefined;
-    return [rgbColor.r, rgbColor.g, rgbColor.b, alpha];
+    if (!rgbColor) return [0, 0, 0, 0] as Color;
+    return [rgbColor.r, rgbColor.g, rgbColor.b, alpha] as Color;
 };
 
 export function Map({
@@ -275,85 +282,120 @@ export function Map({
             const layer = new MVTLayer({
                 id: `${l.path}-${i}`,
                 data: [`/api/tiles/${l.path}/{z}/{x}/{y}.mvt?q=${l.q}`],
+                beforeId: 'road-label',
+                renderSubLayers: (props) => {
+                    return new GeoJsonLayer(props, {
+                        getLineWidth: (f: Feature) => {
+                            if (f.properties?.layerName === l.path) {
+                                const queryFeatures = map?.querySourceFeatures(
+                                    'diagonal',
+                                    {
+                                        sourceLayer: 'road',
+                                        filter: [
+                                            'all',
+                                            ['==', 'id', f.properties.id],
+                                        ],
+                                    }
+                                );
 
-                getLineWidth: (f) => {
-                    if (f.properties.layerName === l.path) {
-                        const c = stackLayer.colorScale?.(f.properties.bucket);
-                        if (!c) {
+                                const feature = queryFeatures?.[0];
+
+                                if (feature) {
+                                    return (
+                                        getRoadWidth(
+                                            feature.properties?.highway
+                                        ) * 1.5
+                                    );
+                                }
+
+                                const isSelected =
+                                    stackLayer?.selected &&
+                                    stackLayer.selected.toString() ===
+                                        f.properties.bucket;
+
+                                return stackLayer?.selected
+                                    ? isSelected
+                                        ? 0.8
+                                        : 0.2
+                                    : 0.5;
+                            }
                             return 0;
-                        }
-                        const isSelected =
-                            stackLayer?.selected &&
-                            stackLayer.selected.toString() ===
-                                f.properties.bucket;
+                        },
+                        getLineColor: (f: Feature) => {
+                            if (f.properties?.layerName === l.path) {
+                                const c = stackLayer.colorScale?.(
+                                    f.properties?.bucket
+                                );
+                                if (!c) {
+                                    return [0, 0, 0, 0];
+                                }
+                                const isSelected =
+                                    stackLayer?.selected &&
+                                    stackLayer.selected.toString() ===
+                                        f.properties.bucket;
 
-                        return stackLayer?.selected
-                            ? isSelected
-                                ? 0.8
-                                : 0.2
-                            : 0.5;
-                    }
-                    return 0;
-                },
-                getLineColor: (f) => {
-                    if (f.properties.layerName === l.path) {
-                        const c = stackLayer.colorScale?.(f.properties.bucket);
-                        if (!c) {
+                                const darken = color(c)
+                                    ?.darker(isSelected ? 2 : 0.5)
+                                    .formatRgb();
+
+                                return colorToRgbArray(
+                                    darken ?? c,
+                                    stackLayer?.selected
+                                        ? isSelected
+                                            ? 255
+                                            : 155
+                                        : 255
+                                );
+                            }
                             return [0, 0, 0, 0];
-                        }
-                        const isSelected =
-                            stackLayer?.selected &&
-                            stackLayer.selected.toString() ===
-                                f.properties.bucket;
+                        },
+                        getFillColor: (f: Feature) => {
+                            if (f.properties?.layerName === 'background') {
+                                return [0, 0, 0, 0];
+                            }
+                            if (f.properties?.layerName === l.path) {
+                                const c = stackLayer.colorScale?.(
+                                    f.properties.bucket
+                                );
+                                if (!c) {
+                                    return [0, 0, 0, 0];
+                                }
 
-                        const darken = color(c)
-                            ?.darker(isSelected ? 2 : 0.5)
-                            .formatRgb();
+                                const isSelected =
+                                    stackLayer?.selected &&
+                                    stackLayer.selected.toString() ===
+                                        f.properties.bucket;
 
-                        return colorToRgbArray(
-                            darken ?? c,
-                            stackLayer?.selected
-                                ? isSelected
-                                    ? 255
-                                    : 155
-                                : 255
-                        );
-                    }
-                    return [0, 0, 0, 0];
-                },
-                getFillColor: (f: Feature) => {
-                    if (f.properties.layerName === 'background') {
-                        return [0, 0, 0, 0];
-                    }
-                    if (f.properties.layerName === l.path) {
-                        const c = stackLayer.colorScale?.(f.properties.bucket);
-                        if (!c) {
+                                return colorToRgbArray(
+                                    c,
+                                    stackLayer?.selected
+                                        ? isSelected
+                                            ? 255
+                                            : 155
+                                        : 255
+                                );
+                            }
                             return [0, 0, 0, 0];
-                        }
-
-                        const isSelected =
-                            stackLayer?.selected &&
-                            stackLayer.selected.toString() ===
-                                f.properties.bucket;
-
-                        return colorToRgbArray(
-                            c,
-                            stackLayer?.selected
-                                ? isSelected
-                                    ? 255
-                                    : 155
-                                : 255
-                        );
-                    }
+                        },
+                        updateTriggers: {
+                            getLineColor: [
+                                stackLayer.colorScale,
+                                stackLayer.selected,
+                            ],
+                            getFillColor: [
+                                stackLayer.colorScale,
+                                stackLayer.selected,
+                            ],
+                            getLineWidth: [stackLayer.selected],
+                            getFilterCategory: (d: Feature) =>
+                                d.properties?.layerName,
+                            filterCategories: [l.path],
+                            extensions: [
+                                new DataFilterExtension({ categorySize: 1 }),
+                            ],
+                        },
+                    });
                 },
-                updateTriggers: {
-                    getLineColor: [stackLayer.colorScale, stackLayer.selected],
-                    getFillColor: [stackLayer.colorScale, stackLayer.selected],
-                    getLineWidth: [stackLayer.selected],
-                },
-                getFilterCategory: (d: Feature) => d.properties.layerName,
-                filterCategories: [l.path],
-                extensions: [new DataFilterExtension({ categorySize: 1 })],
             });
             return layer;
         });
