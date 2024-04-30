@@ -31,11 +31,11 @@ func TestAccessibility(t *testing.T) {
 
 	expected := []graph.OD{
 		{
-			Origin:      camden.StableStreetBridgeNorthEndID.FeatureID(),
-			Destination: ingest.FromOSMNodeID(3790640851).FeatureID(),
+			Origin:      camden.StableStreetBridgeNorthEndID,
+			Destination: ingest.FromOSMNodeID(3790640851),
 		},
 		{
-			Origin:      camden.VermuteriaID.FeatureID(),
+			Origin:      camden.VermuteriaID,
 			Destination: b6.FeatureIDInvalid,
 		},
 	}
@@ -47,7 +47,7 @@ func TestAccessibility(t *testing.T) {
 
 	unexpected := []graph.OD{
 		{
-			Origin:      camden.StableStreetBridgeNorthEndID.FeatureID(),
+			Origin:      camden.StableStreetBridgeNorthEndID,
 			Destination: b6.FeatureIDInvalid,
 		},
 	}
@@ -76,11 +76,40 @@ func TestAccessibilityFlipped(t *testing.T) {
 	}
 
 	expected := graph.OD{
-		Origin:      ingest.FromOSMNodeID(3790640851).FeatureID(),
-		Destination: ingest.FromOSMNodeID(1447052073).FeatureID(),
+		Origin:      ingest.FromOSMNodeID(3790640851),
+		Destination: ingest.FromOSMNodeID(1447052073),
 	}
 	if _, ok := seen[expected]; !ok {
 		t.Errorf("Failed to find expected origin destination pair")
+	}
+}
+
+func TestWeightsFromOptions(t *testing.T) {
+	w := camden.BuildGranarySquareForTests(t)
+	if w == nil {
+		return
+	}
+
+	options := []b6.Tag{{Key: "mode", Value: b6.String("transit")}, {Key: "walking speed", Value: b6.String("7.6")}}
+	weights, err := WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection())
+	if err != nil {
+		t.Errorf("cannot convert collection to tags")
+	}
+
+	expected := graph.TransitTimeWeights{PeakTraffic: true, Weights: graph.WalkingTimeWeights{Speed: 7.6}}
+	if weights != expected {
+		t.Errorf("unexpected weights")
+	}
+
+	options = []b6.Tag{{Key: "mode", Value: b6.String("transit")}, {Key: "elevation", Value: b6.String("true")}, {Key: "downhill", Value: b6.String("hard")}}
+	weights, err = WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection())
+	if err != nil {
+		t.Errorf("cannot convert collection to tags")
+	}
+
+	expected = graph.TransitTimeWeights{PeakTraffic: true, Weights: graph.ElevationWeights{DownHillHard: true}}
+	if weights != expected {
+		t.Errorf("unexpected weights")
 	}
 }
 
@@ -91,8 +120,8 @@ func accessibilityForGranarySquare(options []b6.Tag, w b6.World) (b6.Collection[
 		Context: context.Background(),
 	}
 	origins := b6.ArrayFeatureCollection[b6.Feature]{
-		w.FindFeatureByID(camden.StableStreetBridgeNorthEndID.FeatureID()),
-		w.FindFeatureByID(camden.VermuteriaID.FeatureID()),
+		w.FindFeatureByID(camden.StableStreetBridgeNorthEndID),
+		w.FindFeatureByID(camden.VermuteriaID),
 	}
 	ids := b6.AdaptCollection[any, b6.Identifiable](origins.Collection())
 	return accessibleAll(context, ids, b6.Keyed{Key: "entrance"}, 500, b6.ArrayValuesCollection[b6.Tag](options).Collection())
