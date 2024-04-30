@@ -272,37 +272,7 @@
             "filter": ["all", ["has", "railway"]],
             "paint": { "line-color": "#9aa4cc", "line-width": 2 }
         },
-        {
-            "id": "road-label",
-            "type": "symbol",
-            "source": "diagonal",
-            "source-layer": "road",
-            "filter": ["all", ["has", "name"]],
-            "layout": {
-                "symbol-placement": "line-center",
-                "text-field": ["get", "name"],
-                "text-font": ["Unica77"],
-                "text-size": 11
-            },
-            "paint": {
-                "text-color": "#192939",
-                "text-halo-color": "rgba(255, 255, 255, 1)",
-                "text-halo-width": 1
-            }
-        },
-        {
-            "id": "labels",
-            "type": "symbol",
-            "source": "diagonal",
-            "source-layer": "label",
-            "filter": ["all", ["has", "name"]],
-            "layout": {
-                "text-field": { "type": "identity", "property": "name" },
-                "text-font": ["Unica77"],
-                "text-justify": "left",
-                "text-offset": [6, 1]
-            }
-        },
+
         {
             "id": "building",
             "type": "fill",
@@ -338,6 +308,37 @@
                     "#37589f",
                     "#4f5a7d"
                 ]
+            }
+        },
+        {
+            "id": "road-label",
+            "type": "symbol",
+            "source": "diagonal",
+            "source-layer": "road",
+            "filter": ["all", ["has", "name"]],
+            "layout": {
+                "symbol-placement": "line-center",
+                "text-field": ["get", "name"],
+                "text-font": ["Unica77"],
+                "text-size": 11
+            },
+            "paint": {
+                "text-color": "#192939",
+                "text-halo-color": "rgba(255, 255, 255, 1)",
+                "text-halo-width": 1
+            }
+        },
+        {
+            "id": "labels",
+            "type": "symbol",
+            "source": "diagonal",
+            "source-layer": "label",
+            "filter": ["all", ["has", "name"]],
+            "layout": {
+                "text-field": { "type": "identity", "property": "name" },
+                "text-font": ["Unica77"],
+                "text-justify": "left",
+                "text-offset": [6, 1]
             }
         },
         {

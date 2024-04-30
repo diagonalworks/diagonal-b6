@@ -1,4 +1,4 @@
-import { useStackContext } from '@/lib/context/stack';
+import { useOutlinerContext } from '@/lib/context/outliner';
 import { AtomProto, ChoiceProto } from '@/types/generated/ui';
 import { AtomAdapter } from './AtomAdapter';
 import { ChipAdapter } from './ChipAdapter';
@@ -11,14 +11,14 @@ export const ChoiceAdapter = ({
         label: ChoiceProto['label'];
     };
 }) => {
-    const stack = useStackContext();
+    const { choiceChips, setChoiceChipValue } = useOutlinerContext();
     return (
         <>
             {choice.label && <AtomAdapter atom={choice.label} />}
             {choice.chips &&
                 choice.chips.map(({ chip }, i) => {
                     if (!chip) return null;
-                    const stackChip = stack.state.choiceChips[chip.index ?? 0];
+                    const stackChip = choiceChips[chip.index ?? 0];
                     if (stackChip) {
                         return (
                             <div key={i}>
@@ -26,7 +26,7 @@ export const ChoiceAdapter = ({
                                     <ChipAdapter
                                         chip={stackChip}
                                         onChange={(value: number) =>
-                                            stack.setChoiceChipValue(
+                                            setChoiceChipValue(
                                                 chip.index ?? 0, // same issue with the 0 index being undefined, maybe we should add zod to parse this values beforehand or fix in BE.
                                                 value
                                             )

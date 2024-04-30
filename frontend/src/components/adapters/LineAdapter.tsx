@@ -1,14 +1,9 @@
-import { appAtom } from '@/atoms/app';
 import { Line } from '@/components/system/Line';
-import { fetchB6 } from '@/lib/b6';
+import { useAppContext } from '@/lib/context/app';
 import { LineContextProvider } from '@/lib/context/line';
-import { useStackContext } from '@/lib/context/stack';
+import { useOutlinerContext } from '@/lib/context/outliner';
 import { LineProto, TagsLineProto } from '@/types/generated/ui';
-import { StackResponse } from '@/types/stack';
-import { useQuery } from '@tanstack/react-query';
-import { useAtom } from 'jotai';
-import React, { useEffect } from 'react';
-import { useMap } from 'react-map-gl/maplibre';
+import React from 'react';
 import { TooltipOverflow } from '../system/Tooltip';
 import { AtomAdapter } from './AtomAdapter';
 import { ChoiceAdapter } from './ChoiceAdapter';
@@ -19,48 +14,27 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
     const clickable =
         line.value?.clickExpression ?? line.action?.clickExpression;
     const Wrapper = clickable ? Line.Button : React.Fragment;
-    const stack = useStackContext();
-    const [app, setApp] = useAtom(appAtom);
-    const { [stack.state.mapId]: map } = useMap();
+    const { outliner } = useOutlinerContext();
+    const { createOutliner } = useAppContext();
 
-    const { data, refetch } = useQuery({
-        queryKey: ['stack-line', JSON.stringify(clickable)],
-        queryFn: () => {
-            if (
-                !app.startup?.session ||
-                !map?.getCenter() ||
-                map?.getZoom() === undefined
-            ) {
-                return null;
-            }
-            return fetchB6('stack', {
-                root: undefined,
+    const handleLineClick = () => {
+        if (!clickable) return;
+        createOutliner({
+            id: JSON.stringify(clickable),
+            properties: {
+                coordinates: { x: 10, y: 60 },
+                tab: outliner.properties.tab,
+                transient: outliner.properties.transient,
+                docked: outliner.properties.docked,
+            },
+            request: {
                 expression: '',
                 locked: true,
-                logEvent: 'oc',
-                logMapCenter: {
-                    latE7: Math.round(map.getCenter().lat * 1e7),
-                    lngE7: Math.round(map.getCenter().lng * 1e7),
-                },
-                logMapZoom: map.getZoom(),
+                eventType: 'oc',
                 node: clickable,
-                session: app.startup?.session,
-            }).then((res) => res.json() as Promise<StackResponse>);
-        },
-        enabled: false,
-    });
-
-    useEffect(() => {
-        if (data) {
-            setApp((draft) => {
-                draft.stacks[data.proto.expression] = {
-                    proto: data.proto,
-                    docked: !!stack.state.stack?.docked,
-                    id: data.proto.expression,
-                };
-            });
-        }
-    }, [data]);
+            },
+        });
+    };
 
     return (
         <LineContextProvider line={line}>
@@ -70,7 +44,7 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
                         onClick: (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            refetch();
+                            handleLineClick();
                         },
                     })}
                 >

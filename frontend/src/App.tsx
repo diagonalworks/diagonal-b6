@@ -1,18 +1,14 @@
+import { ScenarioTab } from '@/components/ScenarioTab';
+import { AppProvider, useAppContext } from '@/lib/context/app';
 import { ReaderIcon } from '@radix-ui/react-icons';
-import {
-    QueryClient,
-    QueryClientProvider,
-    useQuery,
-} from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useEffect } from 'react';
+import { Provider } from 'jotai';
+import { queryClientAtom } from 'jotai-tanstack-query';
+import { useHydrateAtoms } from 'jotai/react/utils';
+import { PropsWithChildren } from 'react';
 import { MapProvider } from 'react-map-gl';
 import { twMerge } from 'tailwind-merge';
-import { appAtom, collectionAtom } from './atoms/app';
-import { viewAtom } from './atoms/location';
-import { Map } from './components/Map';
-import { StartupResponse } from './types/startup';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -22,74 +18,43 @@ const queryClient = new QueryClient({
     },
 });
 
+const HydrateAtoms = ({ children }: PropsWithChildren) => {
+    useHydrateAtoms([[queryClientAtom, queryClient]]);
+    return children;
+};
+
 function App() {
     return (
         <QueryClientProvider client={queryClient}>
-            <MapProvider>
-                <Workspace />
-            </MapProvider>
-            <ReactQueryDevtools initialIsOpen={false} />
+            <Provider>
+                <HydrateAtoms>
+                    <MapProvider>
+                        <AppProvider>
+                            <Workspace />
+                        </AppProvider>
+                    </MapProvider>
+                </HydrateAtoms>
+                <ReactQueryDevtools initialIsOpen={false} />
+            </Provider>
         </QueryClientProvider>
     );
 }
 
 const Workspace = () => {
-    const [viewState, setViewState] = useAtom(viewAtom);
-    const setApp = useSetAtom(appAtom);
-    const collection = useAtomValue(collectionAtom);
-
-    const startup = useQuery({
-        queryKey: ['startup', collection],
-        queryFn: () =>
-            fetch(
-                '/api/startup?' +
-                    new URLSearchParams({
-                        z: viewState.zoom.toString(),
-                        ll: `${viewState.latitude},${viewState.longitude}`,
-                        r: collection,
-                    })
-            ).then((res) => res.json() as Promise<StartupResponse>),
-    });
-
-    useEffect(() => {
-        if (startup.data) {
-            setViewState({
-                ...viewState,
-                ...(startup.data.mapCenter && {
-                    latitude: startup.data.mapCenter.latE7 / 1e7,
-                    longitude: startup.data.mapCenter.lngE7 / 1e7,
-                }),
-                ...(startup.data.mapZoom && { zoom: startup.data.mapZoom }),
-            });
-            setApp((draft) => {
-                startup.data.docked?.forEach((dock, i) => {
-                    const id = `stack_docked_${i}`;
-                    draft.stacks[id] = {
-                        proto: dock.proto,
-                        docked: true,
-                        transient: false,
-                        id,
-                    };
-                    draft.geojson[id] = dock.geoJSON;
-                });
-                draft.startup = startup.data;
-            });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [startup.data]);
-
     return (
-        <div className="h-screen flex flex-col">
+        <div className="h-screen max-h-screen flex flex-col">
             <Tabs />
             <div className="flex-grow">
-                <Map id="baseline" />
+                <ScenarioTab id="baseline" />
             </div>
         </div>
     );
 };
 
 const Tabs = () => {
-    const { scenarios, tabs } = useAtomValue(appAtom);
+    const {
+        app: { scenarios, tabs },
+    } = useAppContext();
 
     return (
         <div className="w-full px-1 pt-2">

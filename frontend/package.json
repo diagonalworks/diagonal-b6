@@ -33,6 +33,7 @@
         "@radix-ui/react-select": "^2.0.0",
         "@radix-ui/react-tooltip": "^1.0.7",
         "@react-oauth/google": "^0.12.1",
+        "@tanstack/query-core": "^5.32.0",
         "@tanstack/react-query": "^5.29.2",
         "@tanstack/react-query-devtools": "^5.29.2",
         "@types/geojson": "^7946.0.14",
@@ -50,6 +51,7 @@
         "jotai": "^2.8.0",
         "jotai-immer": "^0.3.0",
         "jotai-location": "^0.5.4",
+        "jotai-tanstack-query": "^0.8.5",
         "lodash": "^4.17.21",
         "long": "^5.2.3",
         "maplibre-gl": "^4.1.2",
@@ -61,7 +63,8 @@
         "react-map-gl": "^7.1.7",
         "ts-pattern": "^5.0.8",
         "ts-proto": "^1.172.0",
-        "use-immer": "^0.9.0"
+        "use-immer": "^0.9.0",
+        "wonka": "^6.3.4"
     },
     "devDependencies": {
         "@storybook/addon-essentials": "^7.6.15",

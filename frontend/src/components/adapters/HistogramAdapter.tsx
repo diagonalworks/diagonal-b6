@@ -1,11 +1,8 @@
-import { appAtom } from '@/atoms/app';
-import { useStackContext } from '@/lib/context/stack';
+import { useOutlinerContext } from '@/lib/context/outliner';
 import colors from '@/tokens/colors.json';
 import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
-import { useAtom } from 'jotai';
-import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo } from 'react';
 import { match } from 'ts-pattern';
 import { Histogram } from '../system/Histogram';
@@ -31,10 +28,9 @@ export const HistogramAdaptor = ({
     bars?: HistogramBarLineProto[];
     swatches?: SwatchLineProto[];
 }) => {
-    const [app, setApp] = useAtom(appAtom);
-    const stack = useStackContext();
-    const stackId = stack.state.stack?.id;
-    const stackApp = stackId ? app.stacks[stackId] : null;
+    const { outliner, setHistogramColorScale, setHistogramBucket } =
+        useOutlinerContext();
+    const scale = outliner.histogram?.colorScale;
 
     const data = useMemo(() => {
         return match(type)
@@ -65,50 +61,23 @@ export const HistogramAdaptor = ({
             .exhaustive();
     }, [type, bars, swatches]);
 
-    const histogramColorScale = useMemo(() => {
-        return scaleOrdinal({
+    useEffect(() => {
+        const scale = scaleOrdinal({
             domain: data.map((d) => `${d.index}`),
             range: data.map((_, i) => colorInterpolator(i / data.length)),
         });
+        setHistogramColorScale(scale);
     }, [data]);
 
-    const handleSelect = useCallback(
-        (d: HistogramData | null) => {
-            if (isNil(stackId)) return;
-            setApp((draft) => {
-                const histogram = draft.stacks[stackId].histogram;
-                if (histogram) {
-                    histogram.selected = d?.index ?? null;
-                } else {
-                    draft.stacks[stackId].histogram = {
-                        colorScale: histogramColorScale,
-                        selected: d?.index ?? null,
-                    };
-                }
-            });
-        },
-        [stackId]
-    );
+    const handleSelect = useCallback((d: HistogramData | null) => {
+        setHistogramBucket(d?.index.toString());
+    }, []);
 
     const selected = useMemo(() => {
-        if (isNil(stackId)) return null;
-        return data.find((d) => d.index === stackApp?.histogram?.selected);
-    }, [stackId, stackApp?.histogram?.selected]);
-
-    useEffect(() => {
-        if (isNil(stackId)) return;
-        setApp((draft) => {
-            const histogram = draft.stacks[stackId].histogram;
-            if (histogram) {
-                histogram.colorScale = histogramColorScale;
-            } else {
-                draft.stacks[stackId].histogram = {
-                    colorScale: histogramColorScale,
-                    selected: null,
-                };
-            }
-        });
-    }, [stackId, histogramColorScale]);
+        const selected = outliner?.histogram?.selected;
+        if (!selected) return null;
+        return data.find((d) => d.index.toString() === selected);
+    }, [outliner.histogram?.selected, data]);
 
     return (
         <Histogram
@@ -117,7 +86,7 @@ export const HistogramAdaptor = ({
             label={(d) => d.label}
             bucket={(d) => d.index.toString()}
             value={(d) => d.count}
-            color={(d) => histogramColorScale(`${d.index}`)}
+            color={(d) => (scale ? scale(`${d.index}`) : '#fff')}
             onSelect={handleSelect}
             selected={selected}
             selectable
