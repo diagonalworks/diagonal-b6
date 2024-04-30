@@ -21,7 +21,6 @@ import {
     useMap,
 } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
-import diagonalBasemapStyle from './diagonal-map-style.json';
 import { MapControls } from './system/MapControls';
 
 // https://github.com/visgl/react-map-gl/discussions/2216#discussioncomment-7537888
@@ -38,7 +37,8 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
 export const ScenarioMap = ({
     id,
     children,
-}: { id: string } & PropsWithChildren) => {
+    mapStyle,
+}: { id: string; mapStyle: StyleSpecification } & PropsWithChildren) => {
     const { createOutliner, getVisibleMarkers, queryLayers } = useAppContext();
     const { [id]: map } = useMap();
     const [viewState, setViewState] = useAtom(viewAtom);
@@ -245,9 +245,10 @@ export const ScenarioMap = ({
     return (
         <MapLibre
             id={id}
-            {...mapViewState}
+            {...viewState}
             onMove={(evt) => {
                 setMapViewState(evt.viewState);
+                setViewState(evt.viewState);
                 debouncedSetViewState(evt.viewState);
             }}
             onMouseEnter={() => {
@@ -262,7 +263,7 @@ export const ScenarioMap = ({
             interactive={true}
             interactiveLayerIds={['building', 'road']}
             dragRotate={false}
-            mapStyle={diagonalBasemapStyle as StyleSpecification}
+            mapStyle={mapStyle}
             boxZoom={false} // https://github.com/mapbox/mapbox-gl-js/issues/6971s
         >
             <DeckGLOverlay layers={deckGLLayers} interleaved />

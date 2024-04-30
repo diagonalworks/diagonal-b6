@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { StyleSpecification } from 'maplibre-gl';
 import { HTMLAttributes, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { twMerge } from 'tailwind-merge';
@@ -8,8 +9,12 @@ import { WorldShellAdapter } from './adapters/ShellAdapter';
 
 export const ScenarioTab = ({
     id,
+    mapStyle,
     ...props
-}: { id: string } & HTMLAttributes<HTMLDivElement>) => {
+}: {
+    id: string;
+    mapStyle: StyleSpecification;
+} & HTMLAttributes<HTMLDivElement>) => {
     const [showWorldShell, setShowWorldShell] = useState(false);
 
     useHotkeys('shift+meta+b, `', () => {
@@ -20,11 +25,11 @@ export const ScenarioTab = ({
         <div
             {...props}
             className={twMerge(
-                'h-full  border-t border-graphite-20 relative',
+                'h-full  border  border-x-graphite-40 border-t-graphite-20 relative',
                 props.className
             )}
         >
-            <ScenarioMap id={id}>
+            <ScenarioMap id={id} mapStyle={mapStyle}>
                 <GlobalShell show={showWorldShell} mapId={id} />
                 <OutlinersLayer mapId={id} />
             </ScenarioMap>
