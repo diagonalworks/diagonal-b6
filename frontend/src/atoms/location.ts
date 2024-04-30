@@ -5,21 +5,24 @@ import { ViewState } from 'react-map-gl';
 
 const INITIAL_COORDINATES = { latE7: 515361156, lngE7: -1255161 };
 
-export const zoomAtom = atomWithStorage<number>(
+const INITIAL_ZOOM = 16;
+const INITIAL_CENTER = {
+    lat: INITIAL_COORDINATES.latE7 / 1e7,
+    lng: INITIAL_COORDINATES.lngE7 / 1e7,
+};
+
+export const zoomStorageAtom = atomWithStorage<number>(
     'z',
-    16,
+    INITIAL_ZOOM,
     urlSearchParamsStorage({}),
     {
         getOnInit: true,
     }
 );
 
-export const centerAtom = atomWithStorage<{ lat: number; lng: number }>(
+export const centerStorageAtom = atomWithStorage<{ lat: number; lng: number }>(
     'll',
-    {
-        lat: INITIAL_COORDINATES.latE7 / 1e7,
-        lng: INITIAL_COORDINATES.lngE7 / 1e7,
-    },
+    INITIAL_CENTER,
     urlSearchParamsStorage({
         serialize: (value) =>
             value.lat && value.lng ? `${value.lat},${value.lng}` : '',
@@ -38,6 +41,22 @@ export const centerAtom = atomWithStorage<{ lat: number; lng: number }>(
     }
 );
 
+const debouncedCenter = atomWithDebounce(INITIAL_CENTER, 200);
+const debouncedZoom = atomWithDebounce(INITIAL_ZOOM, 200);
+
+const centerAtom = atom(INITIAL_CENTER);
+const zoomAtom = atom(INITIAL_ZOOM);
+
+const centerStorageSetAtom = atom(null, (get, set) => {
+    const center = get(debouncedCenter.debouncedValueAtom);
+    set(centerStorageAtom, center);
+});
+
+const zoomStorageSetAtom = atom(null, (get, set) => {
+    const zoom = get(debouncedZoom.debouncedValueAtom);
+    set(zoomStorageAtom, zoom);
+});
+
 export const viewAtom = atom(
     (get) => {
         return {
@@ -50,7 +69,80 @@ export const viewAtom = atom(
         };
     },
     (_, set, view: ViewState) => {
-        set(centerAtom, { lat: view.latitude, lng: view.longitude });
-        set(zoomAtom, view.zoom);
+        const center = { lat: view.latitude, lng: view.longitude };
+        const zoom = view.zoom;
+        set(centerAtom, center);
+        set(zoomAtom, zoom);
+        set(debouncedCenter.debouncedValueAtom, center);
+        set(debouncedZoom.debouncedValueAtom, zoom);
+        set(centerStorageSetAtom);
+        set(zoomStorageSetAtom);
     }
 );
+
+import { SetStateAction } from 'jotai';
+
+export default function atomWithDebounce<T>(
+    initialValue: T,
+    delayMilliseconds = 500,
+    shouldDebounceOnReset = false
+) {
+    const prevTimeoutAtom = atom<ReturnType<typeof setTimeout> | undefined>(
+        undefined
+    );
+
+    // DO NOT EXPORT currentValueAtom as using this atom to set state can cause
+    // inconsistent state between currentValueAtom and debouncedValueAtom
+    const _currentValueAtom = atom(initialValue);
+    const isDebouncingAtom = atom(false);
+
+    const debouncedValueAtom = atom(
+        initialValue,
+        (get, set, update: SetStateAction<T>) => {
+            clearTimeout(get(prevTimeoutAtom));
+
+            const prevValue = get(_currentValueAtom);
+            const nextValue =
+                typeof update === 'function'
+                    ? (update as (prev: T) => T)(prevValue)
+                    : update;
+
+            const onDebounceStart = () => {
+                set(_currentValueAtom, nextValue);
+                set(isDebouncingAtom, true);
+            };
+
+            const onDebounceEnd = () => {
+                set(debouncedValueAtom, nextValue);
+                set(isDebouncingAtom, false);
+            };
+
+            onDebounceStart();
+
+            if (!shouldDebounceOnReset && nextValue === initialValue) {
+                onDebounceEnd();
+                return;
+            }
+
+            const nextTimeoutId = setTimeout(() => {
+                onDebounceEnd();
+            }, delayMilliseconds);
+
+            // set previous timeout atom in case it needs to get cleared
+            set(prevTimeoutAtom, nextTimeoutId);
+        }
+    );
+
+    // exported atom setter to clear timeout if needed
+    const clearTimeoutAtom = atom(null, (get, set, _arg) => {
+        clearTimeout(get(prevTimeoutAtom));
+        set(isDebouncingAtom, false);
+    });
+
+    return {
+        currentValueAtom: atom((get) => get(_currentValueAtom)),
+        isDebouncingAtom,
+        clearTimeoutAtom,
+        debouncedValueAtom,
+    };
+}

@@ -10,13 +10,11 @@ import {
 import { DotIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { color } from 'd3-color';
 import { useAtom } from 'jotai';
-import { debounce } from 'lodash';
 import { Feature, MapLayerMouseEvent, StyleSpecification } from 'maplibre-gl';
 import { PropsWithChildren, useCallback, useMemo, useState } from 'react';
 import {
     Map as MapLibre,
     Marker,
-    ViewState,
     useControl,
     useMap,
 } from 'react-map-gl/maplibre';
@@ -42,14 +40,7 @@ export const ScenarioMap = ({
     const { createOutliner, getVisibleMarkers, queryLayers } = useAppContext();
     const { [id]: map } = useMap();
     const [viewState, setViewState] = useAtom(viewAtom);
-    const [mapViewState, setMapViewState] = useState<ViewState>(viewState);
     const [cursor, setCursor] = useState<'auto' | 'pointer'>('auto');
-
-    // Debounce the view state update to avoid updating the URL too often
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const debouncedSetViewState = useCallback(debounce(setViewState, 1000), [
-        setViewState,
-    ]);
 
     const deckGLLayers = useMemo(() => {
         if (!map) return null;
@@ -247,9 +238,7 @@ export const ScenarioMap = ({
             id={id}
             {...viewState}
             onMove={(evt) => {
-                setMapViewState(evt.viewState);
                 setViewState(evt.viewState);
-                debouncedSetViewState(evt.viewState);
             }}
             onMouseEnter={() => {
                 setCursor('pointer');
