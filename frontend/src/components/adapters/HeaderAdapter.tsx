@@ -1,14 +1,12 @@
-import { appAtom } from '@/atoms/app';
 import { Header } from '@/components/system/Header';
+import { useOutlinerContext } from '@/lib/context/outliner';
 import { HeaderLineProto } from '@/types/generated/ui';
-import { useSetAtom } from 'jotai';
 import { useState } from 'react';
 import { AtomAdapter } from './AtomAdapter';
 
 export const HeaderAdapter = ({ header }: { header: HeaderLineProto }) => {
-    const setAppAtom = useSetAtom(appAtom);
-    //const { stack } = useOutlinerContext();
     const [sharePopoverOpen, setSharePopoverOpen] = useState(false);
+    const { close } = useOutlinerContext();
 
     return (
         <Header>
@@ -47,10 +45,7 @@ export const HeaderAdapter = ({ header }: { header: HeaderLineProto }) => {
                         onClick: (evt) => {
                             evt.preventDefault();
                             evt.stopPropagation();
-                            /* if (!stack?.id) return;
-                            setAppAtom((draft) => {
-                                draft.stacks = omit(draft.stacks, stack.id);
-                            }); */
+                            close();
                         },
                     },
                 }}

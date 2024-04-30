@@ -38,6 +38,7 @@ export const AppContext = createContext<{
         layer: MapLayerProto;
         histogram: OutlinerStore['histogram'];
     }>;
+    closeOutliner: (id: keyof AppStore['outliners']) => void;
 }>({
     app: initialAppStore,
     setApp: () => {},
@@ -48,6 +49,7 @@ export const AppContext = createContext<{
     setActiveOutliner: () => {},
     moveOutliner: () => {},
     getVisibleMarkers: () => [],
+    closeOutliner: () => {},
     queryLayers: [],
 });
 
@@ -66,6 +68,15 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }: PropsWithChildren) => {
     const [app, setApp] = useAtom(appAtom);
     const startupQuery = useAtomValue(startupQueryAtom);
+
+    const closeOutliner = useCallback(
+        (id: keyof AppStore['outliners']) => {
+            setApp((draft) => {
+                delete draft.outliners[id];
+            });
+        },
+        [setApp]
+    );
 
     useEffect(() => {
         setApp((draft) => {
@@ -195,6 +206,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         moveOutliner,
         getVisibleMarkers,
         queryLayers,
+        closeOutliner,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

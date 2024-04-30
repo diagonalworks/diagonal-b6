@@ -25,6 +25,7 @@ import diagonalBasemapStyle from './diagonal-map-style.json';
 import { MapControls } from './system/MapControls';
 
 // https://github.com/visgl/react-map-gl/discussions/2216#discussioncomment-7537888
+import { b6Path } from '@/lib/b6';
 import { useAppContext } from '@/lib/context/app';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -57,7 +58,7 @@ export const ScenarioMap = ({
             if (!histogram) return null;
             return new MVTLayer({
                 data: [
-                    `/api/tiles/${ql.layer.path}/{z}/{x}/{y}.mvt?q=${ql.layer.q}`,
+                    `${b6Path}tiles/${ql.layer.path}/{z}/{x}/{y}.mvt?q=${ql.layer.q}`,
                 ],
                 beforeId: 'road-label',
                 id: `${ql.layer.path}+${ql.layer.q}`,

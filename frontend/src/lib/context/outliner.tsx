@@ -62,6 +62,7 @@ const OutlinerContext = createContext<{
     setHistogramBucket: (bucket?: string) => void;
     choiceChips: Record<number, Chip>;
     setChoiceChipValue: (index: number, value: number) => void;
+    close: () => void;
 }>({
     outliner: {} as OutlinerStore,
     setProperty: () => {},
@@ -71,6 +72,7 @@ const OutlinerContext = createContext<{
     setHistogramBucket: () => {},
     choiceChips: {},
     setChoiceChipValue: () => {},
+    close: () => {},
 });
 
 export const useOutlinerContext = () => {
@@ -84,10 +86,14 @@ export const OutlinerProvider = ({
     outliner: OutlinerStore;
 }) => {
     const { request } = outliner;
-    const { setApp } = useAppContext();
+    const { setApp, closeOutliner } = useAppContext();
     const viewState = useAtomValue(viewAtom);
     const { data } = useAtomValue(startupQueryAtom);
     const { [outliner.properties.tab]: map } = useMap();
+
+    const close = useCallback(() => {
+        closeOutliner(outliner.id);
+    }, [closeOutliner, outliner.id]);
 
     const [choiceChips, setChoiceChips] = useImmer<Record<number, Chip>>({});
 
@@ -296,6 +302,7 @@ export const OutlinerProvider = ({
                 setHistogramBucket,
                 choiceChips,
                 setChoiceChipValue,
+                close,
             }}
         >
             {children}

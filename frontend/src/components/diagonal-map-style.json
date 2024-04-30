@@ -14,7 +14,7 @@
             "maxzoom": 16
         }
     },
-    "glyphs": "src/assets/fonts/glyphs/{fontstack}/{range}.pbf",
+    "glyphs": "/assets/fonts/glyphs/{fontstack}/{range}.pbf",
     "layers": [
         {
             "id": "background",
