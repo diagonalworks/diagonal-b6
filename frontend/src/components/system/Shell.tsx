@@ -82,7 +82,7 @@ export function Shell({
             /* Current filtering logic is a bit naive, but works for now. In the future we can
             integrate match-sorter https://github.com/kentcdodds/match-sorter */
             shouldFilter={false}
-            className="shell"
+            className="shell w-full"
         >
             <Line className="flex gap-2 bg-ultramarine-10 hover:bg-ultramarine-10 w-full ">
                 <span className="text-ultramarine-70 "> b6</span>
@@ -166,8 +166,8 @@ export function Shell({
                                 setInput(newInput);
                             }}
                         >
-                            <Line className="flex flex-row gap-1 items-start">
-                                <CaretRightIcon className=" text-ultramarine-60 mt-1.5 shrink-0" />
+                            <Line className="flex flex-row gap-1 items-center">
+                                <CaretRightIcon className=" text-ultramarine-60  shrink-0" />
                                 <div className="flex gap-2 items-baseline [&strong]:font-medium">
                                     <span>
                                         {highlighted(f.item.id, f.matches.id)}
