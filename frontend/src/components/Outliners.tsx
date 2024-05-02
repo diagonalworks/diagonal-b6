@@ -11,7 +11,10 @@ import {
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
-import { restrictToWindowEdges } from '@dnd-kit/modifiers';
+import {
+    restrictToParentElement,
+    restrictToWindowEdges,
+} from '@dnd-kit/modifiers';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PropsWithChildren } from 'react';
 import { twMerge } from 'tailwind-merge';
@@ -37,7 +40,7 @@ export const OutlinersLayer = () => {
     const sensors = useSensors(pointerSensor, mouseSensor, touchSensor);
 
     return (
-        <>
+        <div className="w-full h-full">
             <div className="absolute top-16 left-2 flex flex-col gap-1">
                 {dockedOutliners.map((outliner) => {
                     return (
@@ -48,7 +51,7 @@ export const OutlinersLayer = () => {
                 })}
             </div>
             <DndContext
-                modifiers={[restrictToWindowEdges]}
+                modifiers={[restrictToWindowEdges, restrictToParentElement]}
                 sensors={sensors}
                 onDragStart={({ active }) => {
                     setActiveOutliner(active.id as string, true);
@@ -72,7 +75,7 @@ export const OutlinersLayer = () => {
                     </AnimatePresence>
                 </Droppable>
             </DndContext>
-        </>
+        </div>
     );
 };
 
@@ -80,14 +83,12 @@ const Droppable = ({
     children,
     mapId,
 }: PropsWithChildren & { mapId: string }) => {
-    const { isOver, setNodeRef } = useDroppable({
+    const { setNodeRef } = useDroppable({
         id: `droppable-${mapId}`,
     });
-    const style = {
-        color: isOver ? 'green' : undefined,
-    };
+
     return (
-        <div ref={setNodeRef} style={style}>
+        <div ref={setNodeRef} className="w-full h-full">
             {children}
         </div>
     );
