@@ -12,7 +12,7 @@ func (t testFeature) FeatureID() FeatureID {
 	return FeatureID(t)
 }
 
-func (t testFeature) AllTags() []Tag {
+func (t testFeature) AllTags() Tags {
 	return []Tag{}
 }
 
@@ -22,6 +22,14 @@ func (t testFeature) Get(string) Tag {
 
 func (t testFeature) GetString(string) string {
 	return ""
+}
+
+func (t testFeature) References() []Reference {
+	return []Reference{}
+}
+
+func (t testFeature) Reference(_ int) Reference {
+	return nil
 }
 
 func TestMergedFeatures(t *testing.T) {

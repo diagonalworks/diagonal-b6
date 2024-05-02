@@ -175,41 +175,43 @@ func emitPoints(source ingest.FeatureSource, o *Options, s *encoding.StringTable
 	points := make([]Tags, goroutines)
 	var seen Counts
 	emitFeature := func(feature ingest.Feature, g int) error {
-		switch f := feature.(type) {
-		case *ingest.GenericFeature:
+		switch feature.FeatureID().Type {
+		case b6.FeatureTypePoint:
 			if n := atomic.AddUint64(&seen.Points, 1); n%10000000 == 0 {
 				log.Printf("  %d points", n)
 			}
-			points[g].FromFeature(f, s)
-			n := points[g].Marshal(buffers[g])
-			eid := FeatureID{Namespace: nt.Encode(f.FeatureID().Namespace), Type: b6.FeatureTypePoint, Value: f.FeatureID().Value}
+			points[g].FromFeature(feature, s, nt)
+			n := points[g].Marshal(TypeAndNamespaceInvalid, buffers[g])
+			eid := FeatureID{Namespace: nt.Encode(feature.FeatureID().Namespace), Type: b6.FeatureTypePoint, Value: feature.FeatureID().Value}
 			emit(eid, PointTag, buffers[g][0:n])
-		case *ingest.PathFeature:
-			if n := atomic.AddUint64(&seen.Paths, 1); n%1000000 == 0 {
-				log.Printf("  %d paths", n)
-			}
-			r := Reference{Namespace: nt.Encode(f.PathID.Namespace), Value: f.PathID.Value}
-			n := r.Marshal(nt.Encode(b6.NamespaceOSMWay), buffers[g])
-			end := f.Len()
-			if f.IsClosed() {
-				end--
-			}
-			// Note that ways that reference a path may be dropped from the index at a
-			// later stage (becuause, for example, they're missing points), so we need
-			// to handle this at query time.
-			for i := 0; i < end; i++ {
-				if id, ok := f.PointID(i); ok {
-					eid := FeatureID{Namespace: nt.Encode(id.Namespace), Type: b6.FeatureTypePoint, Value: id.Value}
-					emit(eid, PointPathTag, buffers[g][0:n])
+		case b6.FeatureTypePath:
+			if feature, ok := feature.(b6.PhysicalFeature); ok {
+				if n := atomic.AddUint64(&seen.Paths, 1); n%1000000 == 0 {
+					log.Printf("  %d paths", n)
+				}
+				r := Reference{TypeAndNamespace: CombineTypeAndNamespace(feature.FeatureID().Type, nt.Encode(feature.FeatureID().Namespace)), Value: feature.FeatureID().Value}
+				n := r.Marshal(CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), buffers[g])
+				end := feature.GeometryLen()
+				if feature.AllTags().ClosedPath() {
+					end--
+				}
+				// Note that ways that reference a path may be dropped from the index at a
+				// later stage (becuause, for example, they're missing points), so we need
+				// to handle this at query time.
+				for i := 0; i < end; i++ {
+					if id := feature.Reference(i).Source(); id.IsValid() {
+						eid := FeatureID{Namespace: nt.Encode(id.Namespace), Type: b6.FeatureTypePoint, Value: id.Value}
+						emit(eid, PointPathTag, buffers[g][0:n])
+					}
 				}
 			}
-		case *ingest.RelationFeature:
+		case b6.FeatureTypeRelation:
 			if n := atomic.AddUint64(&seen.Relations, 1); n%1000000 == 0 {
 				log.Printf("  %d relations", n)
 			}
-			r := Reference{Namespace: nt.Encode(f.RelationID.Namespace), Value: f.RelationID.Value}
-			n := r.Marshal(nt.Encode(b6.NamespaceOSMRelation), buffers[g])
-			for _, m := range f.Members {
+			r := Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypeRelation, nt.Encode(feature.(*ingest.RelationFeature).RelationID.Namespace)), Value: feature.(*ingest.RelationFeature).RelationID.Value}
+			n := r.Marshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nt.Encode(b6.NamespaceOSMRelation)), buffers[g])
+			for _, m := range feature.(*ingest.RelationFeature).Members {
 				if m.ID.Type == b6.FeatureTypePoint { // Non-point types handled via Summary
 					eid := FeatureID{Namespace: nt.Encode(m.ID.Namespace), Type: m.ID.Type, Value: m.ID.Value}
 					emit(eid, PointRelationTag, buffers[g][0:n])
@@ -332,11 +334,11 @@ func combinePoints(points *encoding.Uint64Map, nss *Namespaces, goroutines int, 
 				point = t.Data
 			case PointPathTag:
 				var r Reference
-				r.Unmarshal(nss.ForType(b6.FeatureTypePath), t.Data)
+				r.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), t.Data)
 				references[g].Paths = append(references[g].Paths, r)
 			case PointRelationTag:
 				var r Reference
-				r.Unmarshal(nss.ForType(b6.FeatureTypeRelation), t.Data)
+				r.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nss.ForType(b6.FeatureTypeRelation)), t.Data)
 				references[g].Relations = append(references[g].Relations, r)
 			default:
 				panic(fmt.Sprintf("Unexpected tag: %d", t.Tag))
@@ -406,18 +408,6 @@ func writePoints(o *Options, points FeatureBlocks, nt *NamespaceTable, summary *
 	return offset, nil
 }
 
-func logPanic(f osm.EmitWithGoroutine) osm.EmitWithGoroutine {
-	ff := func(e osm.Element, g int) error {
-		defer func() {
-			if r := recover(); r != nil {
-				panic(fmt.Sprintf("on element %+v", e))
-			}
-		}()
-		return f(e, g)
-	}
-	return ff
-}
-
 type overlayLocationsByID struct {
 	overlay b6.LocationsByID
 	base    b6.LocationsByID
@@ -440,7 +430,7 @@ const (
 
 type Validator struct {
 	locations b6.LocationsByID
-	paths     map[b6.PathID]ValidationState
+	paths     map[b6.FeatureID]ValidationState
 	queue     []*ingest.AreaFeature
 	lock      sync.Mutex
 }
@@ -448,12 +438,12 @@ type Validator struct {
 func NewValidator(locations b6.LocationsByID) *Validator {
 	return &Validator{
 		locations: locations,
-		paths:     make(map[b6.PathID]ValidationState),
+		paths:     make(map[b6.FeatureID]ValidationState),
 		queue:     make([]*ingest.AreaFeature, 0, 2),
 	}
 }
 
-func (v *Validator) ValidatePath(p *ingest.PathFeature, fs []ingest.Feature) []ingest.Feature {
+func (v *Validator) ValidatePath(p *ingest.GenericFeature, fs []ingest.Feature) []ingest.Feature {
 	var state ValidationState
 	o := ingest.ValidateOptions{InvertClockwisePaths: true}
 	if err := ingest.ValidatePath(p, &o, v.locations); err == nil {
@@ -465,10 +455,10 @@ func (v *Validator) ValidatePath(p *ingest.PathFeature, fs []ingest.Feature) []i
 	}
 	validateQueue := false
 	v.lock.Lock()
-	if _, ok := v.paths[p.PathID]; ok {
+	if _, ok := v.paths[p.FeatureID()]; ok {
 		validateQueue = true
 	}
-	v.paths[p.PathID] = state
+	v.paths[p.FeatureID()] = state
 	if validateQueue {
 		fs = v.validateQueue(fs)
 	}
@@ -545,34 +535,34 @@ func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *enco
 	var seen Counts
 	osmNamespaces := OSMNamespaces(nt)
 	emitFeature := func(feature ingest.Feature, g int) error {
-		switch f := feature.(type) {
-		case *ingest.PathFeature:
+		switch feature.FeatureID().Type {
+		case b6.FeatureTypePath:
 			if n := atomic.AddUint64(&seen.Paths, 1); n%1000000 == 0 {
 				log.Printf("  %d paths", n)
 			}
-			paths[g].FromFeature(f, s, nt)
-			paths[g].Areas = summary.PathAreas.FillReferences(paths[g].Areas[0:0], f.FeatureID(), nt)
-			paths[g].Relations = summary.RelationMembers.FillReferences(paths[g].Relations[0:0], f.FeatureID(), nt)
+			paths[g].FromFeature(feature, s, nt)
+			paths[g].Areas = summary.PathAreas.FillReferences(paths[g].Areas[0:0], feature.FeatureID(), nt)
+			paths[g].Relations = summary.RelationMembers.FillReferences(paths[g].Relations[0:0], feature.FeatureID(), nt)
 			n := paths[g].Marshal(&osmNamespaces, buffers[g])
-			eid := FeatureID{Namespace: nt.Encode(f.PathID.Namespace), Type: b6.FeatureTypePath, Value: f.PathID.Value}
+			eid := FeatureID{Namespace: nt.Encode(feature.FeatureID().Namespace), Type: b6.FeatureTypePath, Value: feature.FeatureID().Value}
 			emit(eid, encoding.NoTag, buffers[g][0:n])
-		case *ingest.AreaFeature:
+		case b6.FeatureTypeArea:
 			if n := atomic.AddUint64(&seen.Areas, 1); n%1000000 == 0 {
 				log.Printf("  %d areas", n)
 			}
-			areas[g].FromFeature(f, s, nt)
-			areas[g].Relations = summary.RelationMembers.FillReferences(areas[g].Relations[0:0], f.FeatureID(), nt)
+			areas[g].FromFeature(feature.(*ingest.AreaFeature), s, nt)
+			areas[g].Relations = summary.RelationMembers.FillReferences(areas[g].Relations[0:0], feature.FeatureID(), nt)
 			n := areas[g].Marshal(&osmNamespaces, buffers[g])
-			eid := FeatureID{Namespace: nt.Encode(f.AreaID.Namespace), Type: b6.FeatureTypeArea, Value: f.AreaID.Value}
+			eid := FeatureID{Namespace: nt.Encode(feature.FeatureID().Namespace), Type: b6.FeatureTypeArea, Value: feature.FeatureID().Value}
 			emit(eid, encoding.NoTag, buffers[g][0:n])
-		case *ingest.RelationFeature:
+		case b6.FeatureTypeRelation:
 			if n := atomic.AddUint64(&seen.Relations, 1); n%1000000 == 0 {
 				log.Printf("  %d relations", n)
 			}
-			relations[g].FromFeature(f, s, nt)
-			relations[g].Relations = summary.RelationMembers.FillReferences(relations[g].Relations[0:0], f.FeatureID(), nt)
+			relations[g].FromFeature(feature.(*ingest.RelationFeature), s, nt)
+			relations[g].Relations = summary.RelationMembers.FillReferences(relations[g].Relations[0:0], feature.FeatureID(), nt)
 			n := relations[g].Marshal(b6.FeatureTypePath, &osmNamespaces, buffers[g])
-			eid := FeatureID{Namespace: nt.Encode(f.RelationID.Namespace), Type: b6.FeatureTypeRelation, Value: f.RelationID.Value}
+			eid := FeatureID{Namespace: nt.Encode(feature.(*ingest.RelationFeature).RelationID.Namespace), Type: b6.FeatureTypeRelation, Value: feature.(*ingest.RelationFeature).RelationID.Value}
 			emit(eid, encoding.NoTag, buffers[g][0:n])
 		}
 		return nil
@@ -584,21 +574,21 @@ func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *enco
 		validated[i] = make([]ingest.Feature, 0, 2)
 	}
 	validateFeature := func(feature ingest.Feature, g int) error {
-		switch f := feature.(type) {
-		case *ingest.PathFeature:
-			for _, v := range validator.ValidatePath(f, validated[g][0:0]) {
+		switch feature.FeatureID().Type {
+		case b6.FeatureTypePath:
+			for _, v := range validator.ValidatePath(feature.(*ingest.GenericFeature), validated[g][0:0]) {
 				if err := emitFeature(v, g); err != nil {
 					return err
 				}
 			}
-		case *ingest.AreaFeature:
-			for _, v := range validator.ValidateArea(f, validated[g][0:0]) {
+		case b6.FeatureTypeArea:
+			for _, v := range validator.ValidateArea(feature.(*ingest.AreaFeature), validated[g][0:0]) {
 				if err := emitFeature(v, g); err != nil {
 					return err
 				}
 			}
-		case *ingest.RelationFeature:
-			return emitFeature(f, g)
+		case b6.FeatureTypeRelation:
+			return emitFeature(feature, g)
 		}
 		return nil
 	}
@@ -685,7 +675,7 @@ func (r Relationships) FillReferences(rs References, id b6.FeatureID, nt *Namesp
 	last := b6.FeatureIDInvalid
 	for j < len(r) && r[j][0] == id {
 		if r[j][1] != last {
-			rs = append(rs, Reference{Namespace: nt.Encode(r[j][1].Namespace), Value: r[j][1].Value})
+			rs = append(rs, Reference{TypeAndNamespace: CombineTypeAndNamespace(r[j][1].Type, nt.Encode(r[j][1].Namespace)), Value: r[j][1].Value})
 			last = r[j][1]
 		}
 		j++
@@ -731,7 +721,7 @@ func (n *NamespacedCounts) Namespace(ns b6.Namespace) *Counts {
 
 type Summary struct {
 	Counts          *NamespacedCounts
-	ClosedPaths     map[b6.PathID]struct{}
+	ClosedPaths     map[b6.FeatureID]struct{}
 	RelationMembers Relationships
 	PathAreas       Relationships
 }
@@ -739,21 +729,10 @@ type Summary struct {
 func NewSummary() *Summary {
 	return &Summary{
 		Counts:          NewNamespacedCounts(),
-		ClosedPaths:     make(map[b6.PathID]struct{}),
+		ClosedPaths:     make(map[b6.FeatureID]struct{}),
 		RelationMembers: make(Relationships, 0, 128),
 		PathAreas:       make(Relationships, 0, 128),
 	}
-}
-
-func isWayArea(way *osm.Way) bool {
-	return way.Nodes[0] == way.Nodes[len(way.Nodes)-1]
-}
-
-func isRelationMultiPolygon(relation *osm.Relation) bool {
-	if t, ok := relation.Tag("type"); ok {
-		return t == "multipolygon"
-	}
-	return false
 }
 
 func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings *encoding.StringTableBuilder, summary *Summary) error {
@@ -762,7 +741,7 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 	emit := func(feature ingest.Feature, _ int) error {
 		for _, tag := range feature.AllTags() {
 			strings.Add(tag.Key)
-			if tag.Value.Type() == b6.ValueTypeString {
+			if tag.ValueType() == b6.ValueTypeString {
 				strings.Add(tag.Value.String())
 			}
 		}
@@ -771,17 +750,19 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 		case b6.FeatureTypePoint:
 			atomic.AddUint64(&counts.Points, 1)
 		case b6.FeatureTypePath:
-			atomic.AddUint64(&counts.Paths, 1)
-			for i := 0; i < feature.(*ingest.PathFeature).Len(); i++ {
-				if id, ok := feature.(*ingest.PathFeature).PointID(i); ok {
-					c := summary.Counts.Namespace(id.Namespace)
-					atomic.AddUint64(&c.PathPoints, 1)
+			if feature, ok := feature.(b6.PhysicalFeature); ok {
+				atomic.AddUint64(&counts.Paths, 1)
+				for i := 0; i < feature.GeometryLen(); i++ {
+					if id := feature.Reference(i).Source(); id.IsValid() {
+						c := summary.Counts.Namespace(id.Namespace)
+						atomic.AddUint64(&c.PathPoints, 1)
+					}
 				}
-			}
-			if feature.(*ingest.PathFeature).Len() > 2 && feature.(*ingest.PathFeature).IsClosed() {
-				closedPathsLock.Lock()
-				summary.ClosedPaths[feature.(*ingest.PathFeature).PathID] = struct{}{}
-				closedPathsLock.Unlock()
+				if feature.GeometryLen() > 2 && feature.AllTags().ClosedPath() {
+					closedPathsLock.Lock()
+					summary.ClosedPaths[feature.FeatureID()] = struct{}{}
+					closedPathsLock.Unlock()
+				}
 			}
 		case b6.FeatureTypeArea:
 			atomic.AddUint64(&counts.Areas, 1)
@@ -789,7 +770,7 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 				if ids, ok := feature.(*ingest.AreaFeature).PathIDs(i); ok {
 					relationshipsLock.Lock()
 					for _, id := range ids {
-						summary.PathAreas = append(summary.PathAreas, Relationship{id.FeatureID(), feature.FeatureID()})
+						summary.PathAreas = append(summary.PathAreas, Relationship{id, feature.FeatureID()})
 					}
 					relationshipsLock.Unlock()
 					for _, id := range ids {
@@ -836,7 +817,7 @@ type LocationsByID struct {
 	s  encoding.Strings
 }
 
-func NewLocationsByID(bs FeatureBlocks, nt *NamespaceTable, s encoding.Strings) *LocationsByID {
+func NewLocationsByID(bs FeatureBlocks, s encoding.Strings, nt *NamespaceTable) *LocationsByID {
 	return &LocationsByID{bs: bs, nt: nt, s: s}
 }
 
@@ -845,7 +826,10 @@ func (l LocationsByID) FindLocationByID(id b6.FeatureID) (s2.LatLng, error) {
 		ns := l.nt.Encode(id.Namespace)
 		if b.Namespaces[b6.FeatureTypePoint] == ns {
 			if p := b.Map.FindFirstWithTag(id.Value, PointTag); p != nil {
-				return MarshalledTags{p, l.s}.Location()
+				point := MarshalledTags{p, l.s, l.nt, TypeAndNamespaceInvalid}.Point()
+				if point.Norm() != 0 {
+					return s2.LatLngFromPoint(point), nil
+				}
 			}
 		}
 	}
@@ -896,7 +880,7 @@ func buildFeatures(source ingest.FeatureSource, o *Options, sb *encoding.StringT
 		return 0, err
 	}
 
-	locations := overlayLocationsByID{overlay: NewLocationsByID(points, nt, encoding.NewStringTable(strings[header.StringsOffset:])), base: base}
+	locations := overlayLocationsByID{overlay: NewLocationsByID(points, encoding.NewStringTable(strings[header.StringsOffset:]), nt), base: base}
 	offset, err = writePathsAreasAndRelations(source, o, sb, nt, &locations, summary, offset, w)
 	log.Printf("writePathsAreasAndRelations: %d", offset)
 	if err != nil {

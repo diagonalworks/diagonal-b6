@@ -18,10 +18,10 @@ func makeAreaMap(areas b6.AreaFeatures) map[b6.AreaID]b6.AreaFeature {
 	return m
 }
 
-func makePointMap(points b6.Features) map[b6.FeatureID]b6.PhysicalFeature {
-	m := make(map[b6.FeatureID]b6.PhysicalFeature)
+func makePointMap(points b6.Features) map[b6.FeatureID]b6.Feature {
+	m := make(map[b6.FeatureID]b6.Feature)
 	for points.Next() {
-		m[points.FeatureID()] = points.Feature().(b6.PhysicalFeature)
+		m[points.FeatureID()] = points.Feature()
 	}
 	return m
 }

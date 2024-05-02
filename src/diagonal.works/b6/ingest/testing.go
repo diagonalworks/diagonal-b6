@@ -95,10 +95,10 @@ func ValidateGranarySquareSeemsReasonable(buildWorld BuildOSMWorld, t *testing.T
 				paths := area.Feature(0)
 				if len(paths) == 1 {
 					expectedPoints := 6
-					if paths[0].Len() != expectedPoints {
-						t.Errorf("Expected %d nodes for The Granary, found %d", expectedPoints, paths[0].Len())
+					if paths[0].GeometryLen() != expectedPoints {
+						t.Errorf("Expected %d nodes for The Granary, found %d", expectedPoints, paths[0].GeometryLen())
 					}
-					for i := 0; i < paths[0].Len(); i++ {
+					for i := 0; i < paths[0].GeometryLen(); i++ {
 						if paths[0].Feature(i) == nil {
 							t.Errorf("Expected a PointFeature at index %d, found nil", i)
 						}
@@ -223,7 +223,7 @@ func ValidateWaysWithMissingNodesArentIndexed(buildWorld BuildOSMWorld, t *testi
 		return
 	}
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(100))
-	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(cap), w))
+	paths := b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.NewIntersectsCap(cap)}))
 
 	expected := 1
 	if len(paths) != expected {
@@ -273,7 +273,7 @@ func ValidateWaysFallingExactlyWithinSearchCellAreFound(buildWorld BuildOSMWorld
 		t.Errorf("Failed to build world: %s", err)
 		return
 	}
-	paths := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCell(cell), w))
+	paths := b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.NewIntersectsCell(cell)}))
 
 	expected := 1
 	if len(paths) != expected {
@@ -302,10 +302,10 @@ func ValidateClockwisePolygonsAreIndexedCorrectly(buildWorld BuildOSMWorld, t *t
 		t.Errorf("Failed to build world: %s", err)
 		return
 	}
-	paths := b6.AllPaths(b6.FindPaths(b6.MightIntersect{s2.CellFromLatLng(s2.LatLngFromDegrees(51.53634, -0.12422))}, w))
+	paths := b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.MightIntersect{s2.CellFromLatLng(s2.LatLngFromDegrees(51.53634, -0.12422))}}))
 
 	if len(paths) == 1 {
-		if paths[0].Point(1).Distance(s2.PointFromLatLng(nodes[1].Location.ToS2LatLng())) < s1.Angle(0.00001) {
+		if paths[0].(b6.PhysicalFeature).PointAt(1).Distance(s2.PointFromLatLng(nodes[1].Location.ToS2LatLng())) < s1.Angle(0.00001) {
 			t.Errorf("Expected nodes to be reversed")
 		}
 	} else {
@@ -487,7 +487,7 @@ func ValidateAllQueryOnATokenThatDoesntExistReturnsNothing(buildWorld BuildOSMWo
 		return
 	}
 
-	paths := b6.AllPaths(b6.FindPaths(b6.Keyed{"#missing"}, w))
+	paths := b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Keyed{"#missing"}}))
 	if len(paths) != 0 {
 		t.Errorf("Expected to not find any paths, found %d", len(paths))
 	}
@@ -525,7 +525,7 @@ func ValidatePointsNotOnAPathDoesntReturnPaths(buildWorld BuildOSMWorld, t *test
 	}
 
 	for _, id := range []osm.NodeID{598093309, 3838023409} {
-		if paths := b6.AllPaths(w.FindPathsByPoint(FromOSMNodeID(id))); len(paths) != 0 {
+		if paths := b6.AllFeatures(w.FindReferences(FromOSMNodeID(id), b6.FeatureTypePath)); len(paths) != 0 {
 			t.Errorf("Expected no paths for point %d, found %d", id, len(paths))
 		}
 		if segments := b6.AllSegments(w.Traverse(FromOSMNodeID(id))); len(segments) != 0 {
@@ -656,8 +656,8 @@ func ValidateTraverseReturnsSegmentsWithCorrectOrigin(buildWorld BuildOSMWorld, 
 	}
 
 	for _, segment := range segments {
-		if segment.FirstFeature().FeatureID() != origin {
-			t.Errorf("Expected first point to be %s, found %s", origin, segment.FirstFeature().FeatureID())
+		if segment.FirstFeatureID() != origin {
+			t.Errorf("Expected first point to be %s, found %s", origin, segment.FirstFeatureID())
 		}
 	}
 }
@@ -693,8 +693,8 @@ func ValidateTraverseAlongWaysThatHaveBeenInverted(buildWorld BuildOSMWorld, t *
 
 	origin := FromOSMNodeID(2309943825)
 	for _, segment := range b6.AllSegments(w.Traverse(origin)) {
-		if segment.FirstFeature().FeatureID() != origin {
-			t.Errorf("Expected point %s, found %s", origin, segment.FirstFeature().FeatureID())
+		if segment.FirstFeatureID() != origin {
+			t.Errorf("Expected point %s, found %s", origin, segment.FirstFeatureID())
 		}
 	}
 }
@@ -718,7 +718,7 @@ func ValidateFindPathsWithTwoJoinedPaths(buildWorld BuildOSMWorld, t *testing.T)
 		return
 	}
 
-	paths := b6.AllPaths(w.FindPathsByPoint(FromOSMNodeID(5384190494)))
+	paths := b6.AllFeatures(w.FindReferences(FromOSMNodeID(5384190494), b6.FeatureTypePath))
 	expected := 2
 	if len(paths) != expected {
 		t.Errorf("Expected %d segments, found %d", expected, len(paths))
@@ -752,18 +752,17 @@ func ValidateTraverseByIntersectionsAtEndNodes(buildWorld BuildOSMWorld, t *test
 		return
 	}
 
-	path := b6.FindPathByID(FromOSMWayID(557698825), w)
+	path := w.FindFeatureByID(FromOSMWayID(557698825))
 	if path == nil {
 		t.Errorf("Test data incorrect: failed to find way")
 		return
 	}
 
-	point := path.Feature(0)
-	if point == nil {
+	point := path.Reference(0).Source()
+	if !point.IsValid() {
 		t.Errorf("Expected a feature at index 0")
-		return
 	}
-	found := b6.AllSegments(w.Traverse(point.FeatureID()))
+	found := b6.AllSegments(w.Traverse(point))
 	expected := []uint64{557698825, 642639444, 807925586}
 	if len(found) != len(expected) {
 		t.Errorf("Expected %d paths, found %d", len(expected), len(found))
@@ -781,12 +780,11 @@ func ValidateTraverseByIntersectionsAtEndNodes(buildWorld BuildOSMWorld, t *test
 		}
 	}
 
-	point = path.Feature(1)
-	if point == nil {
+	point = path.Reference(1).Source()
+	if !point.IsValid() {
 		t.Errorf("Expected a PointFeature at index 1")
-		return
 	}
-	found = b6.AllSegments(w.Traverse(point.FeatureID()))
+	found = b6.AllSegments(w.Traverse(point))
 	if len(found) != 2 {
 		t.Errorf("Expected 2 path segments, found %d", len(found))
 	}
@@ -808,18 +806,17 @@ func ValidateTraverseWithoutIntersectionsAtEndNodes(buildWorld BuildOSMWorld, t 
 		return
 	}
 
-	path := b6.FindPathByID(FromOSMWayID(140633010), w)
+	path := w.FindFeatureByID(FromOSMWayID(140633010))
 	if path == nil {
 		t.Errorf("Test data incorrect: failed to find way")
 		return
 	}
 
-	point := path.Feature(0)
-	if point == nil {
+	point := path.Reference(0).Source()
+	if !point.IsValid() {
 		t.Errorf("Expected a feature at index 0")
-		return
 	}
-	found := b6.AllSegments(w.Traverse(point.FeatureID()))
+	found := b6.AllSegments(w.Traverse(point))
 	if len(found) != 1 {
 		t.Errorf("Expected 1 segment, found %d", len(found))
 		return
@@ -861,19 +858,18 @@ func ValidateTraverseByIntersectionsBetweenEndNodes(buildWorld BuildOSMWorld, t 
 		return
 	}
 
-	path := b6.FindPathByID(FromOSMWayID(807925586), w)
+	path := w.FindFeatureByID(FromOSMWayID(807925586))
 	if path == nil {
 		t.Errorf("Test data incorrect: failed to find way")
 		return
 	}
 
-	point := path.Feature(1)
-	if point == nil {
+	point := path.Reference(1).Source()
+	if !point.IsValid() {
 		t.Errorf("Expected a feature at index 1")
-		return
 	}
 
-	found := b6.AllSegments(w.Traverse(point.FeatureID()))
+	found := b6.AllSegments(w.Traverse(point))
 	sort.Sort(bySegmentKey(found))
 	expected := []struct {
 		way   osm.WayID
@@ -890,8 +886,8 @@ func ValidateTraverseByIntersectionsBetweenEndNodes(buildWorld BuildOSMWorld, t 
 		return
 	}
 	for i := range expected {
-		if FromOSMWayID(expected[i].way) != found[i].Feature.PathID() {
-			t.Errorf("Expected %d, found %s", expected[i].way, found[i].Feature.PathID())
+		if FromOSMWayID(expected[i].way) != found[i].Feature.FeatureID() {
+			t.Errorf("Expected %d, found %s", expected[i].way, found[i].Feature.FeatureID())
 		}
 		if expected[i].first != found[i].First {
 			t.Errorf("Expected first index %d on way %d, found %d", expected[i].first, expected[i].way, found[i].First)
@@ -921,19 +917,18 @@ func ValidateSegmentsAreOnlyReturnedForWaysWithAllNodesPresent(buildWorld BuildO
 		return
 	}
 
-	path := b6.FindPathByID(FromOSMWayID(558345068), w)
+	path := w.FindFeatureByID(FromOSMWayID(558345068))
 	if path == nil {
 		t.Errorf("Test data incorrect: failed to find way")
 		return
 	}
 
-	point := path.Feature(0) // This node is an intersection with way 807925586, which is missing a node
-	if point == nil {
+	point := path.Reference(0).Source() // This node is an intersection with way 807925586, which is missing a node
+	if !point.IsValid() {
 		t.Errorf("Expected a feature at index 0")
-		return
 	}
 
-	found := b6.AllSegments(w.Traverse(point.FeatureID()))
+	found := b6.AllSegments(w.Traverse(point))
 	if len(found) != 1 || found[0].Feature.FeatureID().Value != uint64(558345068) {
 		t.Errorf("Expected to find a single segment")
 	}
@@ -967,7 +962,7 @@ func ValidateTraversalCanEndAtTaggedNodes(buildWorld BuildOSMWorld, t *testing.T
 	origin := FromOSMNodeID(nodes[0].ID)
 	segments := b6.AllSegments(w.Traverse(origin))
 	if len(segments) == 1 {
-		if id := segments[0].LastFeature().FeatureID().Value; id != uint64(nodes[1].ID) {
+		if id := segments[0].LastFeatureID().Value; id != uint64(nodes[1].ID) {
 			t.Errorf("Expected segment to end at a barrier, not node %d", id)
 		}
 	} else {
@@ -1117,7 +1112,7 @@ func ValidateSpatialQueriesOnAnEmptyIndexReturnNothing(buildWorld BuildOSMWorld,
 
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(500))
 	query := b6.NewIntersectsCap(cap)
-	if paths := b6.AllPaths(b6.FindPaths(query, w)); len(paths) != 0 {
+	if paths := b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, query})); len(paths) != 0 {
 		// The most likely failure mode is a panic()/nil pointer, rather than
 		// imaginary ways, but both are covered.
 		t.Errorf("Didn't expect to find any paths")
@@ -1218,15 +1213,15 @@ func ValidatePathsAreExplicityClosedLoopsArent(buildWorld BuildOSMWorld, t *test
 		return
 	}
 	for i, path := range paths {
-		if path.Len() != 5 {
-			t.Errorf("Expected each path to have 5 points, path %d has %d", i, path.Len())
+		if path.GeometryLen() != 5 {
+			t.Errorf("Expected each path to have 5 points, path %d has %d", i, path.GeometryLen())
 		}
-		if path.Point(0) != path.Point(path.Len()-1) {
+		if path.PointAt(0) != path.PointAt(path.GeometryLen()-1) {
 			t.Errorf("Expected path to be explicitly closed")
 		}
 		points := *path.Polyline()
 		if len(points) != 5 || points[0] != points[len(points)-1] {
-			if path.Point(0) != path.Point(path.Len()-1) {
+			if path.PointAt(0) != path.PointAt(path.GeometryLen()-1) {
 				t.Errorf("Expected polyline to have 5 points and be explicitly closed")
 			}
 		}
@@ -1239,7 +1234,7 @@ func ValidatePathsAreExplicityClosedLoopsArent(buildWorld BuildOSMWorld, t *test
 		return
 	}
 	for i, loop := range polygon.Loops() {
-		if loop.NumVertices() != paths[i].Len()-1 {
+		if loop.NumVertices() != paths[i].GeometryLen()-1 {
 			t.Errorf("Expected each loop to be implicited closed, loop %d wasn't", i)
 		}
 	}
@@ -1451,7 +1446,7 @@ func ValidateThinBuilding(buildWorld BuildOSMWorld, t *testing.T) {
 		fs.Feature().FeatureID()
 	}
 
-	ps := w.FindPathsByPoint(FromOSMNodeID(7080511178))
+	ps := w.FindReferences(FromOSMNodeID(7080511178), b6.FeatureTypePath)
 	for ps.Next() {
 		ps.Feature().FeatureID()
 	}

@@ -35,7 +35,7 @@ func TestDistanceToPointMeters(t *testing.T) {
 	context := &api.Context{
 		World: granarySquare,
 	}
-	path := b6.FindPathByID(ingest.FromOSMWayID(377974549), granarySquare)
+	path := granarySquare.FindFeatureByID(ingest.FromOSMWayID(377974549)).(b6.Geometry)
 	if path == nil {
 		t.Fatal("Failed to find expected path")
 	}
@@ -46,7 +46,7 @@ func TestDistanceToPointMeters(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	baseline := b6.AngleToMeters(path.Point(0).Distance(s2.PointFromLatLng(point.Location())))
+	baseline := b6.AngleToMeters(path.PointAt(0).Distance(point.Point()))
 	if baseline/distance > 1.5 {
 		t.Errorf("Distances aren't similar enough; ratio: %f", baseline/distance)
 	}

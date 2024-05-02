@@ -49,7 +49,7 @@ func main() {
 	} else {
 		filter = func(c *api.Context, f b6.Feature) (bool, error) {
 			if p, ok := f.(b6.Geometry); ok && p.GeometryType() == b6.GeometryTypePoint {
-				return crop.ContainsLatLng(p.Location()), nil
+				return crop.ContainsPoint(p.Point()), nil
 			}
 			return true, nil
 		}

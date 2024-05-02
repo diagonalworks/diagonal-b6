@@ -19,7 +19,7 @@ const verbose = false
 const verboseGeoJSON = false
 
 func sightline(context *api.Context, from b6.Geometry, radius float64) (b6.Area, error) {
-	return b6.AreaFromS2Polygon(Sightline(s2.PointFromLatLng(from.Location()), b6.MetersToAngle(radius), context.World)), nil
+	return b6.AreaFromS2Polygon(Sightline(from.Point(), b6.MetersToAngle(radius), context.World)), nil
 }
 
 func Sightline(center s2.Point, radius s1.Angle, w b6.World) *s2.Polygon {

@@ -79,7 +79,7 @@ func NewProtoFromFeature(feature Feature) (*pb.FeatureProto, error) {
 	case FeatureTypePoint:
 		return newProtoFromPointFeature(feature)
 	case FeatureTypePath:
-		return newProtoFromPathFeature(feature.(PathFeature))
+		return newProtoFromPathFeature(feature.(PhysicalFeature))
 	case FeatureTypeArea:
 		return newProtoFromAreaFeature(feature.(AreaFeature))
 	case FeatureTypeRelation:
@@ -103,7 +103,7 @@ func newProtoFromPointFeature(f Feature) (*pb.FeatureProto, error) { // TODO(mar
 	}, nil
 }
 
-func newProtoFromPathFeature(f PathFeature) (*pb.FeatureProto, error) {
+func newProtoFromPathFeature(f PhysicalFeature) (*pb.FeatureProto, error) {
 	return &pb.FeatureProto{
 		Feature: &pb.FeatureProto_Path{
 			Path: &pb.PathFeatureProto{
@@ -333,7 +333,7 @@ func NewRouteFromProto(p *pb.RouteProto) Route {
 	for i, step := range p.Steps {
 		route.Steps[i] = Step{
 			Destination: NewFeatureIDFromProto(step.Destination),
-			Via:         NewFeatureIDFromProto(step.Via).ToPathID(),
+			Via:         NewFeatureIDFromProto(step.Via),
 			Cost:        step.Cost,
 		}
 	}

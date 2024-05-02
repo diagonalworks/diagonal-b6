@@ -12,7 +12,7 @@ import (
 func TestBuildStreetNetwork(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
 
-	highways := b6.FindPaths(b6.Keyed{"#highway"}, granarySquare)
+	highways := granarySquare.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Keyed{"#highway"}})
 	network := BuildStreetNetwork(highways, b6.MetersToAngle(100.0), SimpleHighwayWeights{}, nil, granarySquare)
 
 	if len(network) < 100 {
@@ -56,18 +56,18 @@ func TestMergeInsertions(t *testing.T) {
 	c.InsertPoint(ingest.FromOSMWayID(ways[0].ID), b6.MetersToAngle(85), ids[1])
 	c.InsertPoint(ingest.FromOSMWayID(557519243), b6.MetersToAngle(10), ids[2]) // Not Stable Street
 
-	applied := c.ApplyToPath(b6.FindPathByID(ingest.FromOSMWayID(ways[0].ID), w))
+	applied := c.ApplyToPath(w.FindFeatureByID(ingest.FromOSMWayID(ways[0].ID)).(b6.PhysicalFeature)).(b6.PhysicalFeature)
 	if applied == nil {
 		t.Fatal("Expected a path, found nil")
 	}
-	if applied.Len() != 5 {
-		t.Fatalf("Expected 5 points, found %d", applied.Len())
+	if applied.GeometryLen() != 5 {
+		t.Fatalf("Expected 5 points, found %d", applied.GeometryLen())
 	}
 	expected := []b6.FeatureID{
 		ingest.FromOSMNodeID(nodes[0].ID), ids[0], ingest.FromOSMNodeID(nodes[1].ID), ids[1], ingest.FromOSMNodeID(nodes[2].ID),
 	}
 	for i, e := range expected {
-		if p, ok := applied.PointID(i); !ok || p != e {
+		if p := applied.Reference(i).Source(); !p.IsValid() || p != e {
 			t.Errorf("Expected %s, found %s", e, p)
 		}
 	}
@@ -107,19 +107,19 @@ func TestClusterCloseInsertions(t *testing.T) {
 	c.InsertPoint(ingest.FromOSMWayID(557519243), b6.MetersToAngle(10), ids[3]) // Not Stable Street
 	c.Cluster(b6.MetersToAngle(4.0), w)
 
-	applied := c.ApplyToPath(b6.FindPathByID(ingest.FromOSMWayID(ways[0].ID), w))
+	applied := c.ApplyToPath(w.FindFeatureByID(ingest.FromOSMWayID(ways[0].ID)).(b6.PhysicalFeature)).(b6.PhysicalFeature)
 	if applied == nil {
 		t.Fatal("Expected a path, found nil")
 	}
-	if applied.Len() != 5 {
-		t.Fatalf("Expected 5 points, found %d", applied.Len())
+	if applied.GeometryLen() != 5 {
+		t.Fatalf("Expected 5 points, found %d", applied.GeometryLen())
 	}
 	// ids[1] should have been been clusters with ids[0]
 	expected := []b6.FeatureID{
 		ingest.FromOSMNodeID(nodes[0].ID), ids[0], ingest.FromOSMNodeID(nodes[1].ID), ids[2], ingest.FromOSMNodeID(nodes[2].ID),
 	}
 	for i, e := range expected {
-		if p, ok := applied.PointID(i); !ok || p != e {
+		if p := applied.Reference(i).Source(); !p.IsValid() || p != e {
 			t.Errorf("Expected %s, found %s", e, p)
 		}
 	}
@@ -187,19 +187,19 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 	c.AddPath(ids[2], ingest.FromOSMNodeID(nodes[len(nodes)-1].ID))
 	c.Cluster(b6.MetersToAngle(4.0), w)
 
-	applied := c.ApplyToPath(b6.FindPathByID(ingest.FromOSMWayID(ways[1].ID), w))
+	applied := c.ApplyToPath(w.FindFeatureByID(ingest.FromOSMWayID(ways[1].ID)).(b6.PhysicalFeature)).(b6.PhysicalFeature)
 	if applied == nil {
 		t.Fatal("Expected a path, found nil")
 	}
-	if applied.Len() != 4 {
-		t.Fatalf("Expected 4 points, found %d", applied.Len())
+	if applied.GeometryLen() != 4 {
+		t.Fatalf("Expected 4 points, found %d", applied.GeometryLen())
 	}
 	// ids[1] and ids[2] should have been been clustered onto point[1]
 	expected := []b6.FeatureID{
 		ingest.FromOSMNodeID(nodes[0].ID), ingest.FromOSMNodeID(nodes[1].ID), ids[3], ingest.FromOSMNodeID(nodes[2].ID),
 	}
 	for i, e := range expected {
-		if p, ok := applied.PointID(i); !ok || p != e {
+		if p := applied.Reference(i).Source(); !p.IsValid() || p != e {
 			t.Errorf("Expected %s, found %s", e, p)
 		}
 	}
@@ -212,22 +212,22 @@ func TestClusterInsertionsOntoExistingPoints(t *testing.T) {
 
 	// The access path from ids[2] should start from point[1] of ways[1], as
 	// ids[1] and ids[2] have been clustered onto it
-	paths := b6.AllPaths(connected.FindPathsByPoint(ingest.FromOSMNodeID(nodes[len(nodes)-1].ID)))
+	paths := b6.AllFeatures(connected.FindReferences(ingest.FromOSMNodeID(nodes[len(nodes)-1].ID), b6.FeatureTypePath))
 	if len(paths) != 1 {
 		t.Fatalf("Expected 1 path, found %d", len(paths))
 	}
 
-	access := paths[0]
-	if access.Len() != 2 {
-		t.Fatalf("Expected 2 points, found %d", access.Len())
+	access := paths[0].(b6.PhysicalFeature)
+	if access.GeometryLen() != 2 {
+		t.Fatalf("Expected 2 points, found %d", access.GeometryLen())
 	}
 	expected = []b6.FeatureID{
 		ingest.FromOSMNodeID(ways[1].Nodes[1]),
 		ingest.FromOSMNodeID(nodes[len(nodes)-1].ID),
 	}
 	for i, e := range expected {
-		if p := access.Feature(i); p.FeatureID() != e {
-			t.Errorf("Expected %s, found %s", e, p)
+		if id := access.Reference(i).Source(); !id.IsValid() || id != e {
+			t.Errorf("Expected %s, found %s", e, id)
 		}
 	}
 }
@@ -270,7 +270,7 @@ func TestConnectGranarySquare(t *testing.T) {
 
 	granarySquare := camden.BuildGranarySquareForTests(t)
 
-	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, granarySquare)
+	highways := granarySquare.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Keyed{Key: "#highway"}})
 	weights := SimpleHighwayWeights{}
 	network := BuildStreetNetwork(highways, b6.MetersToAngle(100), weights, nil, granarySquare)
 

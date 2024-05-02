@@ -10,7 +10,7 @@ import (
 )
 
 func TestSamplePoints(t *testing.T) {
-	path := PathFromS2Points([]s2.Point{
+	path := GeometryFromPoints([]s2.Point{
 		s2.PointFromLatLng(s2.LatLngFromDegrees(51.535317, -0.125961)),
 		s2.PointFromLatLng(s2.LatLngFromDegrees(51.535364, -0.1260701)),
 		s2.PointFromLatLng(s2.LatLngFromDegrees(51.535407, -0.126080)),

@@ -122,11 +122,11 @@ func (f *FeaturesByID) findWithoutCache(id b6.FeatureID) b6.Feature {
 		if ns, ok := fb.NamespaceTable.MaybeEncode(id.Namespace); ok && ns == fb.Namespaces[id.Type] {
 			switch id.Type {
 			case b6.FeatureTypePoint:
-				if p := f.newFeature(fb, b6.FeatureTypePoint, id.Value); p != nil {
+				if p := f.newPhysicalFeature(fb, b6.FeatureTypePoint, id.Value); p != nil {
 					return p
 				}
 			case b6.FeatureTypePath:
-				if p := f.newPath(fb, id.Value); p != nil {
+				if p := f.newNestedPhysicalFeature(fb, id.Value); p != nil {
 					return p
 				}
 			case b6.FeatureTypeArea:
@@ -166,7 +166,10 @@ func (f *FeaturesByID) FindLocationByID(id b6.FeatureID) (s2.LatLng, error) {
 		if ns, ok := fb.NamespaceTable.MaybeEncode(id.Namespace); ok && ns == fb.Namespaces[b6.FeatureTypePoint] {
 			if t, ok := fb.Map.FindFirst(id.Value); ok {
 				if t.Tag != PointTagReferencesOnly {
-					return MarshalledTags{t.Data, fb.Strings}.Location()
+					point := MarshalledTags{t.Data, fb.Strings, fb.NamespaceTable, TypeAndNamespaceInvalid}.Point()
+					if point.Norm() != 0 {
+						return s2.LatLngFromPoint(point), nil
+					}
 				}
 			}
 		}
@@ -174,10 +177,10 @@ func (f *FeaturesByID) FindLocationByID(id b6.FeatureID) (s2.LatLng, error) {
 	return f.base.FindLocationByID(id)
 }
 
-func (f *FeaturesByID) newFeature(fb *featureBlock, typ b6.FeatureType, id uint64) b6.Feature {
+func (f *FeaturesByID) newPhysicalFeature(fb *featureBlock, typ b6.FeatureType, id uint64) b6.Feature {
 	t, ok := fb.Map.FindFirst(id)
 	if ok {
-		return f.newFeatureFromTagged(fb, b6.FeatureID{typ, fb.NamespaceTable.Decode(fb.Namespaces[typ]), id}, t)
+		return f.newPhysicalFeatureFromTagged(fb, b6.FeatureID{typ, fb.NamespaceTable.Decode(fb.Namespaces[typ]), id}, t)
 	}
 	return nil
 }
@@ -221,190 +224,90 @@ func (f *FeaturesByID) FillNamespaceTable(nt *NamespaceTable) error {
 	return nil
 }
 
-type marshalledFeature struct {
+type marshalledPhysicalFeature struct {
 	b6.ID
 	MarshalledTags
 }
 
-func (m marshalledFeature) FeatureID() b6.FeatureID {
-	return m.ID.FeatureID()
+func (m marshalledPhysicalFeature) FeatureID() b6.FeatureID {
+	return m.ID
 }
 
-func (m marshalledFeature) AllTags() []b6.Tag {
-	return m.MarshalledTags.AllTags()
-}
-
-func (m marshalledFeature) Get(key string) b6.Tag {
-	return m.MarshalledTags.Get(key)
-}
-
-func (m marshalledFeature) GeometryType() b6.GeometryType {
-	if m.MarshalledTags.Get(b6.LatLngTag) != b6.InvalidTag() {
-		return b6.GeometryTypePoint
-	}
-
-	return b6.GeometryTypeInvalid
-}
-
-func (m marshalledFeature) Location() s2.LatLng {
-	ll, _ := m.MarshalledTags.Location()
-	return ll
-}
-
-func (m marshalledFeature) ToGeoJSON() geojson.GeoJSON {
+func (m marshalledPhysicalFeature) ToGeoJSON() geojson.GeoJSON {
 	return b6.PhysicalFeatureToGeoJSON(m)
 }
 
-func (f *FeaturesByID) newFeatureFromTagged(fb *featureBlock, id b6.FeatureID, t encoding.Tagged) b6.PhysicalFeature {
+func (f *FeaturesByID) newPhysicalFeatureFromTagged(fb *featureBlock, id b6.FeatureID, t encoding.Tagged) b6.PhysicalFeature {
 	if t.Tag != PointTagReferencesOnly {
-		return marshalledFeature{id, MarshalledTags{Tags: t.Data, Strings: fb.Strings}}
+		return marshalledPhysicalFeature{id, MarshalledTags{Tags: t.Data, Strings: fb.Strings}}
 	}
 	return nil
 }
 
-type marshalledPath struct {
-	id       b6.PathID
-	path     MarshalledPath
-	geometry PathGeometry
-	polyline s2.Polyline
-	fb       *featureBlock
-	byID     *FeaturesByID
+type marshalledNestedPhysicalFeature struct {
+	marshalledPhysicalFeature
+	byID *FeaturesByID
+
 	lock     sync.Mutex
+	polyline s2.Polyline // TODO(mari): avoid caching
 }
 
-func (m *marshalledPath) FeatureID() b6.FeatureID {
-	return m.id.FeatureID()
-}
-
-func (m *marshalledPath) PathID() b6.PathID {
-	return m.id
-}
-
-func (m *marshalledPath) AllTags() []b6.Tag {
-	return m.path.Tags(m.fb.Strings).AllTags()
-}
-
-func (m *marshalledPath) Get(key string) b6.Tag {
-	return m.path.Tags(m.fb.Strings).Get(key)
-}
-
-func (m *marshalledPath) GetString(key string) string {
-	return m.path.Tags(m.fb.Strings).GetString(key)
-}
-
-func (m *marshalledPath) Len() int {
-	return m.path.Len()
-}
-
-func (m *marshalledPath) Point(i int) s2.Point {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	m.fillGeometry()
-	var ll s2.LatLng
-	if r, ok := m.geometry.PointID(i); ok {
-		id := b6.FeatureID{b6.FeatureTypePoint, m.fb.NamespaceTable.Decode(r.Namespace), r.Value}
+func (m *marshalledNestedPhysicalFeature) PointAt(i int) s2.Point {
+	if id := m.Reference(i).Source(); id.IsValid() {
 		var err error
-		ll, err = m.byID.FindLocationByID(id)
+		ll, err := m.byID.FindLocationByID(id)
 		if err != nil {
 			panic(fmt.Sprintf("Missing point %s", id))
 		}
+		return s2.PointFromLatLng(ll)
 	} else {
-		cll, ok := m.geometry.LatLng(i)
-		if !ok {
-			panic("Expected a latlng")
-		}
-		ll = cll.ToS2LatLng()
+		return m.MarshalledTags.PointAt(i)
 	}
-	return s2.PointFromLatLng(ll)
 }
 
-func (m *marshalledPath) Polyline() *s2.Polyline {
+func (m *marshalledNestedPhysicalFeature) Polyline() *s2.Polyline {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	m.fillGeometry()
 	if m.polyline == nil {
-		m.polyline = make(s2.Polyline, m.geometry.Len())
-		for i := 0; i < m.geometry.Len(); i++ {
-			if id, ok := m.geometry.PointID(i); ok {
-				id := b6.FeatureID{b6.FeatureTypePoint, m.fb.NamespaceTable.Decode(id.Namespace), id.Value}
-				ll, err := m.byID.FindLocationByID(id)
-				if err != nil {
-					panic(fmt.Sprintf("Missing point %s", id))
-				}
-				m.polyline[i] = s2.PointFromLatLng(ll)
-			} else {
-				ll, _ := m.geometry.LatLng(i)
-				m.polyline[i] = s2.PointFromLatLng(ll.ToS2LatLng())
-			}
+		m.polyline = make(s2.Polyline, m.GeometryLen())
+		for i := 0; i < m.GeometryLen(); i++ {
+			m.polyline[i] = m.PointAt(i)
 		}
 	}
 	return &m.polyline
 }
 
-func (m *marshalledPath) Feature(i int) b6.PhysicalFeature {
-	id := m.feature(i)
-	return m.byID.FindFeatureByID(id).(b6.PhysicalFeature)
-}
-
-func (m *marshalledPath) feature(i int) b6.FeatureID {
-	m.lock.Lock()
-	m.fillGeometry()
-	m.lock.Unlock()
-	if r, ok := m.geometry.PointID(i); ok {
-		return b6.FeatureID{b6.FeatureTypePoint, m.fb.NamespaceTable.Decode(r.Namespace), r.Value}
+func (m *marshalledNestedPhysicalFeature) Feature(i int) b6.PhysicalFeature {
+	id := m.Reference(i).Source()
+	if p, ok := m.byID.FindFeatureByID(id).(b6.PhysicalFeature); ok {
+		return p
 	}
-	return b6.FeatureIDInvalid
+	panic("not a physical feature")
 }
 
-func (m *marshalledPath) fillGeometry() {
-	if m.geometry == nil {
-		m.geometry, _ = m.path.UnmarshalPoints(&m.fb.Namespaces)
-	}
-}
-
-func (m *marshalledPath) ToGeoJSON() geojson.GeoJSON {
-	return b6.PathFeatureToGeoJSON(m)
-}
-
-func (m *marshalledPath) GeometryType() b6.GeometryType {
-	return b6.GeometryTypePath
-}
-
-func (m *marshalledPath) Location() s2.LatLng {
-	return s2.LatLng{}
-}
-
-func (f *FeaturesByID) newPath(fb *featureBlock, id uint64) b6.PathFeature {
+func (f *FeaturesByID) newNestedPhysicalFeature(fb *featureBlock, id uint64) b6.NestedPhysicalFeature {
 	b := fb.Map.FindFirstWithTag(id, encoding.NoTag)
 	if b != nil {
-		return f.newPathFromBuffer(fb, id, b)
+		return f.newNestedPhysicalFeatureFromBuffer(fb, id, b)
 	}
 	return nil
 }
 
-func (f *FeaturesByID) newPathFromBuffer(fb *featureBlock, id uint64, buffer []byte) b6.PathFeature {
-	return &marshalledPath{
-		id:   b6.MakePathID(fb.NamespaceTable.Decode(fb.Namespaces[b6.FeatureTypePath]), id),
-		path: MarshalledPath(buffer),
-		fb:   fb,
+func (f *FeaturesByID) newNestedPhysicalFeatureFromBuffer(fb *featureBlock, id uint64, buffer []byte) b6.NestedPhysicalFeature {
+	return &marshalledNestedPhysicalFeature{
+		marshalledPhysicalFeature: marshalledPhysicalFeature{
+			ID:             b6.FeatureID{b6.FeatureTypePath, fb.NamespaceTable.Decode(fb.Namespaces[b6.FeatureTypePath]), id},
+			MarshalledTags: MarshalledTags{buffer, fb.Strings, fb.NamespaceTable, CombineTypeAndNamespace(b6.FeatureTypePoint, fb.NamespaceTable.Encode(b6.NamespaceOSMNode))},
+		},
 		byID: f,
 	}
 }
 
-func (f *FeaturesByID) newPathFromEncodedPath(fb *featureBlock, id uint64, p *Path) *ingest.PathFeature {
-	pp := ingest.NewPathFeature(p.Points.Len())
-	pp.PathID = b6.MakePathID(fb.NamespaceTable.Decode(fb.Namespaces[b6.FeatureTypePath]), id)
-	// TODO: avoid the creation of tags in the encoded path?
-	pp.Tags = toTags(p.Tags, fb.Strings)
-	for i := 0; i < p.Points.Len(); i++ {
-		if id, ok := p.PointID(i); ok {
-			pp.SetPointID(i, b6.FeatureID{b6.FeatureTypePoint, fb.NamespaceTable.Decode(id.Namespace), id.Value})
-		} else {
-			ll, _ := p.LatLng(i)
-			pp.SetLatLng(i, ll.ToS2LatLng())
-		}
+func (f *FeaturesByID) newPathFromEncodedPath(fb *featureBlock, id uint64, p *Path) *ingest.GenericFeature {
+	return &ingest.GenericFeature{
+		ID:   b6.FeatureID{b6.FeatureTypePath, fb.NamespaceTable.Decode(fb.Namespaces[b6.FeatureTypePath]), id},
+		Tags: toTags(p.Tags, fb.Strings, fb.NamespaceTable),
 	}
-	return pp
 }
 
 type marshalledArea struct {
@@ -425,16 +328,12 @@ func (m *marshalledArea) AreaID() b6.AreaID {
 	return m.id
 }
 
-func (m *marshalledArea) AllTags() []b6.Tag {
+func (m *marshalledArea) AllTags() b6.Tags {
 	return m.area.Tags(m.fb.Strings).AllTags()
 }
 
 func (m *marshalledArea) Get(key string) b6.Tag {
 	return m.area.Tags(m.fb.Strings).Get(key)
-}
-
-func (m *marshalledArea) GetString(key string) string {
-	return m.area.Tags(m.fb.Strings).GetString(key)
 }
 
 func (m *marshalledArea) Len() int {
@@ -469,20 +368,21 @@ func (m *marshalledArea) MultiPolygon() geometry.MultiPolygon {
 	return mp
 }
 
-func (m *marshalledArea) Feature(i int) []b6.PathFeature {
+func (m *marshalledArea) Feature(i int) []b6.NestedPhysicalFeature {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return m.featureWithLock(i)
 }
 
-func (m *marshalledArea) featureWithLock(i int) []b6.PathFeature {
+func (m *marshalledArea) featureWithLock(i int) []b6.NestedPhysicalFeature {
 	m.fillGeometry()
-	var paths []b6.PathFeature
+	var paths []b6.NestedPhysicalFeature
 	if ids, ok := m.geometry.PathIDs(i); ok {
-		paths = make([]b6.PathFeature, len(ids))
+		paths = make([]b6.NestedPhysicalFeature, len(ids))
 		for i := range ids {
-			id := b6.MakePathID(m.fb.NamespaceTable.Decode(ids[i].Namespace), ids[i].Value)
-			if path := b6.FindPathByID(id, m.byID); path != nil {
+			typ, ns := ids[i].TypeAndNamespace.Split()
+			id := b6.FeatureID{typ, m.fb.NamespaceTable.Decode(ns), ids[i].Value}
+			if path := m.byID.FindFeatureByID(id).(b6.NestedPhysicalFeature); path != nil {
 				paths[i] = path
 			} else {
 				panic(fmt.Sprintf("Missing path %s for %s", id, m.id))
@@ -494,7 +394,7 @@ func (m *marshalledArea) featureWithLock(i int) []b6.PathFeature {
 
 func (m *marshalledArea) fillGeometry() {
 	if m.geometry == nil {
-		m.geometry = m.area.UnmarshalPolygons(m.fb.Namespaces[b6.FeatureTypePath])
+		m.geometry = m.area.UnmarshalPolygons(CombineTypeAndNamespace(b6.FeatureTypePath, m.fb.Namespaces[b6.FeatureTypePath]))
 		m.polygons = make([]*s2.Polygon, m.geometry.Len())
 	}
 }
@@ -503,12 +403,32 @@ func (m *marshalledArea) ToGeoJSON() geojson.GeoJSON {
 	return b6.AreaFeatureToGeoJSON(m)
 }
 
+func (m marshalledArea) References() []b6.Reference {
+	panic("not implemented")
+}
+
+func (m marshalledArea) Reference(i int) b6.Reference {
+	panic("not implemented")
+}
+
+func (m marshalledArea) Polyline() *s2.Polyline {
+	panic("not implemented")
+}
+
+func (m marshalledArea) GeometryLen() int {
+	panic("not implemented")
+}
+
+func (m marshalledArea) PointAt(i int) s2.Point {
+	panic("not implemented")
+}
+
 func (m *marshalledArea) GeometryType() b6.GeometryType {
 	return b6.GeometryTypeArea
 }
 
-func (m *marshalledArea) Location() s2.LatLng {
-	return s2.LatLng{}
+func (m *marshalledArea) Point() s2.Point {
+	return s2.Point{}
 }
 
 func (f *FeaturesByID) newArea(fb *featureBlock, id uint64) b6.AreaFeature {
@@ -543,16 +463,12 @@ func (m *marshalledRelation) RelationID() b6.RelationID {
 	return m.id
 }
 
-func (m *marshalledRelation) AllTags() []b6.Tag {
+func (m *marshalledRelation) AllTags() b6.Tags {
 	return m.relation.Tags(m.fb.Strings).AllTags()
 }
 
 func (m *marshalledRelation) Get(key string) b6.Tag {
 	return m.relation.Tags(m.fb.Strings).Get(key)
-}
-
-func (m *marshalledRelation) GetString(key string) string {
-	return m.relation.Tags(m.fb.Strings).GetString(key)
 }
 
 func (m *marshalledRelation) Len() int {
@@ -561,9 +477,10 @@ func (m *marshalledRelation) Len() int {
 
 func (m *marshalledRelation) Member(i int) b6.RelationMember {
 	m.fillMembers()
+	typ, ns := m.members[i].ID.TypeAndNamespace.Split()
 	return b6.RelationMember{
 		Role: m.fb.Strings.Lookup(m.members[i].Role),
-		ID:   b6.FeatureID{Type: m.members[i].Type, Namespace: m.fb.NamespaceTable.Decode(m.members[i].ID.Namespace), Value: m.members[i].ID.Value},
+		ID:   b6.FeatureID{Type: typ, Namespace: m.fb.NamespaceTable.Decode(ns), Value: m.members[i].ID.Value},
 	}
 }
 
@@ -575,6 +492,14 @@ func (m *marshalledRelation) fillMembers() {
 
 func (m *marshalledRelation) ToGeoJSON() geojson.GeoJSON {
 	return b6.RelationFeatureToGeoJSON(m, m.byID)
+}
+
+func (m marshalledRelation) References() []b6.Reference {
+	panic("not implemented")
+}
+
+func (m marshalledRelation) Reference(i int) b6.Reference {
+	panic("not implemented")
 }
 
 func (f *FeaturesByID) newRelation(fb *featureBlock, id uint64) b6.RelationFeature {
@@ -603,7 +528,7 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 	if !options.SkipPoints {
 		for _, fb := range f.features[b6.FeatureTypePoint] {
 			emit := func(id uint64, tagged []encoding.Tagged, g int) error {
-				if point := f.newFeatureFromTagged(fb, b6.FeatureID{b6.FeatureTypePoint, fb.NamespaceTable.Decode(fb.Namespaces[b6.FeatureTypePoint]), id}, tagged[0]); point != nil {
+				if point := f.newPhysicalFeatureFromTagged(fb, b6.FeatureID{b6.FeatureTypePoint, fb.NamespaceTable.Decode(fb.Namespaces[b6.FeatureTypePoint]), id}, tagged[0]); point != nil {
 					return each(point, g)
 				}
 				return nil
@@ -617,7 +542,7 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 	if !options.SkipPaths {
 		for _, fb := range f.features[b6.FeatureTypePath] {
 			emit := func(id uint64, tagged []encoding.Tagged, g int) error {
-				return each(f.newPathFromBuffer(fb, id, tagged[0].Data), g)
+				return each(f.newNestedPhysicalFeatureFromBuffer(fb, id, tagged[0].Data), g)
 			}
 			if err := fb.Map.EachItem(emit, goroutines); err != nil {
 				return err
@@ -650,24 +575,21 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 	return nil
 }
 
-func (f *FeaturesByID) FindPathsByPoint(id b6.FeatureID) b6.PathFeatures {
-	ids := f.findPathsByPoint(id, make([]b6.FeatureID, 0, 2))
-	paths := make([]b6.PathFeature, 0, len(ids))
-	for _, id := range ids {
-		if path, ok := f.FindFeatureByID(id).(b6.PathFeature); ok {
-			paths = append(paths, path)
-		}
-	}
-	return ingest.NewPathFeatureIterator(paths)
-}
-
 func (f *FeaturesByID) FindReferences(id b6.FeatureID, typed ...b6.FeatureType) b6.Features {
-	// TODO: provide an implementation that handles collections etc
+	// TODO(mari): provide an implementation that handles collections etc
 	// when we move to a unified way of storing feature references in
 	// the compact index
 	features := make([]b6.Feature, 0)
 	if id.Type == b6.FeatureTypePoint && (len(typed) == 0 || slices.Contains(typed, b6.FeatureTypePath)) {
-		i := f.FindPathsByPoint(id)
+		ids := f.findPathsByPoint(id, make([]b6.FeatureID, 0, 2))
+		paths := make([]b6.Feature, 0, len(ids))
+		for _, id := range ids {
+			if path, ok := f.FindFeatureByID(id).(b6.Feature); ok {
+				paths = append(paths, path)
+			}
+		}
+		i := b6.NewFeatureIterator(paths)
+
 		for i.Next() {
 			features = append(features, i.Feature())
 		}
@@ -696,18 +618,21 @@ func (f *FeaturesByID) findPathsByPoint(id b6.FeatureID, paths []b6.FeatureID) [
 				case PointTagCommon:
 					var p CommonPoint
 					p.Unmarshal(&fb.Namespaces, t.Data)
-					paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(p.Path.Namespace), Value: p.Path.Value})
+					_, ns := p.Path.TypeAndNamespace.Split()
+					paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(ns), Value: p.Path.Value})
 				case PointTagFull:
 					var p FullPoint
 					p.Unmarshal(&fb.Namespaces, t.Data)
 					for _, path := range p.Paths {
-						paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(path.Namespace), Value: path.Value})
+						_, ns := path.TypeAndNamespace.Split()
+						paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(ns), Value: path.Value})
 					}
 				case PointTagReferencesOnly:
 					var r PointReferences
 					r.Unmarshal(&fb.Namespaces, t.Data)
 					for _, path := range r.Paths {
-						paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(path.Namespace), Value: path.Value})
+						_, ns := path.TypeAndNamespace.Split()
+						paths = append(paths, b6.FeatureID{Type: b6.FeatureTypePath, Namespace: fb.NamespaceTable.Decode(ns), Value: path.Value})
 					}
 				}
 			}
@@ -738,7 +663,8 @@ func (f *FeaturesByID) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 			var p Path
 			for _, path := range paths {
 				for _, pm := range f.features[b6.FeatureTypePath] {
-					if pm.Namespaces[b6.FeatureTypePath] == path.Namespace {
+					_, ns := path.TypeAndNamespace.Split()
+					if pm.Namespaces[b6.FeatureTypePath] == ns {
 						if b := pm.Map.FindFirstWithTag(path.Value, encoding.NoTag); len(b) > 0 {
 							p.Unmarshal(&pm.Namespaces, b)
 							for _, area := range p.Areas {
@@ -751,7 +677,8 @@ func (f *FeaturesByID) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 			}
 			for area := range areas {
 				for _, am := range f.features[b6.FeatureTypeArea] {
-					if am.Namespaces[b6.FeatureTypeArea] == area.Namespace {
+					_, ns := area.TypeAndNamespace.Split()
+					if am.Namespaces[b6.FeatureTypeArea] == ns {
 						if a := f.newArea(am, area.Value); a != nil {
 							features = append(features, a)
 							break
@@ -766,15 +693,15 @@ func (f *FeaturesByID) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 }
 
 func (f *FeaturesByID) Traverse(id b6.FeatureID) b6.Segments {
-	paths := f.findPathsByPoint(id, make([]b6.FeatureID, 0, 2))
-	segments := make([]b6.Segment, 0, len(paths)*2)
-	for _, path := range paths {
-		segments = f.fillPathSegments(id, path.ToPathID(), segments)
+	pids := f.findPathsByPoint(id, make([]b6.FeatureID, 0, 2))
+	segments := make([]b6.Segment, 0, len(pids)*2)
+	for _, pid := range pids {
+		segments = f.fillPathSegments(id, pid, segments)
 	}
 	return ingest.NewSegmentIterator(segments)
 }
 
-func (f *FeaturesByID) fillPathSegments(point b6.FeatureID, path b6.PathID, segments []b6.Segment) []b6.Segment {
+func (f *FeaturesByID) fillPathSegments(point b6.FeatureID, path b6.FeatureID, segments []b6.Segment) []b6.Segment {
 	for _, fb := range f.features[b6.FeatureTypePath] {
 		if ns, ok := fb.NamespaceTable.MaybeEncode(path.Namespace); ok && ns == fb.Namespaces[b6.FeatureTypePath] {
 			b := fb.Map.FindFirstWithTag(path.Value, encoding.NoTag)
@@ -785,13 +712,14 @@ func (f *FeaturesByID) fillPathSegments(point b6.FeatureID, path b6.PathID, segm
 			p.Unmarshal(&fb.Namespaces, b)
 			previous := 0
 			var position int
-			next := p.Points.Len() - 1
-			var pf b6.PathFeature
-			for i := 0; i < p.Points.Len(); i++ {
-				if id, ok := p.Points.PointID(i); ok {
+			next := p.PathLen(fb.Strings) - 1
+			var pf b6.NestedPhysicalFeature
+			for i := 0; i < p.PathLen(fb.Strings); i++ {
+				if id, ok := p.Reference(i, fb.Strings); ok {
 					if pf == nil {
-						if id.Value == point.Value && fb.NamespaceTable.Decode(id.Namespace) == point.Namespace {
-							pf = ingest.WrapPathFeature(f.newPathFromEncodedPath(fb, path.Value, &p), f)
+						_, ns := id.TypeAndNamespace.Split()
+						if id.Value == point.Value && fb.NamespaceTable.Decode(ns) == point.Namespace {
+							pf = b6.WrapPhysicalFeature(f.newPathFromEncodedPath(fb, path.Value, &p), f)
 							position = i
 						} else if f.isGraphNode(id) {
 							previous = i
@@ -822,7 +750,8 @@ func (f *FeaturesByID) fillPathSegments(point b6.FeatureID, path b6.PathID, segm
 func (f *FeaturesByID) isGraphNode(point Reference) bool {
 	paths := 0
 	for _, fb := range f.features[b6.FeatureTypePoint] {
-		if fb.Namespaces[b6.FeatureTypePoint] == point.Namespace {
+		_, ns := point.TypeAndNamespace.Split()
+		if fb.Namespaces[b6.FeatureTypePoint] == ns {
 			t, ok := fb.Map.FindFirst(point.Value)
 			if ok {
 				switch t.Tag {
@@ -885,7 +814,7 @@ func (f *FeaturesByID) fillRelationsFromPoint(fb *featureBlock, id uint64, relat
 		p.Unmarshal(&fb.Namespaces, t.Data)
 		for _, r := range p.Relations {
 			for _, rm := range f.features[b6.FeatureTypeRelation] {
-				if r.Namespace == rm.Namespaces[b6.FeatureTypeRelation] {
+				if _, ns := r.TypeAndNamespace.Split(); ns == rm.Namespaces[b6.FeatureTypeRelation] {
 					relations = append(relations, f.newRelation(rm, r.Value))
 					break
 				}
@@ -902,7 +831,7 @@ func (f *FeaturesByID) fillRelationsFromPath(fb *featureBlock, id uint64, relati
 		p.Unmarshal(&fb.Namespaces, b)
 		for _, r := range p.Relations {
 			for _, rm := range f.features[b6.FeatureTypeRelation] {
-				if r.Namespace == rm.Namespaces[b6.FeatureTypeRelation] {
+				if _, ns := r.TypeAndNamespace.Split(); ns == rm.Namespaces[b6.FeatureTypeRelation] {
 					relations = append(relations, f.newRelation(rm, r.Value))
 					break
 				}
@@ -919,7 +848,7 @@ func (f *FeaturesByID) fillRelationsFromArea(fb *featureBlock, id uint64, relati
 		a.Unmarshal(&fb.Namespaces, b)
 		for _, r := range a.Relations {
 			for _, rm := range f.features[b6.FeatureTypeRelation] {
-				if r.Namespace == rm.Namespaces[b6.FeatureTypeRelation] {
+				if _, ns := r.TypeAndNamespace.Split(); ns == rm.Namespaces[b6.FeatureTypeRelation] {
 					relations = append(relations, f.newRelation(rm, r.Value))
 					break
 				}
@@ -936,7 +865,7 @@ func (f *FeaturesByID) fillRelationsFromRelation(fb *featureBlock, id uint64, re
 		r.Unmarshal(b6.FeatureTypePath, &fb.Namespaces, b)
 		for _, rr := range r.Relations {
 			for _, rm := range f.features[b6.FeatureTypeRelation] {
-				if rr.Namespace == rm.Namespaces[b6.FeatureTypeRelation] {
+				if _, ns := rr.TypeAndNamespace.Split(); ns == rm.Namespaces[b6.FeatureTypeRelation] {
 					relations = append(relations, f.newRelation(rm, rr.Value))
 					break
 				}
@@ -1013,10 +942,6 @@ func (w *World) FindFeatures(q b6.Query) b6.Features {
 	return b6.MergeFeatures(features...)
 }
 
-func (w *World) FindPathsByPoint(id b6.FeatureID) b6.PathFeatures {
-	return w.byID.FindPathsByPoint(id)
-}
-
 func (w *World) FindAreasByPoint(id b6.FeatureID) b6.AreaFeatures {
 	return w.byID.FindAreasByPoint(id)
 }
@@ -1056,12 +981,12 @@ func (w *World) Tokens() []string {
 	return tokens
 }
 
-func toTags(tags Tags, s *encoding.StringTable) []b6.Tag {
+func toTags(tags Tags, s *encoding.StringTable, nt *NamespaceTable) []b6.Tag { // TODO(mari): see if we can get away with not decoding this at all
 	// TODO: we don't need to decode everything given the interface
 	ts := make([]b6.Tag, len(tags))
 	for i, t := range tags {
 		ts[i].Key = s.Lookup(t.Key)
-		ts[i].Value = b6.String(s.Lookup(int(*t.Value.(*Int)))) // All path tags are strings atm.
+		ts[i].Value = fromCompactValue(t.Value, s, nt)
 	}
 	return ts
 }

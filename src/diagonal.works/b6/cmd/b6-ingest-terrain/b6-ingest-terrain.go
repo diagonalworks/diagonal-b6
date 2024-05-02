@@ -194,11 +194,11 @@ func (s *elevationSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx
 		if f, ok := f.(b6.PhysicalFeature); ok && f.GeometryType() == b6.GeometryTypePoint && !options.SkipTags {
 			atomic.AddUint64(&points, 1)
 			point := ingest.NewGenericFeatureFromWorld(f)
-			paths := s.World.FindPathsByPoint(f.FeatureID())
+			paths := s.World.FindReferences(f.FeatureID(), b6.FeatureTypePath)
 			for paths.Next() {
 				path := paths.Feature()
 				if path.Get("#highway").IsValid() {
-					if e, ok := s.Elevations.Elevation(s2.PointFromLatLng(f.Location())); ok {
+					if e, ok := s.Elevations.Elevation(f.Point()); ok {
 						atomic.AddUint64(&elevations, 1)
 						point.AddTag(b6.Tag{Key: "ele", Value: b6.String(strconv.Itoa(int(math.Round(e))))})
 					}

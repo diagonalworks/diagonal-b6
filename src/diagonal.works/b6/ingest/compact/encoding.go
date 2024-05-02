@@ -22,7 +22,7 @@ import (
 
 // A semver 2.0.0 compliant version for the index format. Indicies generated
 // with a different major version will fail to load.
-const Version = "0.0.1"
+const Version = "0.0.2"
 
 func init() {
 	if l := encoding.MarshalledSize(Header{}); l != HeaderLength {
@@ -335,15 +335,20 @@ func (l *LatLng) ToS2LatLng() s2.LatLng {
 	return s2.LatLngFromDegrees(float64(l.LatE7)/1e7, float64(l.LngE7)/1e7)
 }
 
-func (l *LatLng) Marshal(buffer []byte) int {
-	binary.LittleEndian.PutUint32(buffer[0:], uint32(l.LatE7))
+func (l *LatLng) Marshal(_ TypeAndNamespace, buffer []byte) int {
+	binary.LittleEndian.PutUint32(buffer[0:], EncodeValueType(b6.ValueTypeLatLng, uint32(l.LatE7)).(uint32))
 	binary.LittleEndian.PutUint32(buffer[4:], uint32(l.LngE7))
 	return 8
 }
 
-func (l *LatLng) Unmarshal(buffer []byte) int {
-	l.LatE7 = int32(binary.LittleEndian.Uint32(buffer[0:]))
+func (l *LatLng) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
+	lat, _ := DecodeValue(buffer, uint32(0))
+	l.LatE7 = int32(lat.(uint32))
 	l.LngE7 = int32(binary.LittleEndian.Uint32(buffer[4:]))
+	return 8
+}
+
+func (l *LatLng) MaxSize() int {
 	return 8
 }
 
@@ -359,8 +364,8 @@ func LatLngFromS2Point(p s2.Point) LatLng {
 
 type LatLngs []LatLng
 
-func (lls LatLngs) Marshal(buffer []byte) int {
-	i := binary.PutUvarint(buffer, uint64(len(lls)))
+func (lls LatLngs) Marshal(_ TypeAndNamespace, buffer []byte) int {
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingLatLngs, len(lls))).(uint64))
 	return i + lls.MarshalWithoutLength(buffer[i:])
 }
 
@@ -375,9 +380,13 @@ func (lls LatLngs) MarshalWithoutLength(buffer []byte) int {
 	return i
 }
 
-func (lls *LatLngs) Unmarshal(buffer []byte) int {
-	l, i := binary.Uvarint(buffer)
-	return i + lls.UnmarshalWithoutLength(int(l), buffer[i:])
+func (lls *LatLngs) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
+	v, i := DecodeValue(buffer, uint64(0))
+	return i + lls.UnmarshalWithoutLength(DecodeGeometryLen(v.(uint64)), buffer[i:])
+}
+
+func (lls *LatLngs) MaxSize() int {
+	return binary.MaxVarintLen64 + 2*binary.MaxVarintLen64*len(*lls)
 }
 
 func (lls *LatLngs) UnmarshalWithoutLength(l int, buffer []byte) int {
@@ -399,86 +408,214 @@ func (lls *LatLngs) UnmarshalWithoutLength(l int, buffer []byte) int {
 	return i
 }
 
+const ValueTypeBits = 2
+
 type Value interface {
-	Marshal(buffer []byte) int
-	Unmarshal(buffer []byte) int
+	Marshal(TypeAndNamespace, []byte) int
+	Unmarshal(TypeAndNamespace, []byte) int
+	MaxSize() int // Bytes needed for encoding.
+}
+
+func EncodeValueType(t b6.ValueType, v interface{}) interface{} {
+	switch v := v.(type) {
+	case uint32:
+		if e := v << ValueTypeBits; e>>ValueTypeBits != v {
+			panic("Can't encode value type")
+		} else {
+			e |= uint32(t)
+			return e
+		}
+	case uint64:
+		if e := v << ValueTypeBits; e>>ValueTypeBits != v {
+			panic("Can't encode value type")
+		} else {
+			e |= uint64(t)
+			return e
+		}
+	}
+	return nil
+}
+
+func DecodeValue(buffer []byte, t interface{}) (interface{}, int) {
+	switch t.(type) {
+	case uint32:
+		v := binary.LittleEndian.Uint32(buffer[0:])
+		return v >> ValueTypeBits, 4
+	case uint64:
+		v, n := binary.Uvarint(buffer[0:])
+		return v >> ValueTypeBits, n
+	}
+
+	return nil, -1
+}
+
+func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value {
+	switch v := v.(type) {
+	case *Int:
+		return b6.String(s.Lookup(int(*v)))
+	case *LatLng:
+		return b6.LatLng(v.ToS2LatLng())
+	case *LatLngs:
+		vs := b6.Values(make([]b6.Value, 0, len(*v)))
+		for _, ll := range *v {
+			vs = append(vs, b6.LatLng(ll.ToS2LatLng()))
+		}
+		return vs
+	case *References:
+		vs := b6.Values(make([]b6.Value, 0, len(*v)))
+		for _, r := range *v {
+			typ, ns := r.TypeAndNamespace.Split()
+			vs = append(vs, b6.FeatureID{typ, nt.Decode(ns), r.Value})
+		}
+		return vs
+	case *ReferencesAndLatLngs:
+		vs := b6.Values(make([]b6.Value, 0, len(*v)))
+		for _, r := range *v {
+			var rll b6.Value
+			if r.Reference != ReferenceInvald {
+				typ, ns := r.Reference.TypeAndNamespace.Split()
+				rll = b6.FeatureID{typ, nt.Decode(ns), r.Reference.Value}
+			} else {
+				vs = append(vs, b6.LatLng(r.LatLng.ToS2LatLng()))
+			}
+
+			vs = append(vs, rll)
+		}
+		return vs
+	default:
+		panic("cannot convert from compact value")
+	}
+}
+
+func toCompactValue(v b6.Value, s *encoding.StringTableBuilder, nt *NamespaceTable, e GeometryEncoding) Value {
+	switch v := v.(type) {
+	case b6.String:
+		r := Int(s.Lookup(v.String()))
+		return &r
+	case b6.LatLng:
+		return &LatLng{v.Lat.E7(), v.Lng.E7()}
+	case b6.FeatureID:
+		return &Reference{CombineTypeAndNamespace(v.Type, nt.Encode(v.Namespace)), v.Value}
+	case b6.Values:
+		switch e {
+		case GeometryEncodingLatLngs:
+			lls := LatLngs(make([]LatLng, 0, len(v)))
+			for _, x := range v {
+				lls = append(lls, *toCompactValue(x, s, nt, e).(*LatLng))
+			}
+			return &lls
+		case GeometryEncodingReferences:
+			refs := References(make([]Reference, 0, len(v)))
+			for _, x := range v {
+				refs = append(refs, *toCompactValue(x, s, nt, e).(*Reference))
+			}
+			return &refs
+		case GeometryEncodingMixed:
+			m := ReferencesAndLatLngs(make([]ReferenceAndLatLng, 0, len(v)))
+			for _, x := range v {
+				c := toCompactValue(x, s, nt, e)
+				switch c := c.(type) {
+				case *LatLng:
+					m = append(m, ReferenceAndLatLng{ReferenceInvald, *c})
+				case *Reference:
+					m = append(m, ReferenceAndLatLng{*c, LatLng{LatE7: 0, LngE7: 0}})
+				default:
+					panic("not implemented")
+				}
+			}
+			return &m
+		default:
+			panic("not implemented")
+		}
+	}
+
+	panic("cannot convert to compact value")
 }
 
 type Tag struct {
-	Key       int
-	Value     Value
-	ValueType b6.ValueType
+	Key   int
+	Value Value
 }
 
 type Int int
 
-func (i *Int) Marshal(buffer []byte) int {
-	return binary.PutUvarint(buffer, uint64(*i))
+func (i *Int) Marshal(_ TypeAndNamespace, buffer []byte) int {
+	return binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeString, uint64(*i)).(uint64))
 }
 
-func (i *Int) Unmarshal(buffer []byte) int {
-	v, n := binary.Uvarint(buffer)
-	*i = Int(v)
+func (i *Int) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
+	v, n := DecodeValue(buffer, uint64(0))
+	*i = Int(v.(uint64))
 	return n
 }
 
-const ValueTypeBits = 2
-
-func (t *Tag) Marshal(buffer []byte) int {
-	key := uint64(t.Key) << ValueTypeBits
-	if int(key>>ValueTypeBits) != t.Key {
-		panic("Can't encode tag type")
-	}
-	key |= uint64(t.ValueType)
-	i := binary.PutUvarint(buffer, uint64(key))
-	return i + t.Value.Marshal(buffer[i:])
+func (*Int) MaxSize() int {
+	return binary.MaxVarintLen64
 }
 
-func (t *Tag) Unmarshal(buffer []byte) int {
+func (t *Tag) Marshal(tns TypeAndNamespace, buffer []byte) int {
+	i := binary.PutUvarint(buffer, uint64(t.Key))
+	return i + t.Value.Marshal(tns, buffer[i:])
+}
+
+func (t *Tag) UnmarshalValueType(buffer []byte) b6.ValueType {
 	key, i := binary.Uvarint(buffer)
-	t.Key = int(key >> ValueTypeBits)
-	t.ValueType = b6.ValueType(key & ((1 << ValueTypeBits) - 1))
+	t.Key = int(key)
+	vandtype, _ := binary.Uvarint(buffer[i:])
+	return b6.ValueType(vandtype & ((1 << ValueTypeBits) - 1))
+}
 
-	switch t.ValueType {
+func unmarshalValue(buffer []byte) Value {
+	v, _ := binary.Uvarint(buffer[0:])
+	switch b6.ValueType(v & ((1 << ValueTypeBits) - 1)) {
 	case b6.ValueTypeString:
-		m := Int(0)
-		t.Value = &m
+		i := Int(0)
+		return &i
 	case b6.ValueTypeLatLng:
-		ll := LatLng{}
-		t.Value = &ll
+		return &LatLng{}
+	case b6.ValueTypeValues:
+		switch DecodeGeometryEncoding(v >> ValueTypeBits) {
+		case GeometryEncodingLatLngs:
+			return &LatLngs{}
+		case GeometryEncodingReferences:
+			return &References{}
+		case GeometryEncodingMixed:
+			return &ReferencesAndLatLngs{}
+		default:
+			panic("not implemented")
+		}
+	default:
+		panic("not implemented")
 	}
-
-	return i + t.Value.Unmarshal(buffer[i:])
 }
 
-func (t *Tag) Length() int {
-	var buffer [2 * binary.MaxVarintLen64]byte
-	return t.Marshal(buffer[0:])
+func (t *Tag) Unmarshal(tns TypeAndNamespace, buffer []byte) int {
+	key, i := binary.Uvarint(buffer)
+	t.Key = int(key)
+	t.Value = unmarshalValue(buffer[i:])
+	return i + t.Value.Unmarshal(tns, buffer[i:])
 }
 
-type MarshalledTag []byte
-
-func (m MarshalledTag) Length() int {
-	_, i := binary.Uvarint(m)
-	_, n := binary.Uvarint(m[i:])
-	return i + n
+func (t *Tag) MaxSize(tns TypeAndNamespace) int {
+	buffer := make([]byte, binary.MaxVarintLen64+t.Value.MaxSize()) // Key is always string / encoded as int.
+	return t.Marshal(tns, buffer[0:])
 }
 
 type Tags []Tag
 
-func (t Tags) Marshal(buffer []byte) int {
+func (t Tags) Marshal(tns TypeAndNamespace, buffer []byte) int {
 	l := 0
 	for _, tag := range t {
-		l += tag.Length()
+		l += tag.MaxSize(tns)
 	}
 	i := binary.PutUvarint(buffer, uint64(l))
 	for _, tag := range t {
-		i += tag.Marshal(buffer[i:])
+		i += tag.Marshal(tns, buffer[i:])
 	}
 	return i
 }
 
-func (t *Tags) Unmarshal(buffer []byte) int {
+func (t *Tags) Unmarshal(tns TypeAndNamespace, buffer []byte) int {
 	l, start := binary.Uvarint(buffer)
 	i := start
 	j := 0
@@ -486,75 +623,73 @@ func (t *Tags) Unmarshal(buffer []byte) int {
 		if j >= len(*t) {
 			*t = append(*t, Tag{})
 		}
-		i += (*t)[j].Unmarshal(buffer[i:])
+		i += (*t)[j].Unmarshal(tns, buffer[i:])
 		j++
 	}
 	*t = (*t)[0:j]
 	return i
 }
 
-func (t *Tags) FromOSM(tags osm.Tags, node *osm.Node, s *encoding.StringTableBuilder) {
+func (t *Tags) FromOSM(tags osm.Tags, f ingest.OSMFeature, s *encoding.StringTableBuilder, nt *NamespaceTable) {
 	for len(*t) < len(tags) {
 		*t = append(*t, Tag{})
 	}
-
 	*t = (*t)[0:len(tags)]
 	for i, tag := range tags {
 		(*t)[i].Key = s.Lookup(ingest.KeyForOSMKey(tag.Key))
 		value := Int(s.Lookup(tag.Value))
 		(*t)[i].Value = &value
-		(*t)[i].ValueType = b6.ValueTypeString
 	}
 
-	if node != nil {
+	if f.Node != nil {
 		*t = (*t)[0 : len(*t)+1]
-		(*t)[len(tags)].Key = s.Lookup(b6.LatLngTag)
-		ll := LatLng{int32(math.Round(node.Location.Lat * 1e7)), int32(math.Round(node.Location.Lng * 1e7))}
+		(*t)[len(tags)].Key = s.Lookup(b6.PointTag)
+		ll := LatLng{int32(math.Round(f.Node.Location.Lat * 1e7)), int32(math.Round(f.Node.Location.Lng * 1e7))}
 		(*t)[len(tags)].Value = &ll
-		(*t)[len(tags)].ValueType = b6.ValueTypeLatLng
+	} else if f.Way != nil {
+		*t = (*t)[0 : len(*t)+1]
+		(*t)[len(tags)].Key = s.Lookup(b6.PathTag)
+		refs := References(make([]Reference, 0, len(f.Way.Nodes)))
+		for _, n := range f.Way.Nodes {
+			refs = append(refs, Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode)), Value: uint64(n)})
+		}
+		(*t)[len(tags)].Value = &refs
 	}
 }
 
-func (t *Tags) FromFeature(tagged b6.Taggable, s *encoding.StringTableBuilder) {
-	tags := tagged.AllTags()
+func (t *Tags) FromFeature(f b6.Taggable, s *encoding.StringTableBuilder, nt *NamespaceTable) {
+	tags := f.AllTags()
 	for len(*t) < len(tags) {
 		*t = append(*t, Tag{})
 	}
+
 	*t = (*t)[0:len(tags)]
 	for i, tag := range tags {
 		(*t)[i].Key = s.Lookup(tag.Key)
-		(*t)[i].ValueType = tag.Value.Type()
 
-		if tag.Value.Type() == b6.ValueTypeLatLng {
-			ll := LatLng{tag.Value.(b6.LatLng).Lat.E7(), tag.Value.(b6.LatLng).Lng.E7()}
-			(*t)[i].Value = &ll
-		} else {
-			v := Int(s.Lookup(tag.Value.String()))
-			(*t)[i].Value = &v
+		e := GeometryEncodingInvalid
+		if f.Get(b6.PathTag) != b6.InvalidTag() {
+			e = GeometryEncodingForPath(f.(b6.PhysicalFeature))
 		}
+		(*t)[i].Value = toCompactValue(tag.Value, s, nt, e)
 	}
 }
 
 type MarshalledTags struct {
 	Tags    []byte
 	Strings encoding.Strings
+	Nt      *NamespaceTable
+	Tns     TypeAndNamespace
 }
 
-func (m MarshalledTags) AllTags() []b6.Tag {
+func (m MarshalledTags) AllTags() b6.Tags {
 	l, start := binary.Uvarint(m.Tags)
 	i := start
 	var tag Tag
 	tags := make([]b6.Tag, 0, 2)
 	for i < start+int(l) {
-		i += tag.Unmarshal(m.Tags[i:])
-		var value b6.Value
-		switch t := tag.Value.(type) {
-		case *Int:
-			value = b6.String(m.Strings.Lookup(int(*t)))
-		case *LatLng:
-			value = b6.LatLng(t.ToS2LatLng())
-		}
-		tags = append(tags, b6.Tag{Key: m.Strings.Lookup(tag.Key), Value: value})
+		i += tag.Unmarshal(m.Tns, m.Tags[i:])
+		tags = append(tags, b6.Tag{Key: m.Strings.Lookup(tag.Key), Value: fromCompactValue(tag.Value, m.Strings, m.Nt)})
 	}
 	return tags
 }
@@ -564,25 +699,12 @@ func (m MarshalledTags) Get(key string) b6.Tag {
 	i := start
 	var tag Tag
 	for i < start+int(l) {
-		i += tag.Unmarshal(m.Tags[i:])
+		i += tag.Unmarshal(m.Tns, m.Tags[i:])
 		if m.Strings.Equal(tag.Key, key) {
-			switch t := tag.Value.(type) {
-			case *Int:
-				return b6.Tag{key, b6.String(m.Strings.Lookup(int(*t)))}
-			case *LatLng:
-				return b6.Tag{key, b6.LatLng(t.ToS2LatLng())}
-			}
+			return b6.Tag{key, fromCompactValue(tag.Value, m.Strings, m.Nt)}
 		}
 	}
 	return b6.InvalidTag()
-}
-
-func (m MarshalledTags) GetString(key string) string {
-	tag := m.Get(key)
-	if s, ok := tag.Value.(b6.String); ok {
-		return string(s)
-	}
-	return ""
 }
 
 func (m MarshalledTags) Length() int {
@@ -590,49 +712,116 @@ func (m MarshalledTags) Length() int {
 	return i + int(l)
 }
 
-func (m MarshalledTags) Location() (s2.LatLng, error) {
-	if ll := m.Get(b6.LatLngTag).Value; ll != nil {
-		return b6.LatLngFromString(ll.String())
+func (m MarshalledTags) GeometryType() b6.GeometryType {
+	if m.Get(b6.PointTag) != b6.InvalidTag() {
+		return b6.GeometryTypePoint
+	} else if m.Get(b6.PathTag) != b6.InvalidTag() {
+		return b6.GeometryTypePath
 	}
 
-	return s2.LatLng{}, fmt.Errorf("can't extract location")
+	return b6.GeometryTypeInvalid
+}
+
+func (m MarshalledTags) Point() s2.Point {
+	if ll := m.Get(b6.PointTag).Value; ll != nil {
+		if ll, err := b6.LatLngFromString(ll.String()); err == nil {
+			return s2.PointFromLatLng(ll)
+		}
+	}
+
+	return s2.Point{}
+}
+
+func (m MarshalledTags) GeometryLen() int {
+	if l := m.Get(b6.PathTag); l != b6.InvalidTag() {
+		return len(l.Value.(b6.Values))
+	}
+	return 0
+}
+
+func (m MarshalledTags) PointAt(i int) s2.Point {
+	if r := m.Get(b6.PathTag); r.IsValid() && r.Value != nil && r.ValueType() == b6.ValueTypeValues {
+		if len(r.Value.(b6.Values)) > i {
+			if ll, ok := (r.Value.(b6.Values))[i].(b6.LatLng); ok {
+				return s2.PointFromLatLng(s2.LatLng(ll))
+			}
+		}
+	}
+	panic("Expected a latlng")
+}
+
+func (m MarshalledTags) Polyline() *s2.Polyline {
+	polyline := make(s2.Polyline, m.GeometryLen())
+	for i := 0; i < m.GeometryLen(); i++ {
+		polyline[i] = m.PointAt(i)
+	}
+	return &polyline
+}
+
+func (m MarshalledTags) References() []b6.Reference {
+	var refs []b6.Reference
+	if r := m.Get(b6.PathTag); r.IsValid() && r.ValueType() == b6.ValueTypeValues {
+		for i, v := range r.Value.(b6.Values) {
+			if v, ok := v.(b6.FeatureID); ok && v.IsValid() {
+				ref := b6.IndexedFeatureID{FeatureID: v}
+				ref.SetIndex(i)
+				refs = append(refs, &ref)
+			}
+		}
+	}
+	return refs
+}
+
+func (m MarshalledTags) Reference(i int) b6.Reference {
+	if t := m.Get(b6.PathTag); t.IsValid() && t.ValueType() == b6.ValueTypeValues {
+		if vs, ok := t.Value.(b6.Values); ok && len(vs) > i {
+			if r, ok := vs[i].(b6.Reference); ok {
+				return r
+			}
+		}
+	}
+	return b6.FeatureIDInvalid
 }
 
 type Reference struct {
-	Namespace Namespace
-	Value     uint64
+	TypeAndNamespace TypeAndNamespace
+	Value            uint64
 }
 
-var ReferenceInvald Reference = Reference{Namespace: NamespaceInvalid, Value: 0}
+var ReferenceInvald Reference = Reference{TypeAndNamespace: TypeAndNamespaceInvalid, Value: 0}
 
-func (r *Reference) Marshal(primary Namespace, buffer []byte) int {
-	if r.Namespace != primary || (r.Value&(1<<63)) == (1<<63) {
-		i := binary.PutUvarint(buffer, (uint64(r.Namespace)<<1)|1)
+func (r *Reference) Marshal(primary TypeAndNamespace, buffer []byte) int {
+	if r.TypeAndNamespace != primary || (r.Value&(1<<63)) == (1<<63) {
+		i := binary.PutUvarint(buffer, (uint64(r.TypeAndNamespace)<<1)|1)
 		return i + binary.PutUvarint(buffer[i:], r.Value)
 	} else {
 		return binary.PutUvarint(buffer, r.Value<<1)
 	}
 }
 
-func (r *Reference) Unmarshal(primary Namespace, buffer []byte) int {
+func (r *Reference) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
 	v, i := binary.Uvarint(buffer)
 	if v&1 == 1 {
-		r.Namespace = Namespace(v >> 1)
+		r.TypeAndNamespace = TypeAndNamespace(v >> 1)
 		var n int
 		r.Value, n = binary.Uvarint(buffer[i:])
 		i += n
 	} else {
-		r.Namespace = primary
+		r.TypeAndNamespace = primary
 		r.Value = v >> 1
 	}
 	return i
+}
+
+func (r *Reference) MaxSize() int {
+	return 2 * binary.MaxVarintLen64
 }
 
 type MarshalledReference []byte
 
 func (m MarshalledReference) Length() int {
 	var r Reference
-	return r.Unmarshal(NamespaceInvalid, m)
+	return r.Unmarshal(TypeAndNamespaceInvalid, m)
 }
 
 type References []Reference
@@ -640,22 +829,22 @@ type References []Reference
 func (rs References) Len() int      { return len(rs) }
 func (rs References) Swap(i, j int) { rs[i], rs[j] = rs[j], rs[i] }
 func (rs References) Less(i, j int) bool {
-	if rs[i].Namespace == rs[j].Namespace {
+	if rs[i].TypeAndNamespace == rs[j].TypeAndNamespace {
 		return rs[i].Value < rs[j].Value
 	}
-	return rs[i].Namespace < rs[j].Namespace
+	return rs[i].TypeAndNamespace < rs[j].TypeAndNamespace
 }
 
-func (rs References) Marshal(primary Namespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, uint64(len(rs)))
+func (rs References) Marshal(primary TypeAndNamespace, buffer []byte) int {
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingReferences, len(rs))).(uint64))
 	return i + rs.MarshalWithoutLength(primary, buffer[i:])
 }
 
-func (rs References) MarshalWithoutLength(primary Namespace, buffer []byte) int {
+func (rs References) MarshalWithoutLength(primary TypeAndNamespace, buffer []byte) int {
 	last := uint64(0)
 	i := 0
 	for _, r := range rs {
-		if r.Namespace == primary {
+		if r.TypeAndNamespace == primary {
 			last, r.Value = r.Value, encoding.ZigzagEncode(int64(r.Value)-int64(last))
 		}
 		i += r.Marshal(primary, buffer[i:])
@@ -663,12 +852,16 @@ func (rs References) MarshalWithoutLength(primary Namespace, buffer []byte) int 
 	return i
 }
 
-func (rs *References) Unmarshal(primary Namespace, buffer []byte) int {
-	l, i := binary.Uvarint(buffer)
-	return i + rs.UnmarshalWithoutLength(int(l), primary, buffer[i:])
+func (rs *References) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
+	v, i := DecodeValue(buffer, uint64(0))
+	return i + rs.UnmarshalWithoutLength(DecodeGeometryLen(v.(uint64)), primary, buffer[i:])
 }
 
-func (rs *References) UnmarshalWithoutLength(l int, primary Namespace, buffer []byte) int {
+func (rs *References) MaxSize() int {
+	return binary.MaxVarintLen64 + 2*binary.MaxVarintLen64*len(*rs)
+}
+
+func (rs *References) UnmarshalWithoutLength(l int, primary TypeAndNamespace, buffer []byte) int {
 	for len(*rs) < int(l) {
 		*rs = append(*rs, Reference{})
 	}
@@ -677,7 +870,7 @@ func (rs *References) UnmarshalWithoutLength(l int, primary Namespace, buffer []
 	i := 0
 	for j := range *rs {
 		i += (*rs)[j].Unmarshal(primary, buffer[i:])
-		if (*rs)[j].Namespace == primary {
+		if (*rs)[j].TypeAndNamespace == primary {
 			(*rs)[j].Value = uint64(int64(last) + encoding.ZigzagDecode((*rs)[j].Value))
 			last = (*rs)[j].Value
 		}
@@ -689,7 +882,7 @@ type MarshalledReferences []byte
 
 func (m MarshalledReferences) Len() int {
 	l, _ := binary.Uvarint(m)
-	return int(l)
+	return DecodeGeometryLen(l >> ValueTypeBits)
 }
 
 type GeometryEncoding uint8
@@ -698,13 +891,14 @@ const (
 	GeometryEncodingReferences GeometryEncoding = iota
 	GeometryEncodingLatLngs
 	GeometryEncodingMixed
+	GeometryEncodingInvalid
 )
 
-func GeometryEncodingForPath(f *ingest.PathFeature) GeometryEncoding {
+func GeometryEncodingForPath(f b6.PhysicalFeature) GeometryEncoding {
 	references := false
 	latlngs := false
-	for i := 0; i < f.Len(); i++ {
-		if _, ok := f.PointID(i); ok {
+	for i := 0; i < f.GeometryLen(); i++ {
+		if id := f.Reference(i).Source(); id.IsValid() {
 			references = true
 			if latlngs {
 				return GeometryEncodingMixed
@@ -723,15 +917,7 @@ func GeometryEncodingForPath(f *ingest.PathFeature) GeometryEncoding {
 	}
 }
 
-type PathGeometry interface {
-	Len() int
-	PointID(i int) (Reference, bool)
-	LatLng(i int) (LatLng, bool)
-	Marshal(primary Namespace, buffer []byte) int
-	UnmarshalWithoutLength(l int, primary Namespace, buffer []byte) int
-}
-
-func MarshalGeometryEncodingAndLength(e GeometryEncoding, l int, buffer []byte) int {
+func EncodeGeometry(e GeometryEncoding, l int) uint64 {
 	var v uint64
 	switch e {
 	case GeometryEncodingReferences:
@@ -743,83 +929,35 @@ func MarshalGeometryEncodingAndLength(e GeometryEncoding, l int, buffer []byte) 
 	default:
 		panic("Unexpected GeometryEncoding")
 	}
-	return binary.PutUvarint(buffer, v)
+	return v
+}
+
+func MarshalGeometryEncodingAndLength(e GeometryEncoding, l int, buffer []byte) int {
+	return binary.PutUvarint(buffer, EncodeGeometry(e, l))
+}
+
+func DecodeGeometryLen(v uint64) int {
+	if v&1 == 0 {
+		return int(v >> 1)
+	} else {
+		return int(v >> 2)
+	}
+}
+
+func DecodeGeometryEncoding(v uint64) GeometryEncoding {
+	if v&1 == 0 {
+		return GeometryEncodingReferences
+	} else if v&2 == 0 {
+		return GeometryEncodingLatLngs
+	} else {
+		return GeometryEncodingMixed
+	}
 }
 
 func UnmarshalGeometryEncodingAndLength(buffer []byte) (GeometryEncoding, int, int) {
 	v, i := binary.Uvarint(buffer)
-	if v&1 == 0 {
-		return GeometryEncodingReferences, int(v >> 1), i
-	} else if v&2 == 0 {
-		return GeometryEncodingLatLngs, int(v >> 2), i
-	} else {
-		return GeometryEncodingMixed, int(v >> 2), i
-	}
+	return DecodeGeometryEncoding(v), DecodeGeometryLen(v), i
 }
-
-type PathGeometryReferences struct {
-	Points References
-}
-
-func (g *PathGeometryReferences) Len() int {
-	return len(g.Points)
-}
-
-func (g *PathGeometryReferences) PointID(i int) (Reference, bool) {
-	return g.Points[i], true
-}
-
-func (g *PathGeometryReferences) LatLng(i int) (LatLng, bool) {
-	return LatLng{}, false
-}
-
-func (g *PathGeometryReferences) Marshal(primary Namespace, buffer []byte) int {
-	i := MarshalGeometryEncodingAndLength(GeometryEncodingReferences, len(g.Points), buffer)
-	return i + g.Points.MarshalWithoutLength(primary, buffer[i:])
-}
-
-func (g *PathGeometryReferences) Unmarshal(primary Namespace, buffer []byte) int {
-	_, l, i := UnmarshalGeometryEncodingAndLength(buffer)
-	return i + g.Points.UnmarshalWithoutLength(l, primary, buffer[i:])
-}
-
-func (g *PathGeometryReferences) UnmarshalWithoutLength(l int, primary Namespace, buffer []byte) int {
-	return g.Points.UnmarshalWithoutLength(l, primary, buffer)
-}
-
-var _ PathGeometry = &PathGeometryReferences{}
-
-type PathGeometryLatLngs struct {
-	Points LatLngs
-}
-
-func (g *PathGeometryLatLngs) Len() int {
-	return len(g.Points)
-}
-
-func (g *PathGeometryLatLngs) PointID(i int) (Reference, bool) {
-	return ReferenceInvald, false
-}
-
-func (g *PathGeometryLatLngs) LatLng(i int) (LatLng, bool) {
-	return g.Points[i], true
-}
-
-func (g *PathGeometryLatLngs) Marshal(_ Namespace, buffer []byte) int {
-	i := MarshalGeometryEncodingAndLength(GeometryEncodingLatLngs, len(g.Points), buffer)
-	return i + g.Points.MarshalWithoutLength(buffer[i:])
-}
-
-func (g *PathGeometryLatLngs) Unmarshal(primary Namespace, buffer []byte) int {
-	_, l, i := UnmarshalGeometryEncodingAndLength(buffer)
-	return i + g.Points.UnmarshalWithoutLength(l, buffer[i:])
-}
-
-func (g *PathGeometryLatLngs) UnmarshalWithoutLength(l int, _ Namespace, buffer []byte) int {
-	return g.Points.UnmarshalWithoutLength(l, buffer)
-}
-
-var _ PathGeometry = &PathGeometryLatLngs{}
 
 type Bits []bool
 
@@ -872,33 +1010,19 @@ type ReferenceAndLatLng struct {
 	LatLng    LatLng
 }
 
-type PathGeometryMixed struct {
-	Points []ReferenceAndLatLng
-}
+type ReferencesAndLatLngs []ReferenceAndLatLng
 
-func (g *PathGeometryMixed) Len() int {
-	return len(g.Points)
-}
-
-func (g *PathGeometryMixed) PointID(i int) (Reference, bool) {
-	return g.Points[i].Reference, g.Points[i].Reference != ReferenceInvald
-}
-
-func (g *PathGeometryMixed) LatLng(i int) (LatLng, bool) {
-	return g.Points[i].LatLng, g.Points[i].Reference == ReferenceInvald
-}
-
-func (g *PathGeometryMixed) Marshal(primary Namespace, buffer []byte) int {
-	i := MarshalGeometryEncodingAndLength(GeometryEncodingMixed, len(g.Points), buffer)
-	references := make(Bits, len(g.Points))
-	for j, r := range g.Points {
+func (g *ReferencesAndLatLngs) Marshal(primary TypeAndNamespace, buffer []byte) int {
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingMixed, len(*g))).(uint64))
+	references := make(Bits, len(*g))
+	for j, r := range *g {
 		references[j] = r.Reference != ReferenceInvald
 	}
 	i += references.Marshal(buffer[i:])
 	last := ReferenceAndLatLng{Reference: Reference{Value: 0}, LatLng: LatLng{LatE7: 0, LngE7: 0}}
-	for j, r := range g.Points {
+	for j, r := range *g {
 		if references[j] {
-			if r.Reference.Namespace == primary {
+			if r.Reference.TypeAndNamespace == primary {
 				last.Reference.Value, r.Reference.Value = r.Reference.Value, encoding.ZigzagEncode(int64(r.Reference.Value)-int64(last.Reference.Value))
 			}
 			i += r.Reference.Marshal(primary, buffer[i:])
@@ -911,54 +1035,41 @@ func (g *PathGeometryMixed) Marshal(primary Namespace, buffer []byte) int {
 	return i
 }
 
-func (g *PathGeometryMixed) Unmarshal(primary Namespace, buffer []byte) int {
-	_, l, i := UnmarshalGeometryEncodingAndLength(buffer)
-	return i + g.UnmarshalWithoutLength(l, primary, buffer[i:])
+func (g *ReferencesAndLatLngs) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
+	v, i := DecodeValue(buffer, uint64(0))
+	return i + g.UnmarshalWithoutLength(DecodeGeometryLen(v.(uint64)), primary, buffer[i:])
 }
 
-func (g *PathGeometryMixed) UnmarshalWithoutLength(l int, primary Namespace, buffer []byte) int {
-	for len(g.Points) < l {
-		g.Points = append(g.Points, ReferenceAndLatLng{})
+func (g *ReferencesAndLatLngs) MaxSize() int {
+	return binary.MaxVarintLen64 + 2*binary.MaxVarintLen64*len(*g)
+}
+
+func (g *ReferencesAndLatLngs) UnmarshalWithoutLength(l int, primary TypeAndNamespace, buffer []byte) int {
+	for len(*g) < l {
+		*g = append(*g, ReferenceAndLatLng{})
 	}
-	g.Points = g.Points[0:l]
+	*g = (*g)[0:l]
 	references := make(Bits, l)
 	i := references.Unmarshal(buffer)
 	last := ReferenceAndLatLng{Reference: Reference{Value: 0}, LatLng: LatLng{LatE7: 0, LngE7: 0}}
-	for j := range g.Points {
+	for j := range *g {
 		if references[j] {
-			i += g.Points[j].Reference.Unmarshal(primary, buffer[i:])
-			if g.Points[j].Reference.Namespace == primary {
-				g.Points[j].Reference.Value = uint64(int64(last.Reference.Value) + encoding.ZigzagDecode(g.Points[j].Reference.Value))
-				last.Reference.Value = g.Points[j].Reference.Value
+			i += (*g)[j].Reference.Unmarshal(primary, buffer[i:])
+			if (*g)[j].Reference.TypeAndNamespace == primary {
+				(*g)[j].Reference.Value = uint64(int64(last.Reference.Value) + encoding.ZigzagDecode((*g)[j].Reference.Value))
+				last.Reference.Value = (*g)[j].Reference.Value
 			}
 		} else {
 			deltaLat, n := binary.Varint(buffer[i:])
 			i += n
 			deltaLng, n := binary.Varint(buffer[i:])
 			i += n
-			g.Points[j].LatLng.LatE7 = last.LatLng.LatE7 + int32(deltaLat)
-			g.Points[j].LatLng.LngE7 = last.LatLng.LngE7 + int32(deltaLng)
-			last.LatLng = g.Points[j].LatLng
+			(*g)[j].LatLng.LatE7 = last.LatLng.LatE7 + int32(deltaLat)
+			(*g)[j].LatLng.LngE7 = last.LatLng.LngE7 + int32(deltaLng)
+			last.LatLng = (*g)[j].LatLng
 		}
 	}
 	return i
-}
-
-var _ PathGeometry = &PathGeometryMixed{}
-
-func UnmarshalPathGeometry(primary Namespace, buffer []byte) (PathGeometry, int) {
-	e, l, i := UnmarshalGeometryEncodingAndLength(buffer)
-	var g PathGeometry
-	switch e {
-	case GeometryEncodingReferences:
-		g = &PathGeometryReferences{}
-	case GeometryEncodingLatLngs:
-		g = &PathGeometryLatLngs{}
-	case GeometryEncodingMixed:
-		g = &PathGeometryMixed{}
-	}
-	i += g.UnmarshalWithoutLength(l, primary, buffer[i:])
-	return g, i
 }
 
 type CommonPoint struct {
@@ -967,20 +1078,20 @@ type CommonPoint struct {
 }
 
 func (c *CommonPoint) Marshal(nss *Namespaces, buffer []byte) int {
-	i := c.Tags.Marshal(buffer)
-	i += c.Path.Marshal(nss.ForType(b6.FeatureTypePath), buffer[i:])
+	i := c.Tags.Marshal(TypeAndNamespaceInvalid, buffer)
+	i += c.Path.Marshal(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), buffer[i:])
 	return i
 }
 
 func (c *CommonPoint) Unmarshal(nss *Namespaces, buffer []byte) int {
-	i := c.Tags.Unmarshal(buffer)
-	i += c.Path.Unmarshal(nss.ForType(b6.FeatureTypePath), buffer[i:])
+	i := c.Tags.Unmarshal(TypeAndNamespaceInvalid, buffer)
+	i += c.Path.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), buffer[i:])
 	return i
 }
 
 func CombinePointAndPath(point []byte, nss *Namespaces, r Reference, buffer []byte) int {
 	i := copy(buffer, point)
-	i += r.Marshal(nss.ForType(b6.FeatureTypePath), buffer[i:])
+	i += r.Marshal(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), buffer[i:])
 	return i
 }
 
@@ -992,14 +1103,14 @@ type PointReferences struct {
 func (p *PointReferences) Marshal(nss *Namespaces, buffer []byte) int {
 	sort.Sort(p.Paths)     // Minimise deltas, as order is not important
 	sort.Sort(p.Relations) // Minimise deltas, as order is not important
-	i := p.Paths.Marshal(nss.ForType(b6.FeatureTypePath), buffer)
-	i += p.Relations.Marshal(nss.ForType(b6.FeatureTypeRelation), buffer[i:])
+	i := p.Paths.Marshal(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), buffer)
+	i += p.Relations.Marshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nss.ForType(b6.FeatureTypeRelation)), buffer[i:])
 	return i
 }
 
 func (p *PointReferences) Unmarshal(nss *Namespaces, buffer []byte) int {
-	i := p.Paths.Unmarshal(nss.ForType(b6.FeatureTypePath), buffer)
-	i += p.Relations.Unmarshal(nss.ForType(b6.FeatureTypeRelation), buffer[i:])
+	i := p.Paths.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), buffer)
+	i += p.Relations.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nss.ForType(b6.FeatureTypeRelation)), buffer[i:])
 	return i
 }
 
@@ -1009,13 +1120,13 @@ type FullPoint struct {
 }
 
 func (p *FullPoint) Marshal(nss *Namespaces, buffer []byte) int {
-	i := p.Tags.Marshal(buffer)
+	i := p.Tags.Marshal(TypeAndNamespaceInvalid, buffer)
 	i += p.PointReferences.Marshal(nss, buffer[i:])
 	return i
 }
 
 func (p *FullPoint) Unmarshal(nss *Namespaces, buffer []byte) int {
-	i := p.Tags.Unmarshal(buffer)
+	i := p.Tags.Unmarshal(TypeAndNamespaceInvalid, buffer)
 	i += p.PointReferences.Unmarshal(nss, buffer[i:])
 	return i
 }
@@ -1026,118 +1137,73 @@ func CombinePointAndReferences(point []byte, references PointReferences, nss *Na
 	return i
 }
 
-type Path struct {
+type Path struct { // TODO(mari): delete once u sort out references
 	Tags
-	Points    PathGeometry
 	Areas     References
 	Relations References
 }
 
-func (p *Path) Len() int {
-	return p.Points.Len()
+func (ts *Tags) PathLen(s *encoding.StringTable) int {
+	for _, t := range *ts {
+		if s.Equal(t.Key, b6.PathTag) {
+			switch v := t.Value.(type) {
+			case *LatLngs:
+				return len(*v)
+			case *References:
+				return len(*v)
+			case *ReferencesAndLatLngs:
+				return len(*v)
+			default:
+				panic("invalid path tag compact value type")
+			}
+		}
+	}
+	return 0
 }
 
-func (p *Path) PointID(i int) (Reference, bool) {
-	return p.Points.PointID(i)
-}
+func (ts *Tags) Reference(i int, s *encoding.StringTable) (Reference, bool) {
+	for _, t := range *ts {
+		if s.Equal(t.Key, b6.PathTag) {
+			if refs, ok := t.Value.(*References); ok && len(*refs) > i {
+				return (*refs)[i], true
+			} else if refs, ok := t.Value.(*ReferencesAndLatLngs); ok && len(*refs) > i {
+				return (*refs)[i].Reference, (*refs)[i].Reference != ReferenceInvald
+			}
+		}
+	}
 
-func (p *Path) LatLng(i int) (LatLng, bool) {
-	return p.Points.LatLng(i)
+	return Reference{}, false
 }
 
 func (p *Path) Marshal(nss *Namespaces, buffer []byte) int {
 	sort.Sort(p.Areas) // Minimise deltas, as order is not important
-	i := p.Tags.Marshal(buffer)
-	i += p.Points.Marshal(nss[b6.FeatureTypePoint], buffer[i:])
-	i += p.Areas.Marshal(nss[b6.FeatureTypeArea], buffer[i:])
-	i += p.Relations.Marshal(nss[b6.FeatureTypeRelation], buffer[i:])
+	i := p.Tags.Marshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss[b6.FeatureTypePoint]), buffer)
+	i += p.Areas.Marshal(CombineTypeAndNamespace(b6.FeatureTypeArea, nss[b6.FeatureTypeArea]), buffer[i:])
+	i += p.Relations.Marshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nss[b6.FeatureTypeRelation]), buffer[i:])
 	return i
 }
 
 func (p *Path) Unmarshal(nss *Namespaces, buffer []byte) int {
-	i := p.Tags.Unmarshal(buffer)
-	n := 0
-	p.Points, n = UnmarshalPathGeometry(nss[b6.FeatureTypePoint], buffer[i:])
-	i += n
-	i += p.Areas.Unmarshal(nss[b6.FeatureTypeArea], buffer[i:])
-	i += p.Relations.Unmarshal(nss[b6.FeatureTypeRelation], buffer[i:])
+	i := p.Tags.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypePoint, nss[b6.FeatureTypePoint]), buffer)
+	i += p.Areas.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypeArea, nss[b6.FeatureTypeArea]), buffer[i:])
+	i += p.Relations.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nss[b6.FeatureTypeRelation]), buffer[i:])
 	return i
 }
 
 func (p *Path) FromOSM(way *osm.Way, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	p.Tags.FromOSM(way.Tags, nil, s)
-	points := &PathGeometryReferences{
-		Points: make(References, len(way.Nodes)),
-	}
-	for i, n := range way.Nodes {
-		points.Points[i] = Reference{Namespace: nt.Encode(b6.NamespaceOSMNode), Value: uint64(n)}
-	}
-	p.Points = points
+	p.Tags.FromOSM(way.Tags, ingest.OSMFeature{Way: way}, s, nt)
 }
 
-func (p *Path) FromFeature(f *ingest.PathFeature, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	p.Tags.FromFeature(f, s)
-	switch GeometryEncodingForPath(f) {
-	case GeometryEncodingReferences:
-		points := &PathGeometryReferences{
-			Points: make(References, f.Len()),
-		}
-		for i := 0; i < f.Len(); i++ {
-			id, _ := f.PointID(i)
-			points.Points[i] = Reference{Namespace: nt.Encode(id.Namespace), Value: id.Value}
-		}
-		p.Points = points
-	case GeometryEncodingLatLngs:
-		points := &PathGeometryLatLngs{
-			Points: make(LatLngs, f.Len()),
-		}
-		for i := 0; i < f.Len(); i++ {
-			ll, _ := f.LatLng(i)
-			points.Points[i].FromS2LatLng(ll)
-		}
-		p.Points = points
-	case GeometryEncodingMixed:
-		points := &PathGeometryMixed{
-			Points: make([]ReferenceAndLatLng, f.Len()),
-		}
-		for i := 0; i < f.Len(); i++ {
-			if id, ok := f.PointID(i); ok {
-				points.Points[i].Reference = Reference{Namespace: nt.Encode(id.Namespace), Value: id.Value}
-				points.Points[i].LatLng = LatLng{LatE7: 0, LngE7: 0}
-			} else {
-				ll, _ := f.LatLng(i)
-				points.Points[i].LatLng.FromS2LatLng(ll)
-				points.Points[i].Reference = ReferenceInvald
-			}
-		}
-		p.Points = points
-	}
-}
-
-type MarshalledPath []byte
-
-func (m MarshalledPath) Tags(s encoding.Strings) b6.Taggable {
-	return MarshalledTags{Tags: m, Strings: s}
-}
-
-func (m MarshalledPath) Len() int {
-	i := MarshalledTags{Tags: m}.Length()
-	_, l, _ := UnmarshalGeometryEncodingAndLength(m[i:])
-	return l
-}
-
-func (m MarshalledPath) UnmarshalPoints(nss *Namespaces) (PathGeometry, int) {
-	i := MarshalledTags{Tags: m}.Length()
-	g, n := UnmarshalPathGeometry(nss.ForType(b6.FeatureTypePoint), m[i:])
-	return g, i + n
+func (p *Path) FromFeature(t b6.Taggable, s *encoding.StringTableBuilder, nt *NamespaceTable) {
+	p.Tags.FromFeature(t, s, nt)
 }
 
 type AreaGeometry interface {
 	Len() int
 	PathIDs(i int) (References, bool)
 	Polygon(i int) (*s2.Polygon, bool)
-	Marshal(primary Namespace, buffer []byte) int
-	UnmarshalWithoutLength(l int, primary Namespace, buffer []byte) int
+	Marshal(primary TypeAndNamespace, buffer []byte) int
+	UnmarshalWithoutLength(l int, primary TypeAndNamespace, buffer []byte) int
 }
 
 func GeometryEncodingForArea(f *ingest.AreaFeature) GeometryEncoding {
@@ -1167,18 +1233,18 @@ type PolygonGeometryReferences struct {
 	Paths References
 }
 
-func (p *PolygonGeometryReferences) FromPathIDs(paths []b6.PathID, nt *NamespaceTable) {
+func (p *PolygonGeometryReferences) FromPathIDs(paths []b6.FeatureID, nt *NamespaceTable) {
 	p.Paths = p.Paths[0:0]
 	for i, id := range paths {
-		p.Paths[i] = Reference{Namespace: nt.Encode(id.Namespace), Value: id.Value}
+		p.Paths[i] = Reference{TypeAndNamespace: CombineTypeAndNamespace(id.Type, nt.Encode(id.Namespace)), Value: id.Value}
 	}
 }
 
-func (p *PolygonGeometryReferences) Marshal(paths Namespace, buffer []byte) int {
+func (p *PolygonGeometryReferences) Marshal(paths TypeAndNamespace, buffer []byte) int {
 	return p.Paths.Marshal(paths, buffer)
 }
 
-func (p *PolygonGeometryReferences) Unmarshal(paths Namespace, buffer []byte) int {
+func (p *PolygonGeometryReferences) Unmarshal(paths TypeAndNamespace, buffer []byte) int {
 	return p.Paths.Unmarshal(paths, buffer)
 }
 
@@ -1207,18 +1273,18 @@ func (a *AreaGeometryReferences) Polygon(i int) (*s2.Polygon, bool) {
 	return nil, false
 }
 
-func (a *AreaGeometryReferences) Marshal(paths Namespace, buffer []byte) int {
+func (a *AreaGeometryReferences) Marshal(paths TypeAndNamespace, buffer []byte) int {
 	i := MarshalGeometryEncodingAndLength(GeometryEncodingReferences, len(a.Polygons), buffer)
 	i += encoding.MarshalDeltaCodedInts(a.Polygons, buffer[i:])
 	return i + a.Paths.Marshal(paths, buffer[i:])
 }
 
-func (a *AreaGeometryReferences) Unmarshal(paths Namespace, buffer []byte) int {
+func (a *AreaGeometryReferences) Unmarshal(paths TypeAndNamespace, buffer []byte) int {
 	_, l, i := UnmarshalGeometryEncodingAndLength(buffer)
 	return l + a.UnmarshalWithoutLength(l, paths, buffer[i:])
 }
 
-func (a *AreaGeometryReferences) UnmarshalWithoutLength(l int, paths Namespace, buffer []byte) int {
+func (a *AreaGeometryReferences) UnmarshalWithoutLength(l int, paths TypeAndNamespace, buffer []byte) int {
 	i := 0
 	a.Polygons, i = encoding.UnmarshalDeltaCodedInts(a.Polygons[0:0], int(l), buffer[i:])
 	return i + a.Paths.Unmarshal(paths, buffer[i:])
@@ -1273,7 +1339,7 @@ func (p *PolygonGeometryLatLngs) FromS2Polygon(pp *s2.Polygon) {
 func (p *PolygonGeometryLatLngs) Marshal(buffer []byte) int {
 	i := binary.PutUvarint(buffer, uint64(len(p.Loops)))
 	i += encoding.MarshalDeltaCodedInts(p.Loops, buffer[i:])
-	return i + p.Points.Marshal(buffer[i:])
+	return i + p.Points.Marshal(TypeAndNamespaceInvalid, buffer[i:])
 }
 
 func (p *PolygonGeometryLatLngs) Unmarshal(buffer []byte) int {
@@ -1281,7 +1347,7 @@ func (p *PolygonGeometryLatLngs) Unmarshal(buffer []byte) int {
 	n := 0
 	p.Loops, n = encoding.UnmarshalDeltaCodedInts(p.Loops[0:0], int(l), buffer[i:])
 	i += n
-	return i + p.Points.Unmarshal(buffer[i:])
+	return i + p.Points.Unmarshal(TypeAndNamespaceInvalid, buffer[i:])
 }
 
 type AreaGeometryLatLngs struct {
@@ -1300,7 +1366,7 @@ func (a *AreaGeometryLatLngs) Polygon(i int) (*s2.Polygon, bool) {
 	return a.Polygons[i].Polygon(), true
 }
 
-func (a *AreaGeometryLatLngs) Marshal(paths Namespace, buffer []byte) int {
+func (a *AreaGeometryLatLngs) Marshal(paths TypeAndNamespace, buffer []byte) int {
 	i := MarshalGeometryEncodingAndLength(GeometryEncodingLatLngs, len(a.Polygons), buffer)
 	for _, p := range a.Polygons {
 		i += p.Marshal(buffer[i:])
@@ -1308,12 +1374,12 @@ func (a *AreaGeometryLatLngs) Marshal(paths Namespace, buffer []byte) int {
 	return i
 }
 
-func (a *AreaGeometryLatLngs) Unmarshal(paths Namespace, buffer []byte) int {
+func (a *AreaGeometryLatLngs) Unmarshal(paths TypeAndNamespace, buffer []byte) int {
 	_, l, i := UnmarshalGeometryEncodingAndLength(buffer)
 	return l + a.UnmarshalWithoutLength(l, paths, buffer[i:])
 }
 
-func (a *AreaGeometryLatLngs) UnmarshalWithoutLength(l int, paths Namespace, buffer []byte) int {
+func (a *AreaGeometryLatLngs) UnmarshalWithoutLength(l int, paths TypeAndNamespace, buffer []byte) int {
 	for len(a.Polygons) < l {
 		a.Polygons = append(a.Polygons, PolygonGeometryLatLngs{})
 	}
@@ -1351,7 +1417,7 @@ func (a *AreaGeometryMixed) Polygon(i int) (*s2.Polygon, bool) {
 	return nil, false
 }
 
-func (a *AreaGeometryMixed) Marshal(paths Namespace, buffer []byte) int {
+func (a *AreaGeometryMixed) Marshal(paths TypeAndNamespace, buffer []byte) int {
 	i := MarshalGeometryEncodingAndLength(GeometryEncodingMixed, len(a.Polygons), buffer)
 	references := make(Bits, len(a.Polygons))
 	for j, p := range a.Polygons {
@@ -1368,13 +1434,13 @@ func (a *AreaGeometryMixed) Marshal(paths Namespace, buffer []byte) int {
 	return i
 }
 
-func (a *AreaGeometryMixed) Unmarshal(paths Namespace, buffer []byte) int {
+func (a *AreaGeometryMixed) Unmarshal(paths TypeAndNamespace, buffer []byte) int {
 	_, l, i := UnmarshalGeometryEncodingAndLength(buffer)
 	return i + a.UnmarshalWithoutLength(l, paths, buffer[i:])
 
 }
 
-func (a *AreaGeometryMixed) UnmarshalWithoutLength(l int, paths Namespace, buffer []byte) int {
+func (a *AreaGeometryMixed) UnmarshalWithoutLength(l int, paths TypeAndNamespace, buffer []byte) int {
 	for len(a.Polygons) < l {
 		a.Polygons = append(a.Polygons, PolygonGeometryMixed{})
 	}
@@ -1393,7 +1459,7 @@ func (a *AreaGeometryMixed) UnmarshalWithoutLength(l int, paths Namespace, buffe
 
 var _ AreaGeometry = &AreaGeometryMixed{}
 
-func UnmarshalAreaGeometry(primary Namespace, buffer []byte) (AreaGeometry, int) {
+func UnmarshalAreaGeometry(primary TypeAndNamespace, buffer []byte) (AreaGeometry, int) {
 	e, l, i := UnmarshalGeometryEncodingAndLength(buffer)
 	var a AreaGeometry
 	switch e {
@@ -1415,31 +1481,31 @@ type Area struct {
 }
 
 func (a *Area) Marshal(nss *Namespaces, buffer []byte) int {
-	i := a.Tags.Marshal(buffer)
-	i += a.Polygons.Marshal(nss.ForType(b6.FeatureTypePath), buffer[i:])
-	i += a.Relations.Marshal(nss.ForType(b6.FeatureTypePath), buffer[i:])
+	i := a.Tags.Marshal(TypeAndNamespaceInvalid, buffer)
+	i += a.Polygons.Marshal(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), buffer[i:])
+	i += a.Relations.Marshal(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), buffer[i:])
 	return i
 }
 
 func (a *Area) Unmarshal(nss *Namespaces, buffer []byte) int {
-	i := a.Tags.Unmarshal(buffer)
+	i := a.Tags.Unmarshal(TypeAndNamespaceInvalid, buffer)
 	n := 0
-	a.Polygons, n = UnmarshalAreaGeometry(nss.ForType(b6.FeatureTypePath), buffer[i:])
+	a.Polygons, n = UnmarshalAreaGeometry(CombineTypeAndNamespace(b6.FeatureTypePath, nss.ForType(b6.FeatureTypePath)), buffer[i:])
 	i += n
-	i += a.Relations.Unmarshal(nss.ForType(b6.FeatureTypeRelation), buffer[i:])
+	i += a.Relations.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nss.ForType(b6.FeatureTypeRelation)), buffer[i:])
 	return i
 }
 
 func (a *Area) FromOSMWay(way *osm.Way, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	a.Tags.FromOSM(way.Tags, nil, s)
+	a.Tags.FromOSM(way.Tags, ingest.OSMFeature{}, s, nt)
 	a.Polygons = &AreaGeometryReferences{
 		Polygons: []int{},
-		Paths:    []Reference{{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: uint64(way.ID)}},
+		Paths:    []Reference{{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: uint64(way.ID)}},
 	}
 }
 
 func (a *Area) FromOSMRelation(relation *osm.Relation, s *encoding.StringTableBuilder, nt *NamespaceTable) bool {
-	a.Tags.FromOSM(relation.Tags, nil, s)
+	a.Tags.FromOSM(relation.Tags, ingest.OSMFeature{}, s, nt)
 	polygons := &AreaGeometryReferences{}
 	start := 0
 	for _, member := range relation.Members {
@@ -1454,7 +1520,7 @@ func (a *Area) FromOSMRelation(relation *osm.Relation, s *encoding.StringTableBu
 				}
 			}
 			// TODO: Handle reassembling long ways
-			polygons.Paths = append(polygons.Paths, Reference{Namespace: nt.Encode(b6.NamespaceOSMWay), Value: uint64(member.ID)})
+			polygons.Paths = append(polygons.Paths, Reference{TypeAndNamespace: CombineTypeAndNamespace(b6.FeatureTypePath, nt.Encode(b6.NamespaceOSMWay)), Value: uint64(member.ID)})
 		case osm.ElementTypeRelation:
 			return false
 		}
@@ -1464,7 +1530,7 @@ func (a *Area) FromOSMRelation(relation *osm.Relation, s *encoding.StringTableBu
 }
 
 func (a *Area) FromFeature(f *ingest.AreaFeature, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	a.Tags.FromFeature(f, s)
+	a.Tags.FromFeature(f, s, nt)
 	switch GeometryEncodingForArea(f) {
 	case GeometryEncodingReferences:
 		polygons := &AreaGeometryReferences{}
@@ -1476,7 +1542,7 @@ func (a *Area) FromFeature(f *ingest.AreaFeature, s *encoding.StringTableBuilder
 			}
 			paths, _ := f.PathIDs(i)
 			for _, id := range paths {
-				polygons.Paths = append(polygons.Paths, Reference{Namespace: nt.Encode(id.Namespace), Value: uint64(id.Value)})
+				polygons.Paths = append(polygons.Paths, Reference{TypeAndNamespace: CombineTypeAndNamespace(id.Type, nt.Encode(id.Namespace)), Value: uint64(id.Value)})
 			}
 		}
 		a.Polygons = polygons
@@ -1521,7 +1587,7 @@ func (m MarshalledArea) Len() int {
 	}
 }
 
-func (m MarshalledArea) UnmarshalPolygons(paths Namespace) AreaGeometry {
+func (m MarshalledArea) UnmarshalPolygons(paths TypeAndNamespace) AreaGeometry {
 	i := MarshalledTags{Tags: m}.Length()
 	g, _ := UnmarshalAreaGeometry(paths, m[i:])
 	return g
@@ -1535,7 +1601,7 @@ type Member struct {
 
 type Members []Member
 
-func (m Members) Marshal(primary Namespace, buffer []byte) int {
+func (m Members) Marshal(primary TypeAndNamespace, buffer []byte) int {
 	i := binary.PutUvarint(buffer, uint64(len(m)))
 	for _, member := range m {
 		role := uint64(member.Role) << b6.FeatureTypeBits
@@ -1549,7 +1615,7 @@ func (m Members) Marshal(primary Namespace, buffer []byte) int {
 	return i
 }
 
-func (m *Members) Unmarshal(primary Namespace, buffer []byte) int {
+func (m *Members) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
 	*m = (*m)[0:0]
 	l, i := binary.Uvarint(buffer)
 	var id Reference
@@ -1580,21 +1646,21 @@ type Relation struct {
 }
 
 func (r *Relation) Marshal(primary b6.FeatureType, nss *Namespaces, buffer []byte) int {
-	i := r.Tags.Marshal(buffer)
-	i += r.Members.Marshal(nss.ForType(primary), buffer[i:])
-	i += r.Relations.Marshal(nss.ForType(b6.FeatureTypeRelation), buffer[i:])
+	i := r.Tags.Marshal(TypeAndNamespaceInvalid, buffer)
+	i += r.Members.Marshal(CombineTypeAndNamespace(primary, nss.ForType(primary)), buffer[i:])
+	i += r.Relations.Marshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nss.ForType(b6.FeatureTypeRelation)), buffer[i:])
 	return i
 }
 
 func (r *Relation) Unmarshal(primary b6.FeatureType, nss *Namespaces, buffer []byte) int {
-	i := r.Tags.Unmarshal(buffer)
-	i += r.Members.Unmarshal(nss.ForType(primary), buffer[i:])
-	i += r.Relations.Unmarshal(nss.ForType(b6.FeatureTypeRelation), buffer[i:])
+	i := r.Tags.Unmarshal(TypeAndNamespaceInvalid, buffer)
+	i += r.Members.Unmarshal(CombineTypeAndNamespace(primary, nss.ForType(primary)), buffer[i:])
+	i += r.Relations.Unmarshal(CombineTypeAndNamespace(b6.FeatureTypeRelation, nss.ForType(b6.FeatureTypeRelation)), buffer[i:])
 	return i
 }
 
 func (r *Relation) FromOSM(relation *osm.Relation, wayAreas *ingest.IDSet, relationAreas *ingest.IDSet, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	r.Tags.FromOSM(relation.Tags, nil, s)
+	r.Tags.FromOSM(relation.Tags, ingest.OSMFeature{}, s, nt)
 	r.Members = r.Members[0:0]
 	var m Member
 	for _, member := range relation.Members {
@@ -1603,16 +1669,19 @@ func (r *Relation) FromOSM(relation *osm.Relation, wayAreas *ingest.IDSet, relat
 		switch member.Type {
 		case osm.ElementTypeNode:
 			m.Type = b6.FeatureTypePoint
-			m.ID.Namespace = nt.Encode(b6.NamespaceOSMNode)
+			m.ID.TypeAndNamespace = CombineTypeAndNamespace(b6.FeatureTypePoint, nt.Encode(b6.NamespaceOSMNode))
 		case osm.ElementTypeWay:
-			m.ID.Namespace = nt.Encode(b6.NamespaceOSMWay)
+			var typ b6.FeatureType
 			if wayAreas.Has(uint64(member.ID)) {
-				m.Type = b6.FeatureTypeArea
+				typ = b6.FeatureTypeArea
 			} else {
-				m.Type = b6.FeatureTypePath
+				typ = b6.FeatureTypePath
 			}
+			m.Type = typ
+			m.ID.TypeAndNamespace = CombineTypeAndNamespace(typ, nt.Encode(b6.NamespaceOSMWay))
+
 		case osm.ElementTypeRelation:
-			m.ID.Namespace = nt.Encode(b6.NamespaceOSMRelation)
+			m.ID.TypeAndNamespace = CombineTypeAndNamespace(b6.FeatureTypeRelation, nt.Encode(b6.NamespaceOSMRelation))
 			if relationAreas.Has(uint64(member.ID)) {
 				m.Type = b6.FeatureTypeArea
 			} else {
@@ -1624,10 +1693,10 @@ func (r *Relation) FromOSM(relation *osm.Relation, wayAreas *ingest.IDSet, relat
 }
 
 func (r *Relation) FromFeature(f *ingest.RelationFeature, s *encoding.StringTableBuilder, nt *NamespaceTable) {
-	r.Tags.FromFeature(f, s)
+	r.Tags.FromFeature(f, s, nt)
 	r.Members = r.Members[0:0]
 	for _, member := range f.Members {
-		id := Reference{Namespace: nt.Encode(member.ID.Namespace), Value: member.ID.Value}
+		id := Reference{TypeAndNamespace: CombineTypeAndNamespace(member.ID.Type, nt.Encode(member.ID.Namespace)), Value: member.ID.Value}
 		r.Members = append(r.Members, Member{Type: member.ID.Type, ID: id, Role: s.Lookup(member.Role)})
 	}
 }
@@ -1645,7 +1714,7 @@ func (m MarshalledRelation) Len() int {
 
 func (m MarshalledRelation) UnmarshalMembers(primary b6.FeatureType, nss *Namespaces, members *Members) {
 	i := MarshalledTags{Tags: m}.Length()
-	members.Unmarshal(nss.ForType(primary), m[i:])
+	members.Unmarshal(CombineTypeAndNamespace(primary, nss.ForType(primary)), m[i:])
 }
 
 type NamespaceIndex struct {
@@ -1958,18 +2027,6 @@ func (i *Iterator) Next() bool {
 	}
 	i.i += n
 	return true
-}
-
-func findVarintStart(i int, ids []byte) int {
-	for ids[i]&0x80 != 0 { // Find the end of the varint that we may be in
-		i--
-	}
-
-	for ids[i-1]&0x80 != 0 { // Find its start
-		i--
-	}
-
-	return i
 }
 
 func (i *Iterator) Advance(key search.Key) bool {

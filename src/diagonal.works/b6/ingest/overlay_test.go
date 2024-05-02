@@ -5,7 +5,6 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/osm"
-
 	"github.com/golang/geo/s2"
 )
 
@@ -43,7 +42,7 @@ func TestOverlayWorldReturnsPathsFromAllIndices(t *testing.T) {
 	overlay := NewOverlayWorld(worlds[0], worlds[1])
 
 	cap := s2.CapFromCenterAngle(nodes[0].Location.ToS2Point(), b6.MetersToAngle(500))
-	found := b6.AllPaths(b6.FindPaths(b6.NewIntersectsCap(cap), overlay))
+	found := b6.AllFeatures(overlay.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.NewIntersectsCap(cap)}))
 
 	expected := []osm.WayID{140633010, 557698825, 642639444, 807925586}
 	if len(found) != len(expected) {
@@ -98,20 +97,20 @@ func TestOverlayWorldReplacesPathsFromOneIndexWithAnother(t *testing.T) {
 	}
 	overlay := NewOverlayWorld(worlds[1], worlds[0])
 
-	paths := b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#highway", Value: b6.String("path")}, overlay))
+	paths := b6.AllFeatures(overlay.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#highway", Value: b6.String("path")}}))
 	if len(paths) > 0 {
 		t.Errorf("Expected to find 0 paths, found %d", len(paths))
 	}
 
-	paths = b6.AllPaths(b6.FindPaths(b6.Tagged{Key: "#highway", Value: b6.String("cycleway")}, overlay))
+	paths = b6.AllFeatures(overlay.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#highway", Value: b6.String("cycleway")}}))
 	if len(paths) == 1 {
 		expectedValue := "cycleway"
 		if highway := paths[0].Get("#highway"); highway.Value.String() != expectedValue {
 			t.Errorf("Expected to find highway tag value %q, found %q", expectedValue, highway.Value)
 		}
 		expectedLength := 2
-		if paths[0].Len() != expectedLength {
-			t.Errorf("Expected to find %d points, found %d", expectedLength, paths[0].Len())
+		if len := paths[0].(b6.PhysicalFeature).GeometryLen(); len != expectedLength {
+			t.Errorf("Expected to find %d points, found %d", expectedLength, len)
 		}
 	} else {
 		t.Errorf("Expected to find 1 path, found %d", len(paths))

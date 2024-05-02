@@ -101,7 +101,7 @@ func main() {
 		}
 	}
 
-	highways := b6.FindPaths(b6.Keyed{"#highway"}, b)
+	highways := b.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Keyed{"#highway"}})
 	weights := graph.SimpleHighwayWeights{}
 	log.Printf("Build street network")
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(*networkThreshold), weights, nil, b)

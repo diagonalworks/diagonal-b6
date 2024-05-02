@@ -69,7 +69,6 @@ var worldBuilders = []struct {
 }{
 	{"Basic", buildBasicWorld},
 	{"Overlay", buildOverlayWorld},
-	{"BasicMutable", buildBasicMutableWorld},
 	{"MutableOverlay", buildMutableOverlayWorld},
 	// Fill a basic world with the given features, then add them all again in an overlay
 	{"MutableOverlayOnBasic", buildMutableOverlayWorldOnBasic},

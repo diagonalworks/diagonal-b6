@@ -21,14 +21,6 @@ func findFeature(context *api.Context, id b6.FeatureID) (b6.Feature, error) {
 	}
 }
 
-// Return the path feature with the given ID.
-func findPathFeature(context *api.Context, id b6.FeatureID) (b6.PathFeature, error) {
-	if id.Type == b6.FeatureTypePath {
-		return b6.FindPathByID(id.ToPathID(), context.World), nil
-	}
-	return nil, fmt.Errorf("%s isn't a path", id)
-}
-
 // Return the area feature with the given ID.
 func findAreaFeature(context *api.Context, id b6.FeatureID) (b6.AreaFeature, error) {
 	if id.Type == b6.FeatureTypeArea {
@@ -90,7 +82,7 @@ func findAreasContainingPoints(context *api.Context, points b6.Collection[any, b
 			return b6.Collection[b6.FeatureID, b6.AreaFeature]{}, fmt.Errorf("features don't implement geometry")
 		}
 
-		p := s2.PointFromLatLng(v.Location())
+		p := v.Point()
 		id := s2.CellFromPoint(p).ID().Parent(search.MaxIndexedCellLevel)
 		points, ok := cells[id]
 		if !ok {
@@ -223,12 +215,12 @@ func pointDegree(context *api.Context, point b6.Feature) (int, error) {
 }
 
 // Return the length of the given path in meters.
-func pathLengthMeters(context *api.Context, path b6.PathFeature) (float64, error) {
+func pathLengthMeters(context *api.Context, path b6.Geometry) (float64, error) {
 	return b6.AngleToMeters(path.Polyline().Length()), nil
 }
 
 type pathPointCollection struct {
-	path b6.Path
+	path b6.Geometry
 	i    int
 }
 
@@ -237,11 +229,11 @@ func (p *pathPointCollection) Begin() b6.Iterator[int, b6.Geometry] {
 }
 
 func (p *pathPointCollection) Count() (int, bool) {
-	return p.path.Len(), true
+	return p.path.GeometryLen(), true
 }
 
 func (p *pathPointCollection) Next() (bool, error) {
-	if p.i >= p.path.Len() {
+	if p.i >= p.path.GeometryLen() {
 		return false, nil
 	}
 	p.i++
@@ -253,7 +245,7 @@ func (p *pathPointCollection) Key() int {
 }
 
 func (p *pathPointCollection) Value() b6.Geometry {
-	return b6.GeometryFromLatLng(s2.LatLngFromPoint(p.path.Point(p.i - 1)))
+	return b6.GeometryFromLatLng(s2.LatLngFromPoint(p.path.PointAt(p.i - 1)))
 }
 
 var _ b6.AnyCollection[int, b6.Geometry] = &pathPointCollection{}
@@ -334,7 +326,7 @@ func points(context *api.Context, geometry b6.Geometry) (b6.Collection[int, b6.G
 		return b6.ArrayValuesCollection[b6.Geometry]([]b6.Geometry{geometry}).Collection(), nil
 	case b6.GeometryTypePath:
 		return b6.Collection[int, b6.Geometry]{
-			AnyCollection: &pathPointCollection{path: geometry.(b6.Path)},
+			AnyCollection: &pathPointCollection{path: geometry},
 		}, nil
 	case b6.GeometryTypeArea:
 		return b6.Collection[int, b6.Geometry]{
@@ -354,15 +346,15 @@ func pointFeatures(context *api.Context, f b6.Feature) (b6.Collection[b6.Feature
 		case b6.GeometryTypePoint:
 			points = append(points, f)
 		case b6.GeometryTypePath:
-			for i := 0; i < f.(b6.PathFeature).Len(); i++ {
-				if p := f.(b6.PathFeature).Feature(i); p != nil {
+			for i := 0; i < f.GeometryLen(); i++ {
+				if p := f.(b6.NestedPhysicalFeature).Feature(i); p != nil {
 					points = append(points, p)
 				}
 			}
 		case b6.GeometryTypeArea:
 			for i := 0; i < f.(b6.AreaFeature).Len(); i++ {
 				for _, path := range f.(b6.AreaFeature).Feature(i) {
-					for j := 0; j < path.Len(); j++ {
+					for j := 0; j < path.GeometryLen(); j++ {
 						if p := path.Feature(j); p != nil {
 							points = append(points, p)
 						}
@@ -376,22 +368,24 @@ func pointFeatures(context *api.Context, f b6.Feature) (b6.Collection[b6.Feature
 
 // Return a collection of the path features referencing the given point.
 // Keys are the ids of the respective paths.
-func pointPaths(context *api.Context, id b6.Identifiable) (b6.Collection[b6.FeatureID, b6.PathFeature], error) {
+func pointPaths(context *api.Context, id b6.Identifiable) (b6.Collection[b6.FeatureID, b6.PhysicalFeature], error) {
 	p := context.World.FindFeatureByID(id.FeatureID())
 	if p == nil {
-		return b6.Collection[b6.FeatureID, b6.PathFeature]{}, fmt.Errorf("No point with id %s", id)
+		return b6.Collection[b6.FeatureID, b6.PhysicalFeature]{}, fmt.Errorf("No point with id %s", id)
 	}
-	collection := b6.ArrayFeatureCollection[b6.PathFeature](make([]b6.PathFeature, 0))
-	paths := context.World.FindPathsByPoint(p.FeatureID())
+	collection := b6.ArrayFeatureCollection[b6.PhysicalFeature](make([]b6.PhysicalFeature, 0))
+	paths := context.World.FindReferences(p.FeatureID(), b6.FeatureTypePath)
 	for paths.Next() {
-		collection = append(collection, paths.Feature())
+		if path, ok := paths.Feature().(b6.PhysicalFeature); ok {
+			collection = append(collection, path)
+		}
 	}
 	return collection.Collection(), nil
 }
 
 // Return a collection of points along the given paths, with the given distance in meters between them.
 // Keys are the id of the respective path, values are points.
-func samplePointsAlongPaths(context *api.Context, paths b6.Collection[b6.FeatureID, b6.Path], distanceMeters float64) (b6.Collection[int, b6.Geometry], error) {
+func samplePointsAlongPaths(context *api.Context, paths b6.Collection[b6.FeatureID, b6.Geometry], distanceMeters float64) (b6.Collection[int, b6.Geometry], error) {
 	// TODO: We shouldn't need to special case this: we should be able to flatten the results of sample_points
 	// on a collection of paths.
 	seen := make(map[s2.Point]struct{})
@@ -412,91 +406,93 @@ func samplePointsAlongPaths(context *api.Context, paths b6.Collection[b6.Feature
 
 // Return a collection of points along the given path, with the given distance in meters between them.
 // Keys are ordered integers from 0, values are points.
-func samplePoints(context *api.Context, path b6.Path, distanceMeters float64) (b6.Collection[int, b6.Geometry], error) {
+func samplePoints(context *api.Context, path b6.Geometry, distanceMeters float64) (b6.Collection[int, b6.Geometry], error) {
 	points := appendUnseenSampledPoints(path, distanceMeters, make(map[s2.Point]struct{}), make([]b6.Geometry, 0, 16))
 	return b6.ArrayValuesCollection[b6.Geometry](points).Collection(), nil
 }
 
-func appendUnseenSampledPoints(p b6.Path, distanceMeters float64, seen map[s2.Point]struct{}, points []b6.Geometry) []b6.Geometry {
-	const epsilon s1.Angle = 1.6e-09 // Roughly 1cm
-	polyline := p.Polyline()
-	var step float64
-	if polyline.Length() > epsilon {
-		step = float64(b6.MetersToAngle(distanceMeters) / polyline.Length())
-	} else {
-		step = 1.0
-	}
-	j := 0.0
-	done := false
-	for !done {
-		if j >= 1.0 {
-			j = 1.0
-			done = true
+func appendUnseenSampledPoints(path b6.Geometry, distanceMeters float64, seen map[s2.Point]struct{}, points []b6.Geometry) []b6.Geometry {
+	if path.GeometryType() == b6.GeometryTypePath {
+		const epsilon s1.Angle = 1.6e-09 // Roughly 1cm
+		polyline := path.Polyline()
+		var step float64
+		if polyline.Length() > epsilon {
+			step = float64(b6.MetersToAngle(distanceMeters) / polyline.Length())
+		} else {
+			step = 1.0
 		}
-		p, _ := polyline.Interpolate(j)
-		if _, ok := seen[p]; !ok {
-			points = append(points, b6.GeometryFromLatLng(s2.LatLngFromPoint(p)))
-			seen[p] = struct{}{}
+		j := 0.0
+		done := false
+		for !done {
+			if j >= 1.0 {
+				j = 1.0
+				done = true
+			}
+			p, _ := polyline.Interpolate(j)
+			if _, ok := seen[p]; !ok {
+				points = append(points, b6.GeometryFromLatLng(s2.LatLngFromPoint(p)))
+				seen[p] = struct{}{}
+			}
+			j += step
 		}
-		j += step
 	}
 	return points
 }
 
 // Return a path formed from the points of the two given paths, in the order they occur in those paths.
-func join(context *api.Context, a b6.Path, b b6.Path) (b6.Path, error) {
-	points := make([]s2.Point, 0, a.Len()+b.Len())
+func join(context *api.Context, pathA b6.Geometry, pathB b6.Geometry) (b6.Geometry, error) {
+	points := make([]s2.Point, 0, pathA.GeometryLen()+pathB.GeometryLen())
 	i := 0
-	for i < a.Len() {
-		points = append(points, a.Point(i))
+	for i < pathA.GeometryLen() {
+		points = append(points, pathA.PointAt(i))
 		i++
 	}
 	i = 0
-	if b.Point(0) == a.Point(a.Len()-1) {
+	if pathB.PointAt(0) == pathA.PointAt(pathA.GeometryLen()-1) {
 		i++
 	}
-	for i < b.Len() {
-		points = append(points, b.Point(i))
+	for i < pathB.GeometryLen() {
+		points = append(points, pathB.PointAt(i))
 		i++
 	}
-	return b6.PathFromS2Points(points), nil
+	return b6.GeometryFromPoints(points), nil
 }
 
 // Returns a path formed by joining the two given paths.
 // If necessary to maintain consistency, the order of points is reversed,
 // determined by which points are shared between the paths. Returns an error
 // if no endpoints are shared.
-func orderedJoin(context *api.Context, a b6.Path, b b6.Path) (b6.Path, error) {
+func orderedJoin(context *api.Context, pathA b6.Geometry, pathB b6.Geometry) (b6.Geometry, error) {
 	var reverseA, reverseB bool
-	if a.Point(a.Len()-1) == b.Point(0) {
+	if pathA.PointAt(pathA.GeometryLen()-1) == pathB.PointAt(0) {
 		reverseA, reverseB = false, false
-	} else if a.Point(a.Len()-1) == b.Point(b.Len()-1) {
+	} else if pathA.PointAt(pathA.GeometryLen()-1) == pathB.PointAt(pathB.GeometryLen()-1) {
 		reverseA, reverseB = false, true
-	} else if a.Point(0) == b.Point(0) {
+	} else if pathA.PointAt(0) == pathB.PointAt(0) {
 		reverseA, reverseB = true, false
-	} else if a.Point(0) == b.Point(b.Len()-1) {
+	} else if pathA.PointAt(0) == pathB.PointAt(pathB.GeometryLen()-1) {
 		reverseA, reverseB = true, true
 	} else {
 		return nil, fmt.Errorf("Paths don't share an end vertex")
 	}
-	points := make([]s2.Point, 0, a.Len()+b.Len())
+	points := make([]s2.Point, 0, pathA.GeometryLen()+pathB.GeometryLen())
 	if reverseA {
-		for i := a.Len() - 1; i >= 0; i-- {
-			points = append(points, a.Point(i))
+		for i := pathA.GeometryLen() - 1; i >= 0; i-- {
+			points = append(points, pathA.PointAt(i))
 		}
 	} else {
-		for i := 0; i < a.Len(); i++ {
-			points = append(points, a.Point(i))
+		for i := 0; i < pathA.GeometryLen(); i++ {
+			points = append(points, pathA.PointAt(i))
 		}
 	}
 	if reverseB {
-		for i := b.Len() - 2; i >= 0; i-- {
-			points = append(points, b.Point(i))
+		for i := pathB.GeometryLen() - 2; i >= 0; i-- {
+			points = append(points, pathB.PointAt(i))
 		}
 	} else {
-		for i := 1; i < b.Len(); i++ {
-			points = append(points, b.Point(i))
+		for i := 1; i < pathB.GeometryLen(); i++ {
+			points = append(points, pathB.PointAt(i))
 		}
 	}
-	return b6.PathFromS2Points(points), nil
+	return b6.GeometryFromPoints(points), nil
 }

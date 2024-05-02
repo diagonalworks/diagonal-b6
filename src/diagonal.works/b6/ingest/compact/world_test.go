@@ -88,8 +88,8 @@ func TestPathSegmentsWithSameNamespaceInMultipleBlocks(t *testing.T) {
 
 	id := ingest.FromOSMNodeID(nodes[0].ID)
 	seen := make(map[osm.WayID]struct{})
-	for _, s := range b6.AllPaths(w.byID.FindPathsByPoint(id)) {
-		seen[osm.WayID(s.PathID().Value)] = struct{}{}
+	for _, s := range b6.AllFeatures(w.byID.FindReferences(id, b6.FeatureTypePath)) {
+		seen[osm.WayID(s.FeatureID().Value)] = struct{}{}
 	}
 
 	for _, ws := range ways {

@@ -45,29 +45,35 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	m.RemoveTag(FromOSMNodeID(caravan.ID).FeatureID(), "cuisine")
 	m.AddTag(FromOSMNodeID(dishoom.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
-	ifo := &GenericFeature{ID: FromOSMNodeID(osm.NodeID(3868276529)).FeatureID(), Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5321749, -0.1250181))}}}
+	ifo := &GenericFeature{ID: FromOSMNodeID(osm.NodeID(3868276529)).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5321749, -0.1250181))}}}
 	ifo.AddTag(b6.Tag{Key: "name", Value: b6.String("Identified Flying Object")})
 	ifo.AddTag(b6.Tag{Key: "tourism", Value: b6.String("attraction")})
 	if err := m.AddFeature(ifo); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	footway := NewPathFeature(3)
-	footway.PathID = b6.MakePathID(b6.Namespace("diagonal.works/test"), 1)
-	footway.SetPointID(0, FromOSMNodeID(caravan.ID))
-	footway.SetLatLng(1, s2.LatLngFromDegrees(51.535632, -0.126046))
-	footway.SetPointID(2, FromOSMNodeID(dishoom.ID))
+	footway := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, b6.Namespace("diagonal.works/test"), 1}}
+	footway.ModifyOrAddTag(b6.Tag{
+		b6.PathTag,
+		b6.Values([]b6.Value{
+			FromOSMNodeID(caravan.ID),
+			b6.LatLng(s2.LatLngFromDegrees(51.535632, -0.126046)),
+			FromOSMNodeID(dishoom.ID),
+		})})
 	footway.AddTag(b6.Tag{Key: "highway", Value: b6.String("footway")})
 	if err := m.AddFeature(footway); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	boundary := NewPathFeature(4)
-	boundary.PathID = b6.MakePathID(b6.Namespace("diagonal.works/test"), 2)
-	boundary.SetPointID(0, FromOSMNodeID(caravan.ID))
-	boundary.SetPointID(1, FromOSMNodeID(dishoom.ID))
-	boundary.SetLatLng(2, s2.LatLngFromDegrees(51.535632, -0.126046))
-	boundary.SetPointID(3, FromOSMNodeID(caravan.ID))
+	boundary := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, b6.Namespace("diagonal.works/test"), 2}}
+	boundary.ModifyOrAddTag(b6.Tag{
+		b6.PathTag,
+		b6.Values([]b6.Value{
+			FromOSMNodeID(caravan.ID),
+			FromOSMNodeID(dishoom.ID),
+			b6.LatLng(s2.LatLngFromDegrees(51.535632, -0.126046)),
+			FromOSMNodeID(caravan.ID),
+		})})
 	boundary.AddTag(b6.Tag{Key: "highway", Value: b6.String("footway")})
 	if err := m.AddFeature(boundary); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -75,7 +81,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 
 	square := NewAreaFeature(1)
 	square.AreaID = b6.MakeAreaID(b6.Namespace("diagonal.works/test"), 3)
-	square.SetPathIDs(0, []b6.PathID{boundary.PathID})
+	square.SetPathIDs(0, []b6.FeatureID{boundary.FeatureID()})
 	if err := m.AddFeature(square); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
