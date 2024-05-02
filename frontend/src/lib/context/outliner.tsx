@@ -30,7 +30,7 @@ export type OutlinerSpec = {
         docked: boolean;
         transient: boolean;
         coordinates: { x: number; y: number };
-        tab: string;
+        scenario: string;
     };
     request?: {
         eventType: Event;
@@ -89,7 +89,7 @@ export const OutlinerProvider = ({
     const { setApp, closeOutliner } = useAppContext();
     const viewState = useAtomValue(viewAtom);
     const { data } = useAtomValue(startupQueryAtom);
-    const { [outliner.properties.tab]: map } = useMap();
+    const { [outliner.properties.scenario]: map } = useMap();
 
     const close = useCallback(() => {
         closeOutliner(outliner.id);

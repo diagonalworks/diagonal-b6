@@ -1,7 +1,5 @@
 import { AppStore, appAtom, initialAppStore } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
-import { MapLayerProto } from '@/types/generated/ui';
-import { $FixMe } from '@/utils/defs';
 import { useAtom, useAtomValue } from 'jotai';
 import {
     PropsWithChildren,
@@ -9,9 +7,7 @@ import {
     useCallback,
     useContext,
     useEffect,
-    useMemo,
 } from 'react';
-import { MapRef } from 'react-map-gl/maplibre';
 import { OutlinerSpec, OutlinerStore } from './outliner';
 
 /**
@@ -21,8 +17,6 @@ export const AppContext = createContext<{
     app: AppStore;
     setApp: (fn: (draft: AppStore) => void) => void;
     createOutliner: (outliner: OutlinerStore) => void;
-    draggableOutliners: OutlinerStore[];
-    dockedOutliners: OutlinerStore[];
     setFixedOutliner: (id: keyof AppStore['outliners']) => void;
     setActiveOutliner: (
         id: keyof AppStore['outliners'],
@@ -33,24 +27,15 @@ export const AppContext = createContext<{
         dx: number,
         dy: number
     ) => void;
-    getVisibleMarkers: (map: MapRef) => $FixMe[];
-    queryLayers: Array<{
-        layer: MapLayerProto;
-        histogram: OutlinerStore['histogram'];
-    }>;
     closeOutliner: (id: keyof AppStore['outliners']) => void;
 }>({
     app: initialAppStore,
     setApp: () => {},
     createOutliner: () => {},
-    draggableOutliners: [],
-    dockedOutliners: [],
     setFixedOutliner: () => {},
     setActiveOutliner: () => {},
     moveOutliner: () => {},
-    getVisibleMarkers: () => [],
     closeOutliner: () => {},
-    queryLayers: [],
 });
 
 /**
@@ -84,7 +69,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                 draft.outliners[`docked-${i}`] = {
                     id: `docked-${i}`,
                     properties: {
-                        tab: 'baseline',
+                        scenario: 'baseline',
                         docked: true,
                         transient: false,
                         coordinates: { x: 0, y: 0 },
@@ -94,12 +79,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             });
         });
     }, [startupQuery.data?.docked]);
-
-    const dockedOutliners = useMemo(() => {
-        return Object.values(app.outliners).filter(
-            (outliner) => outliner.properties.docked
-        );
-    }, [app.outliners]);
 
     const _removeTransientStacks = useCallback(() => {
         setApp((draft) => {
@@ -133,36 +112,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         [setApp]
     );
 
-    const queryLayers = useMemo(() => {
-        return Object.values(app.outliners).flatMap((outliner) => {
-            return (
-                outliner.data?.proto.layers?.map((l) => ({
-                    layer: l,
-                    histogram: outliner.histogram,
-                })) || []
-            );
-        });
-    }, [app.outliners]);
-
-    const getVisibleMarkers = useCallback(
-        (map: MapRef) => {
-            const features = Object.values(app.outliners)
-                .flatMap((outliner) => outliner.data?.geoJSON || [])
-                .flat()
-                .filter((f: $FixMe) => {
-                    f.geometry.type === 'Point' &&
-                        map
-                            ?.getBounds()
-                            ?.contains(
-                                f.geometry.coordinates as [number, number]
-                            );
-                    return true;
-                });
-            return features;
-        },
-        [app.outliners]
-    );
-
     const moveOutliner = useCallback(
         (id: keyof AppStore['outliners'], dx: number, dy: number) => {
             setApp((draft) => {
@@ -189,23 +138,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         [setApp]
     );
 
-    const draggableOutliners = useMemo(() => {
-        return Object.values(app.outliners).filter(
-            (outliner) => !outliner.properties.docked
-        );
-    }, [app.outliners]);
-
     const value = {
         app,
         setApp,
         createOutliner,
-        draggableOutliners,
-        dockedOutliners,
         setActiveOutliner,
         setFixedOutliner,
         moveOutliner,
-        getVisibleMarkers,
-        queryLayers,
         closeOutliner,
     };
 

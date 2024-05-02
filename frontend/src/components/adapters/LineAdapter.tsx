@@ -23,7 +23,7 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
             id: JSON.stringify(clickable),
             properties: {
                 coordinates: { x: 10, y: 60 },
-                tab: outliner.properties.tab,
+                scenario: outliner.properties.scenario,
                 transient: outliner.properties.transient,
                 docked: outliner.properties.docked,
             },

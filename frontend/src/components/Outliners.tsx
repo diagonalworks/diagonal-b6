@@ -1,5 +1,6 @@
 import { useAppContext } from '@/lib/context/app';
 import { OutlinerProvider, OutlinerStore } from '@/lib/context/outliner';
+import { useScenarioContext } from '@/lib/context/scenario';
 import {
     DndContext,
     MouseSensor,
@@ -16,14 +17,15 @@ import { PropsWithChildren } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { StackAdapter } from './adapters/StackAdapter';
 
-export const OutlinersLayer = ({ mapId }: { mapId: string }) => {
+export const OutlinersLayer = () => {
+    const { setActiveOutliner, setFixedOutliner, moveOutliner } =
+        useAppContext();
     const {
         draggableOutliners,
         dockedOutliners,
-        setActiveOutliner,
-        setFixedOutliner,
-        moveOutliner,
-    } = useAppContext();
+        id: scenarioId,
+    } = useScenarioContext();
+
     const pointerSensor = useSensor(PointerSensor, {
         activationConstraint: {
             distance: 5,
@@ -57,7 +59,7 @@ export const OutlinersLayer = ({ mapId }: { mapId: string }) => {
                     setActiveOutliner(active.id as string, false);
                 }}
             >
-                <Droppable mapId={mapId}>
+                <Droppable mapId={scenarioId}>
                     <AnimatePresence>
                         {draggableOutliners.map((outliner) => {
                             return (

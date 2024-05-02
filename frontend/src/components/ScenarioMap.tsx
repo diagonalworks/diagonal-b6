@@ -10,7 +10,7 @@ import {
 import { DotIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { color } from 'd3-color';
 import { useAtom } from 'jotai';
-import { Feature, MapLayerMouseEvent, StyleSpecification } from 'maplibre-gl';
+import { Feature, MapLayerMouseEvent } from 'maplibre-gl';
 import { PropsWithChildren, useCallback, useMemo, useState } from 'react';
 import {
     Map as MapLibre,
@@ -24,7 +24,9 @@ import { MapControls } from './system/MapControls';
 // https://github.com/visgl/react-map-gl/discussions/2216#discussioncomment-7537888
 import { b6Path } from '@/lib/b6';
 import { useAppContext } from '@/lib/context/app';
+import { useScenarioContext } from '@/lib/context/scenario';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { twMerge } from 'tailwind-merge';
 
 export function DeckGLOverlay(props: MapboxOverlayProps) {
     const overlay = useControl(() => new DeckOverlay(props));
@@ -32,12 +34,10 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
     return null;
 }
 
-export const ScenarioMap = ({
-    id,
-    children,
-    mapStyle,
-}: { id: string; mapStyle: StyleSpecification } & PropsWithChildren) => {
-    const { createOutliner, getVisibleMarkers, queryLayers } = useAppContext();
+export const ScenarioMap = ({ children }: PropsWithChildren) => {
+    const { createOutliner } = useAppContext();
+    const { getVisibleMarkers, queryLayers, id, mapStyle, tab } =
+        useScenarioContext();
     const { [id]: map } = useMap();
     const [viewState, setViewState] = useAtom(viewAtom);
     const [cursor, setCursor] = useState<'auto' | 'pointer'>('auto');
@@ -145,13 +145,26 @@ export const ScenarioMap = ({
 
             const icon = match(marker.properties?.['-b6-icon'])
                 .with('dot', () => {
-                    return <DotIcon className="fill-graphite-80" />;
+                    return (
+                        <DotIcon
+                            className={twMerge(
+                                'fill-graphite-80',
+                                tab === 'right' && 'fill-orange-80'
+                            )}
+                        />
+                    );
                 })
                 .otherwise(() => {
                     const icon = marker.properties?.['-b6-icon'];
                     if (!icon)
                         return (
-                            <div className="w-2 h-2 rounded-full bg-ultramarine-50 border border-ultramarine-80" />
+                            <div
+                                className={twMerge(
+                                    'w-2 h-2 rounded-full bg-ultramarine-50 border border-ultramarine-80',
+                                    tab === 'right' &&
+                                        'bg-orange-50 border-orange-80'
+                                )}
+                            />
                         );
                     const iconComponentName = `${icon
                         .charAt(0)
@@ -174,7 +187,10 @@ export const ScenarioMap = ({
                     key={i}
                     longitude={marker.geometry.coordinates[0]}
                     latitude={marker.geometry.coordinates[1]}
-                    className="[&>svg]:fill-graphite-80"
+                    className={twMerge(
+                        '[&>svg]:fill-graphite-80',
+                        tab === 'right' && '[&>svg]:fill-orange-80'
+                    )}
                 >
                     {icon}
                 </Marker>
@@ -185,7 +201,7 @@ export const ScenarioMap = ({
     const handleMapClick = useCallback(
         (e: MapLayerMouseEvent) => {
             const outlinerProperties = {
-                tab: id,
+                scenario: id,
                 docked: false,
                 transient: true,
                 coordinates: e.point,

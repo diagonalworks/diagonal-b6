@@ -3,11 +3,12 @@ import { urlSearchParamsStorage } from '@/lib/storage';
 import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
 
-type Scenario = {
+export type Scenario = {
     name: string;
+    id: string;
 };
 
-type Scenarios = Record<string, Scenario>;
+export type Scenarios = Record<string, Scenario>;
 
 export const collectionAtom = atomWithStorage(
     'r',
@@ -31,6 +32,7 @@ export const initialAppStore: AppStore = {
     outliners: {},
     scenarios: {
         baseline: {
+            id: 'baseline',
             name: 'Baseline',
         },
     },
