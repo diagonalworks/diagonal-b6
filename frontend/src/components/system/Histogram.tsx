@@ -1,13 +1,15 @@
 import { useChartDimensions } from '@/lib/useChartDimensions';
 import { scaleLinear } from '@visx/scale';
 import { Text } from '@visx/text';
+import { motion } from 'framer-motion';
+import { isNull } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from './Line';
 
 const BAR_MARGIN = {
     marginTop: 1, // 1px to make space for the border
-    marginRight: 24,
+    marginRight: 32,
     marginBottom: 1,
     marginLeft: 1,
 };
@@ -28,13 +30,14 @@ export function Histogram<T>({
     selected,
     onSelect,
     selectable = false,
+    type = 'histogram',
 }: {
     /** The data to display. */
     data: T[];
     /** The accessor function for the bucket. */
     bucket: (d: T) => string;
     /** The accessor function for the value. */
-    value: (d: T) => number;
+    value: (d: T) => number | null;
     /** The accessor function for the color. */
     color: (d: T) => string;
     /** The accessor function for the label. */
@@ -44,7 +47,8 @@ export function Histogram<T>({
     selected?: T | null;
     /** Optional change handler for the value of the selected bucket. */
     onSelect?: (d: T | null) => void;
-    /** The width of the histogram. */
+    /** The type of histogram to display. */
+    type?: 'swatch' | 'histogram';
 }) {
     const [internalSelected, setInternalSelected] = useState<T | null>(null);
     const [ref, dimensions] = useChartDimensions({
@@ -53,8 +57,11 @@ export function Histogram<T>({
     });
 
     const xScale = useMemo(() => {
+        const domain = data
+            .filter((d) => !isNull(value(d)))
+            .map(value) as number[];
         return scaleLinear({
-            domain: [0, Math.max(...data.map(value))],
+            domain: [0, Math.max(...domain)],
             range: [0, dimensions.boundedWidth],
         });
     }, [data, dimensions.boundedWidth, value]);
@@ -76,20 +83,20 @@ export function Histogram<T>({
     const Wrapper = selectable ? Line.Button : React.Fragment;
 
     return (
-        <div className="flex flex-col [&_.line]:border-t-0 first:[&_.line]:border-t">
-            {data.map((d) => {
+        <div className="flex flex-col [&_.line]:border-t-0  last:[&_.line]:border-b-0">
+            {data.map((d, i) => {
                 const isSelected =
                     selectedBucket && bucket(d) === bucket(selectedBucket);
 
+                const lineValue = value(d);
+                const barLength = lineValue ? xScale(lineValue) : 0;
+
                 return (
-                    <Line>
+                    <Line key={i}>
                         <Wrapper
                             {...(selectable && {
                                 onClick: (e) => handleClick(e, d),
                             })}
-                            onClick={(e) =>
-                                selectable ? handleClick(e, d) : undefined
-                            }
                         >
                             <div
                                 ref={ref}
@@ -111,31 +118,45 @@ export function Histogram<T>({
                                         {label ? label(d) : bucket(d)}
                                     </span>
                                 </div>
-                                <svg
-                                    width={dimensions.width}
-                                    height={dimensions.height}
-                                    className=" overflow-visible"
-                                >
-                                    <rect
-                                        x={dimensions.marginLeft}
-                                        y={dimensions.marginTop}
-                                        width={xScale(value(d))}
-                                        height={BAR_HEIGHT}
-                                        fill={color(d)}
-                                        rx={1}
-                                        className="stroke-graphite-80"
-                                        strokeWidth={0.7}
-                                    />
-                                    <Text
-                                        x={xScale(value(d)) + 5}
-                                        y={BAR_HEIGHT / 2}
-                                        className="  fill-graphite-50"
-                                        verticalAnchor="middle"
-                                        fontSize={10}
+                                {/* current hack to not show 0 bucket */}
+                                {lineValue &&
+                                lineValue > 0 &&
+                                type === 'histogram' ? (
+                                    <svg
+                                        width={dimensions.width}
+                                        height={dimensions.height}
+                                        className=" overflow-visible"
                                     >
-                                        {value(d)}
-                                    </Text>
-                                </svg>
+                                        <motion.rect
+                                            animate={{
+                                                width: barLength,
+                                            }}
+                                            x={dimensions.marginLeft}
+                                            y={dimensions.marginTop}
+                                            height={BAR_HEIGHT}
+                                            fill={color(d)}
+                                            rx={1}
+                                            className="stroke-graphite-80"
+                                            strokeWidth={0.7}
+                                        />
+                                        <motion.g
+                                            animate={{
+                                                translateX: barLength + 5,
+                                                translateY: BAR_HEIGHT / 2,
+                                            }}
+                                        >
+                                            <Text
+                                                className="  fill-graphite-50"
+                                                verticalAnchor="middle"
+                                                fontSize={10}
+                                            >
+                                                {lineValue}
+                                            </Text>
+                                        </motion.g>
+                                    </svg>
+                                ) : (
+                                    <></>
+                                )}
                             </div>
                         </Wrapper>
                     </Line>

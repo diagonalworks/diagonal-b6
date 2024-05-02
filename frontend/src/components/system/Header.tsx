@@ -1,7 +1,10 @@
 import { Cross1Icon, Link2Icon } from '@radix-ui/react-icons';
-import React, { HtmlHTMLAttributes } from 'react';
+import * as PopoverPrimitive from '@radix-ui/react-popover';
+import { omit } from 'lodash';
+import React, { HtmlHTMLAttributes, useEffect } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { IconButton } from './IconButton';
+import { TooltipContent } from './Tooltip';
 
 export interface HeaderProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -30,7 +33,11 @@ const Label = React.forwardRef<
     HtmlHTMLAttributes<HTMLSpanElement>
 >(({ children, className, ...props }, forwardedRef) => {
     return (
-        <span {...props} ref={forwardedRef} className={twMerge('', className)}>
+        <span
+            {...props}
+            ref={forwardedRef}
+            className={twMerge(' overflow-hidden', className)}
+        >
             {children}
         </span>
     );
@@ -46,29 +53,69 @@ const Label = React.forwardRef<
 const Actions = React.forwardRef<
     HTMLDivElement,
     Omit<HtmlHTMLAttributes<HTMLDivElement>, 'children'> & {
-        share: boolean;
-        close: boolean;
+        share?: boolean;
+        close?: boolean;
+        slotProps?: {
+            share?: React.HTMLAttributes<HTMLButtonElement> & {
+                popover?: {
+                    open: boolean;
+                    onOpenChange: (open: boolean) => void;
+                    content: string;
+                };
+            };
+            close?: React.HTMLAttributes<HTMLButtonElement>;
+        };
     }
->(({ className, ...props }, forwardedRef) => {
-    return (
-        <div
-            {...props}
-            ref={forwardedRef}
-            className={twMerge('flex items-center', className)}
-        >
-            {props.share && (
-                <IconButton>
-                    <Link2Icon />
-                </IconButton>
-            )}
-            {props.close && (
-                <IconButton>
-                    <Cross1Icon />
-                </IconButton>
-            )}
-        </div>
-    );
-});
+>(
+    (
+        { className, close = false, share = false, slotProps, ...props },
+        forwardedRef
+    ) => {
+        useEffect(() => {
+            if (slotProps?.share?.popover?.open) {
+                const timeout = setTimeout(() => {
+                    slotProps.share?.popover?.onOpenChange(false);
+                }, 1000);
+                return () => clearTimeout(timeout);
+            }
+        }, [slotProps?.share?.popover]);
+
+        return (
+            <div
+                {...props}
+                ref={forwardedRef}
+                className={twMerge('flex items-center', className)}
+            >
+                {share && (
+                    <PopoverPrimitive.Root
+                        open={slotProps?.share?.popover?.open}
+                        onOpenChange={slotProps?.share?.popover?.onOpenChange}
+                    >
+                        <PopoverPrimitive.Trigger asChild>
+                            <IconButton {...omit(slotProps?.share, 'popover')}>
+                                <Link2Icon />
+                            </IconButton>
+                        </PopoverPrimitive.Trigger>
+                        <PopoverPrimitive.Content
+                            sideOffset={5}
+                            side="right"
+                            align="center"
+                        >
+                            <TooltipContent type="popover">
+                                {slotProps?.share?.popover?.content}
+                            </TooltipContent>
+                        </PopoverPrimitive.Content>
+                    </PopoverPrimitive.Root>
+                )}
+                {close && (
+                    <IconButton {...slotProps?.close}>
+                        <Cross1Icon />
+                    </IconButton>
+                )}
+            </div>
+        );
+    }
+);
 
 export const Header = Object.assign(Root, {
     Label,

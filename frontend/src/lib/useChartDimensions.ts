@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-type ChartDimensions = {
+export type ChartDimensions = {
     width?: number;
     height?: number;
     marginTop: number;

@@ -1,5 +1,6 @@
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible';
 import { AnimatePresence, motion } from 'framer-motion';
+import { omit } from 'lodash';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
@@ -23,11 +24,15 @@ const Root = React.forwardRef<
             value={{ collapsible: props.collapsible ?? false }}
         >
             <CollapsiblePrimitive.Root
-                {...props}
+                {...omit(props, 'collapsible')}
                 ref={forwardedRef}
                 className={twMerge(
+                    'border box-border border-graphite-30',
                     props.open &&
+                        props.collapsible &&
                         'border border-graphite-50 transition-colors w-fit  ',
+                    'stack ',
+                    '[&_.line]:border-t-0 [&_.stack]:border-0',
                     className
                 )}
                 open={props.collapsible ? props.open : true}
@@ -54,7 +59,8 @@ const Trigger = React.forwardRef<
             {...props}
             ref={forwardedRef}
             className={twMerge(
-                collapsible && 'cursor-pointer select-none',
+                collapsible &&
+                    'cursor-pointer select-none [&_.line]:data-[state=closed]:border-b-0',
                 className
             )}
         >
@@ -63,30 +69,50 @@ const Trigger = React.forwardRef<
     );
 });
 
+const variants = {
+    open: { height: 'fit-content', y: 0 },
+    collapsed: { height: 0, y: -5 },
+};
+
 const Content = React.forwardRef<
     HTMLDivElement,
     Omit<CollapsiblePrimitive.CollapsibleContentProps, 'asChild'> &
-        React.RefAttributes<HTMLDivElement>
->(({ children, className, ...props }, forwardedRef) => {
-    return (
-        <AnimatePresence mode="sync">
-            <CollapsiblePrimitive.Content {...props} ref={forwardedRef} asChild>
-                <motion.div
-                    initial={{ height: 0, y: -5 }}
-                    animate={{ height: 'fit-content', y: 0 }}
-                    exit={{ height: 0, y: -5 }}
-                    transition={{ duration: 0.5, type: 'spring' }}
-                    className={twMerge(
-                        'text-base overflow-hidden [&_.line]:border-t-0 max-h-64 overflow-y-auto',
-                        className
-                    )}
+        React.RefAttributes<HTMLDivElement> & {
+            collapsible?: boolean;
+            header?: boolean;
+        }
+>(
+    (
+        { children, collapsible, header = true, className, ...props },
+        forwardedRef
+    ) => {
+        return (
+            <AnimatePresence mode="sync">
+                <CollapsiblePrimitive.Content
+                    {...props}
+                    ref={forwardedRef}
+                    asChild
                 >
-                    {children}
-                </motion.div>
-            </CollapsiblePrimitive.Content>
-        </AnimatePresence>
-    );
-});
+                    <motion.div
+                        variants={variants}
+                        initial={collapsible ? 'collapsed' : 'open'}
+                        animate="open"
+                        exit={collapsible ? 'collapsed' : 'open'}
+                        transition={{ duration: 0.5, type: 'spring' }}
+                        className={twMerge(
+                            'text-base overflow-hidden overflow-y-auto',
+                            header &&
+                                'group-[&_.line]:border-t-0 group-[&_.stack]:border-t-0',
+                            className
+                        )}
+                    >
+                        {children}
+                    </motion.div>
+                </CollapsiblePrimitive.Content>
+            </AnimatePresence>
+        );
+    }
+);
 
 /**
  * Stack component used to render a (optionally) collapsible stack of Line components.
