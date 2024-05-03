@@ -45,11 +45,15 @@ function highlighted(string: string, matches: [number, number][]) {
 export function Shell({
     onSubmit,
     functions,
+    className,
+    placeholder,
 }: {
     /** The list of functions that can be executed. */
     functions: FunctionB6[];
     /** Optional handler for the submit event. */
     onSubmit?: (expression: string) => void;
+    className?: string;
+    placeholder?: string;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const keywordsRef = useRef<HTMLDivElement>(null);
@@ -82,7 +86,7 @@ export function Shell({
             /* Current filtering logic is a bit naive, but works for now. In the future we can
             integrate match-sorter https://github.com/kentcdodds/match-sorter */
             shouldFilter={false}
-            className="shell w-full"
+            className={twMerge('shell w-full', className)}
         >
             <Line className="flex gap-2 bg-ultramarine-10 hover:bg-ultramarine-10 w-full ">
                 <span className="text-ultramarine-70 "> b6</span>
@@ -109,6 +113,7 @@ export function Shell({
                         })}
                     </div>
                     <Command.Input
+                        placeholder={placeholder}
                         ref={inputRef}
                         value={input}
                         onSubmit={() => {
@@ -149,7 +154,7 @@ export function Shell({
                 </div>
             </Line>
             {input !== '' && (
-                <Command.List className="[&_.line]:border-t-0 w-80 first:border-t first:border-t-graphite-30  max-h-64 overflow-y-auto border-b border-b-graphite-30 ">
+                <Command.List className="[&_.line]:border-t-0  first:border-t first:border-t-graphite-30  max-h-64 overflow-y-auto border-b border-b-graphite-30 ">
                     {functionResults.map((f) => (
                         <Command.Item
                             className="[&_.line]:data-[selected=true]:bg-ultramarine-10 transition-colors [&_.line]:data-[selected=true]:border-l [&_.line]:data-[selected=true]:border-l-ultramarine-60 [&_.line]:last:border-b-0  "

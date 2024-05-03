@@ -1,12 +1,14 @@
-import { AppStore, appAtom, initialAppStore } from '@/atoms/app';
+import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
 import { useAtom, useAtomValue } from 'jotai';
+import { uniqueId } from 'lodash';
 import {
     PropsWithChildren,
     createContext,
     useCallback,
     useContext,
     useEffect,
+    useMemo,
 } from 'react';
 import { OutlinerSpec, OutlinerStore } from './outliner';
 
@@ -28,6 +30,9 @@ export const AppContext = createContext<{
         dy: number
     ) => void;
     closeOutliner: (id: keyof AppStore['outliners']) => void;
+    changedWorldScenarios: Scenario[];
+    addScenario: () => void;
+    removeScenario: (id: string) => void;
 }>({
     app: initialAppStore,
     setApp: () => {},
@@ -36,6 +41,9 @@ export const AppContext = createContext<{
     setActiveOutliner: () => {},
     moveOutliner: () => {},
     closeOutliner: () => {},
+    changedWorldScenarios: [],
+    addScenario: () => {},
+    removeScenario: () => {},
 });
 
 /**
@@ -138,6 +146,30 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         [setApp]
     );
 
+    const changedWorldScenarios = useMemo(() => {
+        return Object.values(app.scenarios).filter((o) => o.id !== 'baseline');
+    }, [app.scenarios]);
+
+    const addScenario = useCallback(() => {
+        const id = uniqueId('scenario-');
+        setApp((draft) => {
+            draft.scenarios[id] = {
+                id: id,
+                name: 'Untitled Scenario',
+            };
+            if (!draft.tabs.right) draft.tabs.right = id;
+        });
+    }, [setApp, changedWorldScenarios]);
+
+    const removeScenario = useCallback(
+        (id: string) => {
+            setApp((draft) => {
+                delete draft.scenarios[id];
+            });
+        },
+        [setApp]
+    );
+
     const value = {
         app,
         setApp,
@@ -146,6 +178,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         setFixedOutliner,
         moveOutliner,
         closeOutliner,
+        changedWorldScenarios,
+        addScenario,
+        removeScenario,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
