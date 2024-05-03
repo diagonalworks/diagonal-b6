@@ -15,10 +15,12 @@ import { WorldShellAdapter } from './adapters/ShellAdapter';
 export const ScenarioTab = ({
     id,
     mapStyle,
+    tab,
     ...props
 }: {
     id: string;
     mapStyle: StyleSpecification;
+    tab: 'left' | 'right';
 } & HTMLAttributes<HTMLDivElement>) => {
     const [showWorldShell, setShowWorldShell] = useState(false);
     const { change } = useScenarioContext();
@@ -31,19 +33,28 @@ export const ScenarioTab = ({
         <div
             {...props}
             className={twMerge(
-                'h-full border border-x-graphite-40 border-t-graphite-20 relative',
+                'h-full border border-x-graphite-40 border-t-graphite-40 border-t bg-graphite-30',
+                tab === 'right' &&
+                    'border-x-orange-40 border-t-orange-40 bg-orange-30',
                 props.className
             )}
         >
-            <ScenarioMap>
-                <GlobalShell show={showWorldShell} mapId={id} />
-                <OutlinersLayer />
-            </ScenarioMap>
-            {isUndefined(change) && id !== 'baseline' && (
-                <div className="absolute top-0 left-0 ">
-                    <ChangePanel />
-                </div>
-            )}
+            <div
+                className={twMerge(
+                    'h-full w-full relative border-2 border-graphite-30 rounded',
+                    tab === 'right' && 'border-orange-30'
+                )}
+            >
+                <ScenarioMap>
+                    <GlobalShell show={showWorldShell} mapId={id} />
+                    <OutlinersLayer />
+                </ScenarioMap>
+                {isUndefined(change) && id !== 'baseline' && (
+                    <div className="absolute top-0 left-0 ">
+                        <ChangePanel />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

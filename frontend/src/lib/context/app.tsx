@@ -33,6 +33,7 @@ export const AppContext = createContext<{
     changedWorldScenarios: Scenario[];
     addScenario: () => void;
     removeScenario: (id: string) => void;
+    setActiveScenario: (id: string) => void;
 }>({
     app: initialAppStore,
     setApp: () => {},
@@ -44,6 +45,7 @@ export const AppContext = createContext<{
     changedWorldScenarios: [],
     addScenario: () => {},
     removeScenario: () => {},
+    setActiveScenario: () => {},
 });
 
 /**
@@ -157,7 +159,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                 id: id,
                 name: 'Untitled Scenario',
             };
-            if (!draft.tabs.right) draft.tabs.right = id;
+            draft.tabs.right = id;
         });
     }, [setApp, changedWorldScenarios]);
 
@@ -165,6 +167,15 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         (id: string) => {
             setApp((draft) => {
                 delete draft.scenarios[id];
+            });
+        },
+        [setApp]
+    );
+
+    const setActiveScenario = useCallback(
+        (id: string) => {
+            setApp((draft) => {
+                draft.tabs.right = id;
             });
         },
         [setApp]
@@ -179,6 +190,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         moveOutliner,
         closeOutliner,
         changedWorldScenarios,
+        setActiveScenario,
         addScenario,
         removeScenario,
     };
