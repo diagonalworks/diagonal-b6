@@ -685,12 +685,11 @@ type MarshalledTags struct {
 }
 
 func (m MarshalledTags) AllTags() b6.Tags {
-	l, start := binary.Uvarint(m.Tags)
-	i := start
-	var tag Tag
+	var t Tags
+	t.Unmarshal(m.Tns, m.Tags)
+
 	tags := make([]b6.Tag, 0, 2)
-	for i < start+int(l) {
-		i += tag.Unmarshal(m.Tns, m.Tags[i:])
+	for _, tag := range t {
 		tags = append(tags, b6.Tag{Key: m.Strings.Lookup(tag.Key), Value: fromCompactValue(tag.Value, m.Strings, m.Nt)})
 	}
 	return tags
