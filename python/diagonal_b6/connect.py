@@ -1,6 +1,7 @@
 import grpc
 
 from diagonal_b6 import expression
+from diagonal_b6 import features
 from diagonal_b6 import VERSION
 
 from diagonal_b6 import api_pb2
@@ -20,6 +21,15 @@ class Connection:
         if self.root:
             request.root.CopyFrom(self.root.to_proto())
         return expression.from_node_proto(self.stub.Evaluate(request).result)
+
+    def list_worlds(self):
+        response = self.stub.ListWorlds(api_pb2.ListWorldsRequestProto())
+        return [features.from_id_proto(id) for id in response.ids]
+
+    def delete_world(self, id):
+        request = api_pb2.DeleteWorldRequestProto()
+        request.id.CopyFrom(id.to_proto())
+        self.stub.DeleteWorld(request)
 
 def connect_insecure(address, root=None, channel_arguments=None):
     channel = grpc.insecure_channel(address, options=channel_arguments)
