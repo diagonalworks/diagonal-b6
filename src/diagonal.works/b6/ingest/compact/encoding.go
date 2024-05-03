@@ -669,7 +669,9 @@ func (t *Tags) FromFeature(f b6.Taggable, s *encoding.StringTableBuilder, nt *Na
 
 		e := GeometryEncodingInvalid
 		if f.Get(b6.PathTag) != b6.InvalidTag() {
-			e = GeometryEncodingForPath(f.(b6.PhysicalFeature))
+			if f, ok := f.(b6.PhysicalFeature); ok {
+				e = GeometryEncodingForPath(f) // TODO(mari): fix all unsafe physical casts
+			}
 		}
 		(*t)[i].Value = toCompactValue(tag.Value, s, nt, e)
 	}
