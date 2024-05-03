@@ -15,8 +15,8 @@ func FromOSMNodeID(id osm.NodeID) b6.FeatureID {
 	return b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceOSMNode, uint64(id)}
 }
 
-func FromOSMWayID(id osm.WayID) b6.PathID {
-	return b6.MakePathID(b6.NamespaceOSMWay, uint64(id))
+func FromOSMWayID(id osm.WayID) b6.FeatureID {
+	return b6.FeatureID{b6.FeatureTypePath, b6.NamespaceOSMWay, uint64(id)}
 }
 
 func AreaIDFromOSMWayID(id osm.WayID) b6.AreaID {
@@ -317,7 +317,7 @@ func reassembleMultiPolygon(relation *osm.Relation, areaWays *IDSet, ways map[os
 	FillTagsFromOSM(&area.Tags, relation.Tags)
 	area.AreaID = AreaIDFromOSMRelationID(relation.ID)
 	for i, loops := range polygons {
-		ids := make([]b6.PathID, len(loops))
+		ids := make([]b6.FeatureID, len(loops))
 		for j, loop := range loops {
 			ids[j] = FromOSMWayID(loop)
 		}
@@ -338,30 +338,26 @@ func (s *pbfSource) Read(options ReadOptions, emit Emit, ctx context.Context) er
 		SkipRelations: options.SkipRelations && options.SkipAreas,
 		Cores:         cores,
 	}
-	points := make([]Feature, cores)
-	paths := make([]PathFeature, cores)
+	points := make([]GenericFeature, cores)
+	paths := make([]GenericFeature, cores)
 	areas := make([]AreaFeature, cores)
 	relations := make([]RelationFeature, cores)
 	f := func(element osm.Element, g int) error {
 		switch e := element.(type) {
 		case *osm.Node:
-			points[g] = FillFromOSM(e)
-			return emit(points[g], g)
+			points[g].FillFromOSM(OSMFeature{Node: e})
+			return emit(&points[g], g)
 		case *osm.Way:
-			if isWayClosed(e) {
-				if !options.SkipPaths {
-					paths[g].FillFromOSMForArea(e)
-					if err := emit(&paths[g], g); err != nil {
-						return err
-					}
+			if !options.SkipPaths {
+				paths[g].FillFromOSM(OSMFeature{Way: e, ClosedWay: isWayClosed(e)})
+				if err := emit(&paths[g], g); err != nil {
+					return err
 				}
-				if !options.SkipAreas {
-					areas[g].FillFromOSMWay(e)
-					return emit(&areas[g], g)
-				}
-			} else if !options.SkipPaths {
-				paths[g].FillFromOSM(e)
-				return emit(&paths[g], g)
+			}
+
+			if isWayClosed(e) && !options.SkipAreas {
+				areas[g].FillFromOSMWay(e)
+				return emit(&areas[g], g)
 			}
 		case *osm.Relation:
 			if isRelationArea(e) {

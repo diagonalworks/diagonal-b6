@@ -21,15 +21,6 @@ func (t ByTagKey) Len() int           { return len(t) }
 func (t ByTagKey) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
 func (t ByTagKey) Less(i, j int) bool { return t[i].Key < t[j].Key }
 
-func NewTagsFromWorld(t b6.Taggable) b6.Tags {
-	all := t.AllTags()
-	tags := make([]b6.Tag, len(all))
-	for i := range all {
-		tags[i] = all[i]
-	}
-	return tags
-}
-
 type Feature interface {
 	b6.Feature
 
@@ -37,11 +28,10 @@ type Feature interface {
 	SetTags(tags []b6.Tag)
 	AddTag(tag b6.Tag)
 	ModifyOrAddTag(tag b6.Tag) (bool, b6.Value)
+	ModifyOrAddTagAt(tag b6.Tag, index int) (bool, b6.Value)
 	RemoveTag(key string)
 	RemoveTags(keys []string)
-	RemoveAll()
-
-	References() []b6.Reference
+	RemoveAllTags()
 
 	Clone() Feature
 	MergeFrom(other Feature)
@@ -49,10 +39,6 @@ type Feature interface {
 
 func NewFeatureFromWorld(f b6.Feature) Feature {
 	switch f.FeatureID().Type {
-	case b6.FeatureTypePoint:
-		return NewGenericFeatureFromWorld(f)
-	case b6.FeatureTypePath:
-		return NewPathFeatureFromWorld(f.(b6.PathFeature))
 	case b6.FeatureTypeArea:
 		return NewAreaFeatureFromWorld(f.(b6.AreaFeature))
 	case b6.FeatureTypeRelation:
@@ -61,24 +47,24 @@ func NewFeatureFromWorld(f b6.Feature) Feature {
 		return NewCollectionFeatureFromWorld(f.(b6.CollectionFeature))
 	case b6.FeatureTypeExpression:
 		return NewExpressionFeatureFromWorld(f.(b6.ExpressionFeature))
+	default:
+		return NewGenericFeatureFromWorld(f)
 	}
 	panic(fmt.Sprintf("Can't handle feature type: %T", f))
 }
 
 func WrapFeature(f Feature, byID b6.FeaturesByID) b6.Feature {
-	switch f := f.(type) {
-	case *GenericFeature:
-		return f
-	case *PathFeature:
-		return WrapPathFeature(f, byID)
-	case *AreaFeature:
-		return WrapAreaFeature(f, byID)
-	case *RelationFeature:
-		return WrapRelationFeature(f, byID)
-	case *CollectionFeature:
-		return WrapCollectionFeature(f, byID)
-	case *ExpressionFeature:
-		return WrapExpressionFeature(f)
+	switch f.FeatureID().Type {
+	case b6.FeatureTypePoint, b6.FeatureTypePath:
+		return b6.WrapPhysicalFeature(f.(b6.PhysicalFeature), byID)
+	case b6.FeatureTypeArea:
+		return WrapAreaFeature(f.(*AreaFeature), byID)
+	case b6.FeatureTypeRelation:
+		return WrapRelationFeature(f.(*RelationFeature), byID)
+	case b6.FeatureTypeCollection:
+		return WrapCollectionFeature(f.(*CollectionFeature), byID)
+	case b6.FeatureTypeExpression:
+		return WrapExpressionFeature(f.(*ExpressionFeature))
 	}
 	panic(fmt.Sprintf("Can't wrap feature type: %T", f))
 }
@@ -86,10 +72,6 @@ func WrapFeature(f Feature, byID b6.FeaturesByID) b6.Feature {
 type GenericFeature struct {
 	b6.ID
 	b6.Tags
-}
-
-func (f *GenericFeature) References() []b6.Reference {
-	return []b6.Reference{}
 }
 
 func (f *GenericFeature) Clone() Feature {
@@ -100,8 +82,8 @@ func (f *GenericFeature) Clone() Feature {
 }
 
 func (f *GenericFeature) MergeFrom(other Feature) {
-	f.ID = other.FeatureID()
-	f.Tags.MergeFrom(NewTagsFromWorld(other))
+	f.SetFeatureID(other.FeatureID())
+	f.Tags.MergeFrom(other.AllTags().Clone())
 }
 
 func (f *GenericFeature) MarshalYAML() (interface{}, error) {
@@ -115,17 +97,37 @@ func (f *GenericFeature) MarshalYAML() (interface{}, error) {
 	return y, nil
 }
 
-func FillFromOSM(node *osm.Node) *GenericFeature {
-	f := GenericFeature{ID: FromOSMNodeID(node.ID).FeatureID()}
-	FillTagsFromOSM(&f.Tags, node.Tags)
-	f.ModifyOrAddTag(b6.Tag{Key: b6.LatLngTag, Value: b6.LatLng(node.Location.ToS2LatLng())})
-	return &f
+type OSMFeature struct {
+	*osm.Node
+	*osm.Way
+	ClosedWay bool
+}
+
+func (f *GenericFeature) FillFromOSM(o OSMFeature) {
+	if o.Node != nil {
+		f.SetFeatureID(FromOSMNodeID(o.Node.ID))
+		FillTagsFromOSM(&f.Tags, o.Node.Tags)
+
+		f.ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(o.Node.Location.ToS2LatLng())})
+	} else if o.Way != nil {
+		f.SetFeatureID(FromOSMWayID(o.Way.ID))
+		FillTagsFromOSM(&f.Tags, o.Way.Tags)
+		if o.ClosedWay {
+			f.Tags = f.Tags[0:0]
+		}
+
+		points := b6.Values(make([]b6.Value, 0, len(o.Way.Nodes)))
+		for _, id := range o.Way.Nodes {
+			points = append(points, FromOSMNodeID(id))
+		}
+		f.ModifyOrAddTag(b6.Tag{Key: b6.PathTag, Value: points})
+	}
 }
 
 func NewGenericFeatureFromWorld(f b6.Feature) *GenericFeature {
 	return &GenericFeature{
 		ID:   f.FeatureID(),
-		Tags: NewTagsFromWorld(f),
+		Tags: f.AllTags().Clone(),
 	}
 }
 
@@ -133,219 +135,14 @@ func (f *GenericFeature) ToGeoJSON() geojson.GeoJSON {
 	return b6.PhysicalFeatureToGeoJSON(f)
 }
 
-type PathMembers struct {
-	ids []b6.FeatureID
-}
-
-func NewPathMembers(n int) PathMembers {
-	return PathMembers{ids: make([]b6.FeatureID, n)}
-}
-
-func (p *PathMembers) FillFromOSM(way *osm.Way) {
-	p.ids = p.ids[0:0]
-	for _, id := range way.Nodes {
-		p.ids = append(p.ids, FromOSMNodeID(id))
-	}
-}
-
-func (p *PathMembers) Len() int {
-	return len(p.ids)
-}
-
-func (p *PathMembers) SetPointID(i int, id b6.FeatureID) {
-	p.ids[i] = id
-}
-
-func (p *PathMembers) PointID(i int) (b6.FeatureID, bool) {
-	if p.ids[i].Namespace != b6.NamespaceLatLng {
-		return p.ids[i], true
-	}
-	return b6.FeatureID{}, false
-}
-
-func (p *PathMembers) SetLatLng(i int, ll s2.LatLng) {
-	p.ids[i] = NewLatLngID(ll)
-}
-
-func (p *PathMembers) LatLng(i int) (s2.LatLng, bool) {
-	return LatLngFromID(p.ids[i])
-}
-
-func (p *PathMembers) Point(i int) (s2.Point, bool) {
-	if ll, ok := p.LatLng(i); ok {
-		return s2.PointFromLatLng(ll), true
-	}
-	return s2.Point{}, false
-}
-
-func (p *PathMembers) IsClosed() bool {
-	if begin, ok := p.PointID(0); ok {
-		if end, ok := p.PointID(p.Len() - 1); ok {
-			return begin == end
-		}
-	}
-	return false
-}
-
-func (p *PathMembers) Invert() {
-	n := len(p.ids)
-	for i := 0; i < n/2; i++ {
-		p.ids[i], p.ids[n-i-1] = p.ids[n-i-1], p.ids[i]
-	}
-}
-
-func (p *PathMembers) Clone() PathMembers {
-	clone := PathMembers{ids: make([]b6.FeatureID, len(p.ids))}
-	for i, id := range p.ids {
-		clone.ids[i] = id
-	}
-	return clone
-}
-
-func (p *PathMembers) MergeFrom(other PathMembers) {
-	i := copy(p.ids, other.ids)
-	if i < len(other.ids) {
-		p.ids = append(p.ids, other.ids[i:]...)
-	} else {
-		p.ids = p.ids[0:len(other.ids)]
-	}
-}
-
-type PathFeature struct {
-	b6.PathID
-	b6.Tags
-	PathMembers
-}
-
-func NewPathFeature(n int) *PathFeature {
-	return &PathFeature{PathMembers: NewPathMembers(n)}
-}
-
-func NewPathFeatureFromOSM(way *osm.Way) *PathFeature {
-	path := &PathFeature{}
-	path.FillFromOSM(way)
-	return path
-}
-
-func NewPathFeatureFromWorld(p b6.PathFeature) *PathFeature {
-	path := NewPathFeature(p.Len())
-	path.PathID = p.PathID()
-	path.Tags = NewTagsFromWorld(p)
-	for i := 0; i < p.Len(); i++ {
-		if point := p.Feature(i); point != nil {
-			path.SetPointID(i, point.FeatureID())
-		} else {
-			path.SetLatLng(i, s2.LatLngFromPoint(p.Point(i)))
-		}
-	}
-	return path
-}
-
-func (p *PathFeature) SetFeatureID(id b6.FeatureID) {
-	p.PathID = id.ToPathID()
-}
-
-func (p *PathFeature) FillFromOSM(way *osm.Way) {
-	p.PathID = FromOSMWayID(way.ID)
-	FillTagsFromOSM(&p.Tags, way.Tags)
-	p.PathMembers.FillFromOSM(way)
-}
-
-func (p *PathFeature) FillFromOSMForArea(way *osm.Way) {
-	p.PathID = FromOSMWayID(way.ID)
-	p.Tags = p.Tags[0:0]
-	p.PathMembers.FillFromOSM(way)
-}
-
-// AllPoints returns a list of s2.Points for the
-// points along the path, or nil if at least one point is missing,
-// together with an error
-func (p *PathFeature) AllPoints(byID b6.LocationsByID) ([]s2.Point, error) {
-	points := make([]s2.Point, p.Len())
-	for i := 0; i < p.Len(); i++ {
-		if point, ok := p.Point(i); ok {
-			points[i] = point
-		} else {
-			id, _ := p.PointID(i)
-			if ll, err := byID.FindLocationByID(id); err == nil {
-				points[i] = s2.PointFromLatLng(ll)
-			} else {
-				return nil, fmt.Errorf("Path %s missing point %s", p.PathID, id)
-			}
-		}
-	}
-	return points, nil
-}
-
-func (p *PathFeature) References() []b6.Reference {
-	references := make([]b6.Reference, 0, p.Len())
-	for i := 0; i < p.Len(); i++ {
-		if id, ok := p.PointID(i); ok {
-			references = append(references, &indexedReference{id.FeatureID(), i})
-		}
-	}
-
-	return references
-}
-
-func (p *PathFeature) Clone() Feature {
-	return p.ClonePathFeature()
-}
-
-func (p *PathFeature) ClonePathFeature() *PathFeature {
-	return &PathFeature{
-		PathID:      p.PathID,
-		Tags:        p.Tags.Clone(),
-		PathMembers: p.PathMembers.Clone(),
-	}
-}
-
-func (p *PathFeature) MergeFrom(other Feature) {
-	if path, ok := other.(*PathFeature); ok {
-		p.MergeFromPathFeature(path)
-	} else {
-		panic(fmt.Sprintf("Expected a PathFeature, found %T", other))
-	}
-}
-
-func (p *PathFeature) MergeFromPathFeature(other *PathFeature) {
-	p.PathID = other.PathID
-	p.Tags.MergeFrom(other.Tags)
-	p.PathMembers.MergeFrom(other.PathMembers)
-}
-
-func (p *PathFeature) MarshalYAML() (interface{}, error) {
-	pointsYAML := make([]interface{}, p.Len())
-	for i := 0; i < p.Len(); i++ {
-		if ll, ok := p.PathMembers.LatLng(i); ok {
-			pointsYAML[i] = LatLngYAML{LatLng: ll}
-		} else {
-			id, _ := p.PathMembers.PointID(i)
-			pointsYAML[i] = id.FeatureID()
-		}
-	}
-	y := map[string]interface{}{
-		"id":   p.PathID,
-		"path": pointsYAML,
-	}
-	if len(p.Tags) > 0 {
-		y["tags"] = p.Tags
-	}
-	return y, nil
-}
-
-func (p *PathFeature) GeometryType() b6.GeometryType {
-	return b6.GeometryTypePath
-}
-
 type AreaMembers struct {
-	ids      [][]b6.PathID
+	ids      [][]b6.FeatureID
 	polygons []*s2.Polygon
 }
 
 func NewAreaMembers(n int) AreaMembers {
 	return AreaMembers{
-		ids:      make([][]b6.PathID, n),
+		ids:      make([][]b6.FeatureID, n),
 		polygons: make([]*s2.Polygon, n),
 	}
 }
@@ -354,20 +151,20 @@ func (a *AreaMembers) Len() int {
 	return len(a.ids)
 }
 
-func (a *AreaMembers) SetPathIDs(i int, ids []b6.PathID) {
+func (a *AreaMembers) SetPathIDs(i int, ids []b6.FeatureID) {
 	a.ids[i] = ids
 	a.polygons[i] = nil
 }
 
-func (a *AreaMembers) SetPathID(i int, j int, id b6.PathID) {
+func (a *AreaMembers) SetPathID(i int, j int, id b6.FeatureID) {
 	for len(a.ids[i]) <= j {
-		a.ids[i] = append(a.ids[i], b6.PathIDInvalid)
+		a.ids[i] = append(a.ids[i], b6.FeatureIDInvalid)
 	}
 	a.ids[i][j] = id
 	a.polygons[i] = nil
 }
 
-func (a *AreaMembers) PathIDs(i int) ([]b6.PathID, bool) {
+func (a *AreaMembers) PathIDs(i int) ([]b6.FeatureID, bool) {
 	if a.ids[i] != nil {
 		return a.ids[i], true
 	}
@@ -388,7 +185,7 @@ func (a *AreaMembers) Polygon(i int) (*s2.Polygon, bool) {
 
 func (a *AreaMembers) Clone() AreaMembers {
 	clone := AreaMembers{
-		ids:      make([][]b6.PathID, len(a.ids)),
+		ids:      make([][]b6.FeatureID, len(a.ids)),
 		polygons: make([]*s2.Polygon, len(a.polygons)),
 	}
 	copy(clone.ids, a.ids)
@@ -399,7 +196,7 @@ func (a *AreaMembers) Clone() AreaMembers {
 func (a *AreaMembers) MergeFrom(other AreaMembers) {
 	if len(a.ids) < len(other.ids) {
 		for i := len(a.ids); i < len(other.ids); i++ {
-			a.ids = append(a.ids, make([]b6.PathID, len(other.ids[i])))
+			a.ids = append(a.ids, make([]b6.FeatureID, len(other.ids[i])))
 		}
 	} else {
 		a.ids = a.ids[0:len(other.ids)]
@@ -422,7 +219,7 @@ func (a *AreaMembers) MergeFrom(other AreaMembers) {
 
 func (a *AreaMembers) FillFromOSMWay(way *osm.Way) {
 	a.ids = a.ids[0:0]
-	a.ids = append(a.ids, []b6.PathID{FromOSMWayID(way.ID)})
+	a.ids = append(a.ids, []b6.FeatureID{FromOSMWayID(way.ID)})
 	a.polygons = a.polygons[0:0]
 	a.polygons = append(a.polygons, nil)
 }
@@ -437,24 +234,25 @@ func NewAreaFeature(n int) *AreaFeature {
 	return &AreaFeature{AreaMembers: NewAreaMembers(n)}
 }
 
-func NewAreaFeatureFromOSMWay(way *osm.Way) (*AreaFeature, *PathFeature) {
-	path := NewPathFeatureFromOSM(way)
+func NewAreaFeatureFromOSMWay(way *osm.Way) (*AreaFeature, *GenericFeature) {
+	path := GenericFeature{}
+	path.FillFromOSM(OSMFeature{Way: way})
 	path.Tags = make(b6.Tags, 0) // Tags only exist on the area feature
 	area := &AreaFeature{}
 	area.FillFromOSMWay(way)
-	area.SetPathIDs(0, []b6.PathID{path.PathID})
-	return area, path
+	area.SetPathIDs(0, []b6.FeatureID{path.ID})
+	return area, &path
 }
 
 func NewAreaFeatureFromWorld(a b6.AreaFeature) *AreaFeature {
 	area := NewAreaFeature(a.Len())
 	area.AreaID = a.AreaID()
-	area.Tags = NewTagsFromWorld(a)
+	area.Tags = a.AllTags().Clone()
 	for i := 0; i < a.Len(); i++ {
 		if paths := a.Feature(i); paths != nil {
-			ids := make([]b6.PathID, len(paths))
+			ids := make([]b6.FeatureID, len(paths))
 			for j, path := range paths {
-				ids[j] = path.PathID()
+				ids[j] = path.FeatureID()
 			}
 			area.SetPathIDs(i, ids)
 		} else {
@@ -503,7 +301,7 @@ func (a *AreaFeature) References() []b6.Reference {
 	for i := 0; i < a.Len(); i++ {
 		if ids, ok := a.PathIDs(i); ok {
 			for _, id := range ids {
-				references = append(references, id.FeatureID())
+				references = append(references, id)
 			}
 		}
 	}
@@ -587,7 +385,7 @@ func NewRelationFeature(n int) *RelationFeature {
 func NewRelationFeatureFromWorld(r b6.RelationFeature) *RelationFeature {
 	relation := NewRelationFeature(r.Len())
 	relation.RelationID = r.RelationID()
-	relation.Tags = NewTagsFromWorld(r)
+	relation.Tags = r.AllTags().Clone()
 	for i := 0; i < r.Len(); i++ {
 		relation.Members[i] = r.Member(i)
 	}
@@ -713,7 +511,7 @@ func (c *CollectionFeature) SetFeatureID(id b6.FeatureID) {
 func NewCollectionFeatureFromWorld(c b6.CollectionFeature) *CollectionFeature {
 	feature := &CollectionFeature{
 		CollectionID: c.CollectionID(),
-		Tags:         NewTagsFromWorld(c),
+		Tags:         c.AllTags().Clone(),
 		sorted:       c.IsSortedByKey(),
 	}
 
@@ -855,18 +653,9 @@ func (e *ExpressionFeature) UnmarshalYAML(unmarshal func(interface{}) error) err
 func NewExpressionFeatureFromWorld(e b6.ExpressionFeature) *ExpressionFeature {
 	return &ExpressionFeature{
 		ExpressionID: e.ExpressionID(),
-		Tags:         NewTagsFromWorld(e),
+		Tags:         e.AllTags().Clone(),
 		Expression:   e.Expression().Clone(),
 	}
-}
-
-type PathPosition struct {
-	Path     *PathFeature
-	Position int
-}
-
-func (p *PathPosition) IsFirstOrLast() bool {
-	return p.Position == 0 || p.Position == p.Path.Len()-1
 }
 
 type FeaturesByID map[b6.FeatureID]Feature
@@ -904,7 +693,7 @@ func (f *FeaturesByID) FindMutableFeatureByID(id b6.FeatureID) Feature {
 func (f *FeaturesByID) FindLocationByID(id b6.FeatureID) (s2.LatLng, error) {
 	if feature, ok := (*f)[id.FeatureID()]; ok {
 		if f, ok := feature.(b6.Geometry); ok && f.GeometryType() == b6.GeometryTypePoint {
-			return f.Location(), nil
+			return s2.LatLngFromPoint(f.Point()), nil
 		}
 	}
 
@@ -972,29 +761,6 @@ func feedFeatures(c chan<- Feature, done <-chan struct{}, f *FeaturesByID, r *Fe
 	}
 }
 
-type IndexedReference interface {
-	b6.Reference
-	Index() int
-	SetIndex(i int)
-}
-
-type indexedReference struct {
-	source b6.FeatureID
-	index  int
-}
-
-func (r *indexedReference) Source() b6.FeatureID {
-	return r.source
-}
-
-func (r *indexedReference) Index() int {
-	return r.index
-}
-
-func (r *indexedReference) SetIndex(i int) {
-	r.index = i
-}
-
 type FeatureReferencesByID map[b6.FeatureID][]b6.Reference
 
 func NewFeatureReferences() *FeatureReferencesByID {
@@ -1046,15 +812,17 @@ func (f *FeatureReferencesByID) AddFeature(feature Feature) {
 		for i := range references {
 			if references[i].Source() == feature.FeatureID() {
 				referenced = true
-				if reference, ok := (*f)[reference.Source()][i].(IndexedReference); ok { // Overwrite the index to deal with paths, which have duplicate start/end point.
+				if reference, ok := (*f)[reference.Source()][i].(b6.IndexedReference); ok { // Overwrite the index to deal with paths, which have duplicate start/end point.
 					reference.SetIndex(index) // Only applies to paths atm; we may need to limit if we introduce other indexed references. TODO: consider moving this logic further down.
 				}
 			}
 		}
 
 		if !referenced {
-			if _, ok := reference.(IndexedReference); ok {
-				(*f)[reference.Source()] = append(references, &indexedReference{feature.FeatureID(), index})
+			if _, ok := reference.(b6.IndexedReference); ok {
+				ref := b6.IndexedFeatureID{FeatureID: feature.FeatureID()}
+				ref.SetIndex(index)
+				(*f)[reference.Source()] = append(references, &ref)
 			} else {
 				(*f)[reference.Source()] = append(references, feature.FeatureID())
 			}

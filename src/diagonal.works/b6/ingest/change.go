@@ -57,12 +57,11 @@ func (a *AddFeatures) fillFromFeature(f *geojson.Feature, id uint64) {
 
 	switch geometry := f.Geometry.Coordinates.(type) {
 	case geojson.Point:
-		feature = &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, b6.NamespacePrivate, id}, Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromDegrees(geometry.Lat, geometry.Lng))}}}
+		feature = &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, b6.NamespacePrivate, id}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(geometry.Lat, geometry.Lng))}}}
 	case geojson.LineString:
-		path := NewPathFeature(len(geometry))
-		path.PathID = b6.MakePathID(b6.NamespacePrivate, id)
+		path := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, b6.NamespacePrivate, id}}
 		for j, point := range geometry {
-			path.SetLatLng(j, point.ToS2LatLng())
+			path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.LatLng(point.ToS2LatLng())}, j)
 		}
 		feature = path
 	case geojson.Polygon:

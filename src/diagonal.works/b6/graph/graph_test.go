@@ -13,25 +13,25 @@ import (
 func TestShortestPath(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
 
-	fromPath := b6.FindPathByID(ingest.FromOSMWayID(687471322), camden)
+	fromPath := camden.FindFeatureByID(ingest.FromOSMWayID(687471322))
 	if fromPath == nil {
 		t.Fatal("Failed to find way")
 	}
-	from := fromPath.Feature(0)
-	if from == nil {
-		t.Fatal("Expected a PointFeature")
+	from := fromPath.Reference(0).Source()
+	if !from.IsValid() {
+		t.Fatal("Expected a point reference")
 	}
 
-	toPath := b6.FindPathByID(ingest.FromOSMWayID(367808662), camden)
+	toPath := camden.FindFeatureByID(ingest.FromOSMWayID(367808662))
 	if toPath == nil {
 		t.Fatal("Failed to find way")
 	}
-	to := toPath.Feature(0)
-	if to == nil {
-		t.Fatal("Expected a PointFeature")
+	to := toPath.Reference(0).Source()
+	if !to.IsValid() {
+		t.Fatal("Expected a point reference")
 	}
 
-	path := ComputeShortestPath(from.FeatureID(), to.FeatureID(), 1000.0, BusWeights{}, camden)
+	path := ComputeShortestPath(from, to, 1000.0, BusWeights{}, camden)
 	wayIDs := make(map[osm.WayID]bool)
 	for _, segment := range path {
 		wayIDs[osm.WayID(segment.Feature.FeatureID().Value)] = true
@@ -80,7 +80,7 @@ func TestShortestPathWithOverriddenWeight(t *testing.T) {
 	from := ingest.FromOSMNodeID(7799663850)
 	to := ingest.FromOSMNodeID(5336117979)
 	path := ComputeShortestPath(from, to, 500.0, SimpleWeights{}, w)
-	if len(path) != 1 || path[0].Feature.PathID().Value != uint64(ways[0].ID) {
+	if len(path) != 1 || path[0].Feature.FeatureID().Value != uint64(ways[0].ID) {
 		t.Error("Expected shortest path to use road")
 	}
 
@@ -91,7 +91,7 @@ func TestShortestPathWithOverriddenWeight(t *testing.T) {
 		t.Fatal(err)
 	}
 	path = ComputeShortestPath(from, to, 500.0, SimpleWeights{}, w)
-	if len(path) != 1 || path[0].Feature.PathID().Value != uint64(ways[1].ID) {
+	if len(path) != 1 || path[0].Feature.FeatureID().Value != uint64(ways[1].ID) {
 		t.Error("Expected shortest path to use cycleway")
 	}
 }
@@ -119,8 +119,8 @@ func TestShortestPathWithTwoJoinedPaths(t *testing.T) {
 
 	expected := 1
 	if len(path) == expected {
-		if path[0].Feature.PathID().Value != uint64(ways[0].ID) {
-			t.Errorf("Expected way %d, found %d", ways[0].ID, path[0].Feature.PathID().Value)
+		if path[0].Feature.FeatureID().Value != uint64(ways[0].ID) {
+			t.Errorf("Expected way %d, found %d", ways[0].ID, path[0].Feature.FeatureID().Value)
 		}
 	} else {
 		t.Errorf("Expected path with %d segments, found %d", expected, len(path))
@@ -215,7 +215,7 @@ func TestInterpolateShortestPathDistances(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := b6.FindPathByID(ingest.FromOSMWayID(558345071), w)
+	path := w.FindFeatureByID(ingest.FromOSMWayID(558345071)).(b6.PhysicalFeature)
 
 	cases := []struct {
 		first         int
@@ -224,10 +224,10 @@ func TestInterpolateShortestPathDistances(t *testing.T) {
 		lastDistance  float64
 		expected      []float64
 	}{
-		{0, path.Len() - 1, 100.0, 200.0, []float64{100.0, 113.0, 116.0, 141.0}},
-		{0, path.Len() - 1, 100.0, 50.0, []float64{91.0, 78.0, 75.0, 50.0}},
-		{path.Len() - 1, 0, 200.0, 100.0, []float64{141.0, 116.0, 113.0, 100.0}},
-		{0, path.Len() - 1, 100.0, math.Inf(1), []float64{100.0, 113.0, 116.0, 141.0}},
+		{0, path.GeometryLen() - 1, 100.0, 200.0, []float64{100.0, 113.0, 116.0, 141.0}},
+		{0, path.GeometryLen() - 1, 100.0, 50.0, []float64{91.0, 78.0, 75.0, 50.0}},
+		{path.GeometryLen() - 1, 0, 200.0, 100.0, []float64{141.0, 116.0, 113.0, 100.0}},
+		{0, path.GeometryLen() - 1, 100.0, math.Inf(1), []float64{100.0, 113.0, 116.0, 141.0}},
 	}
 
 	for _, c := range cases {
@@ -301,7 +301,7 @@ func TestBusWeights(t *testing.T) {
 
 	weights := BusWeights{}
 	for _, test := range tests {
-		path := b6.FindPathByID(ingest.FromOSMWayID(test.id), camden)
+		path := camden.FindFeatureByID(ingest.FromOSMWayID(test.id)).(b6.PhysicalFeature)
 		if path == nil {
 			t.Errorf("Failed to find way %d", test.id)
 			continue
@@ -324,7 +324,7 @@ func TestShortestPathFromConnectedBuildingWithNoEntrance(t *testing.T) {
 	entrances := 0
 	for i := 0; i < lighterman.Len(); i++ {
 		for _, path := range lighterman.Feature(i) {
-			for j := 0; j < path.Len(); j++ {
+			for j := 0; j < path.GeometryLen(); j++ {
 				if path.Feature(j).Get("entrance").IsValid() {
 					entrances++
 				}
@@ -357,7 +357,7 @@ func TestShortestPathFromBuildingWithMoreThanOneEntrance(t *testing.T) {
 	entrances := 0
 	for i := 0; i < stPancras.Len(); i++ {
 		for _, path := range stPancras.Feature(i) {
-			for j := 0; j < path.Len(); j++ {
+			for j := 0; j < path.GeometryLen(); j++ {
 				if path.Feature(j).Get("entrance").IsValid() {
 					entrances++
 				}
@@ -430,7 +430,7 @@ func TestElevationWeights(t *testing.T) {
 	path := ComputeShortestPath(
 		ingest.FromOSMNodeID(33000703),
 		ingest.FromOSMNodeID(970237231),
-		500.0, ElevationWeights{UpHillHard: true}, camdenWithHill)
+		500.0, ElevationWeights{UpHillHard: true, w: camdenWithHill}, camdenWithHill)
 	wayIDs := make(map[osm.WayID]bool)
 	for _, segment := range path {
 		wayIDs[osm.WayID(segment.Feature.FeatureID().Value)] = true
@@ -448,27 +448,27 @@ func TestElevationWeights(t *testing.T) {
 func TestBuildRoute(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
 
-	fromPath := b6.FindPathByID(ingest.FromOSMWayID(687471322), camden)
+	fromPath := camden.FindFeatureByID(ingest.FromOSMWayID(687471322))
 	if fromPath == nil {
 		t.Fatal("Failed to find way")
 	}
-	from := fromPath.Feature(0)
-	if from == nil {
-		t.Fatal("Expected a PointFeature")
+	from := fromPath.Reference(0).Source()
+	if !from.IsValid() {
+		t.Fatal("Expected a point reference")
 	}
 
-	toPath := b6.FindPathByID(ingest.FromOSMWayID(367808662), camden)
+	toPath := camden.FindFeatureByID(ingest.FromOSMWayID(367808662))
 	if toPath == nil {
 		t.Fatal("Failed to find way")
 	}
-	to := toPath.Feature(0)
-	if to == nil {
-		t.Fatal("Expected a PointFeature")
+	to := toPath.Reference(0).Source()
+	if !to.IsValid() {
+		t.Fatal("Expected a point reference")
 	}
 
-	s := NewShortestPathSearchFromPoint(from.FeatureID())
-	s.ExpandSearchTo(to.FeatureID(), 1000.0, WalkingTimeWeights{Speed: WalkingMetersPerSecond}, camden)
-	route := s.BuildRoute(to.FeatureID())
+	s := NewShortestPathSearchFromPoint(from)
+	s.ExpandSearchTo(to, 1000.0, WalkingTimeWeights{Speed: WalkingMetersPerSecond}, camden)
+	route := s.BuildRoute(to)
 
 	if steps := len(route.Steps); steps < 35 || steps > 45 {
 		t.Errorf("Unexpected number of route steps %d", steps)

@@ -109,9 +109,9 @@ func TestPoints(t *testing.T) {
 		t.Fatalf("Expected %d points, found %d", len(granarySquare)+len(lighterman), len(points))
 	}
 
-	center := s2.LatLngFromDegrees(51.53541, -0.12530)
+	center := s2.PointFromLatLng(s2.LatLngFromDegrees(51.53541, -0.12530))
 	for _, v := range points {
-		if d := b6.AngleToMeters(v.Location().Distance(center)); d > 100.0 {
+		if d := b6.AngleToMeters(v.Point().Distance(center)); d > 100.0 {
 			t.Errorf("Point too far away: expected <= 100.0m, found %fm", d)
 		}
 	}
@@ -124,12 +124,12 @@ func TestSamplePointsAlongPaths(t *testing.T) {
 		World: granarySquare,
 	}
 
-	features, err := findPathFeatures(context, b6.Keyed{Key: "#highway"})
+	features, err := find(context, b6.Keyed{Key: "#highway"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	paths := b6.AdaptCollection[b6.FeatureID, b6.Path](features)
+	paths := b6.AdaptCollection[b6.FeatureID, b6.Geometry](features)
 	sampled, err := samplePointsAlongPaths(context, paths, 20.0)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -144,9 +144,9 @@ func TestSamplePointsAlongPaths(t *testing.T) {
 		t.Errorf("Number of sampled points outside expected bounds: %d", len(points))
 	}
 
-	center := s2.LatLngFromDegrees(51.53539, -0.12537)
+	center := s2.PointFromLatLng(s2.LatLngFromDegrees(51.53539, -0.12537))
 	for _, v := range points {
-		if v.Location().Distance(center) > b6.MetersToAngle(500) {
+		if v.Point().Distance(center) > b6.MetersToAngle(500) {
 			t.Error("Point too far away from the center of the test data area")
 		}
 	}
@@ -159,11 +159,11 @@ func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
 		World: granarySquare,
 	}
 
-	features, err := findPathFeatures(context, b6.Keyed{Key: "#highway"})
+	features, err := find(context, b6.Keyed{Key: "#highway"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
-	paths := b6.AdaptCollection[b6.FeatureID, b6.Path](features)
+	paths := b6.AdaptCollection[b6.FeatureID, b6.Geometry](features)
 
 	runs := make([][]s2.Point, 4)
 	for run := range runs {
@@ -182,7 +182,7 @@ func TestSamplePointsAlongPathsIsConsistentAcrossRuns(t *testing.T) {
 				break
 			}
 
-			runs[run] = append(runs[run], s2.PointFromLatLng(i.Value().Location()))
+			runs[run] = append(runs[run], i.Value().Point())
 		}
 	}
 
@@ -206,8 +206,8 @@ func TestJoin(t *testing.T) {
 	}
 
 	// Two connected paths
-	a := b6.FindPathByID(ingest.FromOSMWayID(377974549), granarySquare)
-	b := b6.FindPathByID(ingest.FromOSMWayID(834245629), granarySquare)
+	a := granarySquare.FindFeatureByID(ingest.FromOSMWayID(377974549)).(b6.Geometry)
+	b := granarySquare.FindFeatureByID(ingest.FromOSMWayID(834245629)).(b6.Geometry)
 
 	if a == nil || b == nil {
 		t.Fatal("Failed to find expected paths")
@@ -225,20 +225,20 @@ func TestJoin(t *testing.T) {
 
 func TestOrderedJoin(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	path := b6.FindPathByID(ingest.FromOSMWayID(377974549), granarySquare)
-	midVertex := path.Len() / 2
+	path := granarySquare.FindFeatureByID(ingest.FromOSMWayID(377974549)).(b6.Geometry)
+	midVertex := path.GeometryLen() / 2
 
-	aPoints := make([]s2.Point, 0, path.Len()/2)
+	aPoints := make([]s2.Point, 0, path.GeometryLen()/2)
 	for i := midVertex; i >= 0; i-- {
-		aPoints = append(aPoints, path.Point(i))
+		aPoints = append(aPoints, path.PointAt(i))
 	}
-	a := b6.PathFromS2Points(aPoints)
+	a := b6.GeometryFromPoints(aPoints)
 
-	bPoints := make([]s2.Point, 0, path.Len()/2)
-	for i := midVertex; i < path.Len(); i++ {
-		bPoints = append(bPoints, path.Point(i))
+	bPoints := make([]s2.Point, 0, path.GeometryLen()/2)
+	for i := midVertex; i < path.GeometryLen(); i++ {
+		bPoints = append(bPoints, path.PointAt(i))
 	}
-	b := b6.PathFromS2Points(bPoints)
+	b := b6.GeometryFromPoints(bPoints)
 
 	joined, err := orderedJoin(&api.Context{}, a, b)
 	if err != nil {
@@ -247,7 +247,7 @@ func TestOrderedJoin(t *testing.T) {
 
 	midpoint, _ := interpolate(&api.Context{}, joined, 0.5)
 	expected, _ := interpolate(&api.Context{}, path, 0.5)
-	if midpoint.Location().Distance(expected.Location()) > 0.000001 {
+	if midpoint.Point().Distance(expected.Point()) > 0.000001 {
 		t.Error("Midpoint of joined paths too far from expected point")
 	}
 }
@@ -257,7 +257,7 @@ func TestInterpolate(t *testing.T) {
 	context := &api.Context{
 		World: granarySquare,
 	}
-	path := b6.FindPathByID(ingest.FromOSMWayID(377974549), granarySquare)
+	path := granarySquare.FindFeatureByID(ingest.FromOSMWayID(377974549)).(b6.Geometry)
 	if path == nil {
 		t.Error("Failed to find expected path")
 	}
@@ -268,27 +268,27 @@ func TestInterpolate(t *testing.T) {
 	}
 
 	expected := s2.PointFromLatLng(s2.LatLngFromDegrees(51.5361869, -0.1258445))
-	if d := b6.AngleToMeters(expected.Distance(s2.PointFromLatLng(interpolated.Location()))); d > 0.1 {
+	if d := b6.AngleToMeters(expected.Distance(interpolated.Point())); d > 0.1 {
 		t.Errorf("Interpolated point not close to expected location: %fm", d)
 	}
 }
 
 func TestOrderedJoinPathsWithNoSharedPoint(t *testing.T) {
 	granarySquare := camden.BuildGranarySquareForTests(t)
-	path := b6.FindPathByID(ingest.FromOSMWayID(377974549), granarySquare)
-	midVertex := path.Len() / 2
+	path := granarySquare.FindFeatureByID(ingest.FromOSMWayID(377974549)).(b6.Geometry)
+	midVertex := path.GeometryLen() / 2
 
-	aPoints := make([]s2.Point, 0, path.Len()/2)
+	aPoints := make([]s2.Point, 0, path.GeometryLen()/2)
 	for i := midVertex; i >= 0; i-- {
-		aPoints = append(aPoints, path.Point(i))
+		aPoints = append(aPoints, path.PointAt(i))
 	}
-	a := b6.PathFromS2Points(aPoints)
+	a := b6.GeometryFromPoints(aPoints)
 
-	bPoints := make([]s2.Point, 0, path.Len()/2)
-	for i := midVertex + 1; i < path.Len(); i++ { // Don't add the shared point
-		bPoints = append(bPoints, path.Point(i))
+	bPoints := make([]s2.Point, 0, path.GeometryLen()/2)
+	for i := midVertex + 1; i < path.GeometryLen(); i++ { // Don't add the shared point
+		bPoints = append(bPoints, path.PointAt(i))
 	}
-	b := b6.PathFromS2Points(bPoints)
+	b := b6.GeometryFromPoints(bPoints)
 
 	_, err := orderedJoin(&api.Context{}, a, b)
 	if err == nil {

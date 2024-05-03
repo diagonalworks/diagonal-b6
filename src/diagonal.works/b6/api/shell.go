@@ -734,6 +734,12 @@ func simplifyCallBuildingQuery(expression b6.Expression, functions SymbolArgCoun
 			simplified.AnyExpression = e
 			return Simplify(simplified, functions), true
 		}
+	case "typed":
+		if e, ok := simplifyCallBuildingTypedQuery(s, call); ok {
+			simplified := expression
+			simplified.AnyExpression = e
+			return Simplify(simplified, functions), true
+		}
 	case "keyed", "tagged":
 		if e, ok := simplifyCallBuildingKeyedTaggedQuery(s, call); ok {
 			simplified := expression
@@ -795,6 +801,25 @@ func simplifyCallBuildingKeyedTaggedQuery(symbol string, call *b6.CallExpression
 				Query: b6.Tagged{Key: args[0], Value: b6.String(args[1])},
 			}, true
 		}
+	}
+	return nil, false
+}
+
+func simplifyCallBuildingTypedQuery(symbol string, call *b6.CallExpression) (b6.AnyExpression, bool) {
+	var qarg *b6.QueryExpression
+	var typ string
+	for _, arg := range call.Args {
+		if q, ok := arg.AnyExpression.(*b6.QueryExpression); ok {
+			qarg = q
+		} else if t, ok := arg.AnyExpression.(*b6.StringExpression); ok {
+			typ = string(*t)
+		}
+	}
+	switch symbol {
+	case "typed":
+		return &b6.QueryExpression{
+			Query: b6.Typed{Type: b6.FeatureTypeFromString(typ), Query: qarg.Query},
+		}, true
 	}
 	return nil, false
 }

@@ -25,11 +25,10 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 		t.Fatalf("Failed to build base index: %s", err)
 	}
 
-	path := ingest.NewPathFeature(2)
-	path.PathID = b6.MakePathID(b6.NamespaceDiagonalAccessPoints, 42)
-	path.Tags.AddTag(b6.Tag{Key: "#highway", Value: b6.String("cycleway")})
-	path.SetPointID(0, ingest.FromOSMNodeID(camden.LightermanEntranceNode))
-	path.SetPointID(1, ingest.FromOSMNodeID(camden.StableStreetBridgeNorthEndNode))
+	path := &ingest.GenericFeature{}
+	path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespaceDiagonalAccessPoints, 42})
+	path.AddTag(b6.Tag{Key: "#highway", Value: b6.String("cycleway")})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{ingest.FromOSMNodeID(camden.LightermanEntranceNode), ingest.FromOSMNodeID(camden.StableStreetBridgeNorthEndNode)})})
 
 	w, err := NewWorldFromData(index)
 	if err != nil {
@@ -56,7 +55,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 		t.Fatal("Expected to find overlaid path via FindFeatures")
 	}
 
-	ps := w.FindPathsByPoint(ingest.FromOSMNodeID(camden.LightermanEntranceNode))
+	ps := w.FindReferences(ingest.FromOSMNodeID(camden.LightermanEntranceNode), b6.FeatureTypePath)
 	found = false
 	for ps.Next() {
 		if ps.FeatureID() == path.FeatureID() {

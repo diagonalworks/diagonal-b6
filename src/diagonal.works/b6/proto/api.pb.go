@@ -693,6 +693,7 @@ type FeatureProto struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Feature:
+	//
 	//	*FeatureProto_Point
 	//	*FeatureProto_Path
 	//	*FeatureProto_Area
@@ -1041,6 +1042,7 @@ type NodeProto struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Node:
+	//
 	//	*NodeProto_Symbol
 	//	*NodeProto_Literal
 	//	*NodeProto_Call
@@ -1173,6 +1175,7 @@ type LiteralNodeProto struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Value:
+	//
 	//	*LiteralNodeProto_NilValue
 	//	*LiteralNodeProto_BoolValue
 	//	*LiteralNodeProto_StringValue
@@ -1963,6 +1966,7 @@ type QueryProto struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Query:
+	//
 	//	*QueryProto_All
 	//	*QueryProto_Empty
 	//	*QueryProto_Keyed

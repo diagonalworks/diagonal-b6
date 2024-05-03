@@ -361,10 +361,10 @@ func accessibleFromOrigin(ds []b6.FeatureID, origin b6.Feature, destinations b6.
 		}
 	}
 	for id := range s.PointDistances() {
-		if id.FeatureID() == origin.FeatureID() {
+		if id == origin.FeatureID() {
 			continue
 		}
-		if point := w.FindFeatureByID(id.FeatureID()); point != nil {
+		if point := w.FindFeatureByID(id); point != nil {
 			if destinations.Matches(point, w) {
 				ds = append(ds, point.FeatureID())
 			}
@@ -432,16 +432,16 @@ func pathsToReachFeatures(context *api.Context, origin b6.Feature, options b6.Un
 	s, err := newShortestPathSearch(origin, options, distance, graph.PointsAndAreas, context.World)
 	if err == nil {
 		points := 0
-		counts := make(map[b6.PathID]int)
+		counts := make(map[b6.FeatureID]int)
 		for id := range s.PointDistances() {
 			if point := context.World.FindFeatureByID(id); point != nil {
 				if query.Matches(point, context.World) {
 					points++
-					last := b6.PathIDInvalid
+					last := b6.FeatureIDInvalid
 					for _, segment := range s.BuildPath(id) {
-						if segment.Feature.PathID() != last {
-							counts[segment.Feature.PathID()]++
-							last = segment.Feature.PathID()
+						if segment.Feature.FeatureID() != last {
+							counts[segment.Feature.FeatureID()]++
+							last = segment.Feature.FeatureID()
 						}
 					}
 				}
@@ -454,11 +454,11 @@ func pathsToReachFeatures(context *api.Context, origin b6.Feature, options b6.Un
 				if query.Matches(area, context.World) {
 					areas++
 					if point := context.World.FindFeatureByID(pointID); point != nil {
-						last := b6.PathIDInvalid
+						last := b6.FeatureIDInvalid
 						for _, segment := range s.BuildPath(pointID) {
-							if segment.Feature.PathID() != last {
-								counts[segment.Feature.PathID()]++
-								last = segment.Feature.PathID()
+							if segment.Feature.FeatureID() != last {
+								counts[segment.Feature.FeatureID()]++
+								last = segment.Feature.FeatureID()
 							}
 						}
 					}
@@ -485,7 +485,7 @@ func reachableArea(context *api.Context, origin b6.Feature, options b6.UntypedCo
 		for id := range distances {
 			if point := context.World.FindFeatureByID(id); point != nil {
 				if p, ok := point.(b6.Geometry); ok && p.GeometryType() == b6.GeometryTypePoint {
-					query.AddPoint(s2.PointFromLatLng(p.Location()))
+					query.AddPoint(p.Point())
 				}
 			}
 		}
@@ -501,17 +501,16 @@ func connect(c *api.Context, a b6.Feature, b b6.Feature) (ingest.Change, error) 
 	connected := false
 	for segments.Next() {
 		segment := segments.Segment()
-		if segment.LastFeature().FeatureID() == b.FeatureID() {
+		if segment.LastFeatureID() == b.FeatureID() {
 			connected = true
 			break
 		}
 	}
 	if !connected {
-		path := ingest.NewPathFeature(2)
-		path.PathID = b6.MakePathID(b6.NamespaceDiagonalAccessPoints, 1)
-		path.SetPointID(0, a.FeatureID())
-		path.SetPointID(1, b.FeatureID())
-		*add = append(*add, path)
+		path := ingest.GenericFeature{}
+		path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespaceDiagonalAccessPoints, 1})
+		path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{a.FeatureID(), b.FeatureID()})})
+		*add = append(*add, &path)
 	}
 	return add, nil
 }
@@ -528,7 +527,7 @@ func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error)
 	} else {
 		return nil, fmt.Errorf("expected a PhysicalFeature, found: %T", feature)
 	}
-	highways := b6.FindPaths(q, c.World)
+	highways := c.World.FindFeatures(b6.Typed{b6.FeatureTypePath, q})
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
 	strategy := graph.UseExisitingPoints{Connections: graph.NewConnections()}
 	graph.ConnectFeature(feature, network, b6.MetersToAngle(500.0), c.World, strategy)
@@ -541,7 +540,7 @@ func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error)
 // More efficient than using map with connect-to-network, as the street
 // network is only computed once.
 func connectToNetworkAll(c *api.Context, features b6.Collection[any, b6.FeatureID]) (ingest.Change, error) {
-	highways := b6.FindPaths(b6.Keyed{Key: "#highway"}, c.World)
+	highways := c.World.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Keyed{Key: "#highway"}})
 	network := graph.BuildStreetNetwork(highways, b6.MetersToAngle(500.0), graph.SimpleHighwayWeights{}, nil, c.World)
 	strategy := graph.UseExisitingPoints{Connections: graph.NewConnections()}
 	i := features.Begin()

@@ -263,12 +263,12 @@ func newFeatureFromS2Region(r s2.Region) ingest.Feature {
 	case s2.Point:
 		return &ingest.GenericFeature{
 			ID:   b6.FeatureIDInvalid,
-			Tags: []b6.Tag{{Key: b6.LatLngTag, Value: b6.LatLng(s2.LatLngFromPoint(g))}},
+			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromPoint(g))}},
 		}
 	case *s2.Polyline:
-		f := ingest.NewPathFeature(len(*g))
+		f := &ingest.GenericFeature{}
 		for i, p := range *g {
-			f.SetLatLng(i, s2.LatLngFromPoint(p))
+			f.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.LatLng(s2.LatLngFromPoint(p))}, i)
 		}
 		return f
 	case *s2.Polygon:

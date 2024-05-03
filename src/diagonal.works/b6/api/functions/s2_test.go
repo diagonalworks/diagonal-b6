@@ -22,7 +22,7 @@ func TestS2Points(t *testing.T) {
 		t.Fatal("Failed to find Granary Square")
 	}
 
-	center := s2.LatLngFromDegrees(51.53536, -0.12539)
+	center := s2.PointFromLatLng(s2.LatLngFromDegrees(51.53536, -0.12539))
 	points, err := s2Points(context, area, 21, 21)
 	if err != nil {
 		t.Fatalf("Expected no error, found %s", err)
@@ -41,7 +41,7 @@ func TestS2Points(t *testing.T) {
 		}
 		count++
 
-		if d := b6.AngleToMeters(center.Distance(i.Value().Location())); d > maxDistance {
+		if d := b6.AngleToMeters(center.Distance(i.Value().Point())); d > maxDistance {
 			maxDistance = d
 		}
 	}

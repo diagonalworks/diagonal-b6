@@ -54,7 +54,6 @@ var numberInterface = reflect.TypeOf((*b6.Number)(nil)).Elem()
 var queryProtoPtrType = reflect.TypeOf((*pb.QueryProto)(nil))
 var featureIDType = reflect.TypeOf(b6.FeatureID{})
 
-var pathIDType = reflect.TypeOf(b6.PathID{})
 var areaIDType = reflect.TypeOf(b6.AreaID{})
 var relationIDType = reflect.TypeOf(b6.RelationID{})
 var collectionIDType = reflect.TypeOf(b6.CollectionID{})
@@ -75,12 +74,6 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 	case featureIDType:
 		if vv, ok := v.Interface().(b6.Identifiable); ok {
 			return reflect.ValueOf(vv.FeatureID()), nil
-		}
-	case pathIDType:
-		if vv, ok := v.Interface().(b6.Identifiable); ok {
-			if id := vv.FeatureID(); id.Type == b6.FeatureTypePath {
-				return reflect.ValueOf(id.ToPathID()), nil
-			}
 		}
 	case areaIDType:
 		if vv, ok := v.Interface().(b6.Identifiable); ok {

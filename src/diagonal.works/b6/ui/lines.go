@@ -9,6 +9,7 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	pb "diagonal.works/b6/proto"
+	"github.com/golang/geo/s2"
 )
 
 func getStringExpression(f b6.Feature, key string) *pb.NodeProto {
@@ -277,7 +278,7 @@ func AtomFromValue(value interface{}, w b6.World) *pb.AtomProto {
 		case b6.Geometry:
 			switch v.GeometryType() {
 			case b6.GeometryTypePoint:
-				ll := v.Location()
+				ll := s2.LatLngFromPoint(v.Point())
 				return AtomFromString(fmt.Sprintf("%f,%f", ll.Lat.Degrees(), ll.Lng.Degrees()))
 			case b6.GeometryTypePath:
 				return AtomFromString("Path")
@@ -396,7 +397,7 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 	substacks = append(substacks, substack)
 
 	if point, ok := f.(b6.PhysicalFeature); ok && point.GeometryType() == b6.GeometryTypePoint {
-		paths := b6.AllPaths(w.FindPathsByPoint(point.FeatureID()))
+		paths := b6.AllFeatures(w.FindReferences(point.FeatureID(), b6.FeatureTypePath))
 		substack := &pb.SubstackProto{Collapsable: true}
 		line := leftRightValueLineFromValues("Paths", len(paths), w)
 		substack.Lines = append(substack.Lines, line)
@@ -406,15 +407,15 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 		substacks = append(substacks, substack)
 	}
 
-	if path, ok := f.(b6.PathFeature); ok {
+	if path, ok := f.(b6.NestedPhysicalFeature); ok && path.GeometryType() == b6.GeometryTypePath {
 		substack := &pb.SubstackProto{Collapsable: true}
-		line := leftRightValueLineFromValues("Points", path.Len(), w)
+		line := leftRightValueLineFromValues("Points", path.GeometryLen(), w)
 		substack.Lines = append(substack.Lines, line)
-		for i := 0; i < path.Len(); i++ {
+		for i := 0; i < path.GeometryLen(); i++ {
 			if point := path.Feature(i); point != nil {
 				substack.Lines = append(substack.Lines, ValueLineFromValue(point, w))
 			} else {
-				substack.Lines = append(substack.Lines, ValueLineFromValue(path.Point(i), w))
+				substack.Lines = append(substack.Lines, ValueLineFromValue(path.PointAt(i), w))
 			}
 		}
 		substacks = append(substacks, substack)

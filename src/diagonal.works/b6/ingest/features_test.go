@@ -50,7 +50,7 @@ func TestClonePath(t *testing.T) {
 func TestCloneArea(t *testing.T) {
 	lighterman := NewAreaFeature(1)
 	lighterman.AreaID = AreaIDFromOSMWayID(427900370)
-	lighterman.SetPathIDs(0, []b6.PathID{FromOSMWayID(427900370)})
+	lighterman.SetPathIDs(0, []b6.FeatureID{FromOSMWayID(427900370)})
 	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
 	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
@@ -74,7 +74,7 @@ func TestCloneRelation(t *testing.T) {
 func TestCloneCollection(t *testing.T) {
 	collection := CollectionFeature{
 		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
-		Keys:         []interface{}{b6.PathID{Namespace: b6.NamespaceDiagonalEntrances, Value: 777}},
+		Keys:         []interface{}{b6.FeatureID{Type: b6.FeatureTypePath, Namespace: b6.NamespaceDiagonalEntrances, Value: 777}},
 		Values:       []interface{}{"i wanna be the one to walk in the sun"},
 		Tags:         []b6.Tag{{Key: "by", Value: b6.String("chromatics")}},
 	}
@@ -148,20 +148,20 @@ func TestMergePath(t *testing.T) {
 func TestMergeArea(t *testing.T) {
 	lighterman := NewAreaFeature(1)
 	lighterman.AreaID = AreaIDFromOSMWayID(427900370)
-	lighterman.SetPathIDs(0, []b6.PathID{FromOSMWayID(427900370)})
+	lighterman.SetPathIDs(0, []b6.FeatureID{FromOSMWayID(427900370)})
 	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
 	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
 
 	gasholders := NewAreaFeature(3)
 	gasholders.AreaID = AreaIDFromOSMRelationID(7972217)
-	gasholders.SetPathIDs(0, []b6.PathID{FromOSMWayID(544908184)})
-	gasholders.SetPathIDs(1, []b6.PathID{FromOSMWayID(544908185)})
-	gasholders.SetPathIDs(2, []b6.PathID{FromOSMWayID(54490818)})
+	gasholders.SetPathIDs(0, []b6.FeatureID{FromOSMWayID(544908184)})
+	gasholders.SetPathIDs(1, []b6.FeatureID{FromOSMWayID(544908185)})
+	gasholders.SetPathIDs(2, []b6.FeatureID{FromOSMWayID(54490818)})
 	gasholders.AddTag(b6.Tag{Key: "name", Value: b6.String("Gasholder Apartments")})
 
 	openreach := NewAreaFeature(1)
 	openreach.AreaID = AreaIDFromOSMWayID(11095199)
-	openreach.SetPathIDs(0, []b6.PathID{FromOSMWayID(803234786), FromOSMWayID(802221851)})
+	openreach.SetPathIDs(0, []b6.FeatureID{FromOSMWayID(803234786), FromOSMWayID(802221851)})
 	openreach.AddTag(b6.Tag{Key: "name", Value: b6.String("BT Openreach")})
 	openreach.AddTag(b6.Tag{Key: "building", Value: b6.String("commercial")})
 	openreach.AddTag(b6.Tag{Key: "building:levels", Value: b6.String("5")})
@@ -215,13 +215,13 @@ func TestMergeRelation(t *testing.T) {
 func TestMergeCollection(t *testing.T) {
 	before := CollectionFeature{
 		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
-		Keys:         []interface{}{b6.PathID{Namespace: b6.NamespaceDiagonalEntrances, Value: 11}},
+		Keys:         []interface{}{b6.FeatureID{Type: b6.FeatureTypePath, Namespace: b6.NamespaceDiagonalEntrances, Value: 11}},
 		Values:       []interface{}{"i cant find my chill"},
 	}
 
 	after := CollectionFeature{
 		CollectionID: b6.MakeCollectionID(b6.NamespacePrivate, 1),
-		Keys:         []interface{}{b6.PathID{Namespace: b6.NamespaceDiagonalEntrances, Value: 11}},
+		Keys:         []interface{}{b6.FeatureID{Type: b6.FeatureTypePath, Namespace: b6.NamespaceDiagonalEntrances, Value: 11}},
 		Values:       []interface{}{"i must have lost it"},
 		Tags:         []b6.Tag{{Key: "carpenter", Value: b6.String("nonsense")}},
 	}

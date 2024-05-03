@@ -15,7 +15,7 @@ func ValidateFeature(feature Feature, o *ValidateOptions, features b6.FeaturesBy
 	}
 
 	if feature.FeatureID().Type == b6.FeatureTypePath {
-		return ValidatePath(feature.(*PathFeature), o, features)
+		return ValidatePath(feature.(b6.PhysicalFeature), o, features)
 	}
 
 	if feature.FeatureID().Type == b6.FeatureTypeArea {
@@ -31,28 +31,28 @@ type ValidateOptions struct {
 	InvertClockwisePaths bool
 }
 
-func ValidatePath(p *PathFeature, o *ValidateOptions, features b6.LocationsByID) error {
+func ValidatePath(p b6.PhysicalFeature, o *ValidateOptions, features b6.LocationsByID) error {
 	if p == nil {
 		return fmt.Errorf("ValidatePath: path is nil")
 	}
-	if !p.PathID.IsValid() {
-		return fmt.Errorf("%s: invalid ID", p.PathID)
+	if !p.FeatureID().IsValid() {
+		return fmt.Errorf("%s: invalid ID", p.FeatureID())
 	}
-	if p.Len() < 2 {
-		return fmt.Errorf("%s: %d points, expected 2 or more", p.FeatureID(), p.Len())
+	if p.GeometryLen() < 2 {
+		return fmt.Errorf("%s: %d points, expected 2 or more", p.FeatureID(), p.GeometryLen())
 	}
-	points, err := p.AllPoints(features)
+	points, err := pathPoints(p, features)
 	if err != nil {
-		return fmt.Errorf("%s: %s", p.PathID, err)
+		return fmt.Errorf("%s: %s", p.FeatureID(), err)
 	}
-	if p.IsClosed() {
+	if p.AllTags().ClosedPath() {
 		loop := s2.LoopFromPoints(points[0 : len(points)-1])
 		if err := loop.Validate(); err != nil {
 			return fmt.Errorf("%s: invalid loop: %s", p.FeatureID(), err)
 		}
 		if loop.Area() > 2.0*math.Pi {
 			if o.InvertClockwisePaths {
-				p.Invert()
+				invertPoints(p.(Feature))
 			} else {
 				return fmt.Errorf("%s: ordered clockwise", p.FeatureID())
 			}
@@ -61,11 +61,43 @@ func ValidatePath(p *PathFeature, o *ValidateOptions, features b6.LocationsByID)
 	return nil
 }
 
-func ValidatePathForArea(p b6.PathFeature) error {
-	if p.Len() < 3 {
-		return fmt.Errorf("%s: %d points, expected 3 or more", p.FeatureID(), p.Len())
+func invertPoints(f Feature) {
+	if refs := f.Get(b6.PathTag); refs.IsValid() {
+		if refs, ok := refs.Value.(b6.Values); ok {
+			n := len(refs)
+			for i := 0; i < n/2; i++ {
+				(refs)[i], (refs)[n-i-1] = (refs)[n-i-1], (refs)[i]
+			}
+
+			f.ModifyOrAddTag(b6.Tag{b6.PathTag, refs})
+		}
 	}
-	if p.Point(0) != p.Point(p.Len()-1) {
+}
+
+// pathPoints returns a list of s2.Points for the points along the path,
+// or nil if at least one point is missing, together with an error.
+func pathPoints(f b6.PhysicalFeature, byID b6.LocationsByID) ([]s2.Point, error) {
+	points := make([]s2.Point, f.GeometryLen())
+	for i := 0; i < f.GeometryLen(); i++ {
+		if point := f.PointAt(i); point.Norm() != 0 {
+			points[i] = point
+		} else {
+			id := f.Reference(i).Source()
+			if ll, err := byID.FindLocationByID(id); err == nil {
+				points[i] = s2.PointFromLatLng(ll)
+			} else {
+				return nil, fmt.Errorf("Path %s missing point %s", f.FeatureID(), id)
+			}
+		}
+	}
+	return points, nil
+}
+
+func ValidatePathForArea(p b6.PhysicalFeature) error {
+	if p.GeometryLen() < 3 {
+		return fmt.Errorf("%s: %d points, expected 3 or more", p.FeatureID(), p.GeometryLen())
+	}
+	if p.PointAt(0) != p.PointAt(p.GeometryLen()-1) {
 		return fmt.Errorf("%s: not closed", p.FeatureID())
 	}
 	// ValidatePath will have already ensured that closed paths are clockwise
@@ -79,8 +111,8 @@ func ValidateArea(a *AreaFeature, features b6.FeaturesByID) error {
 	for i := 0; i < a.Len(); i++ {
 		if ids, ok := a.PathIDs(i); ok {
 			for _, id := range ids {
-				if path := b6.FindPathByID(id, features); path != nil {
-					if err := ValidatePathForArea(path); err != nil {
+				if path := features.FindFeatureByID(id); path != nil {
+					if err := ValidatePathForArea(path.(b6.PhysicalFeature)); err != nil {
 						return err
 					}
 				} else {

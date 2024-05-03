@@ -8,6 +8,7 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/encoding"
 	"diagonal.works/b6/ingest"
+	"github.com/golang/geo/s2"
 )
 
 // Deprecated.
@@ -70,7 +71,7 @@ func addPoint(_ *api.Context, point b6.Geometry, id b6.FeatureID, tags b6.Collec
 	p := &ingest.GenericFeature{
 		ID: id,
 		Tags: []b6.Tag{
-			{Key: b6.LatLngTag, Value: b6.LatLng(point.Location())},
+			{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromPoint(point.Point()))},
 		}}
 
 	t := tags.Begin()
