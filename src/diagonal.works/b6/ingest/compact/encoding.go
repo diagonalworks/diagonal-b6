@@ -45,11 +45,11 @@ type Header struct {
 }
 
 func (h *Header) Marshal(buffer []byte) int {
-	return encoding.MarshalStruct(h, buffer[0:])
+	return encoding.MarshalStruct(h, buffer)
 }
 
 func (h *Header) Unmarshal(buffer []byte) int {
-	return encoding.UnmarshalStruct(h, buffer[0:])
+	return encoding.UnmarshalStruct(h, buffer)
 }
 
 func (h *Header) UnmarshalVersion(buffer []byte) string {
@@ -75,11 +75,11 @@ type BlockHeader struct {
 }
 
 func (b *BlockHeader) Marshal(buffer []byte) int {
-	return encoding.MarshalStruct(b, buffer[0:])
+	return encoding.MarshalStruct(b, buffer)
 }
 
 func (b *BlockHeader) Unmarshal(buffer []byte) int {
-	return encoding.UnmarshalStruct(b, buffer[0:])
+	return encoding.UnmarshalStruct(b, buffer)
 }
 
 const (
@@ -336,16 +336,16 @@ func (l *LatLng) ToS2LatLng() s2.LatLng {
 }
 
 func (l *LatLng) Marshal(_ TypeAndNamespace, buffer []byte) int {
-	binary.LittleEndian.PutUint32(buffer[0:], EncodeValueType(b6.ValueTypeLatLng, uint32(l.LatE7)).(uint32))
-	binary.LittleEndian.PutUint32(buffer[4:], uint32(l.LngE7))
-	return 8
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeLatLng, uint64(l.LatE7)))
+	return i + binary.PutUvarint(buffer[i:], uint64(l.LngE7))
 }
 
 func (l *LatLng) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
-	lat, _ := DecodeValue(buffer, uint32(0))
-	l.LatE7 = int32(lat.(uint32))
-	l.LngE7 = int32(binary.LittleEndian.Uint32(buffer[4:]))
-	return 8
+	lat, i := DecodeValue(buffer)
+	l.LatE7 = int32(lat)
+	lng, j := binary.Uvarint(buffer[i:])
+	l.LngE7 = int32(lng)
+	return i + j
 }
 
 func (l *LatLng) MaxSize() int {
@@ -365,7 +365,7 @@ func LatLngFromS2Point(p s2.Point) LatLng {
 type LatLngs []LatLng
 
 func (lls LatLngs) Marshal(_ TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingLatLngs, len(lls))).(uint64))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingLatLngs, len(lls))))
 	return i + lls.MarshalWithoutLength(buffer[i:])
 }
 
@@ -381,8 +381,8 @@ func (lls LatLngs) MarshalWithoutLength(buffer []byte) int {
 }
 
 func (lls *LatLngs) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
-	v, i := DecodeValue(buffer, uint64(0))
-	return i + lls.UnmarshalWithoutLength(DecodeGeometryLen(v.(uint64)), buffer[i:])
+	v, i := DecodeValue(buffer)
+	return i + lls.UnmarshalWithoutLength(DecodeGeometryLen(v), buffer[i:])
 }
 
 func (lls *LatLngs) MaxSize() int {
@@ -416,37 +416,18 @@ type Value interface {
 	MaxSize() int // Bytes needed for encoding.
 }
 
-func EncodeValueType(t b6.ValueType, v interface{}) interface{} {
-	switch v := v.(type) {
-	case uint32:
-		if e := v << ValueTypeBits; e>>ValueTypeBits != v {
-			panic("Can't encode value type")
-		} else {
-			e |= uint32(t)
-			return e
-		}
-	case uint64:
-		if e := v << ValueTypeBits; e>>ValueTypeBits != v {
-			panic("Can't encode value type")
-		} else {
-			e |= uint64(t)
-			return e
-		}
+func EncodeValueType(t b6.ValueType, v uint64) uint64 {
+	if e := v << ValueTypeBits; e>>ValueTypeBits != v {
+		panic("Can't encode value type")
+	} else {
+		e |= uint64(t)
+		return e
 	}
-	return nil
 }
 
-func DecodeValue(buffer []byte, t interface{}) (interface{}, int) {
-	switch t.(type) {
-	case uint32:
-		v := binary.LittleEndian.Uint32(buffer[0:])
-		return v >> ValueTypeBits, 4
-	case uint64:
-		v, n := binary.Uvarint(buffer[0:])
-		return v >> ValueTypeBits, n
-	}
-
-	return nil, -1
+func DecodeValue(buffer []byte) (uint64, int) {
+	v, n := binary.Uvarint(buffer)
+	return v >> ValueTypeBits, n
 }
 
 func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value {
@@ -540,12 +521,12 @@ type Tag struct {
 type Int int
 
 func (i *Int) Marshal(_ TypeAndNamespace, buffer []byte) int {
-	return binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeString, uint64(*i)).(uint64))
+	return binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeString, uint64(*i)))
 }
 
 func (i *Int) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
-	v, n := DecodeValue(buffer, uint64(0))
-	*i = Int(v.(uint64))
+	v, n := DecodeValue(buffer)
+	*i = Int(v)
 	return n
 }
 
@@ -558,15 +539,8 @@ func (t *Tag) Marshal(tns TypeAndNamespace, buffer []byte) int {
 	return i + t.Value.Marshal(tns, buffer[i:])
 }
 
-func (t *Tag) UnmarshalValueType(buffer []byte) b6.ValueType {
-	key, i := binary.Uvarint(buffer)
-	t.Key = int(key)
-	vandtype, _ := binary.Uvarint(buffer[i:])
-	return b6.ValueType(vandtype & ((1 << ValueTypeBits) - 1))
-}
-
-func unmarshalValue(buffer []byte) Value {
-	v, _ := binary.Uvarint(buffer[0:])
+func inferValueType(buffer []byte) Value {
+	v, _ := binary.Uvarint(buffer)
 	switch b6.ValueType(v & ((1 << ValueTypeBits) - 1)) {
 	case b6.ValueTypeString:
 		i := Int(0)
@@ -592,13 +566,13 @@ func unmarshalValue(buffer []byte) Value {
 func (t *Tag) Unmarshal(tns TypeAndNamespace, buffer []byte) int {
 	key, i := binary.Uvarint(buffer)
 	t.Key = int(key)
-	t.Value = unmarshalValue(buffer[i:])
+	t.Value = inferValueType(buffer[i:])
 	return i + t.Value.Unmarshal(tns, buffer[i:])
 }
 
 func (t *Tag) MaxSize(tns TypeAndNamespace) int {
 	buffer := make([]byte, binary.MaxVarintLen64+t.Value.MaxSize()) // Key is always string / encoded as int.
-	return t.Marshal(tns, buffer[0:])
+	return t.Marshal(tns, buffer)
 }
 
 type Tags []Tag
@@ -668,11 +642,10 @@ func (t *Tags) FromFeature(f b6.Taggable, s *encoding.StringTableBuilder, nt *Na
 		(*t)[i].Key = s.Lookup(tag.Key)
 
 		e := GeometryEncodingInvalid
-		if f.Get(b6.PathTag) != b6.InvalidTag() {
-			if f, ok := f.(b6.PhysicalFeature); ok {
-				e = GeometryEncodingForPath(f) // TODO(mari): fix all unsafe physical casts
-			}
+		if f, ok := f.(b6.PhysicalFeature); ok && f.Get(b6.PathTag) != b6.InvalidTag() {
+			e = GeometryEncodingForPath(f) // TODO(mari): fix all unsafe physical casts
 		}
+
 		(*t)[i].Value = toCompactValue(tag.Value, s, nt, e)
 	}
 }
@@ -837,7 +810,7 @@ func (rs References) Less(i, j int) bool {
 }
 
 func (rs References) Marshal(primary TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingReferences, len(rs))).(uint64))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingReferences, len(rs))))
 	return i + rs.MarshalWithoutLength(primary, buffer[i:])
 }
 
@@ -854,8 +827,8 @@ func (rs References) MarshalWithoutLength(primary TypeAndNamespace, buffer []byt
 }
 
 func (rs *References) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
-	v, i := DecodeValue(buffer, uint64(0))
-	return i + rs.UnmarshalWithoutLength(DecodeGeometryLen(v.(uint64)), primary, buffer[i:])
+	v, i := DecodeValue(buffer)
+	return i + rs.UnmarshalWithoutLength(DecodeGeometryLen(v), primary, buffer[i:])
 }
 
 func (rs *References) MaxSize() int {
@@ -1014,7 +987,7 @@ type ReferenceAndLatLng struct {
 type ReferencesAndLatLngs []ReferenceAndLatLng
 
 func (g *ReferencesAndLatLngs) Marshal(primary TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingMixed, len(*g))).(uint64))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingMixed, len(*g))))
 	references := make(Bits, len(*g))
 	for j, r := range *g {
 		references[j] = r.Reference != ReferenceInvald
@@ -1037,8 +1010,8 @@ func (g *ReferencesAndLatLngs) Marshal(primary TypeAndNamespace, buffer []byte) 
 }
 
 func (g *ReferencesAndLatLngs) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
-	v, i := DecodeValue(buffer, uint64(0))
-	return i + g.UnmarshalWithoutLength(DecodeGeometryLen(v.(uint64)), primary, buffer[i:])
+	v, i := DecodeValue(buffer)
+	return i + g.UnmarshalWithoutLength(DecodeGeometryLen(v), primary, buffer[i:])
 }
 
 func (g *ReferencesAndLatLngs) MaxSize() int {
@@ -1724,13 +1697,13 @@ type NamespaceIndex struct {
 }
 
 func (n *NamespaceIndex) Marshal(buffer []byte) int {
-	i := binary.PutUvarint(buffer[0:], uint64(n.TypeAndNamespace))
+	i := binary.PutUvarint(buffer, uint64(n.TypeAndNamespace))
 	i += binary.PutUvarint(buffer[i:], uint64(n.Index))
 	return i
 }
 
 func (n *NamespaceIndex) Unmarshal(buffer []byte) int {
-	tn, i := binary.Uvarint(buffer[0:])
+	tn, i := binary.Uvarint(buffer)
 	index, l := binary.Uvarint(buffer[i:])
 	n.TypeAndNamespace = TypeAndNamespace(tn)
 	n.Index = int(index)
@@ -1851,7 +1824,7 @@ func (t *TokenMap) FindPossibleIndices(token string) TokenMapIterator {
 type NamespaceIndicies []NamespaceIndex
 
 func (n *NamespaceIndicies) Marshal(buffer []byte) int {
-	i := binary.PutUvarint(buffer[0:], uint64(len(*n)))
+	i := binary.PutUvarint(buffer, uint64(len(*n)))
 	for _, v := range *n {
 		i += v.Marshal(buffer[i:])
 	}
@@ -1860,7 +1833,7 @@ func (n *NamespaceIndicies) Marshal(buffer []byte) int {
 
 func (n *NamespaceIndicies) Unmarshal(buffer []byte) int {
 	*n = (*n)[0:0]
-	l, i := binary.Uvarint(buffer[0:])
+	l, i := binary.Uvarint(buffer)
 	var v NamespaceIndex
 	for j := 0; j < int(l); j++ {
 		i += v.Unmarshal(buffer[i:])
