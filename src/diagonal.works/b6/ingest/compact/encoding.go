@@ -22,7 +22,7 @@ import (
 
 // A semver 2.0.0 compliant version for the index format. Indicies generated
 // with a different major version will fail to load.
-const Version = "0.0.2"
+const Version = "2.0.0"
 
 func init() {
 	if l := encoding.MarshalledSize(Header{}); l != HeaderLength {
