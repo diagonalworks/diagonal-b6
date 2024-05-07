@@ -523,7 +523,9 @@ func connect(c *api.Context, a b6.Feature, b b6.Feature) (ingest.Change, error) 
 func connectToNetwork(c *api.Context, feature b6.Feature) (ingest.Change, error) {
 	q := b6.Intersection{b6.Keyed{Key: "#highway"}}
 	if p, ok := feature.(b6.PhysicalFeature); ok {
-		q = append(q, b6.NewIntersectsCap(s2.CapFromCenterAngle(b6.Centroid(p), b6.MetersToAngle(500.0))))
+		if centroid, ok := b6.Centroid(p); ok {
+			q = append(q, b6.NewIntersectsCap(s2.CapFromCenterAngle(centroid, b6.MetersToAngle(500.0))))
+		}
 	} else {
 		return nil, fmt.Errorf("expected a PhysicalFeature, found: %T", feature)
 	}

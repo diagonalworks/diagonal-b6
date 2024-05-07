@@ -19,7 +19,10 @@ const verbose = false
 const verboseGeoJSON = false
 
 func sightline(context *api.Context, from b6.Geometry, radius float64) (b6.Area, error) {
-	return b6.AreaFromS2Polygon(Sightline(from.Point(), b6.MetersToAngle(radius), context.World)), nil
+	if centroid, ok := b6.Centroid(from); ok {
+		return b6.AreaFromS2Polygon(Sightline(centroid, b6.MetersToAngle(radius), context.World)), nil
+	}
+	return b6.InvalidArea{}, nil
 }
 
 func Sightline(center s2.Point, radius s1.Angle, w b6.World) *s2.Polygon {
@@ -793,4 +796,59 @@ func SightlineUsingPolarCoordinates2(center s2.Point, radius s1.Angle, w b6.Worl
 		panic(fmt.Sprintf("bad loop: %s", err))
 	}
 	return s2.PolygonFromLoops([]*s2.Loop{loop})
+}
+
+const entranceApproachDistanceMeters = 4.0
+
+func pointApproach(entrance b6.Feature, area geometry.MultiPolygon, w b6.World) (s2.Point, bool) {
+	segments := w.Traverse(entrance.FeatureID())
+	for segments.Next() {
+		s := segments.Segment()
+		if h := s.Feature.Get("#highway"); h.IsValid() {
+			p := s.Polyline()
+			var approach s2.Point
+			if l := p.Length(); l > b6.MetersToAngle(entranceApproachDistanceMeters) {
+				approach, _ = p.Interpolate(float64(b6.MetersToAngle(entranceApproachDistanceMeters) / l))
+			} else {
+				approach, _ = p.Interpolate(0.5)
+			}
+			if !area.ContainsPoint(approach) {
+				return approach, true
+			}
+		}
+	}
+	return s2.Point{}, false
+}
+
+func possibleEntraces(area b6.AreaFeature) []b6.Feature {
+	all := make([]b6.Feature, 0)
+	entrances := make([]b6.Feature, 0)
+	for i := 0; i < area.Len(); i++ {
+		boundary := area.Feature(i)[0]
+		for j := 0; j < boundary.GeometryLen(); j++ {
+			if point := boundary.Feature(j); point != nil {
+				all = append(all, point)
+				if entrance := point.Get("entrance"); entrance.IsValid() {
+					entrances = append(entrances, point)
+				}
+			}
+		}
+	}
+	if len(entrances) > 0 {
+		return entrances
+	} else {
+		return all
+	}
+}
+
+func entranceApproach(c *api.Context, area b6.AreaFeature) (b6.Geometry, error) {
+	if area != nil && area.Len() > 0 {
+		m := area.MultiPolygon()
+		for _, entrance := range possibleEntraces(area) {
+			if approach, ok := pointApproach(entrance, m, c.World); ok {
+				return b6.GeometryFromPoint(approach), nil
+			}
+		}
+	}
+	return b6.InvalidGeometry{}, nil
 }
