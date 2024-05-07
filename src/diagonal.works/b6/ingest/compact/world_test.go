@@ -41,6 +41,46 @@ func TestValidateWorld(t *testing.T) {
 	ingest.ValidateWorld("Compact", build, t)
 }
 
+func TestPointPathValueTypesCorrectlyInferred(t *testing.T) {
+	nodes := []osm.Node{
+		{
+			ID:       9663680708,
+			Location: osm.LatLng{Lat: 58.2859244, Lng: -6.7920486},
+			Tags:     []osm.Tag{},
+		},
+		{
+			ID:       9663680707,
+			Location: osm.LatLng{Lat: 58.2856653, Lng: -6.7915911},
+			Tags:     []osm.Tag{},
+		},
+	}
+
+	ways := [1][]osm.Way{
+		{
+			osm.Way{
+				ID:    1051579980,
+				Nodes: []osm.NodeID{9663680708, 9663680707},
+				Tags:  []osm.Tag{{Key: "highway", Value: "path"}},
+			},
+		},
+	}
+
+	w := NewWorld()
+	if err := mergeOSM(nodes, ways[0], []osm.Relation{}, nil, w, &ingest.BuildOptions{Cores: 2}); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	point := w.FindFeatureByID(ingest.FromOSMNodeID(9663680708))
+	if point == nil {
+		t.Fatalf("Expected to find point feature")
+	}
+
+	tags := point.AllTags()
+	if len(tags) != 1 {
+		t.Fatalf("Expected one tag got %d", len(tags))
+	}
+}
+
 func TestPathSegmentsWithSameNamespaceInMultipleBlocks(t *testing.T) {
 	nodes := []osm.Node{
 		{

@@ -196,7 +196,7 @@ func emitPoints(source ingest.FeatureSource, o *Options, s *encoding.StringTable
 					end--
 				}
 				// Note that ways that reference a path may be dropped from the index at a
-				// later stage (becuause, for example, they're missing points), so we need
+				// later stage (because, for example, they're missing points), so we need
 				// to handle this at query time.
 				for i := 0; i < end; i++ {
 					if id := feature.Reference(i).Source(); id.IsValid() {
