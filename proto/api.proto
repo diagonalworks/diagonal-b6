@@ -247,6 +247,20 @@ message EvaluateResponseProto {
     NodeProto result = 1;
 }
 
+message DeleteWorldRequestProto {
+    FeatureIDProto id = 1;
+}
+
+message DeleteWorldResponseProto {}
+
+message ListWorldsRequestProto {}
+
+message ListWorldsResponseProto {
+    repeated FeatureIDProto ids = 1;
+}
+
 service B6 {
     rpc Evaluate(EvaluateRequestProto) returns (EvaluateResponseProto);
+    rpc DeleteWorld(DeleteWorldRequestProto) returns (DeleteWorldResponseProto);
+    rpc ListWorlds(ListWorldsRequestProto) returns (ListWorldsResponseProto);
 }
