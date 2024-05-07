@@ -711,7 +711,9 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 	}
 	switch r := result.(type) {
 	case b6.Geometry:
-		response.Proto.MapCenter = b6.NewPointProtoFromS2Point(b6.Centroid(r))
+		if centroid, ok := b6.Centroid(r); ok {
+			response.Proto.MapCenter = b6.NewPointProtoFromS2Point(centroid)
+		}
 	case geojson.GeoJSON:
 		response.Proto.MapCenter = b6.NewPointProtoFromS2Point(r.Centroid().ToS2Point())
 	}

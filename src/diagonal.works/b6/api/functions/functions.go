@@ -123,6 +123,7 @@ var functions = api.FunctionSymbols{
 	"cap-polygon":              capPolygon,
 	"centroid":                 centroid,
 	"sightline":                sightline,
+	"entrance-approach":        entranceApproach,
 	"snap-area-edges":          snapAreaEdges,
 	"convex-hull":              convexHull,
 	// tiles
