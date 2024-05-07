@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"diagonal.works/b6"
+	"diagonal.works/b6/ingest"
 )
 
 type Options struct {
@@ -16,6 +17,7 @@ type Options struct {
 
 type Context struct {
 	World           b6.World
+	Worlds          ingest.Worlds
 	Cores           int
 	FileIOAllowed   bool
 	Clock           func() time.Time

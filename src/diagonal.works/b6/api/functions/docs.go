@@ -12,6 +12,7 @@ var functionDocs = map[string]Doc{
 	"add-relation": Doc{Doc: "Add a relation feature with the given id, tags and members.\n", ArgNames: []string{"id","tags","members"}},
 	"add-tag": Doc{Doc: "Add the given tag to the given feature.\n", ArgNames: []string{"id","tag"}},
 	"add-tags": Doc{Doc: "Add the given tags to the given features.\nThe keys of the given collection specify the features to change, the\nvalues provide the tag to be added.\n", ArgNames: []string{"collection"}},
+	"add-world-with-change": Doc{Doc: "", ArgNames: []string{"id","change"}},
 	"all": Doc{Doc: "Return a query that will match any feature.\n", ArgNames: []string{}},
 	"all-tags": Doc{Doc: "Return a collection of all the tags on the given feature.\nKeys are ordered integers from 0, values are tags.\n", ArgNames: []string{"id"}},
 	"and": Doc{Doc: "Return a query that will match features that match both given queries.\n", ArgNames: []string{"a","b"}},

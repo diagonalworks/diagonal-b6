@@ -474,6 +474,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 
 	vmContext := api.Context{
 		World:           w,
+		Worlds:          o.Worlds,
 		FunctionSymbols: o.FunctionSymbols,
 		Adaptors:        o.Adaptors,
 		Context:         context.Background(),

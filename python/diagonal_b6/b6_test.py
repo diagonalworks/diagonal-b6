@@ -635,6 +635,14 @@ class B6Test(unittest.TestCase):
         new_connection.delete_world(root)
         self.assertEqual(new_connection(b6.get_string(bridge, "maxspeed")), "")
 
+    def test_add_world_with_change(self):
+        bridge = b6.osm_way_id(STABLE_STREET_BRIDGE_ID)
+        change = b6.add_tag(bridge, b6.tag("maxspeed", "10"))
+        root = b6.FeatureID(b6.FEATURE_TYPE_COLLECTION, "diagonal.works/test_add_world_with_change", 0)
+        self.connection(b6.add_world_with_change(root, change))
+        new_connection = b6.connect_insecure(self.grpc_address, root=root)
+        self.assertEqual(new_connection(b6.get_string(bridge, "maxspeed")), "10")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")
