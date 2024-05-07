@@ -170,7 +170,6 @@ func FillTagsFromOSM(t *b6.Tags, o osm.Tags) {
 			key = mapped
 		}
 		*t = append(*t, b6.Tag{Key: key, Value: b6.String(tag.Value)})
-
 	}
 }
 

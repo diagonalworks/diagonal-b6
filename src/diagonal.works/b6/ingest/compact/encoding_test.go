@@ -185,9 +185,6 @@ func TestStringTagEncoding(t *testing.T) {
 	if n != nn {
 		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
 	}
-	if l := (MarshalledTags{Tags: buffer[0:]}).Length(); l != n {
-		t.Errorf("Expected end at %d, found %d", n, l)
-	}
 
 	m := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}
 	expected := b6.Tags{{Key: "highway", Value: b6.String("primary")}, {Key: "bicycle", Value: b6.String("designated")}}
@@ -221,9 +218,6 @@ func TestPointTagEncoding(t *testing.T) {
 	}
 	if n != nn {
 		t.Errorf("Expected marshalled and unmarshaled lengths to be equal (%d vs %d)", n, nn)
-	}
-	if l := (MarshalledTags{Tags: buffer[0:]}).Length(); l != n {
-		t.Errorf("Expected end at %d, found %d", n, l)
 	}
 
 	m := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}

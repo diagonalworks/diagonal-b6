@@ -22,7 +22,7 @@ import (
 
 // A semver 2.0.0 compliant version for the index format. Indicies generated
 // with a different major version will fail to load.
-const Version = "3.0.0"
+const Version = "4.0.0"
 
 func init() {
 	if l := encoding.MarshalledSize(Header{}); l != HeaderLength {
@@ -348,10 +348,6 @@ func (l *LatLng) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
 	return i + 4
 }
 
-func (l *LatLng) MaxSize() int {
-	return binary.MaxVarintLen64 + 4
-}
-
 func LatLngFromDegrees(lat float64, lng float64) LatLng {
 	return LatLng{LatE7: int32(lat * 1e7), LngE7: int32(lng * 1e7)}
 }
@@ -385,10 +381,6 @@ func (lls *LatLngs) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
 	return i + lls.UnmarshalWithoutLength(DecodeGeometryLen(v), buffer[i:])
 }
 
-func (lls *LatLngs) MaxSize() int {
-	return binary.MaxVarintLen64 + 2*binary.MaxVarintLen64*len(*lls)
-}
-
 func (lls *LatLngs) UnmarshalWithoutLength(l int, buffer []byte) int {
 	for len(*lls) < int(l) {
 		*lls = append(*lls, LatLng{})
@@ -413,7 +405,6 @@ const ValueTypeBits = 2
 type Value interface {
 	Marshal(TypeAndNamespace, []byte) int
 	Unmarshal(TypeAndNamespace, []byte) int
-	MaxSize() int // Bytes needed for encoding.
 }
 
 func EncodeValueType(t b6.ValueType, v uint64) uint64 {
@@ -530,10 +521,6 @@ func (i *Int) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
 	return n
 }
 
-func (*Int) MaxSize() int {
-	return binary.MaxVarintLen64
-}
-
 func (t *Tag) Marshal(tns TypeAndNamespace, buffer []byte) int {
 	i := binary.PutUvarint(buffer, uint64(t.Key))
 	return i + t.Value.Marshal(tns, buffer[i:])
@@ -570,19 +557,10 @@ func (t *Tag) Unmarshal(tns TypeAndNamespace, buffer []byte) int {
 	return i + t.Value.Unmarshal(tns, buffer[i:])
 }
 
-func (t *Tag) MaxSize(tns TypeAndNamespace) int {
-	buffer := make([]byte, binary.MaxVarintLen64+t.Value.MaxSize()) // Key is always string / encoded as int.
-	return t.Marshal(tns, buffer)
-}
-
 type Tags []Tag
 
 func (t Tags) Marshal(tns TypeAndNamespace, buffer []byte) int {
-	l := 0
-	for _, tag := range t {
-		l += tag.MaxSize(tns)
-	}
-	i := binary.PutUvarint(buffer, uint64(l))
+	i := binary.PutUvarint(buffer, uint64(len(t)))
 	for _, tag := range t {
 		i += tag.Marshal(tns, buffer[i:])
 	}
@@ -590,17 +568,14 @@ func (t Tags) Marshal(tns TypeAndNamespace, buffer []byte) int {
 }
 
 func (t *Tags) Unmarshal(tns TypeAndNamespace, buffer []byte) int {
-	l, start := binary.Uvarint(buffer)
-	i := start
-	j := 0
-	for i < start+int(l) {
+	l, i := binary.Uvarint(buffer)
+	for j := 0; j < int(l); j++ {
 		if j >= len(*t) {
 			*t = append(*t, Tag{})
 		}
 		i += (*t)[j].Unmarshal(tns, buffer[i:])
-		j++
 	}
-	*t = (*t)[0:j]
+	*t = (*t)[0:l]
 	return i
 }
 
@@ -669,21 +644,15 @@ func (m MarshalledTags) AllTags() b6.Tags {
 }
 
 func (m MarshalledTags) Get(key string) b6.Tag {
-	l, start := binary.Uvarint(m.Tags)
-	i := start
+	l, i := binary.Uvarint(m.Tags)
 	var tag Tag
-	for i < start+int(l) {
+	for j := 0; j < int(l); j++ {
 		i += tag.Unmarshal(m.Tns, m.Tags[i:])
 		if m.Strings.Equal(tag.Key, key) {
 			return b6.Tag{key, fromCompactValue(tag.Value, m.Strings, m.Nt)}
 		}
 	}
 	return b6.InvalidTag()
-}
-
-func (m MarshalledTags) Length() int {
-	l, i := binary.Uvarint(m.Tags)
-	return i + int(l)
 }
 
 func (m MarshalledTags) GeometryType() b6.GeometryType {
@@ -787,10 +756,6 @@ func (r *Reference) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
 	return i
 }
 
-func (r *Reference) MaxSize() int {
-	return 2 * binary.MaxVarintLen64
-}
-
 type MarshalledReference []byte
 
 func (m MarshalledReference) Length() int {
@@ -829,10 +794,6 @@ func (rs References) MarshalWithoutLength(primary TypeAndNamespace, buffer []byt
 func (rs *References) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
 	v, i := DecodeValue(buffer)
 	return i + rs.UnmarshalWithoutLength(DecodeGeometryLen(v), primary, buffer[i:])
-}
-
-func (rs *References) MaxSize() int {
-	return binary.MaxVarintLen64 + 2*binary.MaxVarintLen64*len(*rs)
 }
 
 func (rs *References) UnmarshalWithoutLength(l int, primary TypeAndNamespace, buffer []byte) int {
@@ -1012,10 +973,6 @@ func (g *ReferencesAndLatLngs) Marshal(primary TypeAndNamespace, buffer []byte) 
 func (g *ReferencesAndLatLngs) Unmarshal(primary TypeAndNamespace, buffer []byte) int {
 	v, i := DecodeValue(buffer)
 	return i + g.UnmarshalWithoutLength(DecodeGeometryLen(v), primary, buffer[i:])
-}
-
-func (g *ReferencesAndLatLngs) MaxSize() int {
-	return binary.MaxVarintLen64 + 2*binary.MaxVarintLen64*len(*g)
 }
 
 func (g *ReferencesAndLatLngs) UnmarshalWithoutLength(l int, primary TypeAndNamespace, buffer []byte) int {
@@ -1551,7 +1508,8 @@ func (m MarshalledArea) Tags(s encoding.Strings) b6.Taggable {
 }
 
 func (m MarshalledArea) Len() int {
-	i := MarshalledTags{Tags: m}.Length()
+	var t Tags
+	i := t.Unmarshal(TypeAndNamespaceInvalid, m)
 	g, l, _ := UnmarshalGeometryEncodingAndLength(m[i:])
 	switch g {
 	case GeometryEncodingReferences:
@@ -1562,7 +1520,8 @@ func (m MarshalledArea) Len() int {
 }
 
 func (m MarshalledArea) UnmarshalPolygons(paths TypeAndNamespace) AreaGeometry {
-	i := MarshalledTags{Tags: m}.Length()
+	var t Tags
+	i := t.Unmarshal(paths, m)
 	g, _ := UnmarshalAreaGeometry(paths, m[i:])
 	return g
 }
@@ -1682,12 +1641,14 @@ func (m MarshalledRelation) Tags(s encoding.Strings) b6.Taggable {
 }
 
 func (m MarshalledRelation) Len() int {
-	i := MarshalledTags{Tags: m}.Length()
+	var t Tags
+	i := t.Unmarshal(TypeAndNamespaceInvalid, m)
 	return MarshalledMembers(m[i:]).Len()
 }
 
 func (m MarshalledRelation) UnmarshalMembers(primary b6.FeatureType, nss *Namespaces, members *Members) {
-	i := MarshalledTags{Tags: m}.Length()
+	var t Tags
+	i := t.Unmarshal(CombineTypeAndNamespace(primary, nss.ForType(primary)), m)
 	members.Unmarshal(CombineTypeAndNamespace(primary, nss.ForType(primary)), m[i:])
 }
 
