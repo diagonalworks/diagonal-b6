@@ -22,7 +22,7 @@ import (
 
 // A semver 2.0.0 compliant version for the index format. Indicies generated
 // with a different major version will fail to load.
-const Version = "2.0.0"
+const Version = "3.0.0"
 
 func init() {
 	if l := encoding.MarshalledSize(Header{}); l != HeaderLength {
@@ -336,20 +336,20 @@ func (l *LatLng) ToS2LatLng() s2.LatLng {
 }
 
 func (l *LatLng) Marshal(_ TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeLatLng, uint64(l.LatE7)))
-	return i + binary.PutUvarint(buffer[i:], uint64(l.LngE7))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeLatLng, encoding.ZigzagEncode(int64(l.LatE7))))
+	binary.LittleEndian.PutUint32(buffer[i:], uint32(l.LngE7))
+	return i + 4
 }
 
 func (l *LatLng) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
 	lat, i := DecodeValue(buffer)
-	l.LatE7 = int32(lat)
-	lng, j := binary.Uvarint(buffer[i:])
-	l.LngE7 = int32(lng)
-	return i + j
+	l.LatE7 = int32(encoding.ZigzagDecode(lat))
+	l.LngE7 = int32(binary.LittleEndian.Uint32(buffer[i:]))
+	return i + 4
 }
 
 func (l *LatLng) MaxSize() int {
-	return 8
+	return binary.MaxVarintLen64 + 4
 }
 
 func LatLngFromDegrees(lat float64, lng float64) LatLng {
