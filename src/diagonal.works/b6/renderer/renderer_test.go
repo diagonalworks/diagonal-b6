@@ -118,3 +118,28 @@ func TestFeaturesAreOrderedByLayerTag(t *testing.T) {
 		t.Errorf("Unexpected feature order while searching for %s", order[next])
 	}
 }
+
+func TestRulesThatMatchAllTagValues(t *testing.T) {
+	rules := []RenderRule{
+		{
+			Tag: b6.Tag{
+				Key:   "#building",
+				Value: b6.String(""),
+			},
+		},
+		{
+			Tag: b6.Tag{
+				Key:   "#building",
+				Value: nil,
+			},
+		},
+	}
+	for _, r := range rules {
+		if !(RenderRules{r}).IsRendered(b6.Tag{Key: "#building", Value: b6.String("yes")}) {
+			t.Errorf("Expected building to be rendered with %+v", r)
+		}
+		if (RenderRules{r}).IsRendered(b6.Tag{Key: "#amenity", Value: b6.String("cafe")}) {
+			t.Errorf("Expected cafe to not be rendered with %+v", r)
+		}
+	}
+}

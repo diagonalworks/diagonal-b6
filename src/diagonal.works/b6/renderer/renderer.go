@@ -123,6 +123,15 @@ func (r *RenderRule) ToQuery(zoom uint) (b6.Query, bool) {
 	}
 }
 
+func (r *RenderRule) Matches(f b6.Taggable) (b6.Value, bool) {
+	t := f.Get(r.Tag.Key)
+	if !t.IsValid() {
+		return nil, false
+	}
+	matches := r.Tag.Value == nil || r.Tag.Value.String() == "" || r.Tag.Value.String() == t.Value.String()
+	return t.Value, matches
+}
+
 type RenderRules []RenderRule
 
 func (rs RenderRules) ToQuery(zoom uint) b6.Query {
@@ -138,7 +147,7 @@ func (rs RenderRules) ToQuery(zoom uint) b6.Query {
 func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 	for _, r := range rs {
 		if r.Tag.Key == tag.Key {
-			if r.Tag.Value.String() == "" || r.Tag.Value.String() == tag.Value.String() {
+			if r.Tag.Value == nil || r.Tag.Value.String() == "" || r.Tag.Value.String() == tag.Value.String() {
 				return true
 			}
 		}
@@ -211,8 +220,8 @@ func (b *BasemapRenderer) findFeatures(root b6.FeatureID, tile b6.Tile) []b6.Fea
 func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs []*Feature) []*Feature {
 	var tags [1]b6.Tag
 	for _, rule := range b.RenderRules {
-		if t := f.Get(rule.Tag.Key); t.IsValid() && (!rule.Tag.IsValid() || t.Value.String() == rule.Tag.Value.String()) {
-			tags[0] = b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value}
+		if v, ok := rule.Matches(f); ok {
+			tags[0] = b6.Tag{Key: rule.Tag.Key[1:], Value: v}
 			fs = FillFeaturesFromFeature(f, tags[0:], fs, &rule)
 			layers[rule.Layer].AddFeatures(fs)
 			break
