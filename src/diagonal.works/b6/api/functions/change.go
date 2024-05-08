@@ -186,6 +186,10 @@ func withChange(c *api.Context, change ingest.Change, function func(c *api.Conte
 	return function(&modified)
 }
 
+func addWorldWithChange(c *api.Context, id b6.FeatureID, change ingest.Change) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+	return change.Apply(c.Worlds.FindOrCreateWorld(id))
+}
+
 // Export the changes that have been applied to the world to the given filename as yaml.
 // As the file is written by the b6 server process, the filename it relative
 // to the filesystems it sees. Writing files to cloud storage is

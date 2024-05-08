@@ -67,6 +67,7 @@ message LineProto {
         HeaderLineProto header = 9;
         ErrorLineProto error = 10;
         ActionLineProto action = 11;
+        ComparisonLineProto comparison = 12;
     }
 }
 
@@ -142,6 +143,15 @@ message ActionLineProto {
     bool inContext = 3;
 }
 
+message ComparisonHistogramProto {
+    repeated HistogramBarLineProto bars = 1;
+}
+
+message ComparisonLineProto {
+    ComparisonHistogramProto baseline = 1;
+    repeated ComparisonHistogramProto scenarios = 2;
+}
+
 message AtomProto {
     oneof atom {
         string value = 1;
@@ -154,7 +164,7 @@ message AtomProto {
 
 message LabelledIconProto {
     string icon = 1;
-    string label = 2;    
+    string label = 2;
 }
 
 message ChipProto {
@@ -188,3 +198,11 @@ message IDsProto {
     repeated uint64 ids = 1;
 }
 
+message ComparisonRequestProto {
+    // The ID of the analysis to run in different worlds
+    api.FeatureIDProto analysis = 1;
+    // The ID of the baseline world in which to run the analysis
+    api.FeatureIDProto baseline = 2;
+    // The IDs of the scenario worlds in which to run the analysis
+    repeated api.FeatureIDProto scenarios = 3;
+}

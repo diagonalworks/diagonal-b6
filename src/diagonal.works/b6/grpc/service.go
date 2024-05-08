@@ -41,6 +41,7 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 
 	context := api.Context{
 		World:           w,
+		Worlds:          s.worlds,
 		FunctionSymbols: s.fs,
 		Adaptors:        s.a,
 		Context:         ctx,
