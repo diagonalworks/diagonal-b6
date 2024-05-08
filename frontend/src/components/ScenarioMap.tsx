@@ -23,7 +23,6 @@ import { MapControls } from './system/MapControls';
 
 // https://github.com/visgl/react-map-gl/discussions/2216#discussioncomment-7537888
 import { b6Path } from '@/lib/b6';
-import { useAppContext } from '@/lib/context/app';
 import { useScenarioContext } from '@/lib/context/scenario';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { twMerge } from 'tailwind-merge';
@@ -35,7 +34,7 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
 }
 
 export const ScenarioMap = ({ children }: PropsWithChildren) => {
-    const { createOutliner } = useAppContext();
+    const { createOutliner } = useScenarioContext();
     const { getVisibleMarkers, queryLayers, id, mapStyle, tab } =
         useScenarioContext();
     const { [id]: map } = useMap();

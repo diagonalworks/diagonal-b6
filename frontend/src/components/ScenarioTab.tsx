@@ -1,9 +1,9 @@
 import { useScenarioContext } from '@/lib/context/scenario';
 import { highlighted } from '@/lib/text';
 import { Combobox } from '@headlessui/react';
+import { Cross1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { isUndefined } from 'lodash';
-import { StyleSpecification } from 'maplibre-gl';
 import { QuickScore } from 'quick-score';
 import { HTMLAttributes, useMemo, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -11,19 +11,18 @@ import { twMerge } from 'tailwind-merge';
 import { OutlinersLayer } from './Outliners';
 import { ScenarioMap } from './ScenarioMap';
 import { WorldShellAdapter } from './adapters/ShellAdapter';
+import { Line } from './system/Line';
 
 export const ScenarioTab = ({
     id,
-    mapStyle,
     tab,
     ...props
 }: {
     id: string;
-    mapStyle: StyleSpecification;
     tab: 'left' | 'right';
 } & HTMLAttributes<HTMLDivElement>) => {
     const [showWorldShell, setShowWorldShell] = useState(false);
-    const { change } = useScenarioContext();
+    const { isDefiningChange } = useScenarioContext();
 
     useHotkeys('shift+meta+b, `', () => {
         setShowWorldShell((prev) => !prev);
@@ -41,7 +40,7 @@ export const ScenarioTab = ({
         >
             <div
                 className={twMerge(
-                    'h-full w-full relative border-2 border-graphite-30 rounded',
+                    'h-full w-full relative border-2 border-graphite-30 rounded-lg',
                     tab === 'right' && 'border-orange-30'
                 )}
             >
@@ -49,7 +48,7 @@ export const ScenarioTab = ({
                     <GlobalShell show={showWorldShell} mapId={id} />
                     <OutlinersLayer />
                 </ScenarioMap>
-                {isUndefined(change) && id !== 'baseline' && (
+                {isDefiningChange && (
                     <div className="absolute top-0 left-0 ">
                         <ChangePanel />
                     </div>
@@ -83,18 +82,57 @@ const CHANGES = ['add-service', 'change-use'];
 const matcher = new QuickScore(CHANGES);
 
 const ChangePanel = () => {
+    const { change, setChange } = useScenarioContext();
+
+    return (
+        <div className="border  bg-orange-30 p-0.5 border-t-orange-40 border-l-orange-40 border-orange-30  shadow-lg">
+            <div className="bg-rose-30 flex flex-col gap-2">
+                <div>
+                    {change.features.length > 0 ? (
+                        change.features.map((feature) => (
+                            <Line className="text-sm py-1 flex gap-2 items-center ">
+                                <span>{feature}</span>
+                                <button
+                                    className="text-xs hover:bg-graphite-20 p-1 hover:text-graphite-100 text-graphite-70 rounded-full w-5 h-5 flex items-center justify-center"
+                                    onClick={() =>
+                                        setChange({
+                                            ...change,
+                                            features: change.features.filter(
+                                                (f) => f !== feature
+                                            ),
+                                        })
+                                    }
+                                >
+                                    <Cross1Icon />
+                                </button>
+                            </Line>
+                        ))
+                    ) : (
+                        <span className=" text-graphite-100 italic text-xs py-4 px-2 ">
+                            Click on a feature to add it to the change
+                        </span>
+                    )}
+                </div>
+                {change.features.length > 0 && <ChangeCombo />}
+            </div>
+        </div>
+    );
+};
+
+const ChangeCombo = () => {
     const [selectedFunction, setSelectedFunction] = useState<
         (typeof CHANGES)[number] | undefined
     >();
     const [search, setSearch] = useState('');
+    const [argument, setArgument] = useState<string | undefined>();
 
     const functionResults = useMemo(() => {
         if (!search) return [];
         return matcher.search(search);
     }, [search]);
-
     return (
-        <div className="border shadow bg-orange-20 px-0.5 border-orange-30 w-60">
+        <>
+            <span className="ml-2 text-xs text-orange-90">Function</span>
             <Combobox value={selectedFunction} onChange={setSelectedFunction}>
                 <div className="w-full text-sm flex gap-2 bg-white hover:bg-ultramarine-10 py-2.5 px-2">
                     <span className="text-ultramarine-70 "> b6</span>
@@ -119,16 +157,24 @@ const ChangePanel = () => {
             </Combobox>
             {!isUndefined(selectedFunction) && (
                 <form className="flex flex-col gap-4 py-2">
-                    <div className="flex flex-col gap-1">
-                        <span className="ml-2 text-xs text-orange-90">Add</span>
-                        <input className="text-sm" />
-                    </div>
                     <div className="flex flex-col gap-2">
-                        <span className="ml-2 text-xs text-orange-90">To</span>
-                        <input className="text-sm" />
+                        <span className="ml-2 text-xs text-orange-90">
+                            [argument]
+                        </span>
+                        <input
+                            className="text-sm py-2 px-1 focus:ring-0 focus:outline-none"
+                            value={argument}
+                            onChange={(e) => setArgument(e.target.value)}
+                        />
                     </div>
                 </form>
             )}
-        </div>
+            {selectedFunction && argument && (
+                <button className="w-full text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-orange-10 bg-orange-20  text-orange-80">
+                    Apply change
+                    <TriangleRightIcon className="h-5 w-5" />
+                </button>
+            )}
+        </>
     );
 };

@@ -1,7 +1,7 @@
 import { Line } from '@/components/system/Line';
-import { useAppContext } from '@/lib/context/app';
 import { LineContextProvider } from '@/lib/context/line';
 import { useOutlinerContext } from '@/lib/context/outliner';
+import { useScenarioContext } from '@/lib/context/scenario';
 import { LineProto, TagsLineProto } from '@/types/generated/ui';
 import React from 'react';
 import { TooltipOverflow } from '../system/Tooltip';
@@ -10,12 +10,17 @@ import { ChoiceAdapter } from './ChoiceAdapter';
 import { HeaderAdapter } from './HeaderAdapter';
 import { ShellAdapter } from './ShellAdapter';
 
-export const LineAdapter = ({ line }: { line: LineProto }) => {
+export const LineAdapter = ({
+    line,
+}: {
+    line: LineProto;
+    changeable?: boolean;
+}) => {
     const clickable =
         line.value?.clickExpression ?? line.action?.clickExpression;
     const Wrapper = clickable ? Line.Button : React.Fragment;
     const { outliner } = useOutlinerContext();
-    const { createOutliner } = useAppContext();
+    const { createOutliner } = useScenarioContext();
 
     const handleLineClick = () => {
         if (!clickable) return;

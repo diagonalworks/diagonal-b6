@@ -10,7 +10,6 @@ import {
     useEffect,
     useMemo,
 } from 'react';
-import { OutlinerSpec, OutlinerStore } from './outliner';
 
 /**
  * The app context that provides the app state and the methods to update it.
@@ -18,7 +17,6 @@ import { OutlinerSpec, OutlinerStore } from './outliner';
 export const AppContext = createContext<{
     app: AppStore;
     setApp: (fn: (draft: AppStore) => void) => void;
-    createOutliner: (outliner: OutlinerStore) => void;
     setFixedOutliner: (id: keyof AppStore['outliners']) => void;
     setActiveOutliner: (
         id: keyof AppStore['outliners'],
@@ -37,7 +35,6 @@ export const AppContext = createContext<{
 }>({
     app: initialAppStore,
     setApp: () => {},
-    createOutliner: () => {},
     setFixedOutliner: () => {},
     setActiveOutliner: () => {},
     moveOutliner: () => {},
@@ -90,29 +87,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         });
     }, [startupQuery.data?.docked]);
 
-    const _removeTransientStacks = useCallback(() => {
-        setApp((draft) => {
-            for (const id in draft.outliners) {
-                if (
-                    draft.outliners[id].properties.transient &&
-                    !draft.outliners[id].properties.docked
-                ) {
-                    delete draft.outliners[id];
-                }
-            }
-        });
-    }, [setApp]);
-
-    const createOutliner = useCallback(
-        (outliner: OutlinerSpec) => {
-            _removeTransientStacks();
-            setApp((draft) => {
-                draft.outliners[outliner.id] = outliner;
-            });
-        },
-        [setApp]
-    );
-
     const setFixedOutliner = useCallback(
         (id: keyof AppStore['outliners']) => {
             setApp((draft) => {
@@ -149,6 +123,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     );
 
     const changedWorldScenarios = useMemo(() => {
+        console.log('changedWorldScenarios');
         return Object.values(app.scenarios).filter((o) => o.id !== 'baseline');
     }, [app.scenarios]);
 
@@ -163,17 +138,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         });
     }, [setApp, changedWorldScenarios]);
 
-    const removeScenario = useCallback(
-        (id: string) => {
-            setApp((draft) => {
-                delete draft.scenarios[id];
-            });
-        },
-        [setApp]
-    );
-
     const setActiveScenario = useCallback(
-        (id: string) => {
+        (id?: string) => {
             setApp((draft) => {
                 draft.tabs.right = id;
             });
@@ -181,10 +147,24 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         [setApp]
     );
 
+    const removeScenario = useCallback(
+        (id: string) => {
+            setApp((draft) => {
+                console.log('removeScenario', id);
+                delete draft.scenarios[id];
+                const newTab = changedWorldScenarios.find(
+                    (s) => s.id !== id
+                )?.id;
+                setActiveScenario(newTab);
+                console.log('newTab', newTab);
+            });
+        },
+        [setApp, changedWorldScenarios, setActiveScenario]
+    );
+
     const value = {
         app,
         setApp,
-        createOutliner,
         setActiveOutliner,
         setFixedOutliner,
         moveOutliner,

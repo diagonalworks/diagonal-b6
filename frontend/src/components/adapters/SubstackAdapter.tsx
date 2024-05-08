@@ -49,9 +49,13 @@ export const SubstackAdapter = ({
         >
             {header && (
                 <Stack.Trigger asChild>
-                    <LineAdapter line={substack.lines[0]} />
+                    <LineAdapter
+                        line={substack.lines[0]}
+                        //changeable={changeable}
+                    />
                 </Stack.Trigger>
             )}
+
             <Stack.Content className="text-sm max-h-80 " header={!!header}>
                 {!isHistogram &&
                     contentLines.map((l, i) => {

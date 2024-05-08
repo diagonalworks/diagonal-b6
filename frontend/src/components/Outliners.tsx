@@ -134,7 +134,10 @@ const DraggableOutliner = ({
                 position: 'absolute',
             }}
             className={twMerge(
-                active && 'ring-2 ring-ultramarine-50 ring-opacity-40'
+                active &&
+                    '[&_.stack-wrapper]:ring-2 [&_.stack-wrapper]:ring-ultramarine-50 [&_.stack-wrapper]:ring-opacity-40',
+                outliner.properties.changeable &&
+                    '[&_.stack-wrapper]:ring-orange-50 [&_.stack-wrapper]:ring-opacity-40'
             )}
             {...listeners}
             {...attributes}

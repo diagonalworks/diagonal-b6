@@ -17,9 +17,6 @@ import {
 import { MapProvider } from 'react-map-gl';
 import { twMerge } from 'tailwind-merge';
 
-import diagonalScenarioStyle from '@/components/diagonal-map-style-orange.json';
-import diagonalBasemapStyle from '@/components/diagonal-map-style.json';
-import { StyleSpecification } from 'maplibre-gl';
 import { Scenario } from './atoms/app';
 import { ScenarioProvider } from './lib/context/scenario';
 
@@ -57,6 +54,7 @@ const Workspace = () => {
     const {
         app: { tabs },
     } = useAppContext();
+
     return (
         <div className="h-screen max-h-screen flex flex-col">
             <Tabs />
@@ -69,9 +67,6 @@ const Workspace = () => {
                             className={twMerge(
                                 tabs.right && 'w-1/2 inline-block'
                             )}
-                            mapStyle={
-                                diagonalBasemapStyle as StyleSpecification
-                            }
                         />
                     </ScenarioProvider>
                 )}
@@ -81,9 +76,6 @@ const Workspace = () => {
                             tab="right"
                             id={tabs.right}
                             className="w-1/2 inline-block"
-                            mapStyle={
-                                diagonalScenarioStyle as StyleSpecification
-                            }
                         />
                     </ScenarioProvider>
                 )}
@@ -127,6 +119,7 @@ const Tabs = () => {
                     <div className="flex gap-1">
                         {changedWorldScenarios.map((scenario) => (
                             <TabButton
+                                key={scenario.id}
                                 scenario={scenario}
                                 editable
                                 tab="right"

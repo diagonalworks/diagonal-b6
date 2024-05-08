@@ -31,6 +31,7 @@ export type OutlinerSpec = {
         transient: boolean;
         coordinates: { x: number; y: number };
         scenario: string;
+        changeable?: boolean;
     };
     request?: {
         eventType: Event;
