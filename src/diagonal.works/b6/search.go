@@ -115,12 +115,40 @@ func (t Tagged) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
+func valuesEqual(a Value, b Value) bool {
+	// TODO: Remove when Values are harmonised with Literal, so
+	// we have a standard Equal() function
+	if a.ValueType() != b.ValueType() {
+		return false
+	}
+	switch aa := a.(type) {
+	case String:
+		return aa == b.(String)
+	case LatLng:
+		return aa == b.(LatLng)
+	case FeatureID:
+		return aa == b.(FeatureID)
+	case Values:
+		bb := b.(Values)
+		if len(aa) != len(bb) {
+			return false
+		}
+		for i := range aa {
+			if !valuesEqual(aa[i], bb[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 func (t Tagged) Equal(other Query) bool {
 	switch tt := other.(type) {
 	case Tagged:
-		return t.Key == tt.Key && t.Value == tt.Value
+		return t.Key == tt.Key && valuesEqual(t.Value, tt.Value)
 	case *Tagged:
-		return t.Key == tt.Key && t.Value == tt.Value
+		return t.Key == tt.Key && valuesEqual(t.Value, tt.Value)
 	}
 	return false
 }
