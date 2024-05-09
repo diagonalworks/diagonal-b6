@@ -76,6 +76,10 @@ const OutlinerContext = createContext<{
     close: () => {},
 });
 
+/**
+ *
+ * use the OutlinerContext, which provides access to the outliner state and methods to update it.
+ */
 export const useOutlinerContext = () => {
     return useContext(OutlinerContext);
 };

@@ -61,6 +61,9 @@ const ScenarioContext = createContext<{
     createOutliner: () => {},
 });
 
+/**
+ * Hook to access the scenario context. Use this hook to access the scenario state and the methods to update it.
+ */
 export const useScenarioContext = () => {
     return useContext(ScenarioContext);
 };

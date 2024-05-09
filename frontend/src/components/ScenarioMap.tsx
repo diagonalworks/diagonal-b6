@@ -43,7 +43,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
     const [cursor, setCursor] = useState<'auto' | 'pointer'>('auto');
 
     const isBaseline = id === 'baseline';
-    const geoJsonLayer = useMemo(() => {
+    const geoJsonLayerGL = useMemo(() => {
         if (!map) return null;
         return new GeoJsonLayer({
             data: geoJSON,
@@ -54,7 +54,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
         });
     }, [geoJSON, map]);
 
-    const deckGLLayers = useMemo(() => {
+    const queryLayersGL = useMemo(() => {
         if (!map) return null;
         return queryLayers.map((ql) => {
             const histogram = ql.histogram;
@@ -283,7 +283,10 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
             mapStyle={mapStyle}
             boxZoom={false} // https://github.com/mapbox/mapbox-gl-js/issues/6971s
         >
-            <DeckGLOverlay layers={[deckGLLayers, geoJsonLayer]} interleaved />
+            <DeckGLOverlay
+                layers={[queryLayersGL, geoJsonLayerGL]}
+                interleaved
+            />
 
             <MapControls>
                 <MapControls.Button
