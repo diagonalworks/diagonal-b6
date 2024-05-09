@@ -32,10 +32,9 @@ export const StackAdapter = () => {
     const firstSubstack = outliner.data.proto.stack?.substacks[0];
     const otherSubstacks = outliner.data.proto.stack?.substacks.slice(1);
 
-    console.log(change);
-    const isInChange = change.features.includes(
-        outliner.request?.expression ?? ''
-    );
+    const expression = outliner.data?.proto?.expression;
+
+    const isInChange = change.features.includes(expression ?? '');
 
     return (
         <>
@@ -45,12 +44,9 @@ export const StackAdapter = () => {
                         onClick={() => {
                             const features = isInChange
                                 ? change.features.filter(
-                                      (f) => f !== outliner.request?.expression
+                                      (f) => f !== expression
                                   )
-                                : [
-                                      ...change.features,
-                                      outliner.request?.expression ?? '',
-                                  ];
+                                : [...change.features, expression ?? ''];
                             setChange({
                                 ...change,
                                 features,

@@ -168,9 +168,13 @@ const TabButton = ({
         setInputValue(evt.target.value);
     };
 
-    const handleDeleteScenario = useCallback(() => {
-        removeScenario(scenario.id);
-    }, [removeScenario, scenario.id]);
+    const handleDeleteScenario = useCallback(
+        (ev: React.MouseEvent<HTMLButtonElement>) => {
+            ev.stopPropagation();
+            removeScenario(scenario.id);
+        },
+        [removeScenario, scenario.id]
+    );
 
     const handleClick = () => {
         setActiveScenario(scenario.id);

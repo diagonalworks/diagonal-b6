@@ -123,7 +123,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     );
 
     const changedWorldScenarios = useMemo(() => {
-        console.log('changedWorldScenarios');
         return Object.values(app.scenarios).filter((o) => o.id !== 'baseline');
     }, [app.scenarios]);
 
@@ -150,16 +149,14 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const removeScenario = useCallback(
         (id: string) => {
             setApp((draft) => {
-                console.log('removeScenario', id);
                 delete draft.scenarios[id];
                 const newTab = changedWorldScenarios.find(
                     (s) => s.id !== id
                 )?.id;
-                setActiveScenario(newTab);
-                console.log('newTab', newTab);
+                draft.tabs.right = newTab;
             });
         },
-        [setApp, changedWorldScenarios, setActiveScenario]
+        [setApp, changedWorldScenarios]
     );
 
     const value = {
