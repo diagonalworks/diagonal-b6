@@ -435,9 +435,11 @@ class Stack {
 
     setup() {
         this.layers = [];
-        this.setupGeoJSON(this.response.proto.geoJSON, this.response.geoJSON);
         const layers = this.response.proto.layers;
         for (const i in layers) {
+            if (!this.stateMatchesCondition(layers[i].condition)) {
+                continue;
+            }
             this.layers.push(
                 this.ui.createLayer(
                     layers[i].path,
@@ -447,6 +449,7 @@ class Stack {
                 ),
             );
         }
+        this.setupGeoJSON(this.response.proto.geoJSON, this.response.geoJSON);
     }
 
     basemapTilesChanged() {
@@ -658,7 +661,7 @@ class Stack {
             this.removeFromMap();
         }
         this.render();
-        this.setupGeoJSON();
+        this.setup();
         if (onMap) {
             this.addToMap();
         }
@@ -2021,8 +2024,11 @@ function newOverlayStyle(state, styles) {
                     }
             }
         } else if (feature.get('layer') == 'histogram') {
-            const bucket = feature.get('bucket');
-            if (bucket >= 0 && bucket < HistogramBucketCount) {
+            var bucket = feature.get('bucket');
+            if (bucket >= 0) {
+                if (bucket >= HistogramBucketCount) {
+                    bucket = HistogramBucketCount - 1;
+                }
                 if (
                     feature.get('highway') &&
                     feature.getGeometry().getType() == 'LineString'
