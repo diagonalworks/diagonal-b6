@@ -27,6 +27,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type B6Client interface {
 	Evaluate(ctx context.Context, in *EvaluateRequestProto, opts ...grpc.CallOption) (*EvaluateResponseProto, error)
+	DeleteWorld(ctx context.Context, in *DeleteWorldRequestProto, opts ...grpc.CallOption) (*DeleteWorldResponseProto, error)
+	ListWorlds(ctx context.Context, in *ListWorldsRequestProto, opts ...grpc.CallOption) (*ListWorldsResponseProto, error)
 }
 
 type b6Client struct {
@@ -46,11 +48,31 @@ func (c *b6Client) Evaluate(ctx context.Context, in *EvaluateRequestProto, opts 
 	return out, nil
 }
 
+func (c *b6Client) DeleteWorld(ctx context.Context, in *DeleteWorldRequestProto, opts ...grpc.CallOption) (*DeleteWorldResponseProto, error) {
+	out := new(DeleteWorldResponseProto)
+	err := c.cc.Invoke(ctx, "/api.B6/DeleteWorld", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *b6Client) ListWorlds(ctx context.Context, in *ListWorldsRequestProto, opts ...grpc.CallOption) (*ListWorldsResponseProto, error) {
+	out := new(ListWorldsResponseProto)
+	err := c.cc.Invoke(ctx, "/api.B6/ListWorlds", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // B6Server is the server API for B6 service.
 // All implementations must embed UnimplementedB6Server
 // for forward compatibility
 type B6Server interface {
 	Evaluate(context.Context, *EvaluateRequestProto) (*EvaluateResponseProto, error)
+	DeleteWorld(context.Context, *DeleteWorldRequestProto) (*DeleteWorldResponseProto, error)
+	ListWorlds(context.Context, *ListWorldsRequestProto) (*ListWorldsResponseProto, error)
 	mustEmbedUnimplementedB6Server()
 }
 
@@ -60,6 +82,12 @@ type UnimplementedB6Server struct {
 
 func (UnimplementedB6Server) Evaluate(context.Context, *EvaluateRequestProto) (*EvaluateResponseProto, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Evaluate not implemented")
+}
+func (UnimplementedB6Server) DeleteWorld(context.Context, *DeleteWorldRequestProto) (*DeleteWorldResponseProto, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorld not implemented")
+}
+func (UnimplementedB6Server) ListWorlds(context.Context, *ListWorldsRequestProto) (*ListWorldsResponseProto, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWorlds not implemented")
 }
 func (UnimplementedB6Server) mustEmbedUnimplementedB6Server() {}
 
@@ -92,6 +120,42 @@ func _B6_Evaluate_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _B6_DeleteWorld_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteWorldRequestProto)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(B6Server).DeleteWorld(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.B6/DeleteWorld",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(B6Server).DeleteWorld(ctx, req.(*DeleteWorldRequestProto))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _B6_ListWorlds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWorldsRequestProto)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(B6Server).ListWorlds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.B6/ListWorlds",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(B6Server).ListWorlds(ctx, req.(*ListWorldsRequestProto))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // B6_ServiceDesc is the grpc.ServiceDesc for B6 service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -102,6 +166,14 @@ var B6_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Evaluate",
 			Handler:    _B6_Evaluate_Handler,
+		},
+		{
+			MethodName: "DeleteWorld",
+			Handler:    _B6_DeleteWorld_Handler,
+		},
+		{
+			MethodName: "ListWorlds",
+			Handler:    _B6_ListWorlds_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

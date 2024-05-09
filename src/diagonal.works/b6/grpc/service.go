@@ -41,6 +41,7 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 
 	context := api.Context{
 		World:           w,
+		Worlds:          s.worlds,
 		FunctionSymbols: s.fs,
 		Adaptors:        s.a,
 		Context:         ctx,
@@ -85,6 +86,22 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 	return &pb.EvaluateResponseProto{
 		Result: pe,
 	}, nil
+}
+
+func (s *service) ListWorlds(ctx context.Context, request *pb.ListWorldsRequestProto) (*pb.ListWorldsResponseProto, error) {
+	ids := s.worlds.ListWorlds()
+	response := &pb.ListWorldsResponseProto{
+		Ids: make([]*pb.FeatureIDProto, len(ids)),
+	}
+	for i, id := range ids {
+		response.Ids[i] = b6.NewProtoFromFeatureID(id)
+	}
+	return response, nil
+}
+
+func (s *service) DeleteWorld(ctx context.Context, request *pb.DeleteWorldRequestProto) (*pb.DeleteWorldResponseProto, error) {
+	s.worlds.DeleteWorld(b6.NewFeatureIDFromProto(request.Id))
+	return &pb.DeleteWorldResponseProto{}, nil
 }
 
 func NewB6Service(worlds ingest.Worlds, options api.Options, lock *sync.RWMutex) pb.B6Server {

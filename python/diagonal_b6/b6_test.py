@@ -52,7 +52,7 @@ class B6Test(unittest.TestCase):
         names = [building.get_string("name") for (id, building) in self.connection(b6.find_areas(b6.keyed("#building")))]
         self.assertEqual(len(names), BUILDINGS_IN_GRANARY_SQUARE)
 
-    def test_find_point_by_id(self):        
+    def test_find_point_by_id(self):
         area = self.connection(b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_SOUTH_END_ID)))
         self.assertEqual(area.id.value, STABLE_STREET_BRIDGE_SOUTH_END_ID)
 
@@ -350,7 +350,7 @@ class B6Test(unittest.TestCase):
         collected_areas = self.connection(b6.collect_areas(b6.find_areas(b6.keyed("#building"))).area())
         summed_areas = 0
         for _, area in self.connection(b6.find_areas(b6.keyed("#building")).map(lambda b: b.area())):
-            summed_areas += area        
+            summed_areas += area
         self.assertLess((collected_areas - summed_areas)/summed_areas, 0.0001)
 
     def test_distance_to_point_meters(self):
@@ -617,6 +617,31 @@ class B6Test(unittest.TestCase):
         new_connection(b6.add_tag(bridge, b6.tag("maxspeed", "5")))
         self.assertEqual(self.connection(b6.get_string(bridge, "maxspeed")), "10")
         self.assertEqual(new_connection(b6.get_string(bridge, "maxspeed")), "5")
+
+    def test_list_worlds(self):
+        bridge = b6.osm_way_id(STABLE_STREET_BRIDGE_ID)
+        root = b6.FeatureID(b6.FEATURE_TYPE_COLLECTION, "diagonal.works/test_list_worlds", 0)
+        new_connection = b6.connect_insecure(self.grpc_address, root=root)
+        new_connection(b6.add_tag(bridge, b6.tag("maxspeed", "5")))
+        self.assertIn(root, new_connection.list_worlds())
+
+    def test_delete_world(self):
+        bridge = b6.osm_way_id(STABLE_STREET_BRIDGE_ID)
+        self.connection(b6.add_tag(bridge, b6.tag("maxspeed", "10")))
+        root = b6.FeatureID(b6.FEATURE_TYPE_COLLECTION, "diagonal.works/test_delete_world", 0)
+        new_connection = b6.connect_insecure(self.grpc_address, root=root)
+        new_connection(b6.add_tag(bridge, b6.tag("maxspeed", "5")))
+        self.assertEqual(new_connection(b6.get_string(bridge, "maxspeed")), "5")
+        new_connection.delete_world(root)
+        self.assertEqual(new_connection(b6.get_string(bridge, "maxspeed")), "")
+
+    def test_add_world_with_change(self):
+        bridge = b6.osm_way_id(STABLE_STREET_BRIDGE_ID)
+        change = b6.add_tag(bridge, b6.tag("maxspeed", "10"))
+        root = b6.FeatureID(b6.FEATURE_TYPE_COLLECTION, "diagonal.works/test_add_world_with_change", 0)
+        self.connection(b6.add_world_with_change(root, change))
+        new_connection = b6.connect_insecure(self.grpc_address, root=root)
+        self.assertEqual(new_connection(b6.get_string(bridge, "maxspeed")), "10")
 
 def main():
     parser = argparse.ArgumentParser()

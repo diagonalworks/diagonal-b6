@@ -174,3 +174,27 @@ func BenchmarkOccludeWithIndex(b *testing.B) {
 		}
 	}
 }
+
+func TestEntranceApproach(t *testing.T) {
+	granarySquare := camden.BuildGranarySquareForTests(t)
+	lighterman := granarySquare.FindFeatureByID(camden.LightermanID.FeatureID())
+	if lighterman == nil {
+		t.Fatal("Failed to find expected feature")
+	}
+
+	area, ok := lighterman.(b6.AreaFeature)
+	if !ok {
+		t.Fatal("Expected an area feature")
+	}
+
+	context := &api.Context{World: granarySquare}
+	approach, err := entranceApproach(context, area)
+	if err != nil {
+		t.Errorf("Expected no error, found non")
+	}
+
+	centroid, ok := b6.Centroid(lighterman.(b6.PhysicalFeature))
+	if !ok || centroid.Distance(approach.Point()) > b6.MetersToAngle(200) {
+		t.Errorf("Approach too far away from building")
+	}
+}

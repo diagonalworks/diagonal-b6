@@ -928,6 +928,34 @@ type Geometry interface {
 	ToGeoJSON() geojson.GeoJSON // TODO(mari): remove from interface / when u do wrapped generic feature
 }
 
+type InvalidGeometry struct{}
+
+func (InvalidGeometry) GeometryType() GeometryType {
+	return GeometryTypeInvalid
+}
+
+func (InvalidGeometry) Point() s2.Point {
+	return s2.Point{}
+}
+
+func (InvalidGeometry) GeometryLen() int {
+	return 0
+}
+
+func (InvalidGeometry) PointAt(i int) s2.Point {
+	panic("InvalidGeometry has no points")
+}
+
+func (InvalidGeometry) Polyline() *s2.Polyline {
+	panic("InvalidGeometry has no polyline")
+}
+
+func (InvalidGeometry) ToGeoJSON() geojson.GeoJSON {
+	return geojson.NewFeatureCollection()
+}
+
+var _ Geometry = InvalidGeometry{}
+
 const (
 	PointTag = "point"
 	PathTag  = "path"
@@ -1008,6 +1036,10 @@ func (g Geo) ToGeoJSON() geojson.GeoJSON {
 	return GeometryToGeoJSON(g)
 }
 
+func GeometryFromPoint(point s2.Point) Geometry {
+	return Geo{point: point}
+}
+
 func GeometryFromPoints(points []s2.Point) Geometry {
 	return Geo{path: points}
 }
@@ -1042,24 +1074,24 @@ func Covering(g Geometry, coverer s2.RegionCoverer) s2.CellUnion {
 	return s2.CellUnion{}
 }
 
-func Centroid(geometry Geometry) s2.Point {
+func Centroid(geometry Geometry) (s2.Point, bool) {
 	switch geometry.GeometryType() {
 	case GeometryTypePoint:
-		return geometry.Point()
+		return geometry.Point(), true
 	case GeometryTypePath:
-		return s2.Point{Vector: geometry.Polyline().Centroid().Normalize()}
+		return s2.Point{Vector: geometry.Polyline().Centroid().Normalize()}, true
 	case GeometryTypeArea:
 		if geometry.(Area).Len() == 1 {
-			return s2.Point{Vector: geometry.(Area).Polygon(0).Loop(0).Centroid().Normalize()}
+			return s2.Point{Vector: geometry.(Area).Polygon(0).Loop(0).Centroid().Normalize()}, true
 		} else {
 			query := s2.NewConvexHullQuery()
 			for i := 0; i < geometry.(Area).Len(); i++ {
 				query.AddPolygon(geometry.(Area).Polygon(i))
 			}
-			return s2.Point{Vector: query.ConvexHull().Centroid().Normalize()}
+			return s2.Point{Vector: query.ConvexHull().Centroid().Normalize()}, true
 		}
 	}
-	return s2.Point{}
+	return s2.Point{}, false
 }
 
 func GeometryToGeoJSON(g Geometry) *geojson.Feature {
@@ -1165,6 +1197,22 @@ type Area interface {
 	Len() int
 	Polygon(i int) *s2.Polygon
 	MultiPolygon() geometry.MultiPolygon
+}
+
+type InvalidArea struct {
+	InvalidGeometry
+}
+
+func (InvalidArea) Len() int {
+	return 0
+}
+
+func (InvalidArea) Polygon(i int) *s2.Polygon {
+	return s2.PolygonFromLoops([]*s2.Loop{})
+}
+
+func (InvalidArea) MultiPolygon() geometry.MultiPolygon {
+	return geometry.MultiPolygon{}
 }
 
 type area struct {
