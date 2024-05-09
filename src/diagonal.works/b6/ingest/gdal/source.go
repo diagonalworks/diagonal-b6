@@ -219,7 +219,9 @@ func (b *batchTransformer) Flush(ctx context.Context) error {
 			}
 			f := newFeatureFromS2Region(region)
 			f.SetFeatureID(b.b6IDs[i])
-			f.SetTags(b.tags[i])
+			for _, tag := range b.tags[i] {
+				f.AddTag(tag)
+			}
 			for _, tag := range b.AddTags {
 				f.AddTag(tag)
 			}
