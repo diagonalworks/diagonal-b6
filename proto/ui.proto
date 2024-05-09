@@ -43,6 +43,7 @@ message MapLayerProto {
     string q = 2;
     string v = 3;
     MapLayerPosition before = 4;
+    ConditionProto condition = 5;
 }
 
 message StackProto {
