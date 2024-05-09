@@ -63,6 +63,7 @@
         "react-dom": "^18.2.0",
         "react-hotkeys-hook": "^4.5.0",
         "react-map-gl": "^7.1.7",
+        "react-teleporter": "^3.1.0",
         "ts-pattern": "^5.0.8",
         "ts-proto": "^1.172.0",
         "use-immer": "^0.9.0",

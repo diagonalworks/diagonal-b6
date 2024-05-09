@@ -1,5 +1,8 @@
+import { useAppContext } from '@/lib/context/app';
+import { OutlinerProvider } from '@/lib/context/outliner';
 import { useScenarioContext } from '@/lib/context/scenario';
 import { highlighted } from '@/lib/text';
+import { $FixMe } from '@/utils/defs';
 import { Combobox } from '@headlessui/react';
 import { Cross1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -8,8 +11,14 @@ import { QuickScore } from 'quick-score';
 import { HTMLAttributes, useMemo, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { twMerge } from 'tailwind-merge';
+import { match } from 'ts-pattern';
+import {
+    LeftComparatorTeleporter,
+    RightComparatorTeleporter,
+} from './Comparator';
 import { OutlinersLayer } from './Outliners';
 import { ScenarioMap } from './ScenarioMap';
+import { HistogramAdaptor } from './adapters/HistogramAdapter';
 import { WorldShellAdapter } from './adapters/ShellAdapter';
 import { Line } from './system/Line';
 
@@ -21,6 +30,7 @@ export const ScenarioTab = ({
     id: string;
     tab: 'left' | 'right';
 } & HTMLAttributes<HTMLDivElement>) => {
+    const { comparator } = useAppContext();
     const [showWorldShell, setShowWorldShell] = useState(false);
     const { isDefiningChange } = useScenarioContext();
 
@@ -28,33 +38,67 @@ export const ScenarioTab = ({
         setShowWorldShell((prev) => !prev);
     });
 
+    const showComparator =
+        comparator?.request.scenarios.includes(id as $FixMe) ||
+        comparator?.request.baseline === (id as $FixMe);
+
+    const histogram = useMemo(() => {
+        if (!comparator?.request) return null;
+        const isBaseline = comparator.request.baseline === (id as $FixMe);
+        if (isBaseline) {
+            return comparator?.data.baseline?.bars;
+        }
+        const scenarioIndex = comparator.request.scenarios.indexOf(
+            id as $FixMe
+        );
+        return comparator?.data.scenarios[scenarioIndex]?.bars;
+    }, [comparator, id]);
+
+    const Teleporter = useMemo(() => {
+        return match(tab)
+            .with('left', () => LeftComparatorTeleporter)
+            .with('right', () => RightComparatorTeleporter)
+            .exhaustive();
+    }, [tab]);
+
+    console.log(comparator, histogram);
+
     return (
-        <div
-            {...props}
-            className={twMerge(
-                'h-full border border-x-graphite-40 border-t-graphite-40 border-t bg-graphite-30',
-                tab === 'right' &&
-                    'border-x-orange-40 border-t-orange-40 bg-orange-30',
-                props.className
-            )}
-        >
+        <>
             <div
+                {...props}
                 className={twMerge(
-                    'h-full w-full relative border-2 border-graphite-30 rounded-lg',
-                    tab === 'right' && 'border-orange-30'
+                    'h-full border border-x-graphite-40 border-t-graphite-40 border-t bg-graphite-30',
+                    tab === 'right' &&
+                        'border-x-rose-40 border-t-rose-40 bg-rose-30',
+                    props.className
                 )}
             >
-                <ScenarioMap>
-                    <GlobalShell show={showWorldShell} mapId={id} />
-                    <OutlinersLayer />
-                </ScenarioMap>
-                {isDefiningChange && (
-                    <div className="absolute top-0 left-0 ">
-                        <ChangePanel />
-                    </div>
-                )}
+                <div
+                    className={twMerge(
+                        'h-full w-full relative border-2 border-graphite-30 rounded-lg',
+                        tab === 'right' && 'border-rose-30'
+                    )}
+                >
+                    <ScenarioMap>
+                        <GlobalShell show={showWorldShell} mapId={id} />
+                        <OutlinersLayer />
+                    </ScenarioMap>
+                    {isDefiningChange && (
+                        <div className="absolute top-0 left-0 ">
+                            <ChangePanel />
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+            {showComparator && (
+                <Teleporter.Source>
+                    <OutlinerProvider>
+                        {histogram && <HistogramAdaptor type="histogram" />}
+                    </OutlinerProvider>
+                </Teleporter.Source>
+            )}
+        </>
     );
 };
 
@@ -85,7 +129,7 @@ const ChangePanel = () => {
     const { change, setChange } = useScenarioContext();
 
     return (
-        <div className="border  bg-orange-30 p-0.5 border-t-orange-40 border-l-orange-40 border-orange-30  shadow-lg">
+        <div className="border  bg-rose-30 p-0.5  border-rose-40  shadow-lg">
             <div className="bg-rose-30 flex flex-col gap-2">
                 <div>
                     {change.features.length > 0 ? (
@@ -108,9 +152,9 @@ const ChangePanel = () => {
                             </Line>
                         ))
                     ) : (
-                        <span className=" text-graphite-100 italic text-xs py-4 px-2 ">
+                        <div className=" text-graphite-90 italic text-xs py-2 px-3 ">
                             Click on a feature to add it to the change
-                        </span>
+                        </div>
                     )}
                 </div>
                 {change.features.length > 0 && <ChangeCombo />}
@@ -132,7 +176,7 @@ const ChangeCombo = () => {
     }, [search]);
     return (
         <>
-            <span className="ml-2 text-xs text-orange-90">Function</span>
+            <span className="ml-2 text-xs text-rose-90">Function</span>
             <Combobox value={selectedFunction} onChange={setSelectedFunction}>
                 <div className="w-full text-sm flex gap-2 bg-white hover:bg-ultramarine-10 py-2.5 px-2">
                     <span className="text-ultramarine-70 "> b6</span>
@@ -158,7 +202,7 @@ const ChangeCombo = () => {
             {!isUndefined(selectedFunction) && (
                 <form className="flex flex-col gap-4 py-2">
                     <div className="flex flex-col gap-2">
-                        <span className="ml-2 text-xs text-orange-90">
+                        <span className="ml-2 text-xs text-rose-90">
                             [argument]
                         </span>
                         <input
@@ -170,7 +214,7 @@ const ChangeCombo = () => {
                 </form>
             )}
             {selectedFunction && argument && (
-                <button className="w-full text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-orange-10 bg-orange-20  text-orange-80">
+                <button className="w-full text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80">
                     Apply change
                     <TriangleRightIcon className="h-5 w-5" />
                 </button>

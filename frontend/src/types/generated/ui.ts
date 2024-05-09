@@ -78,6 +78,7 @@ export interface MapLayerProto {
   q: string;
   v: string;
   before: MapLayerPosition;
+  condition: ConditionProto | undefined;
 }
 
 export interface StackProto {
@@ -101,6 +102,7 @@ export interface LineProto {
   header?: HeaderLineProto | undefined;
   error?: ErrorLineProto | undefined;
   action?: ActionLineProto | undefined;
+  comparison?: ComparisonLineProto | undefined;
 }
 
 export interface ValueLineProto {
@@ -175,6 +177,15 @@ export interface ActionLineProto {
   inContext: boolean;
 }
 
+export interface ComparisonHistogramProto {
+  bars: HistogramBarLineProto[];
+}
+
+export interface ComparisonLineProto {
+  baseline: ComparisonHistogramProto | undefined;
+  scenarios: ComparisonHistogramProto[];
+}
+
 export interface AtomProto {
   value?: string | undefined;
   labelledIcon?: LabelledIconProto | undefined;
@@ -219,6 +230,19 @@ export interface FeatureIDsProto {
 
 export interface IDsProto {
   ids: number[];
+}
+
+export interface ComparisonRequestProto {
+  /** The ID of the analysis to run in different worlds */
+  analysis:
+    | FeatureIDProto
+    | undefined;
+  /** The ID of the baseline world in which to run the analysis */
+  baseline:
+    | FeatureIDProto
+    | undefined;
+  /** The IDs of the scenario worlds in which to run the analysis */
+  scenarios: FeatureIDProto[];
 }
 
 function createBaseUIRequestProto(): UIRequestProto {
@@ -642,7 +666,7 @@ export const UIResponseProto = {
 };
 
 function createBaseMapLayerProto(): MapLayerProto {
-  return { path: "", q: "", v: "", before: 0 };
+  return { path: "", q: "", v: "", before: 0, condition: undefined };
 }
 
 export const MapLayerProto = {
@@ -658,6 +682,9 @@ export const MapLayerProto = {
     }
     if (message.before !== 0) {
       writer.uint32(32).int32(message.before);
+    }
+    if (message.condition !== undefined) {
+      ConditionProto.encode(message.condition, writer.uint32(42).fork()).ldelim();
     }
     return writer;
   },
@@ -697,6 +724,13 @@ export const MapLayerProto = {
 
           message.before = reader.int32() as any;
           continue;
+        case 5:
+          if (tag !== 42) {
+            break;
+          }
+
+          message.condition = ConditionProto.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -712,6 +746,7 @@ export const MapLayerProto = {
       q: isSet(object.q) ? globalThis.String(object.q) : "",
       v: isSet(object.v) ? globalThis.String(object.v) : "",
       before: isSet(object.before) ? mapLayerPositionFromJSON(object.before) : 0,
+      condition: isSet(object.condition) ? ConditionProto.fromJSON(object.condition) : undefined,
     };
   },
 
@@ -729,6 +764,9 @@ export const MapLayerProto = {
     if (message.before !== 0) {
       obj.before = mapLayerPositionToJSON(message.before);
     }
+    if (message.condition !== undefined) {
+      obj.condition = ConditionProto.toJSON(message.condition);
+    }
     return obj;
   },
 
@@ -741,6 +779,9 @@ export const MapLayerProto = {
     message.q = object.q ?? "";
     message.v = object.v ?? "";
     message.before = object.before ?? 0;
+    message.condition = (object.condition !== undefined && object.condition !== null)
+      ? ConditionProto.fromPartial(object.condition)
+      : undefined;
     return message;
   },
 };
@@ -893,6 +934,7 @@ function createBaseLineProto(): LineProto {
     header: undefined,
     error: undefined,
     action: undefined,
+    comparison: undefined,
   };
 }
 
@@ -930,6 +972,9 @@ export const LineProto = {
     }
     if (message.action !== undefined) {
       ActionLineProto.encode(message.action, writer.uint32(90).fork()).ldelim();
+    }
+    if (message.comparison !== undefined) {
+      ComparisonLineProto.encode(message.comparison, writer.uint32(98).fork()).ldelim();
     }
     return writer;
   },
@@ -1018,6 +1063,13 @@ export const LineProto = {
 
           message.action = ActionLineProto.decode(reader, reader.uint32());
           continue;
+        case 12:
+          if (tag !== 98) {
+            break;
+          }
+
+          message.comparison = ComparisonLineProto.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -1042,6 +1094,7 @@ export const LineProto = {
       header: isSet(object.header) ? HeaderLineProto.fromJSON(object.header) : undefined,
       error: isSet(object.error) ? ErrorLineProto.fromJSON(object.error) : undefined,
       action: isSet(object.action) ? ActionLineProto.fromJSON(object.action) : undefined,
+      comparison: isSet(object.comparison) ? ComparisonLineProto.fromJSON(object.comparison) : undefined,
     };
   },
 
@@ -1079,6 +1132,9 @@ export const LineProto = {
     }
     if (message.action !== undefined) {
       obj.action = ActionLineProto.toJSON(message.action);
+    }
+    if (message.comparison !== undefined) {
+      obj.comparison = ComparisonLineProto.toJSON(message.comparison);
     }
     return obj;
   },
@@ -1120,6 +1176,9 @@ export const LineProto = {
       : undefined;
     message.action = (object.action !== undefined && object.action !== null)
       ? ActionLineProto.fromPartial(object.action)
+      : undefined;
+    message.comparison = (object.comparison !== undefined && object.comparison !== null)
+      ? ComparisonLineProto.fromPartial(object.comparison)
       : undefined;
     return message;
   },
@@ -2223,6 +2282,145 @@ export const ActionLineProto = {
   },
 };
 
+function createBaseComparisonHistogramProto(): ComparisonHistogramProto {
+  return { bars: [] };
+}
+
+export const ComparisonHistogramProto = {
+  encode(message: ComparisonHistogramProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.bars) {
+      HistogramBarLineProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ComparisonHistogramProto {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseComparisonHistogramProto();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.bars.push(HistogramBarLineProto.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ComparisonHistogramProto {
+    return {
+      bars: globalThis.Array.isArray(object?.bars)
+        ? object.bars.map((e: any) => HistogramBarLineProto.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ComparisonHistogramProto): unknown {
+    const obj: any = {};
+    if (message.bars?.length) {
+      obj.bars = message.bars.map((e) => HistogramBarLineProto.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ComparisonHistogramProto>, I>>(base?: I): ComparisonHistogramProto {
+    return ComparisonHistogramProto.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ComparisonHistogramProto>, I>>(object: I): ComparisonHistogramProto {
+    const message = createBaseComparisonHistogramProto();
+    message.bars = object.bars?.map((e) => HistogramBarLineProto.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseComparisonLineProto(): ComparisonLineProto {
+  return { baseline: undefined, scenarios: [] };
+}
+
+export const ComparisonLineProto = {
+  encode(message: ComparisonLineProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.baseline !== undefined) {
+      ComparisonHistogramProto.encode(message.baseline, writer.uint32(10).fork()).ldelim();
+    }
+    for (const v of message.scenarios) {
+      ComparisonHistogramProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ComparisonLineProto {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseComparisonLineProto();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.baseline = ComparisonHistogramProto.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag !== 18) {
+            break;
+          }
+
+          message.scenarios.push(ComparisonHistogramProto.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ComparisonLineProto {
+    return {
+      baseline: isSet(object.baseline) ? ComparisonHistogramProto.fromJSON(object.baseline) : undefined,
+      scenarios: globalThis.Array.isArray(object?.scenarios)
+        ? object.scenarios.map((e: any) => ComparisonHistogramProto.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ComparisonLineProto): unknown {
+    const obj: any = {};
+    if (message.baseline !== undefined) {
+      obj.baseline = ComparisonHistogramProto.toJSON(message.baseline);
+    }
+    if (message.scenarios?.length) {
+      obj.scenarios = message.scenarios.map((e) => ComparisonHistogramProto.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ComparisonLineProto>, I>>(base?: I): ComparisonLineProto {
+    return ComparisonLineProto.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ComparisonLineProto>, I>>(object: I): ComparisonLineProto {
+    const message = createBaseComparisonLineProto();
+    message.baseline = (object.baseline !== undefined && object.baseline !== null)
+      ? ComparisonHistogramProto.fromPartial(object.baseline)
+      : undefined;
+    message.scenarios = object.scenarios?.map((e) => ComparisonHistogramProto.fromPartial(e)) || [];
+    return message;
+  },
+};
+
 function createBaseAtomProto(): AtomProto {
   return { value: undefined, labelledIcon: undefined, download: undefined, chip: undefined, conditional: undefined };
 }
@@ -2885,6 +3083,101 @@ export const IDsProto = {
   fromPartial<I extends Exact<DeepPartial<IDsProto>, I>>(object: I): IDsProto {
     const message = createBaseIDsProto();
     message.ids = object.ids?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseComparisonRequestProto(): ComparisonRequestProto {
+  return { analysis: undefined, baseline: undefined, scenarios: [] };
+}
+
+export const ComparisonRequestProto = {
+  encode(message: ComparisonRequestProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.analysis !== undefined) {
+      FeatureIDProto.encode(message.analysis, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.baseline !== undefined) {
+      FeatureIDProto.encode(message.baseline, writer.uint32(18).fork()).ldelim();
+    }
+    for (const v of message.scenarios) {
+      FeatureIDProto.encode(v!, writer.uint32(26).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ComparisonRequestProto {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseComparisonRequestProto();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.analysis = FeatureIDProto.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag !== 18) {
+            break;
+          }
+
+          message.baseline = FeatureIDProto.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag !== 26) {
+            break;
+          }
+
+          message.scenarios.push(FeatureIDProto.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ComparisonRequestProto {
+    return {
+      analysis: isSet(object.analysis) ? FeatureIDProto.fromJSON(object.analysis) : undefined,
+      baseline: isSet(object.baseline) ? FeatureIDProto.fromJSON(object.baseline) : undefined,
+      scenarios: globalThis.Array.isArray(object?.scenarios)
+        ? object.scenarios.map((e: any) => FeatureIDProto.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ComparisonRequestProto): unknown {
+    const obj: any = {};
+    if (message.analysis !== undefined) {
+      obj.analysis = FeatureIDProto.toJSON(message.analysis);
+    }
+    if (message.baseline !== undefined) {
+      obj.baseline = FeatureIDProto.toJSON(message.baseline);
+    }
+    if (message.scenarios?.length) {
+      obj.scenarios = message.scenarios.map((e) => FeatureIDProto.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ComparisonRequestProto>, I>>(base?: I): ComparisonRequestProto {
+    return ComparisonRequestProto.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ComparisonRequestProto>, I>>(object: I): ComparisonRequestProto {
+    const message = createBaseComparisonRequestProto();
+    message.analysis = (object.analysis !== undefined && object.analysis !== null)
+      ? FeatureIDProto.fromPartial(object.analysis)
+      : undefined;
+    message.baseline = (object.baseline !== undefined && object.baseline !== null)
+      ? FeatureIDProto.fromPartial(object.baseline)
+      : undefined;
+    message.scenarios = object.scenarios?.map((e) => FeatureIDProto.fromPartial(e)) || [];
     return message;
   },
 };

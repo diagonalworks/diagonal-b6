@@ -18,6 +18,7 @@ import { MapProvider } from 'react-map-gl';
 import { twMerge } from 'tailwind-merge';
 
 import { Scenario } from './atoms/app';
+import { Comparator } from './components/Comparator';
 import { ScenarioProvider } from './lib/context/scenario';
 
 const queryClient = new QueryClient({
@@ -53,10 +54,11 @@ function App() {
 const Workspace = () => {
     const {
         app: { tabs },
+        comparator,
     } = useAppContext();
 
     return (
-        <div className="h-screen max-h-screen flex flex-col">
+        <div className="h-screen max-h-screen flex flex-col relative">
             <Tabs />
             <div className="flex-grow">
                 {tabs.left && (
@@ -80,6 +82,11 @@ const Workspace = () => {
                     </ScenarioProvider>
                 )}
             </div>
+            {comparator && (
+                <div className="absolute top-2/3 left-1/2 -translate-x-1/2 bg-white">
+                    <Comparator />
+                </div>
+            )}
         </div>
     );
 };
@@ -108,7 +115,7 @@ const Tabs = () => {
                         <button
                             onClick={addScenario}
                             aria-label="add scenario"
-                            className="text-sm flex gap-2 mb-[1px] items-center bg-orange-10 rounded w-fit border border-b-0 hover:bg-orange-20 rounded-b-none border-orange-30 text-orange-60 px-2 py-1"
+                            className="text-sm flex gap-2 mb-[1px] items-center bg-rose-10 rounded w-fit border border-b-0 hover:bg-rose-20 rounded-b-none border-rose-30 text-rose-60 px-2 py-1"
                         >
                             <PlusIcon />
                             scenario
@@ -127,7 +134,7 @@ const Tabs = () => {
                             />
                         ))}
                         <button
-                            className="bg-orange-10 hover:bg-orange-20  border border-b border-b-orange-40 border-orange-30 text-orange-70 hover:text-orange-90 px-2 rounded-t"
+                            className="bg-rose-10 hover:bg-rose-20  border border-b border-b-rose-40 border-rose-30 text-rose-70 hover:text-rose-90 px-2 rounded-t"
                             aria-label="create new scenario"
                             onClick={addScenario}
                         >
@@ -185,13 +192,13 @@ const TabButton = ({
             {...props}
             className={twMerge(
                 'text-sm w-fit border-b-2  flex gap-2  items-center transition-colors bg-graphite-20 rounded rounded-b-none border  border-graphite-40 px-2 py-1',
-                tab === 'right' && 'bg-orange-20 border-orange-40',
+                tab === 'right' && 'bg-rose-20 border-rose-40',
                 active &&
                     (tab === 'right'
-                        ? 'border-b-orange-30'
+                        ? 'border-b-rose-30'
                         : 'border-b-graphite-30'),
-                tab === 'right' ? 'hover:bg-orange-30' : 'hover:bg-graphite-30',
-                active && (tab === 'right' ? 'bg-orange-30' : 'bg-graphite-30'),
+                tab === 'right' ? 'hover:bg-rose-30' : 'hover:bg-graphite-30',
+                active && (tab === 'right' ? 'bg-rose-30' : 'bg-graphite-30'),
                 props.className
             )}
             onMouseEnter={() => setIsHovered(true)}
@@ -202,7 +209,7 @@ const TabButton = ({
             <input
                 onChange={handleInputChange}
                 disabled={!editable || !active}
-                className="bg-transparent border-none text-sm focus:outline-none focus:text-graphite-80 transition-colors  caret-orange-60 "
+                className="bg-transparent border-none text-sm focus:outline-none focus:text-graphite-80 transition-colors  caret-rose-60 "
                 value={scenario.name}
             />
 
@@ -212,7 +219,7 @@ const TabButton = ({
                         aria-label="close tab "
                         onClick={handleDeleteScenario}
                         className={twMerge(
-                            'text-orange-70 hover:text-orange-90 transition-colors',
+                            'text-rose-70 hover:text-rose-90 transition-colors',
                             !isHovered && ' hidden ',
                             isHovered && ' visible'
                         )}

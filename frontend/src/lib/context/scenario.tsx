@@ -8,7 +8,7 @@ import {
     useState,
 } from 'react';
 
-import basemapStyleOrange from '@/components/diagonal-map-style-orange.json';
+import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
 import { MapLayerProto } from '@/types/generated/ui';
@@ -178,7 +178,7 @@ export const ScenarioProvider = ({
 
     const mapStyle = useMemo(() => {
         return (
-            tab === 'right' ? basemapStyleOrange : basemapStyle
+            tab === 'right' ? basemapStyleRose : basemapStyle
         ) as StyleSpecification;
     }, [tab]);
 

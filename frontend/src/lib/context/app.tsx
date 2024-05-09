@@ -1,5 +1,12 @@
-import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
+import {
+    AppStore,
+    Comparator,
+    Scenario,
+    appAtom,
+    initialAppStore,
+} from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
+import { $FixMe } from '@/utils/defs';
 import { useAtom, useAtomValue } from 'jotai';
 import { uniqueId } from 'lodash';
 import {
@@ -32,6 +39,7 @@ export const AppContext = createContext<{
     addScenario: () => void;
     removeScenario: (id: string) => void;
     setActiveScenario: (id: string) => void;
+    comparator?: Comparator;
 }>({
     app: initialAppStore,
     setApp: () => {},
@@ -60,6 +68,14 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }: PropsWithChildren) => {
     const [app, setApp] = useAtom(appAtom);
     const startupQuery = useAtomValue(startupQueryAtom);
+
+    const comparator = useMemo(() => {
+        return Object.values(app.comparators).find(
+            (c) =>
+                c.request.baseline === (app.tabs.left as $FixMe) &&
+                c.request.scenarios.includes(app.tabs?.right as $FixMe)
+        );
+    }, [app.comparators, app.tabs]);
 
     const closeOutliner = useCallback(
         (id: keyof AppStore['outliners']) => {
@@ -170,6 +186,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         setActiveScenario,
         addScenario,
         removeScenario,
+        comparator,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

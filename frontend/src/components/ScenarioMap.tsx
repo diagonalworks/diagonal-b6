@@ -161,7 +161,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                         <DotIcon
                             className={twMerge(
                                 'fill-graphite-80',
-                                tab === 'right' && 'fill-orange-80'
+                                tab === 'right' && 'fill-rose-80'
                             )}
                         />
                     );
@@ -174,7 +174,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                                 className={twMerge(
                                     'w-2 h-2 rounded-full bg-ultramarine-50 border border-ultramarine-80',
                                     tab === 'right' &&
-                                        'bg-orange-50 border-orange-80'
+                                        'bg-rose-50 border-rose-80'
                                 )}
                             />
                         );
@@ -201,7 +201,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                     latitude={marker.geometry.coordinates[1]}
                     className={twMerge(
                         '[&>svg]:fill-graphite-80',
-                        tab === 'right' && '[&>svg]:fill-orange-80'
+                        tab === 'right' && '[&>svg]:fill-rose-80'
                     )}
                 >
                     {icon}

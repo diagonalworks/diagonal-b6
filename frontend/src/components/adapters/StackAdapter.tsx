@@ -52,7 +52,7 @@ export const StackAdapter = () => {
                                 features,
                             });
                         }}
-                        className="-mb-[2px] p-2 flex gap-1  items-center text-xs  text-orange-90 rounded-t border-b-0 bg-orange-40 hover:bg-orange-30 border border-orange-50"
+                        className="-mb-[2px] p-2 flex gap-1  items-center text-xs  text-rose-90 rounded-t border-b-0 bg-rose-40 hover:bg-rose-30 border border-rose-50"
                     >
                         {isInChange ? (
                             <>
@@ -70,7 +70,7 @@ export const StackAdapter = () => {
                 className={twMerge(
                     'stack-wrapper',
                     outliner.properties.changeable &&
-                        ' border border-orange-50 rounded'
+                        ' border border-rose-50 rounded'
                 )}
             >
                 <Stack
@@ -79,7 +79,7 @@ export const StackAdapter = () => {
                     onOpenChange={setOpen}
                     className={twMerge(
                         outliner.properties.changeable &&
-                            'border-2 border-orange-40'
+                            'border-2 border-rose-40'
                     )}
                 >
                     {firstSubstack && (

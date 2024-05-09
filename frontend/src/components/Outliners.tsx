@@ -137,7 +137,7 @@ const DraggableOutliner = ({
                 active &&
                     '[&_.stack-wrapper]:ring-2 [&_.stack-wrapper]:ring-ultramarine-50 [&_.stack-wrapper]:ring-opacity-40',
                 outliner.properties.changeable &&
-                    '[&_.stack-wrapper]:ring-orange-50 [&_.stack-wrapper]:ring-opacity-40'
+                    '[&_.stack-wrapper]:ring-rose-50 [&_.stack-wrapper]:ring-opacity-40'
             )}
             {...listeners}
             {...attributes}

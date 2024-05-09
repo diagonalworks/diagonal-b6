@@ -296,6 +296,20 @@ export interface EvaluateResponseProto {
   result: NodeProto | undefined;
 }
 
+export interface DeleteWorldRequestProto {
+  id: FeatureIDProto | undefined;
+}
+
+export interface DeleteWorldResponseProto {
+}
+
+export interface ListWorldsRequestProto {
+}
+
+export interface ListWorldsResponseProto {
+  ids: FeatureIDProto[];
+}
+
 function createBaseTagProto(): TagProto {
   return { key: "", value: "" };
 }
@@ -3792,8 +3806,210 @@ export const EvaluateResponseProto = {
   },
 };
 
+function createBaseDeleteWorldRequestProto(): DeleteWorldRequestProto {
+  return { id: undefined };
+}
+
+export const DeleteWorldRequestProto = {
+  encode(message: DeleteWorldRequestProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.id !== undefined) {
+      FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): DeleteWorldRequestProto {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteWorldRequestProto();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.id = FeatureIDProto.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteWorldRequestProto {
+    return { id: isSet(object.id) ? FeatureIDProto.fromJSON(object.id) : undefined };
+  },
+
+  toJSON(message: DeleteWorldRequestProto): unknown {
+    const obj: any = {};
+    if (message.id !== undefined) {
+      obj.id = FeatureIDProto.toJSON(message.id);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DeleteWorldRequestProto>, I>>(base?: I): DeleteWorldRequestProto {
+    return DeleteWorldRequestProto.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DeleteWorldRequestProto>, I>>(object: I): DeleteWorldRequestProto {
+    const message = createBaseDeleteWorldRequestProto();
+    message.id = (object.id !== undefined && object.id !== null) ? FeatureIDProto.fromPartial(object.id) : undefined;
+    return message;
+  },
+};
+
+function createBaseDeleteWorldResponseProto(): DeleteWorldResponseProto {
+  return {};
+}
+
+export const DeleteWorldResponseProto = {
+  encode(_: DeleteWorldResponseProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): DeleteWorldResponseProto {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteWorldResponseProto();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): DeleteWorldResponseProto {
+    return {};
+  },
+
+  toJSON(_: DeleteWorldResponseProto): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DeleteWorldResponseProto>, I>>(base?: I): DeleteWorldResponseProto {
+    return DeleteWorldResponseProto.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<DeleteWorldResponseProto>, I>>(_: I): DeleteWorldResponseProto {
+    const message = createBaseDeleteWorldResponseProto();
+    return message;
+  },
+};
+
+function createBaseListWorldsRequestProto(): ListWorldsRequestProto {
+  return {};
+}
+
+export const ListWorldsRequestProto = {
+  encode(_: ListWorldsRequestProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ListWorldsRequestProto {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListWorldsRequestProto();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListWorldsRequestProto {
+    return {};
+  },
+
+  toJSON(_: ListWorldsRequestProto): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListWorldsRequestProto>, I>>(base?: I): ListWorldsRequestProto {
+    return ListWorldsRequestProto.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ListWorldsRequestProto>, I>>(_: I): ListWorldsRequestProto {
+    const message = createBaseListWorldsRequestProto();
+    return message;
+  },
+};
+
+function createBaseListWorldsResponseProto(): ListWorldsResponseProto {
+  return { ids: [] };
+}
+
+export const ListWorldsResponseProto = {
+  encode(message: ListWorldsResponseProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.ids) {
+      FeatureIDProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ListWorldsResponseProto {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListWorldsResponseProto();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.ids.push(FeatureIDProto.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListWorldsResponseProto {
+    return { ids: globalThis.Array.isArray(object?.ids) ? object.ids.map((e: any) => FeatureIDProto.fromJSON(e)) : [] };
+  },
+
+  toJSON(message: ListWorldsResponseProto): unknown {
+    const obj: any = {};
+    if (message.ids?.length) {
+      obj.ids = message.ids.map((e) => FeatureIDProto.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ListWorldsResponseProto>, I>>(base?: I): ListWorldsResponseProto {
+    return ListWorldsResponseProto.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ListWorldsResponseProto>, I>>(object: I): ListWorldsResponseProto {
+    const message = createBaseListWorldsResponseProto();
+    message.ids = object.ids?.map((e) => FeatureIDProto.fromPartial(e)) || [];
+    return message;
+  },
+};
+
 export interface B6 {
   Evaluate(request: EvaluateRequestProto): Promise<EvaluateResponseProto>;
+  DeleteWorld(request: DeleteWorldRequestProto): Promise<DeleteWorldResponseProto>;
+  ListWorlds(request: ListWorldsRequestProto): Promise<ListWorldsResponseProto>;
 }
 
 export const B6ServiceName = "api.B6";
@@ -3804,11 +4020,25 @@ export class B6ClientImpl implements B6 {
     this.service = opts?.service || B6ServiceName;
     this.rpc = rpc;
     this.Evaluate = this.Evaluate.bind(this);
+    this.DeleteWorld = this.DeleteWorld.bind(this);
+    this.ListWorlds = this.ListWorlds.bind(this);
   }
   Evaluate(request: EvaluateRequestProto): Promise<EvaluateResponseProto> {
     const data = EvaluateRequestProto.encode(request).finish();
     const promise = this.rpc.request(this.service, "Evaluate", data);
     return promise.then((data) => EvaluateResponseProto.decode(_m0.Reader.create(data)));
+  }
+
+  DeleteWorld(request: DeleteWorldRequestProto): Promise<DeleteWorldResponseProto> {
+    const data = DeleteWorldRequestProto.encode(request).finish();
+    const promise = this.rpc.request(this.service, "DeleteWorld", data);
+    return promise.then((data) => DeleteWorldResponseProto.decode(_m0.Reader.create(data)));
+  }
+
+  ListWorlds(request: ListWorldsRequestProto): Promise<ListWorldsResponseProto> {
+    const data = ListWorldsRequestProto.encode(request).finish();
+    const promise = this.rpc.request(this.service, "ListWorlds", data);
+    return promise.then((data) => ListWorldsResponseProto.decode(_m0.Reader.create(data)));
   }
 }
 
