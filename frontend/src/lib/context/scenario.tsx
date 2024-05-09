@@ -13,6 +13,7 @@ import basemapStyle from '@/components/diagonal-map-style.json';
 
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
+import { GeoJsonObject } from 'geojson';
 import { isUndefined, pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
 import { useAppContext } from './app';
@@ -35,6 +36,7 @@ const ScenarioContext = createContext<{
     draggableOutliners: OutlinerStore[];
     dockedOutliners: OutlinerStore[];
     getVisibleMarkers: (map: MapRef) => $FixMe[];
+    geoJSON: GeoJsonObject[];
     queryLayers: Array<{
         layer: MapLayerProto;
         histogram: OutlinerStore['histogram'];
@@ -49,6 +51,7 @@ const ScenarioContext = createContext<{
     dockedOutliners: [],
     getVisibleMarkers: () => [],
     queryLayers: [],
+    geoJSON: [],
     isDefiningChange: false,
     change: {
         features: [],
@@ -134,6 +137,12 @@ export const ScenarioProvider = ({
         );
     }, [scenarioOutliners]);
 
+    const geoJSON = useMemo(() => {
+        return Object.values(scenarioOutliners)
+            .flatMap((outliner) => outliner.data?.geoJSON || [])
+            .flat();
+    }, [scenarioOutliners]);
+
     const queryLayers = useMemo(() => {
         return Object.values(scenarioOutliners).flatMap((outliner) => {
             return (
@@ -179,6 +188,7 @@ export const ScenarioProvider = ({
             draggableOutliners,
             dockedOutliners,
             getVisibleMarkers,
+            geoJSON,
             queryLayers,
             change,
             setChange,
@@ -194,6 +204,7 @@ export const ScenarioProvider = ({
         isDefiningChange,
         mapStyle,
         queryLayers,
+        geoJSON,
         dockedOutliners,
         draggableOutliners,
         getVisibleMarkers,

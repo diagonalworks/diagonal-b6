@@ -87,6 +87,7 @@ export const StackAdapter = () => {
                             <SubstackAdapter
                                 substack={firstSubstack}
                                 collapsible={firstSubstack.collapsable}
+                                close={!outliner.properties.docked}
                             />
                         </Stack.Trigger>
                     )}

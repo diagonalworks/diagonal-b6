@@ -30,11 +30,20 @@ export const getNodeText = (node: React.ReactNode): string => {
     }
 };
 
+export const getWordAt = (str: string, pos: number) => {
+    const left = str.slice(0, pos).search(/\S+$/);
+    const right = str.slice(pos).search(/\s/);
+    if (right < 0) {
+        return str.slice(left);
+    }
+    return str.slice(left, right + pos);
+};
+
 export function highlighted(string: string, matches: [number, number][]) {
     const substrings = [];
     let previousEnd = 0;
 
-    for (let [start, end] of matches) {
+    for (const [start, end] of matches) {
         const prefix = string.substring(previousEnd, start);
         const match = <strong>{string.substring(start, end)}</strong>;
 

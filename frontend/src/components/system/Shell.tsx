@@ -1,8 +1,9 @@
+import { getWordAt, highlighted } from '@/lib/text';
 import { CaretRightIcon } from '@radix-ui/react-icons';
 import { Command } from 'cmdk';
 import { isNil } from 'lodash';
 import { QuickScore } from 'quick-score';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from './Line';
 import './Shell.css';
@@ -11,32 +12,6 @@ type FunctionB6 = {
     id: string;
     description?: string;
 };
-
-const getWordAt = (str: string, pos: number) => {
-    const left = str.slice(0, pos).search(/\S+$/);
-    const right = str.slice(pos).search(/\s/);
-    if (right < 0) {
-        return str.slice(left);
-    }
-    return str.slice(left, right + pos);
-};
-
-function highlighted(string: string, matches: [number, number][]) {
-    const substrings = [];
-    let previousEnd = 0;
-
-    for (let [start, end] of matches) {
-        const prefix = string.substring(previousEnd, start);
-        const match = <strong>{string.substring(start, end)}</strong>;
-
-        substrings.push(prefix, match);
-        previousEnd = end;
-    }
-
-    substrings.push(string.substring(previousEnd));
-
-    return <span>{React.Children.toArray(substrings)}</span>;
-}
 
 /**
  * A Shell component that can be used to execute B6 functions.

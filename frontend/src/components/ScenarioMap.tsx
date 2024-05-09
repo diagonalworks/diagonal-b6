@@ -24,6 +24,7 @@ import { MapControls } from './system/MapControls';
 // https://github.com/visgl/react-map-gl/discussions/2216#discussioncomment-7537888
 import { b6Path } from '@/lib/b6';
 import { useScenarioContext } from '@/lib/context/scenario';
+import { GeoJsonLayer } from 'deck.gl/typed';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { twMerge } from 'tailwind-merge';
 
@@ -35,11 +36,23 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
 
 export const ScenarioMap = ({ children }: PropsWithChildren) => {
     const { createOutliner } = useScenarioContext();
-    const { getVisibleMarkers, queryLayers, id, mapStyle, tab } =
+    const { getVisibleMarkers, queryLayers, geoJSON, id, mapStyle, tab } =
         useScenarioContext();
     const { [id]: map } = useMap();
     const [viewState, setViewState] = useAtom(viewAtom);
     const [cursor, setCursor] = useState<'auto' | 'pointer'>('auto');
+
+    const isBaseline = id === 'baseline';
+    const geoJsonLayer = useMemo(() => {
+        if (!map) return null;
+        return new GeoJsonLayer({
+            data: geoJSON,
+            id: 'geojson',
+            getFillColor: colorToRgbArray(isBaseline ? '#b1c5fd' : '#E2B79F'),
+            getLineWidth: 1,
+            getLineColor: colorToRgbArray(isBaseline ? '#37589f' : '#A66B4D'),
+        });
+    }, [geoJSON, map]);
 
     const deckGLLayers = useMemo(() => {
         if (!map) return null;
@@ -270,7 +283,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
             mapStyle={mapStyle}
             boxZoom={false} // https://github.com/mapbox/mapbox-gl-js/issues/6971s
         >
-            <DeckGLOverlay layers={deckGLLayers} interleaved />
+            <DeckGLOverlay layers={[deckGLLayers, geoJsonLayer]} interleaved />
 
             <MapControls>
                 <MapControls.Button

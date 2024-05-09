@@ -3,7 +3,9 @@ import { LineContextProvider } from '@/lib/context/line';
 import { useOutlinerContext } from '@/lib/context/outliner';
 import { useScenarioContext } from '@/lib/context/scenario';
 import { LineProto, TagsLineProto } from '@/types/generated/ui';
+import { Cross1Icon } from '@radix-ui/react-icons';
 import React from 'react';
+import { IconButton } from '../system/IconButton';
 import { TooltipOverflow } from '../system/Tooltip';
 import { AtomAdapter } from './AtomAdapter';
 import { ChoiceAdapter } from './ChoiceAdapter';
@@ -12,14 +14,15 @@ import { ShellAdapter } from './ShellAdapter';
 
 export const LineAdapter = ({
     line,
+    close,
 }: {
     line: LineProto;
-    changeable?: boolean;
+    close?: boolean;
 }) => {
     const clickable =
         line.value?.clickExpression ?? line.action?.clickExpression;
     const Wrapper = clickable ? Line.Button : React.Fragment;
-    const { outliner } = useOutlinerContext();
+    const { outliner, close: closeFn } = useOutlinerContext();
     const { createOutliner } = useScenarioContext();
 
     const handleLineClick = () => {
@@ -43,7 +46,7 @@ export const LineAdapter = ({
 
     return (
         <LineContextProvider line={line}>
-            <Line>
+            <Line className="flex justify-between">
                 <Wrapper
                     {...(clickable && {
                         onClick: (e) => {
@@ -84,6 +87,11 @@ export const LineAdapter = ({
                     )}
                     {line.tags && <Tags tagLine={line.tags} />}
                 </Wrapper>
+                {close && (
+                    <IconButton onClick={closeFn} className="close">
+                        <Cross1Icon />
+                    </IconButton>
+                )}
             </Line>
         </LineContextProvider>
     );
