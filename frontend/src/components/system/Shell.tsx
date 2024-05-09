@@ -154,12 +154,11 @@ export function Shell({
                                     </span>
 
                                     <span className="text-xs text-graphite-60 ">
-                                        {f.item?.description
-                                            ? highlighted(
-                                                  f.item.description,
-                                                  f.matches.description
-                                              )
-                                            : 'No description available'}
+                                        {f.item?.description &&
+                                            highlighted(
+                                                f.item.description,
+                                                f.matches.description
+                                            )}
                                     </span>
                                 </div>
                             </Line>
