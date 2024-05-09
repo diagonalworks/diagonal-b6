@@ -7,9 +7,11 @@ import { LineAdapter } from './LineAdapter';
 export const SubstackAdapter = ({
     substack,
     collapsible = false,
+    close,
 }: {
     substack: SubstackProto;
     collapsible?: boolean;
+    close?: boolean;
 }) => {
     const [open, setOpen] = useState(collapsible ? false : true);
 
@@ -49,13 +51,23 @@ export const SubstackAdapter = ({
         >
             {header && (
                 <Stack.Trigger asChild>
-                    <LineAdapter line={substack.lines[0]} />
+                    <LineAdapter
+                        line={substack.lines[0]}
+                        //changeable={changeable}
+                    />
                 </Stack.Trigger>
             )}
+
             <Stack.Content className="text-sm max-h-80 " header={!!header}>
                 {!isHistogram &&
                     contentLines.map((l, i) => {
-                        return <LineAdapter key={i} line={l} />;
+                        return (
+                            <LineAdapter
+                                key={i}
+                                line={l}
+                                close={close && i === 0}
+                            />
+                        );
                     })}
                 {isHistogram && histogramProps && (
                     <HistogramAdaptor {...histogramProps} />

@@ -1,5 +1,6 @@
 import { useAppContext } from '@/lib/context/app';
 import { OutlinerProvider, OutlinerStore } from '@/lib/context/outliner';
+import { useScenarioContext } from '@/lib/context/scenario';
 import {
     DndContext,
     MouseSensor,
@@ -10,20 +11,24 @@ import {
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
-import { restrictToWindowEdges } from '@dnd-kit/modifiers';
+import {
+    restrictToParentElement,
+    restrictToWindowEdges,
+} from '@dnd-kit/modifiers';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PropsWithChildren } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { StackAdapter } from './adapters/StackAdapter';
 
-export const OutlinersLayer = ({ mapId }: { mapId: string }) => {
+export const OutlinersLayer = () => {
+    const { setActiveOutliner, setFixedOutliner, moveOutliner } =
+        useAppContext();
     const {
         draggableOutliners,
         dockedOutliners,
-        setActiveOutliner,
-        setFixedOutliner,
-        moveOutliner,
-    } = useAppContext();
+        id: scenarioId,
+    } = useScenarioContext();
+
     const pointerSensor = useSensor(PointerSensor, {
         activationConstraint: {
             distance: 5,
@@ -35,7 +40,7 @@ export const OutlinersLayer = ({ mapId }: { mapId: string }) => {
     const sensors = useSensors(pointerSensor, mouseSensor, touchSensor);
 
     return (
-        <>
+        <div className="w-full h-full">
             <div className="absolute top-16 left-2 flex flex-col gap-1">
                 {dockedOutliners.map((outliner) => {
                     return (
@@ -46,7 +51,7 @@ export const OutlinersLayer = ({ mapId }: { mapId: string }) => {
                 })}
             </div>
             <DndContext
-                modifiers={[restrictToWindowEdges]}
+                modifiers={[restrictToWindowEdges, restrictToParentElement]}
                 sensors={sensors}
                 onDragStart={({ active }) => {
                     setActiveOutliner(active.id as string, true);
@@ -57,7 +62,7 @@ export const OutlinersLayer = ({ mapId }: { mapId: string }) => {
                     setActiveOutliner(active.id as string, false);
                 }}
             >
-                <Droppable mapId={mapId}>
+                <Droppable mapId={scenarioId}>
                     <AnimatePresence>
                         {draggableOutliners.map((outliner) => {
                             return (
@@ -70,7 +75,7 @@ export const OutlinersLayer = ({ mapId }: { mapId: string }) => {
                     </AnimatePresence>
                 </Droppable>
             </DndContext>
-        </>
+        </div>
     );
 };
 
@@ -78,14 +83,12 @@ const Droppable = ({
     children,
     mapId,
 }: PropsWithChildren & { mapId: string }) => {
-    const { isOver, setNodeRef } = useDroppable({
+    const { setNodeRef } = useDroppable({
         id: `droppable-${mapId}`,
     });
-    const style = {
-        color: isOver ? 'green' : undefined,
-    };
+
     return (
-        <div ref={setNodeRef} style={style}>
+        <div ref={setNodeRef} className="w-full h-full">
             {children}
         </div>
     );
@@ -131,7 +134,10 @@ const DraggableOutliner = ({
                 position: 'absolute',
             }}
             className={twMerge(
-                active && 'ring-2 ring-ultramarine-50 ring-opacity-40'
+                active &&
+                    '[&_.stack-wrapper]:ring-2 [&_.stack-wrapper]:ring-ultramarine-50 [&_.stack-wrapper]:ring-opacity-40',
+                outliner.properties.changeable &&
+                    '[&_.stack-wrapper]:ring-orange-50 [&_.stack-wrapper]:ring-opacity-40'
             )}
             {...listeners}
             {...attributes}

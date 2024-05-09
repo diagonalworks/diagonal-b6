@@ -1,6 +1,6 @@
 import { Shell } from '@/components/system/Shell';
-import { useAppContext } from '@/lib/context/app';
 import { useOutlinerContext } from '@/lib/context/outliner';
+import { useScenarioContext } from '@/lib/context/scenario';
 
 import { ShellLineProto } from '@/types/generated/ui';
 import { useMemo } from 'react';
@@ -11,7 +11,7 @@ export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
 
     const handleSubmit = (e: string) => {
         if (!outliner.data?.proto) return;
-        const { node, locked } = outliner.data?.proto;
+        const { node, locked } = outliner.data.proto;
         setRequest({
             ...outliner.request,
             node,
@@ -34,13 +34,13 @@ export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
 };
 
 export const WorldShellAdapter = ({ mapId }: { mapId: string }) => {
-    const { createOutliner } = useAppContext();
+    const { createOutliner } = useScenarioContext();
 
     const handleSubmit = (e: string) => {
         createOutliner({
             id: `stack_shell_${e}`,
             properties: {
-                tab: mapId,
+                scenario: mapId,
                 docked: false,
                 transient: true,
                 coordinates: { x: 8, y: 60 } as Point,

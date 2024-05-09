@@ -1,21 +1,29 @@
 import { Line } from '@/components/system/Line';
-import { useAppContext } from '@/lib/context/app';
 import { LineContextProvider } from '@/lib/context/line';
 import { useOutlinerContext } from '@/lib/context/outliner';
+import { useScenarioContext } from '@/lib/context/scenario';
 import { LineProto, TagsLineProto } from '@/types/generated/ui';
+import { Cross1Icon } from '@radix-ui/react-icons';
 import React from 'react';
+import { IconButton } from '../system/IconButton';
 import { TooltipOverflow } from '../system/Tooltip';
 import { AtomAdapter } from './AtomAdapter';
 import { ChoiceAdapter } from './ChoiceAdapter';
 import { HeaderAdapter } from './HeaderAdapter';
 import { ShellAdapter } from './ShellAdapter';
 
-export const LineAdapter = ({ line }: { line: LineProto }) => {
+export const LineAdapter = ({
+    line,
+    close,
+}: {
+    line: LineProto;
+    close?: boolean;
+}) => {
     const clickable =
         line.value?.clickExpression ?? line.action?.clickExpression;
     const Wrapper = clickable ? Line.Button : React.Fragment;
-    const { outliner } = useOutlinerContext();
-    const { createOutliner } = useAppContext();
+    const { outliner, close: closeFn } = useOutlinerContext();
+    const { createOutliner } = useScenarioContext();
 
     const handleLineClick = () => {
         if (!clickable) return;
@@ -23,7 +31,7 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
             id: JSON.stringify(clickable),
             properties: {
                 coordinates: { x: 10, y: 60 },
-                tab: outliner.properties.tab,
+                scenario: outliner.properties.scenario,
                 transient: outliner.properties.transient,
                 docked: outliner.properties.docked,
             },
@@ -38,7 +46,7 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
 
     return (
         <LineContextProvider line={line}>
-            <Line>
+            <Line className="flex justify-between">
                 <Wrapper
                     {...(clickable && {
                         onClick: (e) => {
@@ -79,6 +87,11 @@ export const LineAdapter = ({ line }: { line: LineProto }) => {
                     )}
                     {line.tags && <Tags tagLine={line.tags} />}
                 </Wrapper>
+                {close && (
+                    <IconButton onClick={closeFn} className="close">
+                        <Cross1Icon />
+                    </IconButton>
+                )}
             </Line>
         </LineContextProvider>
     );

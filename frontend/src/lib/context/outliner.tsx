@@ -30,7 +30,8 @@ export type OutlinerSpec = {
         docked: boolean;
         transient: boolean;
         coordinates: { x: number; y: number };
-        tab: string;
+        scenario: string;
+        changeable?: boolean;
     };
     request?: {
         eventType: Event;
@@ -75,6 +76,10 @@ const OutlinerContext = createContext<{
     close: () => {},
 });
 
+/**
+ *
+ * use the OutlinerContext, which provides access to the outliner state and methods to update it.
+ */
 export const useOutlinerContext = () => {
     return useContext(OutlinerContext);
 };
@@ -89,7 +94,7 @@ export const OutlinerProvider = ({
     const { setApp, closeOutliner } = useAppContext();
     const viewState = useAtomValue(viewAtom);
     const { data } = useAtomValue(startupQueryAtom);
-    const { [outliner.properties.tab]: map } = useMap();
+    const { [outliner.properties.scenario]: map } = useMap();
 
     const close = useCallback(() => {
         closeOutliner(outliner.id);

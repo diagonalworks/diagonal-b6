@@ -1,8 +1,7 @@
-import { AppStore, appAtom, initialAppStore } from '@/atoms/app';
+import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
-import { MapLayerProto } from '@/types/generated/ui';
-import { $FixMe } from '@/utils/defs';
 import { useAtom, useAtomValue } from 'jotai';
+import { uniqueId } from 'lodash';
 import {
     PropsWithChildren,
     createContext,
@@ -11,8 +10,6 @@ import {
     useEffect,
     useMemo,
 } from 'react';
-import { MapRef } from 'react-map-gl/maplibre';
-import { OutlinerSpec, OutlinerStore } from './outliner';
 
 /**
  * The app context that provides the app state and the methods to update it.
@@ -20,9 +17,6 @@ import { OutlinerSpec, OutlinerStore } from './outliner';
 export const AppContext = createContext<{
     app: AppStore;
     setApp: (fn: (draft: AppStore) => void) => void;
-    createOutliner: (outliner: OutlinerStore) => void;
-    draggableOutliners: OutlinerStore[];
-    dockedOutliners: OutlinerStore[];
     setFixedOutliner: (id: keyof AppStore['outliners']) => void;
     setActiveOutliner: (
         id: keyof AppStore['outliners'],
@@ -33,24 +27,22 @@ export const AppContext = createContext<{
         dx: number,
         dy: number
     ) => void;
-    getVisibleMarkers: (map: MapRef) => $FixMe[];
-    queryLayers: Array<{
-        layer: MapLayerProto;
-        histogram: OutlinerStore['histogram'];
-    }>;
     closeOutliner: (id: keyof AppStore['outliners']) => void;
+    changedWorldScenarios: Scenario[];
+    addScenario: () => void;
+    removeScenario: (id: string) => void;
+    setActiveScenario: (id: string) => void;
 }>({
     app: initialAppStore,
     setApp: () => {},
-    createOutliner: () => {},
-    draggableOutliners: [],
-    dockedOutliners: [],
     setFixedOutliner: () => {},
     setActiveOutliner: () => {},
     moveOutliner: () => {},
-    getVisibleMarkers: () => [],
     closeOutliner: () => {},
-    queryLayers: [],
+    changedWorldScenarios: [],
+    addScenario: () => {},
+    removeScenario: () => {},
+    setActiveScenario: () => {},
 });
 
 /**
@@ -84,7 +76,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                 draft.outliners[`docked-${i}`] = {
                     id: `docked-${i}`,
                     properties: {
-                        tab: 'baseline',
+                        scenario: 'baseline',
                         docked: true,
                         transient: false,
                         coordinates: { x: 0, y: 0 },
@@ -95,35 +87,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         });
     }, [startupQuery.data?.docked]);
 
-    const dockedOutliners = useMemo(() => {
-        return Object.values(app.outliners).filter(
-            (outliner) => outliner.properties.docked
-        );
-    }, [app.outliners]);
-
-    const _removeTransientStacks = useCallback(() => {
-        setApp((draft) => {
-            for (const id in draft.outliners) {
-                if (
-                    draft.outliners[id].properties.transient &&
-                    !draft.outliners[id].properties.docked
-                ) {
-                    delete draft.outliners[id];
-                }
-            }
-        });
-    }, [setApp]);
-
-    const createOutliner = useCallback(
-        (outliner: OutlinerSpec) => {
-            _removeTransientStacks();
-            setApp((draft) => {
-                draft.outliners[outliner.id] = outliner;
-            });
-        },
-        [setApp]
-    );
-
     const setFixedOutliner = useCallback(
         (id: keyof AppStore['outliners']) => {
             setApp((draft) => {
@@ -131,36 +94,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             });
         },
         [setApp]
-    );
-
-    const queryLayers = useMemo(() => {
-        return Object.values(app.outliners).flatMap((outliner) => {
-            return (
-                outliner.data?.proto.layers?.map((l) => ({
-                    layer: l,
-                    histogram: outliner.histogram,
-                })) || []
-            );
-        });
-    }, [app.outliners]);
-
-    const getVisibleMarkers = useCallback(
-        (map: MapRef) => {
-            const features = Object.values(app.outliners)
-                .flatMap((outliner) => outliner.data?.geoJSON || [])
-                .flat()
-                .filter((f: $FixMe) => {
-                    f.geometry.type === 'Point' &&
-                        map
-                            ?.getBounds()
-                            ?.contains(
-                                f.geometry.coordinates as [number, number]
-                            );
-                    return true;
-                });
-            return features;
-        },
-        [app.outliners]
     );
 
     const moveOutliner = useCallback(
@@ -189,24 +122,54 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         [setApp]
     );
 
-    const draggableOutliners = useMemo(() => {
-        return Object.values(app.outliners).filter(
-            (outliner) => !outliner.properties.docked
-        );
-    }, [app.outliners]);
+    const changedWorldScenarios = useMemo(() => {
+        return Object.values(app.scenarios).filter((o) => o.id !== 'baseline');
+    }, [app.scenarios]);
+
+    const addScenario = useCallback(() => {
+        const id = uniqueId('scenario-');
+        setApp((draft) => {
+            draft.scenarios[id] = {
+                id: id,
+                name: 'Untitled Scenario',
+            };
+            draft.tabs.right = id;
+        });
+    }, [setApp, changedWorldScenarios]);
+
+    const setActiveScenario = useCallback(
+        (id?: string) => {
+            setApp((draft) => {
+                draft.tabs.right = id;
+            });
+        },
+        [setApp]
+    );
+
+    const removeScenario = useCallback(
+        (id: string) => {
+            setApp((draft) => {
+                delete draft.scenarios[id];
+                const newTab = changedWorldScenarios.find(
+                    (s) => s.id !== id
+                )?.id;
+                draft.tabs.right = newTab;
+            });
+        },
+        [setApp, changedWorldScenarios]
+    );
 
     const value = {
         app,
         setApp,
-        createOutliner,
-        draggableOutliners,
-        dockedOutliners,
         setActiveOutliner,
         setFixedOutliner,
         moveOutliner,
-        getVisibleMarkers,
-        queryLayers,
         closeOutliner,
+        changedWorldScenarios,
+        setActiveScenario,
+        addScenario,
+        removeScenario,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

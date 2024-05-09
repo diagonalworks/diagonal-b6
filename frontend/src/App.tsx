@@ -1,18 +1,24 @@
 import { ScenarioTab } from '@/components/ScenarioTab';
 import { AppProvider, useAppContext } from '@/lib/context/app';
-import { PlusIcon, ReaderIcon } from '@radix-ui/react-icons';
+import { Cross1Icon, PlusIcon, ReaderIcon } from '@radix-ui/react-icons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Provider } from 'jotai';
 import { queryClientAtom } from 'jotai-tanstack-query';
 import { useHydrateAtoms } from 'jotai/react/utils';
-import { HTMLAttributes, PropsWithChildren } from 'react';
+import {
+    HTMLAttributes,
+    PropsWithChildren,
+    useCallback,
+    useDeferredValue,
+    useEffect,
+    useState,
+} from 'react';
 import { MapProvider } from 'react-map-gl';
 import { twMerge } from 'tailwind-merge';
 
-import diagonalScenarioStyle from '@/components/diagonal-map-style-orange.json';
-import diagonalBasemapStyle from '@/components/diagonal-map-style.json';
-import { StyleSpecification } from 'maplibre-gl';
+import { Scenario } from './atoms/app';
+import { ScenarioProvider } from './lib/context/scenario';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -48,23 +54,30 @@ const Workspace = () => {
     const {
         app: { tabs },
     } = useAppContext();
+
     return (
         <div className="h-screen max-h-screen flex flex-col">
             <Tabs />
             <div className="flex-grow">
                 {tabs.left && (
-                    <ScenarioTab
-                        id={tabs.left}
-                        className={twMerge(tabs.right && 'w-1/2 inline-block')}
-                        mapStyle={diagonalBasemapStyle as StyleSpecification}
-                    />
+                    <ScenarioProvider id={tabs.left} tab="left">
+                        <ScenarioTab
+                            tab="left"
+                            id={tabs.left}
+                            className={twMerge(
+                                tabs.right && 'w-1/2 inline-block'
+                            )}
+                        />
+                    </ScenarioProvider>
                 )}
                 {tabs.right && (
-                    <ScenarioTab
-                        id={tabs.right}
-                        className="w-1/2 inline-block"
-                        mapStyle={diagonalScenarioStyle as StyleSpecification}
-                    />
+                    <ScenarioProvider id={tabs.right} tab="right">
+                        <ScenarioTab
+                            tab="right"
+                            id={tabs.right}
+                            className="w-1/2 inline-block"
+                        />
+                    </ScenarioProvider>
                 )}
             </div>
         </div>
@@ -73,34 +86,29 @@ const Workspace = () => {
 
 const Tabs = () => {
     const {
-        setApp,
         app: { scenarios, tabs },
+        changedWorldScenarios,
+        addScenario,
     } = useAppContext();
 
-    const handleAddScenario = () => {
-        const id = `scenario-${scenarios.length}`;
-        setApp((draft) => {
-            draft.scenarios[id] = {
-                name: 'Untitled Scenario',
-            };
-            if (!draft.tabs.right) draft.tabs.right = id;
-        });
-    };
-
     return (
-        <div className="w-full px-1 pt-2">
+        <div className="w-full px-1 pt-2 z-50 -mb-[1px]">
             <div
                 className={twMerge(
                     tabs?.right ? 'grid grid-cols-2' : 'grid grid-cols-1'
                 )}
             >
                 <div className="flex items-end justify-between">
-                    <TabButton>{scenarios[tabs.left].name}</TabButton>
+                    <TabButton
+                        scenario={scenarios[tabs.left]}
+                        tab="left"
+                        active
+                    />
                     {!tabs.right && (
                         <button
-                            onClick={handleAddScenario}
+                            onClick={addScenario}
                             aria-label="add scenario"
-                            className="text-sm flex gap-2 items-center bg-orange-10 rounded w-fit border border-b-0 hover:bg-orange-20 rounded-b-none border-orange-30 text-orange-60 px-2 py-1"
+                            className="text-sm flex gap-2 mb-[1px] items-center bg-orange-10 rounded w-fit border border-b-0 hover:bg-orange-20 rounded-b-none border-orange-30 text-orange-60 px-2 py-1"
                         >
                             <PlusIcon />
                             scenario
@@ -108,9 +116,24 @@ const Tabs = () => {
                     )}
                 </div>
                 {tabs.right && (
-                    <TabButton className=" bg-orange-10 border-orange-30">
-                        {scenarios[tabs.right].name}
-                    </TabButton>
+                    <div className="flex gap-1">
+                        {changedWorldScenarios.map((scenario) => (
+                            <TabButton
+                                key={scenario.id}
+                                scenario={scenario}
+                                editable
+                                tab="right"
+                                active={tabs.right === scenario.id}
+                            />
+                        ))}
+                        <button
+                            className="bg-orange-10 hover:bg-orange-20  border border-b border-b-orange-40 border-orange-30 text-orange-70 hover:text-orange-90 px-2 rounded-t"
+                            aria-label="create new scenario"
+                            onClick={addScenario}
+                        >
+                            <PlusIcon />
+                        </button>
+                    </div>
                 )}
             </div>
         </div>
@@ -118,20 +141,87 @@ const Tabs = () => {
 };
 
 const TabButton = ({
-    children,
+    editable = false,
+    scenario,
+    tab,
+    active = false,
     ...props
-}: HTMLAttributes<HTMLButtonElement>) => {
+}: {
+    editable?: boolean;
+    scenario: Scenario;
+    tab?: 'left' | 'right';
+    active?: boolean;
+} & HTMLAttributes<HTMLDivElement>) => {
+    const { setApp, removeScenario, setActiveScenario } = useAppContext();
+
+    const [inputValue, setInputValue] = useState(scenario.name);
+    const deferredInput = useDeferredValue(inputValue);
+    const [isHovered, setIsHovered] = useState(false);
+
+    useEffect(() => {
+        setApp((draft) => {
+            draft.scenarios[scenario.id].name = deferredInput;
+        });
+    }, [deferredInput]);
+
+    const handleInputChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+        setInputValue(evt.target.value);
+    };
+
+    const handleDeleteScenario = useCallback(
+        (ev: React.MouseEvent<HTMLButtonElement>) => {
+            ev.stopPropagation();
+            removeScenario(scenario.id);
+        },
+        [removeScenario, scenario.id]
+    );
+
+    const handleClick = () => {
+        setActiveScenario(scenario.id);
+    };
+
     return (
-        <button
-            onClick={props.onClick}
+        <div
+            {...props}
             className={twMerge(
-                'text-sm w-fit flex gap-2 items-center bg-graphite-20 rounded rounded-b-none border border-b-0   border-graphite-30 px-2 py-1',
+                'text-sm w-fit border-b-2  flex gap-2  items-center transition-colors bg-graphite-20 rounded rounded-b-none border  border-graphite-40 px-2 py-1',
+                tab === 'right' && 'bg-orange-20 border-orange-40',
+                active &&
+                    (tab === 'right'
+                        ? 'border-b-orange-30'
+                        : 'border-b-graphite-30'),
+                tab === 'right' ? 'hover:bg-orange-30' : 'hover:bg-graphite-30',
+                active && (tab === 'right' ? 'bg-orange-30' : 'bg-graphite-30'),
                 props.className
             )}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onClick={handleClick}
         >
             <ReaderIcon />
-            {children}
-        </button>
+            <input
+                onChange={handleInputChange}
+                disabled={!editable || !active}
+                className="bg-transparent border-none text-sm focus:outline-none focus:text-graphite-80 transition-colors  caret-orange-60 "
+                value={scenario.name}
+            />
+
+            {scenario.id !== 'baseline' && (
+                <div className="w-4 flex">
+                    <button
+                        aria-label="close tab "
+                        onClick={handleDeleteScenario}
+                        className={twMerge(
+                            'text-orange-70 hover:text-orange-90 transition-colors',
+                            !isHovered && ' hidden ',
+                            isHovered && ' visible'
+                        )}
+                    >
+                        <Cross1Icon />
+                    </button>
+                </div>
+            )}
+        </div>
     );
 };
 

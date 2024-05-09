@@ -101,7 +101,7 @@
             "source": "diagonal",
             "source-layer": "road",
             "paint": {
-                "line-color": "#ffb283",
+                "line-color": "#ff8d52",
                 "line-width": [
                     "interpolate",
                     ["exponential", 2],
@@ -260,7 +260,7 @@
                     "case",
                     ["boolean", ["feature-state", "highlighted"], false],
                     "#90442e",
-                    "#ffebdb"
+                    "#ffd5b8"
                 ]
             }
         },
@@ -305,7 +305,7 @@
                 "line-color": [
                     "case",
                     ["boolean", ["feature-state", "highlighted"], false],
-                    "#3c1f19",
+                    "#653124",
                     "#AE836C"
                 ]
             }
