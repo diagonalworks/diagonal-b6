@@ -8,7 +8,7 @@ import { Cross1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { isUndefined } from 'lodash';
 import { QuickScore } from 'quick-score';
-import { HTMLAttributes, useMemo, useState } from 'react';
+import { HTMLAttributes, useCallback, useMemo, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { twMerge } from 'tailwind-merge';
 import { match } from 'ts-pattern';
@@ -18,8 +18,8 @@ import {
 } from './Comparator';
 import { OutlinersLayer } from './Outliners';
 import { ScenarioMap } from './ScenarioMap';
-import { HistogramAdaptor } from './adapters/HistogramAdapter';
 import { WorldShellAdapter } from './adapters/ShellAdapter';
+import { StackAdapter } from './adapters/StackAdapter';
 import { Line } from './system/Line';
 
 export const ScenarioTab = ({
@@ -30,29 +30,17 @@ export const ScenarioTab = ({
     id: string;
     tab: 'left' | 'right';
 } & HTMLAttributes<HTMLDivElement>) => {
-    const { comparator } = useAppContext();
+    const { activeComparator } = useAppContext();
     const [showWorldShell, setShowWorldShell] = useState(false);
-    const { isDefiningChange } = useScenarioContext();
+    const { isDefiningChange, comparisonOutliners } = useScenarioContext();
 
     useHotkeys('shift+meta+b, `', () => {
         setShowWorldShell((prev) => !prev);
     });
 
     const showComparator =
-        comparator?.request.scenarios.includes(id as $FixMe) ||
-        comparator?.request.baseline === (id as $FixMe);
-
-    const histogram = useMemo(() => {
-        if (!comparator?.request) return null;
-        const isBaseline = comparator.request.baseline === (id as $FixMe);
-        if (isBaseline) {
-            return comparator?.data.baseline?.bars;
-        }
-        const scenarioIndex = comparator.request.scenarios.indexOf(
-            id as $FixMe
-        );
-        return comparator?.data.scenarios[scenarioIndex]?.bars;
-    }, [comparator, id]);
+        activeComparator?.request?.scenarios.includes(id as $FixMe) ||
+        activeComparator?.request?.baseline === (id as $FixMe);
 
     const Teleporter = useMemo(() => {
         return match(tab)
@@ -60,8 +48,6 @@ export const ScenarioTab = ({
             .with('right', () => RightComparatorTeleporter)
             .exhaustive();
     }, [tab]);
-
-    console.log(comparator, histogram);
 
     return (
         <>
@@ -93,9 +79,11 @@ export const ScenarioTab = ({
             </div>
             {showComparator && (
                 <Teleporter.Source>
-                    <OutlinerProvider>
-                        {histogram && <HistogramAdaptor type="histogram" />}
-                    </OutlinerProvider>
+                    {comparisonOutliners.map((outliner) => (
+                        <OutlinerProvider key={outliner.id} outliner={outliner}>
+                            <StackAdapter />
+                        </OutlinerProvider>
+                    ))}
                 </Teleporter.Source>
             )}
         </>
@@ -164,6 +152,8 @@ const ChangePanel = () => {
 };
 
 const ChangeCombo = () => {
+    const { addComparator } = useAppContext();
+    const { id } = useScenarioContext();
     const [selectedFunction, setSelectedFunction] = useState<
         (typeof CHANGES)[number] | undefined
     >();
@@ -174,8 +164,18 @@ const ChangeCombo = () => {
         if (!search) return [];
         return matcher.search(search);
     }, [search]);
+
+    const handleClick = useCallback(() => {
+        if (!selectedFunction || !argument) return;
+        addComparator({
+            baseline: 'baseline' as $FixMe,
+            scenarios: [id] as $FixMe,
+            analysis: 'test' as $FixMe,
+        });
+    }, [selectedFunction, argument, addComparator, id]);
+
     return (
-        <>
+        <div>
             <span className="ml-2 text-xs text-rose-90">Function</span>
             <Combobox value={selectedFunction} onChange={setSelectedFunction}>
                 <div className="w-full text-sm flex gap-2 bg-white hover:bg-ultramarine-10 py-2.5 px-2">
@@ -200,7 +200,7 @@ const ChangeCombo = () => {
                 </Combobox.Options>
             </Combobox>
             {!isUndefined(selectedFunction) && (
-                <form className="flex flex-col gap-4 py-2">
+                <div className="flex flex-col gap-4 py-2">
                     <div className="flex flex-col gap-2">
                         <span className="ml-2 text-xs text-rose-90">
                             [argument]
@@ -211,14 +211,17 @@ const ChangeCombo = () => {
                             onChange={(e) => setArgument(e.target.value)}
                         />
                     </div>
-                </form>
+                </div>
             )}
             {selectedFunction && argument && (
-                <button className="w-full text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80">
+                <button
+                    className="w-full text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80"
+                    onClick={handleClick}
+                >
                     Apply change
                     <TriangleRightIcon className="h-5 w-5" />
                 </button>
             )}
-        </>
+        </div>
     );
 };

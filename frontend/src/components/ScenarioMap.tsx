@@ -35,7 +35,7 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
 }
 
 export const ScenarioMap = ({ children }: PropsWithChildren) => {
-    const { createOutliner } = useScenarioContext();
+    const { createOutlinerInScenario } = useScenarioContext();
     const { getVisibleMarkers, queryLayers, geoJSON, id, mapStyle, tab } =
         useScenarioContext();
     const { [id]: map } = useMap();
@@ -224,7 +224,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                     6
                 )}, ${e.lngLat.lng.toFixed(6)}`;
 
-                createOutliner({
+                createOutlinerInScenario({
                     id: `stack_mlc_${expression}`,
                     properties: outlinerProperties,
                     request: {
@@ -244,7 +244,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 if (feature) {
                     const path = getFeaturePath(feature);
                     const expression = `find-feature ${path}`;
-                    createOutliner({
+                    createOutlinerInScenario({
                         id: `stack_mfc_${expression}`,
                         properties: outlinerProperties,
                         request: {
@@ -258,7 +258,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 }
             }
         },
-        [map, createOutliner, id]
+        [map, createOutlinerInScenario, id]
     );
 
     return (

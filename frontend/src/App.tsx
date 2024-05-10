@@ -19,6 +19,7 @@ import { twMerge } from 'tailwind-merge';
 
 import { Scenario } from './atoms/app';
 import { Comparator } from './components/Comparator';
+import { ComparatorProvider } from './lib/context/comparator';
 import { ScenarioProvider } from './lib/context/scenario';
 
 const queryClient = new QueryClient({
@@ -54,7 +55,7 @@ function App() {
 const Workspace = () => {
     const {
         app: { tabs },
-        comparator,
+        activeComparator,
     } = useAppContext();
 
     return (
@@ -82,9 +83,11 @@ const Workspace = () => {
                     </ScenarioProvider>
                 )}
             </div>
-            {comparator && (
+            {activeComparator && (
                 <div className="absolute top-2/3 left-1/2 -translate-x-1/2 bg-white">
-                    <Comparator />
+                    <ComparatorProvider comparator={activeComparator}>
+                        <Comparator />
+                    </ComparatorProvider>
                 </div>
             )}
         </div>

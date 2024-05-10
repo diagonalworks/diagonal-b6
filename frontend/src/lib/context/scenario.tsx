@@ -32,9 +32,10 @@ const ScenarioContext = createContext<{
     tab: 'left' | 'right';
     mapStyle: StyleSpecification;
     outliners: Record<string, OutlinerStore>;
-    createOutliner: (outliner: OutlinerStore) => void;
+    createOutlinerInScenario: (outliner: OutlinerStore) => void;
     draggableOutliners: OutlinerStore[];
     dockedOutliners: OutlinerStore[];
+    comparisonOutliners: OutlinerStore[];
     getVisibleMarkers: (map: MapRef) => $FixMe[];
     geoJSON: GeoJsonObject[];
     queryLayers: Array<{
@@ -49,6 +50,7 @@ const ScenarioContext = createContext<{
     outliners: {},
     draggableOutliners: [],
     dockedOutliners: [],
+    comparisonOutliners: [],
     getVisibleMarkers: () => [],
     queryLayers: [],
     geoJSON: [],
@@ -58,7 +60,7 @@ const ScenarioContext = createContext<{
         function: '',
     },
     setChange: () => {},
-    createOutliner: () => {},
+    createOutlinerInScenario: () => {},
 });
 
 /**
@@ -78,6 +80,7 @@ export const ScenarioProvider = ({
 } & PropsWithChildren) => {
     const {
         app: { outliners },
+        createOutliner,
         setApp,
     } = useAppContext();
 
@@ -104,18 +107,16 @@ export const ScenarioProvider = ({
         });
     }, [setApp]);
 
-    const createOutliner = useCallback(
+    const createOutlinerInScenario = useCallback(
         (outliner: OutlinerStore) => {
             _removeTransientStacks();
-            setApp((draft) => {
-                draft.outliners[outliner.id] = {
-                    ...outliner,
-                    properties: {
-                        ...outliner.properties,
-                        scenario: id,
-                        changeable: isDefiningChange,
-                    },
-                };
+            createOutliner({
+                ...outliner,
+                properties: {
+                    ...outliner.properties,
+                    scenario: id,
+                    changeable: isDefiningChange,
+                },
             });
         },
         [id, isDefiningChange, setApp, _removeTransientStacks]
@@ -134,9 +135,16 @@ export const ScenarioProvider = ({
         );
     }, [scenarioOutliners]);
 
+    const comparisonOutliners = useMemo(() => {
+        return Object.values(scenarioOutliners).filter(
+            (outliner) => outliner.properties.comparison
+        );
+    }, [scenarioOutliners]);
+
     const draggableOutliners = useMemo(() => {
         return Object.values(scenarioOutliners).filter(
-            (outliner) => !outliner.properties.docked
+            (outliner) =>
+                !outliner.properties.docked && !outliner.properties.comparison
         );
     }, [scenarioOutliners]);
 
@@ -190,13 +198,14 @@ export const ScenarioProvider = ({
             outliners: scenarioOutliners,
             draggableOutliners,
             dockedOutliners,
+            comparisonOutliners,
             getVisibleMarkers,
             geoJSON,
             queryLayers,
             change,
             setChange,
             isDefiningChange,
-            createOutliner,
+            createOutlinerInScenario,
         };
     }, [
         id,
@@ -211,7 +220,8 @@ export const ScenarioProvider = ({
         dockedOutliners,
         draggableOutliners,
         getVisibleMarkers,
-        createOutliner,
+        createOutlinerInScenario,
+        comparisonOutliners,
     ]);
 
     return (
