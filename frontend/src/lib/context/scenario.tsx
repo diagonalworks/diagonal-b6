@@ -4,6 +4,7 @@ import {
     createContext,
     useCallback,
     useContext,
+    useEffect,
     useMemo,
     useState,
 } from 'react';
@@ -29,6 +30,7 @@ const ScenarioContext = createContext<{
     change: Change;
     setChange: (change: Change) => void;
     worldId?: string;
+    setWorldId: (id: string) => void;
     tab: 'left' | 'right';
     mapStyle: StyleSpecification;
     outliners: Record<string, OutlinerStore>;
@@ -61,6 +63,7 @@ const ScenarioContext = createContext<{
     },
     setChange: () => {},
     createOutlinerInScenario: () => {},
+    setWorldId: () => {},
 });
 
 /**
@@ -88,11 +91,21 @@ export const ScenarioProvider = ({
         features: [],
         function: '',
     });
-    const [worldId] = useState<string>();
+
+    /** temporary while we don't have API route for creating a new world */
+    const [worldId, setWorldId] = useState<string>();
 
     const isDefiningChange = useMemo(() => {
         return id !== 'baseline' && isUndefined(worldId);
-    }, [id, change]);
+    }, [id, change, worldId]);
+
+    useEffect(() => {
+        setChange({
+            features: [],
+            function: '',
+        });
+        setWorldId(undefined);
+    }, [id]);
 
     const _removeTransientStacks = useCallback(() => {
         setApp((draft) => {
@@ -206,6 +219,8 @@ export const ScenarioProvider = ({
             setChange,
             isDefiningChange,
             createOutlinerInScenario,
+            worldId,
+            setWorldId,
         };
     }, [
         id,
@@ -222,6 +237,8 @@ export const ScenarioProvider = ({
         getVisibleMarkers,
         createOutlinerInScenario,
         comparisonOutliners,
+        worldId,
+        setWorldId,
     ]);
 
     return (

@@ -153,7 +153,7 @@ const ChangePanel = () => {
 
 const ChangeCombo = () => {
     const { addComparator } = useAppContext();
-    const { id } = useScenarioContext();
+    const { id, setWorldId } = useScenarioContext();
     const [selectedFunction, setSelectedFunction] = useState<
         (typeof CHANGES)[number] | undefined
     >();
@@ -172,6 +172,7 @@ const ChangeCombo = () => {
             scenarios: [id] as $FixMe,
             analysis: 'test' as $FixMe,
         });
+        setWorldId('something');
     }, [selectedFunction, argument, addComparator, id]);
 
     return (

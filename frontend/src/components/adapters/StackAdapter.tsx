@@ -9,7 +9,7 @@ import { SubstackAdapter } from './SubstackAdapter';
 
 export const StackAdapter = () => {
     const { outliner } = useOutlinerContext();
-    const { setChange, change } = useScenarioContext();
+    const { setChange, change, isDefiningChange } = useScenarioContext();
     const [open, setOpen] = useState(outliner.properties.docked ? false : true);
 
     if (outliner.query?.isLoading) {
@@ -35,10 +35,12 @@ export const StackAdapter = () => {
     const expression = outliner.data?.proto?.expression;
 
     const isInChange = change.features.includes(expression ?? '');
+    const showChangeElements =
+        isDefiningChange && outliner.properties.changeable;
 
     return (
         <>
-            {outliner.properties.changeable && (
+            {showChangeElements && (
                 <div className="flex justify-start">
                     <button
                         onClick={() => {
@@ -69,8 +71,7 @@ export const StackAdapter = () => {
             <div
                 className={twMerge(
                     'stack-wrapper',
-                    outliner.properties.changeable &&
-                        ' border border-rose-50 rounded'
+                    showChangeElements && ' border border-rose-50 rounded'
                 )}
             >
                 <Stack
@@ -78,8 +79,7 @@ export const StackAdapter = () => {
                     open={open}
                     onOpenChange={setOpen}
                     className={twMerge(
-                        outliner.properties.changeable &&
-                            'border-2 border-rose-40'
+                        showChangeElements && 'border-2 border-rose-40'
                     )}
                 >
                     {firstSubstack && (
