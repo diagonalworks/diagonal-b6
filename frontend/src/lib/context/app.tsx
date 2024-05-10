@@ -172,6 +172,11 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             draft.scenarios[id] = {
                 id: id,
                 name: 'Untitled Scenario',
+                worldId: undefined,
+                change: {
+                    features: [],
+                    function: '',
+                },
             };
             draft.tabs.right = id;
         });

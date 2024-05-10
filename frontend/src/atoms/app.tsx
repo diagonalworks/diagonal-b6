@@ -4,9 +4,16 @@ import { urlSearchParamsStorage } from '@/lib/storage';
 import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
 
+export type Change = {
+    features: string[];
+    function: string;
+};
+
 export type Scenario = {
     name: string;
     id: string;
+    worldId?: string;
+    change: Change;
 };
 
 export type Scenarios = Record<string, Scenario>;
@@ -37,6 +44,11 @@ export const initialAppStore: AppStore = {
         baseline: {
             id: 'baseline',
             name: 'Baseline',
+            worldId: 'baseline',
+            change: {
+                features: [],
+                function: '',
+            },
         },
     },
     tabs: {

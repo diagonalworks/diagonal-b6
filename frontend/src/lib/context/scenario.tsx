@@ -4,14 +4,13 @@ import {
     createContext,
     useCallback,
     useContext,
-    useEffect,
     useMemo,
-    useState,
 } from 'react';
 
 import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
+import { Change, Scenario } from '@/atoms/app';
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
 import { GeoJsonObject } from 'geojson';
@@ -20,17 +19,8 @@ import { MapRef } from 'react-map-gl/maplibre';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
 
-export type Change = {
-    features: string[];
-    function: string;
-};
-
 const ScenarioContext = createContext<{
-    id: string;
-    change: Change;
-    setChange: (change: Change) => void;
-    worldId?: string;
-    setWorldId: (id: string) => void;
+    scenario: Scenario;
     tab: 'left' | 'right';
     mapStyle: StyleSpecification;
     outliners: Record<string, OutlinerStore>;
@@ -45,9 +35,11 @@ const ScenarioContext = createContext<{
         histogram: OutlinerStore['histogram'];
     }>;
     isDefiningChange?: boolean;
+    setWorldId: (id: string) => void;
+    setWorldChange: (change: Change) => void;
 }>({
     tab: 'left',
-    id: '',
+    scenario: {} as Scenario,
     mapStyle: basemapStyle as StyleSpecification,
     outliners: {},
     draggableOutliners: [],
@@ -57,13 +49,9 @@ const ScenarioContext = createContext<{
     queryLayers: [],
     geoJSON: [],
     isDefiningChange: false,
-    change: {
-        features: [],
-        function: '',
-    },
-    setChange: () => {},
     createOutlinerInScenario: () => {},
     setWorldId: () => {},
+    setWorldChange: () => {},
 });
 
 /**
@@ -75,10 +63,10 @@ export const useScenarioContext = () => {
 
 export const ScenarioProvider = ({
     children,
-    id,
+    scenario,
     tab,
 }: {
-    id: string;
+    scenario: Scenario;
     tab: 'left' | 'right';
 } & PropsWithChildren) => {
     const {
@@ -87,25 +75,9 @@ export const ScenarioProvider = ({
         setApp,
     } = useAppContext();
 
-    const [change, setChange] = useState<Change>({
-        features: [],
-        function: '',
-    });
-
-    /** temporary while we don't have API route for creating a new world */
-    const [worldId, setWorldId] = useState<string>();
-
     const isDefiningChange = useMemo(() => {
-        return id !== 'baseline' && isUndefined(worldId);
-    }, [id, change, worldId]);
-
-    useEffect(() => {
-        setChange({
-            features: [],
-            function: '',
-        });
-        setWorldId(undefined);
-    }, [id]);
+        return scenario.id !== 'baseline' && isUndefined(scenario.worldId);
+    }, [scenario.id, scenario.worldId]);
 
     const _removeTransientStacks = useCallback(() => {
         setApp((draft) => {
@@ -127,20 +99,20 @@ export const ScenarioProvider = ({
                 ...outliner,
                 properties: {
                     ...outliner.properties,
-                    scenario: id,
+                    scenario: scenario.id,
                     changeable: isDefiningChange,
                 },
             });
         },
-        [id, isDefiningChange, setApp, _removeTransientStacks]
+        [scenario.id, isDefiningChange, setApp, _removeTransientStacks]
     );
 
     const scenarioOutliners = useMemo(() => {
         return pickBy(
             outliners,
-            (outliner) => outliner.properties.scenario === id
+            (outliner) => outliner.properties.scenario === scenario.id
         );
-    }, [outliners, id]);
+    }, [outliners, scenario.id]);
 
     const dockedOutliners = useMemo(() => {
         return Object.values(scenarioOutliners).filter(
@@ -203,10 +175,29 @@ export const ScenarioProvider = ({
         ) as StyleSpecification;
     }, [tab]);
 
+    /** temporary while we don't have an API route form making a change to the world */
+    const setWorldId = useCallback(
+        (id: string) => {
+            setApp((draft) => {
+                draft.scenarios[scenario.id].worldId = id;
+            });
+        },
+        [setApp, scenario.id]
+    );
+
+    const setWorldChange = useCallback(
+        (change: Change) => {
+            setApp((draft) => {
+                draft.scenarios[scenario.id].change = change;
+            });
+        },
+        [setApp, scenario.id]
+    );
+
     const value = useMemo(() => {
         return {
             tab,
-            id,
+            scenario,
             mapStyle,
             outliners: scenarioOutliners,
             draggableOutliners,
@@ -215,19 +206,15 @@ export const ScenarioProvider = ({
             getVisibleMarkers,
             geoJSON,
             queryLayers,
-            change,
-            setChange,
             isDefiningChange,
             createOutlinerInScenario,
-            worldId,
+            setWorldChange,
             setWorldId,
         };
     }, [
-        id,
+        scenario,
         scenarioOutliners,
         tab,
-        change,
-        setChange,
         isDefiningChange,
         mapStyle,
         queryLayers,
@@ -237,8 +224,8 @@ export const ScenarioProvider = ({
         getVisibleMarkers,
         createOutlinerInScenario,
         comparisonOutliners,
-        worldId,
         setWorldId,
+        setWorldChange,
     ]);
 
     return (

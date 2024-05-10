@@ -9,7 +9,11 @@ import { SubstackAdapter } from './SubstackAdapter';
 
 export const StackAdapter = () => {
     const { outliner } = useOutlinerContext();
-    const { setChange, change, isDefiningChange } = useScenarioContext();
+    const {
+        setWorldChange,
+        scenario: { change },
+        isDefiningChange,
+    } = useScenarioContext();
     const [open, setOpen] = useState(outliner.properties.docked ? false : true);
 
     if (outliner.query?.isLoading) {
@@ -49,7 +53,7 @@ export const StackAdapter = () => {
                                       (f) => f !== expression
                                   )
                                 : [...change.features, expression ?? ''];
-                            setChange({
+                            setWorldChange({
                                 ...change,
                                 features,
                             });

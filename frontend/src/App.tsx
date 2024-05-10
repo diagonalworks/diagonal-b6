@@ -54,7 +54,7 @@ function App() {
 
 const Workspace = () => {
     const {
-        app: { tabs },
+        app: { tabs, scenarios },
         activeComparator,
     } = useAppContext();
 
@@ -63,7 +63,10 @@ const Workspace = () => {
             <Tabs />
             <div className="flex-grow">
                 {tabs.left && (
-                    <ScenarioProvider id={tabs.left} tab="left">
+                    <ScenarioProvider
+                        scenario={scenarios[tabs.left]}
+                        tab="left"
+                    >
                         <ScenarioTab
                             tab="left"
                             id={tabs.left}
@@ -74,7 +77,10 @@ const Workspace = () => {
                     </ScenarioProvider>
                 )}
                 {tabs.right && (
-                    <ScenarioProvider id={tabs.right} tab="right">
+                    <ScenarioProvider
+                        scenario={scenarios[tabs.right]}
+                        tab="right"
+                    >
                         <ScenarioTab
                             tab="right"
                             id={tabs.right}

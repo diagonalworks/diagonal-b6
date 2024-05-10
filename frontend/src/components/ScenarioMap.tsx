@@ -36,8 +36,14 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
 
 export const ScenarioMap = ({ children }: PropsWithChildren) => {
     const { createOutlinerInScenario } = useScenarioContext();
-    const { getVisibleMarkers, queryLayers, geoJSON, id, mapStyle, tab } =
-        useScenarioContext();
+    const {
+        getVisibleMarkers,
+        queryLayers,
+        geoJSON,
+        scenario: { id },
+        mapStyle,
+        tab,
+    } = useScenarioContext();
     const { [id]: map } = useMap();
     const [viewState, setViewState] = useAtom(viewAtom);
     const [cursor, setCursor] = useState<'auto' | 'pointer'>('auto');

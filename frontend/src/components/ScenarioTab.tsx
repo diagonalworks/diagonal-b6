@@ -114,7 +114,10 @@ const CHANGES = ['add-service', 'change-use'];
 const matcher = new QuickScore(CHANGES);
 
 const ChangePanel = () => {
-    const { change, setChange } = useScenarioContext();
+    const {
+        scenario: { change },
+        setWorldChange,
+    } = useScenarioContext();
 
     return (
         <div className="border  bg-rose-30 p-0.5  border-rose-40  shadow-lg">
@@ -127,7 +130,7 @@ const ChangePanel = () => {
                                 <button
                                     className="text-xs hover:bg-graphite-20 p-1 hover:text-graphite-100 text-graphite-70 rounded-full w-5 h-5 flex items-center justify-center"
                                     onClick={() =>
-                                        setChange({
+                                        setWorldChange({
                                             ...change,
                                             features: change.features.filter(
                                                 (f) => f !== feature
@@ -153,7 +156,10 @@ const ChangePanel = () => {
 
 const ChangeCombo = () => {
     const { addComparator } = useAppContext();
-    const { id, setWorldId } = useScenarioContext();
+    const {
+        scenario: { id },
+        setWorldId,
+    } = useScenarioContext();
     const [selectedFunction, setSelectedFunction] = useState<
         (typeof CHANGES)[number] | undefined
     >();

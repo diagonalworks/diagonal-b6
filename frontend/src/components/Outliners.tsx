@@ -26,7 +26,7 @@ export const OutlinersLayer = () => {
     const {
         draggableOutliners,
         dockedOutliners,
-        id: scenarioId,
+        scenario: { id: scenarioId },
     } = useScenarioContext();
 
     const pointerSensor = useSensor(PointerSensor, {
