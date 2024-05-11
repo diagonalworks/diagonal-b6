@@ -49,9 +49,14 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 		UI: &OpenSourceUI{
 			Worlds:          w,
 			FunctionSymbols: functions.Functions(),
-			Adaptors:        functions.Adaptors(),
-			Options: api.Options{
-				Cores: 2,
+			Evaluator: api.Evaluator{
+				Worlds:          w,
+				FunctionSymbols: functions.Functions(),
+				Adaptors:        functions.Adaptors(),
+				Options: api.Options{
+					Cores: 2,
+				},
+				Lock: &lock,
 			},
 			Lock: &lock,
 		},

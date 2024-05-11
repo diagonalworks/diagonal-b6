@@ -3,7 +3,6 @@ package ui
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -99,11 +98,16 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 		ui = options.UI
 	} else {
 		ui = &OpenSourceUI{
-			Worlds:          options.Worlds,
-			Options:         options.APIOptions,
-			FunctionSymbols: functions.Functions(),
-			Adaptors:        functions.Adaptors(),
+			Worlds: options.Worlds,
+			Evaluator: api.Evaluator{
+				Worlds:          options.Worlds,
+				Options:         options.APIOptions,
+				FunctionSymbols: functions.Functions(),
+				Adaptors:        functions.Adaptors(),
+				Lock:            options.Lock,
+			},
 			BasemapRules:    renderer.BasemapRenderRules,
+			FunctionSymbols: functions.Functions(),
 			Lock:            options.Lock,
 		}
 	}
@@ -320,13 +324,11 @@ func FillStackRequest(request *pb.UIRequestProto, w http.ResponseWriter, r *http
 			return false
 		}
 	} else {
-		log.Printf("Bad method")
 		http.Error(w, "Bad method", http.StatusMethodNotAllowed)
 		return false
 	}
 
 	if request.Expression == "" && request.Node == nil {
-		log.Printf("No expression")
 		http.Error(w, "No expression", http.StatusBadRequest)
 		return false
 	}
@@ -359,11 +361,10 @@ func SendJSON(value interface{}, w http.ResponseWriter, r *http.Request) {
 }
 
 type OpenSourceUI struct {
-	BasemapRules    renderer.RenderRules
 	Worlds          ingest.Worlds
-	Options         api.Options
-	FunctionSymbols api.FunctionSymbols
-	Adaptors        api.Adaptors
+	BasemapRules    renderer.RenderRules
+	FunctionSymbols api.FunctionSymbols // For function name completion
+	Evaluator       api.Evaluator
 	Lock            *sync.RWMutex
 }
 
@@ -429,11 +430,10 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 	o.Lock.RLock()
 	defer o.Lock.RUnlock()
 	root := b6.NewFeatureIDFromProto(request.Root)
-	w := o.Worlds.FindOrCreateWorld(root)
 
 	var expression b6.Expression
+	var err error
 	if request.Expression != "" {
-		var err error
 		if request.Node == nil {
 			expression, err = api.ParseExpression(request.Expression)
 		} else {
@@ -442,17 +442,17 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 				expression, err = api.ParseExpressionWithLHS(request.Expression, lhs)
 			}
 		}
-		if err != nil {
-			ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
-			var substack pb.SubstackProto
-			fillSubstackFromError(&substack, err)
-			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
-			return nil
-		}
+
 	} else {
-		expression.FromProto(request.Node)
+		err = expression.FromProto(request.Node)
 	}
-	expression = api.Simplify(expression, o.FunctionSymbols)
+	if err != nil {
+		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
+		var substack pb.SubstackProto
+		fillSubstackFromError(&substack, err)
+		response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
+		return nil
+	}
 
 	if !request.Locked {
 		substack := &pb.SubstackProto{}
@@ -466,37 +466,22 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 		response.Proto.Expression = unparsed
 	}
 
-	var err error
 	if response.Proto.Node, err = expression.ToProto(); err != nil {
 		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
 		return nil
 	}
 
-	vmContext := api.Context{
-		World:           w,
-		Worlds:          o.Worlds,
-		FunctionSymbols: o.FunctionSymbols,
-		Adaptors:        o.Adaptors,
-		Context:         context.Background(),
-	}
-	vmContext.FillFromOptions(&o.Options)
+	var result interface{}
+	result, err = o.Evaluator.EvaluateExpression(expression, root)
 
-	result, err := api.Evaluate(expression, &vmContext)
 	if err == nil {
-		if change, ok := result.(ingest.Change); ok {
-			o.Lock.RUnlock()
-			o.Lock.Lock()
-			var changed b6.Collection[b6.FeatureID, b6.FeatureID]
-			if changed, err = change.Apply(w); err == nil {
-				if first, ok := firstValueIfOnlyItem(changed); ok {
-					err = ui.Render(response, first, root.ToCollectionID(), request.Locked, ui)
-				} else {
-					err = ui.Render(response, changed, root.ToCollectionID(), request.Locked, ui)
-				}
-				response.Proto.TilesChanged = true
+		if a, ok := result.(*api.AppliedChange); ok {
+			if first, ok := firstValueIfOnlyItem(a.Modified); ok {
+				err = ui.Render(response, first, root.ToCollectionID(), request.Locked, ui)
+			} else {
+				err = ui.Render(response, a.Modified, root.ToCollectionID(), request.Locked, ui)
 			}
-			o.Lock.Unlock()
-			o.Lock.RLock()
+			response.Proto.TilesChanged = true
 		} else {
 			err = ui.Render(response, result, root.ToCollectionID(), request.Locked, ui)
 		}
@@ -719,4 +704,59 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 		response.Proto.MapCenter = b6.NewPointProtoFromS2Point(r.Centroid().ToS2Point())
 	}
 	return nil
+}
+
+type EvaluateResponseProtoJSON pb.EvaluateResponseProto
+
+func (e *EvaluateResponseProtoJSON) MarshalJSON() ([]byte, error) {
+	return protojson.Marshal((*pb.EvaluateResponseProto)(e))
+}
+
+func (e *EvaluateResponseProtoJSON) UnmarshalJSON(buffer []byte) error {
+	return protojson.Unmarshal(buffer, (*pb.EvaluateResponseProto)(e))
+}
+
+type EvaluateHandler struct {
+	Evaluator api.Evaluator
+}
+
+func (e *EvaluateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var result interface{}
+	if r.Method == "GET" {
+		q := r.URL.Query()
+		root := b6.FeatureIDFromString(q.Get("r"))
+		if result, err = e.Evaluator.EvaluateString(q.Get("e"), root); err == nil {
+			if a, ok := result.(*api.AppliedChange); ok {
+				result = a.Modified
+			}
+		}
+	} else if r.Method == "POST" {
+		var body []byte
+		if body, err = io.ReadAll(r.Body); err == nil {
+			r.Body.Close()
+			var request pb.EvaluateRequestProto
+			if err = protojson.Unmarshal(body, &request); err == nil {
+				result, err = e.Evaluator.EvaluateProto(&request)
+			}
+		}
+	} else {
+		err = fmt.Errorf("Bad HTTP method")
+	}
+	var literal b6.Literal
+	if err == nil {
+		literal, err = b6.FromLiteral(result)
+	}
+	var node *pb.NodeProto
+	if err == nil {
+		node, err = literal.ToProto()
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	response := &pb.EvaluateResponseProto{
+		Result: node,
+	}
+	SendJSON((*EvaluateResponseProtoJSON)(response), w, r)
 }
