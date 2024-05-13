@@ -325,6 +325,67 @@ func countValues(_ *api.Context, collection b6.Collection[any, any]) (b6.Collect
 	return r.Collection(), nil
 }
 
+// Return a collection of the number of occurances of each value in the given collection.
+func countKeys(_ *api.Context, collection b6.Collection[any, any]) (b6.Collection[any, int], error) {
+	counts := make(map[interface{}]int)
+	i := collection.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return b6.Collection[any, int]{}, err
+		}
+		if !ok {
+			break
+		}
+		// TODO: return an error if the value can't be used as a map key
+		counts[i.Key()]++
+	}
+	r := &b6.ArrayCollection[interface{}, int]{
+		Keys:   make([]interface{}, 0, len(counts)),
+		Values: make([]int, 0, len(counts)),
+	}
+	for k, v := range counts {
+		r.Keys = append(r.Keys, k)
+		r.Values = append(r.Values, v)
+	}
+	return r.Collection(), nil
+}
+
+// Return a collection of the number of occurances of each valid value in the given collection.
+// Invalid values are not counted, but case the key to appear in the output.
+func countValidKeys(_ *api.Context, collection b6.Collection[any, any]) (b6.Collection[any, int], error) {
+	counts := make(map[interface{}]int)
+	i := collection.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return b6.Collection[any, int]{}, err
+		}
+		if !ok {
+			break
+		}
+		// TODO: return an error if the value can't be used as a map key
+		if id, ok := i.Value().(b6.FeatureID); ok {
+			if id.IsValid() {
+				counts[i.Key()]++
+			} else {
+				counts[i.Key()] += 0
+			}
+		} else {
+			counts[i.Key()]++
+		}
+	}
+	r := &b6.ArrayCollection[interface{}, int]{
+		Keys:   make([]interface{}, 0, len(counts)),
+		Values: make([]int, 0, len(counts)),
+	}
+	for k, v := range counts {
+		r.Keys = append(r.Keys, k)
+		r.Values = append(r.Values, v)
+	}
+	return r.Collection(), nil
+}
+
 type flattenCollection struct {
 	c  b6.Collection[any, b6.UntypedCollection]
 	i  b6.Iterator[any, b6.UntypedCollection]
