@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/rand"
+	"reflect"
 	"testing"
 	"time"
 
@@ -26,11 +27,35 @@ func TestMapWithDeadline(t *testing.T) {
 
 	seen := 0
 	deadline, _ := context.WithTimeout(context.Background(), 2000*time.Microsecond)
-	c, err := map_(&api.Context{Context: deadline}, input.Collection(), f)
+
+	c := &api.Context{
+		Context: deadline,
+		VM: &api.VM{
+			Stack: []api.StackFrame{
+				{
+					Expression: b6.NewSymbolExpression("x-collection"),
+				},
+				{
+					Expression: b6.NewSymbolExpression("x-function"),
+				},
+				{
+					Value: reflect.ValueOf(2),
+					Expression: b6.NewCallExpression(
+						b6.NewSymbolExpression("map"),
+						[]b6.Expression{
+							b6.NewSymbolExpression("x-collection"),
+							b6.NewSymbolExpression("x-function"),
+						},
+					)},
+			},
+		},
+	}
+
+	mapped, err := map_(c, input.Collection(), api.NewNativeFunction1(f, b6.NewSymbolExpression("x-native")))
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
-	i := c.Begin()
+	i := mapped.Begin()
 	for {
 		var ok bool
 		ok, err = i.Next()
@@ -63,7 +88,7 @@ func TestMapParallelHappyPath(t *testing.T) {
 
 	seen := 0
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
-	c, err := mapParallel(context, input.Collection(), f)
+	c, err := mapParallel(context, input.Collection(), api.NewNativeFunction1(f, b6.NewSymbolExpression("x-native")))
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -106,7 +131,7 @@ func TestMapParallelWithFunctionReturningError(t *testing.T) {
 
 	seen := 0
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
-	c, err := mapParallel(context, input.Collection(), f)
+	c, err := mapParallel(context, input.Collection(), api.NewNativeFunction1(f, b6.NewSymbolExpression("x-native")))
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -155,6 +180,14 @@ func (b *brokenCollection) Value() interface{} {
 	return b.i.Value()
 }
 
+func (b *brokenCollection) KeyExpression() b6.Expression {
+	return b.i.KeyExpression()
+}
+
+func (b *brokenCollection) ValueExpression() b6.Expression {
+	return b.i.ValueExpression()
+}
+
 func (b *brokenCollection) Count() (int, bool) {
 	return b.c.Count()
 }
@@ -179,7 +212,7 @@ func TestMapParallelWithIteratorReturningError(t *testing.T) {
 
 	seen := 0
 	context := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
-	mapped, err := mapParallel(context, input, f)
+	mapped, err := mapParallel(context, input, api.NewNativeFunction1(f, b6.NewSymbolExpression("x-native")))
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -217,7 +250,7 @@ func TestMapParallelWithDeadline(t *testing.T) {
 	cores := 8
 	deadline, _ := context.WithTimeout(context.Background(), 200*time.Microsecond)
 	ctx := &api.Context{Cores: cores, Context: deadline, VM: &api.VM{}}
-	mapped, err := mapParallel(ctx, input.Collection(), f)
+	mapped, err := mapParallel(ctx, input.Collection(), api.NewNativeFunction1(f, b6.NewSymbolExpression("x-native")))
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

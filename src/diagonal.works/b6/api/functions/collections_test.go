@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 
@@ -127,7 +128,8 @@ func TestFilter(t *testing.T) {
 
 	limit := 0.5
 	f := func(_ *api.Context, v interface{}) (bool, error) { return v.(float64) > limit, nil }
-	filtered, err := filter(&api.Context{}, collection.Collection(), f)
+	c := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
+	filtered, err := filter(c, collection.Collection(), api.NewNativeFunction1(f, b6.NewSymbolExpression("x-native")))
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

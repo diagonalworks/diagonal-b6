@@ -134,6 +134,14 @@ func (o *odCollection) Next() (bool, error) {
 	return o.i <= len(o.origins), nil
 }
 
+func (o *odCollection) KeyExpression() b6.Expression {
+	return b6.NewFeatureIDExpression(o.Key())
+}
+
+func (o *odCollection) ValueExpression() b6.Expression {
+	return b6.NewFeatureIDExpression(o.Value())
+}
+
 func (o *odCollection) Flip() {
 	flipped := make(map[b6.FeatureID][]b6.FeatureID)
 	for i, origin := range o.origins {

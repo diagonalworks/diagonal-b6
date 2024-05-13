@@ -20,10 +20,12 @@ func (h *HistogramCollection) Begin() b6.Iterator[any, any] {
 	return &HistogramCollection{UntypedCollection: h.UntypedCollection, i: h.UntypedCollection.BeginUntyped()}
 }
 
-func (h *HistogramCollection) Next() (bool, error) { return h.i.Next() }
-func (h *HistogramCollection) Key() interface{}    { return h.i.Key() }
-func (h *HistogramCollection) Value() interface{}  { return h.i.Value() }
-func (h *HistogramCollection) Count() (int, bool)  { return h.UntypedCollection.Count() }
+func (h *HistogramCollection) Next() (bool, error)            { return h.i.Next() }
+func (h *HistogramCollection) KeyExpression() b6.Expression   { return h.i.KeyExpression() }
+func (h *HistogramCollection) ValueExpression() b6.Expression { return h.i.ValueExpression() }
+func (h *HistogramCollection) Key() interface{}               { return h.i.Key() }
+func (h *HistogramCollection) Value() interface{}             { return h.i.Value() }
+func (h *HistogramCollection) Count() (int, bool)             { return h.UntypedCollection.Count() }
 
 var _ b6.UntypedCollection = &HistogramCollection{}
 

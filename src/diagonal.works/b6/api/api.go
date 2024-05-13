@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 
@@ -158,6 +159,14 @@ func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (refl
 				return reflect.Value{}, fmt.Errorf("expected a function with %d args, found %d", t.NumIn()-1, c.NumArgs())
 			}
 		}
+	} else if t.Implements(callableInterface) {
+		if _, ok := v.Interface().(Callable); ok {
+			return v, nil
+		} else if matches, ok := convertQueryToCallable(v, t); ok {
+			return reflect.ValueOf(matches), nil
+		} else {
+			return reflect.Value{}, fmt.Errorf("expected a function, found %s", v.Type())
+		}
 	} else if t.Implements(untypedCollectionInterface) {
 		if v.Type().AssignableTo(t) {
 			return v, nil
@@ -177,21 +186,29 @@ func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (refl
 }
 
 func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {
-	ok := t.Kind() == reflect.Func
-	ok = ok && v.Type().Implements(queryInterface)
-	ok = ok && t.NumIn() == 2
-	ok = ok && t.Out(0).Kind() == reflect.Bool
-	if ok {
-		q := v.Interface().(b6.Query)
-		f := func(c *Context, feature interface{}) (bool, error) {
-			if feature, ok := feature.(b6.Feature); ok {
-				return q.Matches(feature, c.World), nil
-			}
-			return false, fmt.Errorf("Expected b6.Feature, found %T", feature)
-		}
-		return goCall{f: reflect.ValueOf(f), name: fmt.Sprintf("matches %s", q)}, true
+	if !v.Type().Implements(queryInterface) {
+		log.Printf("not a query")
+		return nil, false
 	}
-	return nil, false
+	if t.Kind() == reflect.Func {
+		if t.NumIn() != 2 || t.Out(0).Kind() != reflect.Bool {
+			return nil, false
+		}
+	} else if !t.Implements(callableInterface) {
+		return nil, false
+	}
+	q := v.Interface().(b6.Query)
+	f := func(c *Context, feature interface{}) (bool, error) {
+		if feature, ok := feature.(b6.Feature); ok {
+			return q.Matches(feature, c.World), nil
+		}
+		return false, fmt.Errorf("Expected b6.Feature, found %T", feature)
+	}
+	e := b6.NewCallExpression(
+		b6.NewSymbolExpression("matches"),
+		[]b6.Expression{b6.NewQueryExpression(q)},
+	)
+	return NewNativeFunction1(f, e), true
 }
 
 func CanUseAsArg(have reflect.Type, want reflect.Type) bool {

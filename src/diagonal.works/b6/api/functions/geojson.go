@@ -156,67 +156,95 @@ func geojsonAreas(c *api.Context, g geojson.GeoJSON) (b6.Collection[int, b6.Area
 }
 
 // Wrap the given function such that it will only be called when passed a point.
-func applyToPoint(context *api.Context, f func(*api.Context, b6.Geometry) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
-	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
+func applyToPoint(context *api.Context, f api.Callable) (api.Callable, error) {
+	apply := func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if g.GeometryType() == b6.GeometryTypePoint {
-			return f(context, g)
+			r, err := context.VM.CallWithArgs(context, f, []interface{}{g})
+			if err != nil {
+				return nil, err
+			}
+			if g, ok := r.(b6.Geometry); ok {
+				return g, nil
+			}
+			return nil, fmt.Errorf("expected Geometry, found %T", r)
 		}
 		return g, nil
 	}
+	e := b6.NewSymbolExpression("apply-to-point")
+	return api.NewNativeFunction1(apply, e), nil
 }
 
 // Wrap the given function such that it will only be called when passed a path.
-func applyToPath(context *api.Context, f func(*api.Context, b6.Geometry) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
-	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
+func applyToPath(context *api.Context, f api.Callable) (api.Callable, error) {
+	apply := func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if g.GeometryType() == b6.GeometryTypePath {
-			return f(context, g)
+			r, err := context.VM.CallWithArgs(context, f, []interface{}{g})
+			if err != nil {
+				return nil, err
+			}
+			if g, ok := r.(b6.Geometry); ok {
+				return g, nil
+			}
+			return nil, fmt.Errorf("expected Geometry, found %T", r)
 		}
 		return g, nil
 	}
+	e := b6.NewSymbolExpression("apply-to-path")
+	return api.NewNativeFunction1(apply, e), nil
 }
 
 // Wrap the given function such that it will only be called when passed an area.
-func applyToArea(context *api.Context, f func(*api.Context, b6.Area) (b6.Geometry, error)) func(*api.Context, b6.Geometry) (b6.Geometry, error) {
-	return func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
+func applyToArea(context *api.Context, f api.Callable) (api.Callable, error) {
+	apply := func(context *api.Context, g b6.Geometry) (b6.Geometry, error) {
 		if area, ok := g.(b6.Area); ok {
-			return f(context, area)
+			r, err := context.VM.CallWithArgs(context, f, []interface{}{area})
+			if err != nil {
+				return nil, err
+			}
+			if g, ok := r.(b6.Geometry); ok {
+				return g, nil
+			}
+			return nil, fmt.Errorf("expected Geometry, found %T", r)
 		}
 		return g, nil
 	}
+	e := b6.NewSymbolExpression("apply-to-area")
+	return api.NewNativeFunction1(apply, e), nil
 }
 
-func mapGeometry(g b6.Geometry, f func(*api.Context, b6.Geometry) (b6.Geometry, error), c *api.Context) (geojson.Coordinates, error) {
-	var err error
-	g, err = f(c, g)
+func mapGeometry(g b6.Geometry, f api.Callable, c *api.Context) (geojson.Coordinates, error) {
+	gg, err := c.VM.CallWithArgs(c, f, []interface{}{g})
 	if err != nil {
 		return nil, err
 	}
 
-	switch g := g.(type) {
+	switch gg := gg.(type) {
 	case b6.Area:
-		if g.Len() == 1 {
-			return geojson.FromPolygon(g.Polygon(0)), nil
+		if gg.Len() == 1 {
+			return geojson.FromPolygon(gg.Polygon(0)), nil
 		} else {
-			polygons := make([]*s2.Polygon, g.Len())
+			polygons := make([]*s2.Polygon, gg.Len())
 			for i := range polygons {
-				polygons[i] = g.Polygon(i)
+				polygons[i] = gg.Polygon(i)
 			}
 			return geojson.FromPolygons(polygons), nil
 		}
-	default:
-		switch g.GeometryType() {
+	case b6.Geometry:
+		switch gg.GeometryType() {
 		case b6.GeometryTypePoint:
-			return geojson.FromS2Point(g.Point()), nil
+			return geojson.FromS2Point(gg.Point()), nil
 		case b6.GeometryTypePath:
-			return geojson.FromPolyline(g.Polyline()), nil
+			return geojson.FromPolyline(gg.Polyline()), nil
 		default:
-			panic("not implemented")
+			return nil, fmt.Errorf("expected points or paths, found %d", gg.GeometryType())
 		}
+	default:
+		return nil, fmt.Errorf("expected Geometry, found %T", gg)
 	}
 }
 
 // Return a geojson representing the result of applying the given function to each geometry in the given geojson.
-func mapGeometries(c *api.Context, g geojson.GeoJSON, f func(*api.Context, b6.Geometry) (b6.Geometry, error)) (geojson.GeoJSON, error) {
+func mapGeometries(c *api.Context, g geojson.GeoJSON, f api.Callable) (geojson.GeoJSON, error) {
 	m := func(cs geojson.Coordinates) (geojson.Coordinates, error) {
 		switch cs := cs.(type) {
 		case geojson.Point:
