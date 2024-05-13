@@ -512,3 +512,11 @@ func orderedJoin(context *api.Context, pathA b6.Geometry, pathB b6.Geometry) (b6
 	}
 	return b6.GeometryFromPoints(points), nil
 }
+
+func callID(context *api.Context, id b6.ExpressionID) (interface{}, error) {
+	e := b6.FindExpressionByID(id, context.World)
+	if e == nil {
+		return b6.FeatureIDInvalid, nil
+	}
+	return api.Evaluate(e.Expression(), context)
+}

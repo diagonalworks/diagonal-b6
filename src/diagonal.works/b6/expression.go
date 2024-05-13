@@ -1337,13 +1337,19 @@ func (c *CallExpression) String() string {
 	if _, ok := c.Function.AnyExpression.(*CallExpression); ok {
 		s += "(" + c.Function.String() + ")"
 	} else {
-		s += c.String()
+		s += c.Function.String()
 	}
-	for _, arg := range c.Args {
-		if _, ok := arg.AnyExpression.(*CallExpression); ok {
-			s += "(" + arg.String() + ")"
-		} else {
-			s += arg.String()
+	if len(c.Args) > 0 {
+		s += " "
+		for i, arg := range c.Args {
+			if i > 0 {
+				s += " "
+			}
+			if _, ok := arg.AnyExpression.(*CallExpression); ok {
+				s += "(" + arg.String() + ")"
+			} else {
+				s += arg.String()
+			}
 		}
 	}
 	return s
