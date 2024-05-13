@@ -248,6 +248,14 @@ func (p *pathPointCollection) Value() b6.Geometry {
 	return b6.GeometryFromLatLng(s2.LatLngFromPoint(p.path.PointAt(p.i - 1)))
 }
 
+func (p *pathPointCollection) KeyExpression() b6.Expression {
+	return b6.NewIntExpression(p.Key())
+}
+
+func (p *pathPointCollection) ValueExpression() b6.Expression {
+	return b6.NewPointExpressionFromLatLng(s2.LatLngFromPoint(p.Value().Point()))
+}
+
 var _ b6.AnyCollection[int, b6.Geometry] = &pathPointCollection{}
 
 type areaPointCollection struct {
@@ -314,6 +322,14 @@ func (a *areaPointCollection) Key() int {
 
 func (a *areaPointCollection) Value() b6.Geometry {
 	return b6.GeometryFromLatLng(s2.LatLngFromPoint(a.loop.Vertex(a.k - 1)))
+}
+
+func (a *areaPointCollection) KeyExpression() b6.Expression {
+	return b6.NewIntExpression(a.Key())
+}
+
+func (a *areaPointCollection) ValueExpression() b6.Expression {
+	return b6.NewPointExpressionFromLatLng(s2.LatLngFromPoint(a.Value().Point()))
 }
 
 var _ b6.AnyCollection[int, b6.Geometry] = &areaPointCollection{}

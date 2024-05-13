@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -347,7 +348,7 @@ func TestMapLiteralCollection(t *testing.T) {
 
 func TestMapLiteralCollectionWithImplicitKeys(t *testing.T) {
 	w := ingest.NewBasicMutableWorld()
-	e := `map {36, 42} (add 1)`
+	e := `map {36, 42} (add 10)`
 	result, err := api.EvaluateString(e, NewContext(w))
 	if err != nil {
 		t.Fatal(err)
@@ -357,10 +358,99 @@ func TestMapLiteralCollectionWithImplicitKeys(t *testing.T) {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	expected := map[int]int{
-		0: 37,
-		1: 43,
+		0: 46,
+		1: 52,
 	}
 	if diff := cmp.Diff(expected, collection); diff != "" {
 		t.Errorf("Found diff (-want, +got):\n%s", diff)
+	}
+}
+
+func TestVMProvidesCurrentExpression(t *testing.T) {
+	var expression b6.Expression
+	c := &api.Context{
+		World: ingest.NewBasicMutableWorld(),
+		FunctionSymbols: api.FunctionSymbols{
+			"sub": func(c *api.Context, a int, b int) (int, error) {
+				expression = c.VM.Expression()
+				return a - b, nil
+			},
+			"add": func(c *api.Context, a int, b int) (int, error) {
+				return a + b, nil
+			},
+		},
+		Adaptors: Adaptors(),
+	}
+	e := "sub (add 20 30) (add 10 20)"
+	_, err := api.EvaluateString(e, c)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	expected := b6.NewCallExpression(
+		b6.NewSymbolExpression("sub"),
+		[]b6.Expression{
+			b6.NewCallExpression(
+				b6.NewSymbolExpression("add"),
+				[]b6.Expression{
+					b6.NewIntExpression(20),
+					b6.NewIntExpression(30),
+				},
+			),
+			b6.NewCallExpression(
+				b6.NewSymbolExpression("add"),
+				[]b6.Expression{
+					b6.NewIntExpression(10),
+					b6.NewIntExpression(20),
+				},
+			),
+		},
+	)
+
+	if !expression.Equal(expected) {
+		t.Errorf("expected: %s, found: %s", expected, expression)
+	}
+}
+
+func TestVMProvidesCurrentExpressionWithMap(t *testing.T) {
+	var expression b6.Expression
+	fs := Functions()
+	fs["sub"] = func(c *api.Context, a int, b int) (int, error) {
+		expression = c.VM.Expression()
+		return a - b, nil
+	}
+
+	c := &api.Context{
+		World:           ingest.NewBasicMutableWorld(),
+		FunctionSymbols: fs,
+		Adaptors:        Adaptors(),
+		Context:         context.Background(),
+	}
+
+	e := "map (collection (pair 0 (add 20 30))) (sub 10)"
+	mapped, err := api.EvaluateString(e, c)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	i := mapped.(b6.UntypedCollection).BeginUntyped()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			t.Fatalf("expected no error, found %s", err)
+		} else if !ok {
+			break
+		}
+	}
+
+	expected, err := api.ParseExpression("sub 10 (second (pair 0 (add 20 30))) 10")
+	if err != nil {
+		t.Fatalf("Failed to parse expected expression: %s", err)
+	}
+
+	expression = api.Simplify(expected, fs)
+
+	if !expression.Equal(expected) {
+		t.Errorf("expected: %s, found: %s", expected, expression)
 	}
 }

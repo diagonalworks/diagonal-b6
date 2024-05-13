@@ -2,6 +2,7 @@ package functions
 
 import (
 	"fmt"
+	"reflect"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -9,9 +10,10 @@ import (
 )
 
 type mapCollection struct {
-	f       func(*api.Context, interface{}) (interface{}, error)
-	v       interface{}
 	c       b6.UntypedCollection
+	f       api.Callable
+	e       b6.Expression
+	v       interface{}
 	i       b6.Iterator[any, any]
 	context *api.Context
 }
@@ -27,10 +29,13 @@ func (v *mapCollection) Count() (int, bool) {
 func (v *mapCollection) Next() (bool, error) {
 	var ok bool
 	var err error
+	var frames [1]api.StackFrame
 	if err = v.context.Context.Err(); err == nil {
 		ok, err = v.i.Next()
 		if ok && err == nil {
-			v.v, err = v.f(v.context, v.i.Value())
+			frames[0].Value = reflect.ValueOf(v.i.Value())
+			frames[0].Expression = v.i.ValueExpression()
+			v.v, err = v.context.VM.CallWithArgsAndExpressions(v.context, v.f, frames[0:1])
 		}
 	}
 	return ok, err
@@ -44,19 +49,29 @@ func (v *mapCollection) Value() interface{} {
 	return v.v
 }
 
+func (v *mapCollection) KeyExpression() b6.Expression {
+	return v.i.KeyExpression()
+}
+
+func (v *mapCollection) ValueExpression() b6.Expression {
+	return b6.NewCallExpression(v.e, []b6.Expression{v.i.ValueExpression()})
+}
+
 // Return a collection with the result of applying the given function to each value.
 // Keys are unmodified.
-func map_(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, interface{}) (interface{}, error)) (b6.Collection[any, any], error) {
+func map_(context *api.Context, collection b6.UntypedCollection, function api.Callable) (b6.Collection[any, any], error) {
+	e := context.VM.ArgExpressions()[1]
 	return b6.Collection[any, any]{
-		AnyCollection: &mapCollection{c: collection, f: function, context: context},
+		AnyCollection: &mapCollection{c: collection, f: function, e: e, context: context},
 	}, nil
 }
 
 type mapItemsCollection struct {
-	f       func(*api.Context, api.Pair) (interface{}, error)
+	c       b6.UntypedCollection
+	f       api.Callable
+	e       b6.Expression
 	k       interface{}
 	v       interface{}
-	c       b6.UntypedCollection
 	i       b6.Iterator[any, any]
 	context *api.Context
 }
@@ -71,10 +86,12 @@ func (v *mapItemsCollection) Count() (int, bool) {
 
 func (v *mapItemsCollection) Next() (bool, error) {
 	ok, err := v.i.Next()
+	var frames [1]api.StackFrame
 	if ok && err == nil {
-		pair := api.AnyAnyPair{v.i.Key(), v.i.Value()}
+		frames[0].Value = reflect.ValueOf(api.AnyAnyPair{v.i.Key(), v.i.Value()})
+		frames[0].Expression = v.i.ValueExpression()
 		var r interface{}
-		r, err = v.f(v.context, pair)
+		r, err = v.context.VM.CallWithArgsAndExpressions(v.context, v.f, frames[0:1])
 		if err == nil {
 			if pair, ok := r.(api.Pair); ok {
 				v.k = pair.First()
@@ -95,9 +112,25 @@ func (v *mapItemsCollection) Value() interface{} {
 	return v.v
 }
 
+func (v *mapItemsCollection) KeyExpression() b6.Expression {
+	return v.i.KeyExpression()
+}
+
+func (v *mapItemsCollection) ValueExpression() b6.Expression {
+	return b6.NewCallExpression(v.e, []b6.Expression{
+		b6.NewCallExpression(
+			b6.NewSymbolExpression("pair"),
+			[]b6.Expression{
+				v.i.KeyExpression(),
+				v.i.ValueExpression(),
+			},
+		),
+	})
+}
+
 // Return a collection of the result of applying the given function to each pair(key, value).
 // Keys are unmodified.
-func mapItems(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, api.Pair) (interface{}, error)) (b6.Collection[any, any], error) {
+func mapItems(context *api.Context, collection b6.UntypedCollection, function api.Callable) (b6.Collection[any, any], error) {
 	return b6.Collection[any, any]{
 		AnyCollection: &mapItemsCollection{c: collection, f: function, context: context},
 	}, nil
@@ -118,16 +151,25 @@ func second(c *api.Context, pair api.Pair) (interface{}, error) {
 	return pair.Second(), nil
 }
 
+type expressionPair struct {
+	Key   interface{}
+	Value interface{}
+
+	KeyExpression   b6.Expression
+	ValueExpression b6.Expression
+}
+
 type mapParallelCollection struct {
-	f       func(*api.Context, interface{}) (interface{}, error)
-	v       interface{}
 	c       b6.UntypedCollection
+	f       api.Callable
+	e       b6.Expression
+	v       interface{}
 	i       b6.Iterator[any, any]
 	context *api.Context
 
-	in      []chan api.AnyAnyPair
-	out     []chan api.AnyAnyPair
-	current api.AnyAnyPair
+	in      []chan expressionPair
+	out     []chan expressionPair
+	current expressionPair
 	err     error
 	read    int
 }
@@ -139,13 +181,13 @@ func (m *mapParallelCollection) Begin() b6.Iterator[any, any] {
 		i:       m.c.BeginUntyped(),
 		context: m.context,
 
-		in:   make([]chan api.AnyAnyPair, m.context.Cores),
-		out:  make([]chan api.AnyAnyPair, m.context.Cores),
+		in:   make([]chan expressionPair, m.context.Cores),
+		out:  make([]chan expressionPair, m.context.Cores),
 		read: -1,
 	}
 	for i := range c.in {
-		c.in[i] = make(chan api.AnyAnyPair, 1)
-		c.out[i] = make(chan api.AnyAnyPair, 1)
+		c.in[i] = make(chan expressionPair, 1)
+		c.out[i] = make(chan expressionPair, 1)
 	}
 	go c.run()
 	return c
@@ -165,11 +207,19 @@ func (m *mapParallelCollection) Next() (bool, error) {
 }
 
 func (m *mapParallelCollection) Key() interface{} {
-	return m.current.First()
+	return m.current.Key
 }
 
 func (m *mapParallelCollection) Value() interface{} {
-	return m.current.Second()
+	return m.current.Value
+}
+
+func (m *mapParallelCollection) KeyExpression() b6.Expression {
+	return m.current.KeyExpression
+}
+
+func (m *mapParallelCollection) ValueExpression() b6.Expression {
+	return b6.NewCallExpression(m.e, []b6.Expression{m.current.ValueExpression})
 }
 
 func (m *mapParallelCollection) run() {
@@ -178,11 +228,19 @@ func (m *mapParallelCollection) run() {
 	for i := range m.in {
 		in, out, context := m.in[i], m.out[i], contexts[i]
 		g.Go(func() error {
+			var frames [1]api.StackFrame
 			for pair := range in {
-				v, err := m.f(context, pair.Second())
+				frames[0].Value = reflect.ValueOf(pair.Value)
+				frames[0].Expression = pair.ValueExpression
+				v, err := context.VM.CallWithArgsAndExpressions(context, m.f, frames[0:1])
 				if err == nil {
 					select {
-					case out <- api.AnyAnyPair{pair.First(), v}:
+					case out <- expressionPair{
+						Key:             pair.Key,
+						Value:           v,
+						KeyExpression:   pair.KeyExpression,
+						ValueExpression: pair.ValueExpression,
+					}:
 					case <-c.Done():
 						return nil
 					}
@@ -202,7 +260,12 @@ func (m *mapParallelCollection) run() {
 			ok, err = m.i.Next()
 			if ok && err == nil {
 				select {
-				case m.in[write%len(m.in)] <- api.AnyAnyPair{m.i.Key(), m.i.Value()}:
+				case m.in[write%len(m.in)] <- expressionPair{
+					Key:             m.i.Key(),
+					Value:           m.i.Value(),
+					KeyExpression:   m.i.KeyExpression(),
+					ValueExpression: m.i.ValueExpression(),
+				}:
 				case <-c.Done():
 					err = c.Err()
 				}
@@ -224,7 +287,7 @@ func (m *mapParallelCollection) run() {
 // Return a collection with the result of applying the given function to each value.
 // Keys are unmodified, and function application occurs in parallel, bounded
 // by the number of CPU cores allocated to b6.
-func mapParallel(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, interface{}) (interface{}, error)) (b6.Collection[any, any], error) {
+func mapParallel(context *api.Context, collection b6.UntypedCollection, function api.Callable) (b6.Collection[any, any], error) {
 	if context.Cores < 2 {
 		return map_(context, collection, function)
 	}

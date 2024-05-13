@@ -36,6 +36,19 @@ func (s *searchFeatureCollection) Next() (bool, error) {
 	return s.i.Next(), nil
 }
 
+func (s *searchFeatureCollection) KeyExpression() b6.Expression {
+	return b6.NewFeatureIDExpression(s.i.FeatureID())
+}
+
+func (s *searchFeatureCollection) ValueExpression() b6.Expression {
+	return b6.NewCallExpression(
+		b6.NewSymbolExpression("find-feature"),
+		[]b6.Expression{
+			s.KeyExpression(),
+		},
+	)
+}
+
 func (s *searchFeatureCollection) Count() (int, bool) {
 	n := 0
 	i := s.w.FindFeatures(s.query)

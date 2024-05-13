@@ -4,27 +4,68 @@ import (
 	"container/heap"
 	"fmt"
 	"math/rand"
+	"reflect"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
 )
 
+type pairCollection struct {
+	ps []api.Pair
+	es []b6.Expression
+	i  int
+}
+
+func (p *pairCollection) Begin() b6.Iterator[any, any] {
+	return &pairCollection{ps: p.ps, es: p.es}
+}
+
+func (p *pairCollection) Next() (bool, error) {
+	p.i++
+	return p.i <= len(p.ps), nil
+}
+
+func (p *pairCollection) Key() interface{} {
+	return p.ps[p.i-1].First()
+}
+
+func (p *pairCollection) Value() interface{} {
+	return p.ps[p.i-1].Second()
+}
+
+func (p *pairCollection) KeyExpression() b6.Expression {
+	return b6.NewCallExpression(
+		b6.NewSymbolExpression("first"),
+		[]b6.Expression{p.es[p.i-1]},
+	)
+}
+
+func (p *pairCollection) ValueExpression() b6.Expression {
+	return b6.NewCallExpression(
+		b6.NewSymbolExpression("second"),
+		[]b6.Expression{p.es[p.i-1]},
+	)
+}
+
+func (p *pairCollection) Count() (int, bool) {
+	return len(p.ps) - p.i, true
+}
+
 // Return a collection of the given key value pairs.
-func collection(_ *api.Context, pairs ...interface{}) (b6.Collection[any, any], error) {
-	c := &b6.ArrayCollection[interface{}, interface{}]{
-		Keys:   make([]interface{}, len(pairs)),
-		Values: make([]interface{}, len(pairs)),
+func collection(context *api.Context, pairs ...interface{}) (b6.Collection[any, any], error) {
+	c := &pairCollection{
+		ps: make([]api.Pair, len(pairs)),
+		es: context.VM.ArgExpressions(),
 	}
 	for i, arg := range pairs {
 		if pair, ok := arg.(api.Pair); ok {
-			c.Keys[i] = pair.First()
-			c.Values[i] = pair.Second()
+			c.ps[i] = pair
 		} else {
 			return b6.Collection[any, any]{}, fmt.Errorf("Expected a pair, found %T", arg)
 		}
 	}
-	return c.Collection(), nil
+	return b6.Collection[any, any]{AnyCollection: c}, nil
 }
 
 type takeCollection struct {
@@ -52,6 +93,14 @@ func (t *takeCollection) Key() interface{} {
 
 func (t *takeCollection) Value() interface{} {
 	return t.i.Value()
+}
+
+func (t *takeCollection) KeyExpression() b6.Expression {
+	return t.i.KeyExpression()
+}
+
+func (t *takeCollection) ValueExpression() b6.Expression {
+	return t.i.ValueExpression()
 }
 
 func (t *takeCollection) Count() (int, bool) {
@@ -166,7 +215,7 @@ func top(_ *api.Context, collection b6.UntypedCollection, n int) (b6.Collection[
 type filterCollection struct {
 	c       b6.UntypedCollection
 	i       b6.Iterator[any, any]
-	f       func(*api.Context, interface{}) (bool, error)
+	f       api.Callable
 	context *api.Context
 }
 
@@ -175,14 +224,24 @@ func (f *filterCollection) Begin() b6.Iterator[any, any] {
 }
 
 func (f *filterCollection) Next() (bool, error) {
+	var frames [1]api.StackFrame
 	for {
 		ok, err := f.i.Next()
 		if !ok || err != nil {
 			return ok, err
 		}
-		ok, err = f.f(f.context, f.i.Value())
-		if ok || err != nil {
-			return ok, err
+		frames[0].Value = reflect.ValueOf(f.i.Value())
+		frames[0].Expression = f.i.ValueExpression()
+		r, err := f.context.VM.CallWithArgsAndExpressions(f.context, f.f, frames[0:1])
+		if err != nil {
+			return false, err
+		}
+		if b, ok := r.(bool); ok {
+			if b {
+				return true, nil
+			}
+		} else {
+			return false, fmt.Errorf("expected bool, found %T", r)
 		}
 	}
 }
@@ -195,6 +254,14 @@ func (f *filterCollection) Value() interface{} {
 	return f.i.Value()
 }
 
+func (f *filterCollection) KeyExpression() b6.Expression {
+	return f.i.KeyExpression()
+}
+
+func (f *filterCollection) ValueExpression() b6.Expression {
+	return f.i.ValueExpression()
+}
+
 func (f *filterCollection) Count() (int, bool) {
 	return 0, false
 }
@@ -202,7 +269,7 @@ func (f *filterCollection) Count() (int, bool) {
 var _ b6.AnyCollection[any, any] = &filterCollection{}
 
 // Return a collection of the items of the given collection for which the value of the given function applied to each value is true.
-func filter(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, interface{}) (bool, error)) (b6.Collection[any, any], error) {
+func filter(context *api.Context, collection b6.UntypedCollection, function api.Callable) (b6.Collection[any, any], error) {
 	return b6.Collection[any, any]{AnyCollection: &filterCollection{c: collection, f: function, context: context}}, nil
 }
 
@@ -292,6 +359,14 @@ func (f *flattenCollection) Next() (bool, error) {
 			f.ii = nil
 		}
 	}
+}
+
+func (f *flattenCollection) KeyExpression() b6.Expression {
+	return f.ii.KeyExpression()
+}
+
+func (f *flattenCollection) ValueExpression() b6.Expression {
+	return f.ii.ValueExpression()
 }
 
 func (f *flattenCollection) Count() (int, bool) {

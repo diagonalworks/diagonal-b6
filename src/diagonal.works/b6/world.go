@@ -1259,6 +1259,8 @@ func (a area) ToGeoJSON() geojson.GeoJSON {
 	return AreaToGeoJSON(a)
 }
 
+var _ Area = area{}
+
 func AreaFromS2Loop(l *s2.Loop) Area {
 	return AreaFromS2Polygon(s2.PolygonFromLoops([]*s2.Loop{l}))
 }
