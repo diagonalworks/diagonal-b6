@@ -30,6 +30,8 @@ var functions = api.FunctionSymbols{
 	// collections
 	"collection":               collection,
 	"count-values":             countValues,
+	"count-keys":               countKeys,
+	"count-valid-keys":         countValidKeys,
 	"filter":                   filter,
 	"flatten":                  flatten,
 	"sum-by-key":               sumByKey,
