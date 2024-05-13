@@ -9,7 +9,8 @@ import { Histogram } from '../system/Histogram';
 
 const colorInterpolator = interpolateRgbBasis([
     '#fff',
-    colors.amber[20],
+    colors.green[20],
+    colors.cyan[50],
     colors.violet[80],
 ]);
 

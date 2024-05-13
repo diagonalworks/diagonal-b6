@@ -30,8 +30,9 @@ export type OutlinerSpec = {
         docked: boolean;
         transient: boolean;
         coordinates: { x: number; y: number };
-        scenario: string;
+        scenario?: string;
         changeable?: boolean;
+        comparison?: boolean;
     };
     request?: {
         eventType: Event;
@@ -94,7 +95,7 @@ export const OutlinerProvider = ({
     const { setApp, closeOutliner } = useAppContext();
     const viewState = useAtomValue(viewAtom);
     const { data } = useAtomValue(startupQueryAtom);
-    const { [outliner.properties.scenario]: map } = useMap();
+    const { [outliner.properties?.scenario || 'baseline']: map } = useMap();
 
     const close = useCallback(() => {
         closeOutliner(outliner.id);
@@ -105,6 +106,7 @@ export const OutlinerProvider = ({
     const query = useQuery({
         queryKey: [
             'outliner',
+            'stack',
             request?.expression,
             request?.eventType,
             request?.locked,
@@ -216,7 +218,7 @@ export const OutlinerProvider = ({
     useEffect(() => {
         setApp((draft) => {
             draft.outliners[outliner.id].query = query;
-            draft.outliners[outliner.id].data = query.data;
+            draft.outliners[outliner.id].data = query.data ?? outliner.data;
         });
     }, [query.data]);
 

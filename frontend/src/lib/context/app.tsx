@@ -1,5 +1,6 @@
 import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
+import { $FixMe } from '@/utils/defs';
 import { useAtom, useAtomValue } from 'jotai';
 import { uniqueId } from 'lodash';
 import {
@@ -10,6 +11,8 @@ import {
     useEffect,
     useMemo,
 } from 'react';
+import { Comparator } from './comparator';
+import { OutlinerStore } from './outliner';
 
 /**
  * The app context that provides the app state and the methods to update it.
@@ -22,6 +25,7 @@ export const AppContext = createContext<{
         id: keyof AppStore['outliners'],
         value: AppStore['outliners'][string]['active']
     ) => void;
+    createOutliner: (outliner: OutlinerStore) => void;
     moveOutliner: (
         id: keyof AppStore['outliners'],
         dx: number,
@@ -32,17 +36,21 @@ export const AppContext = createContext<{
     addScenario: () => void;
     removeScenario: (id: string) => void;
     setActiveScenario: (id: string) => void;
+    addComparator: (req: Comparator['request']) => void;
+    activeComparator?: Comparator;
 }>({
     app: initialAppStore,
     setApp: () => {},
     setFixedOutliner: () => {},
     setActiveOutliner: () => {},
+    createOutliner: () => {},
     moveOutliner: () => {},
     closeOutliner: () => {},
     changedWorldScenarios: [],
     addScenario: () => {},
     removeScenario: () => {},
     setActiveScenario: () => {},
+    addComparator: () => {},
 });
 
 /**
@@ -60,6 +68,38 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }: PropsWithChildren) => {
     const [app, setApp] = useAtom(appAtom);
     const startupQuery = useAtomValue(startupQueryAtom);
+
+    const addComparator = useCallback(
+        (request: Comparator['request']) => {
+            if (!request) return;
+            const id = uniqueId('comparator-');
+            setApp((draft) => {
+                draft.comparators[id] = {
+                    id,
+                    request,
+                };
+            });
+        },
+        [setApp]
+    );
+
+    const activeComparator = useMemo(() => {
+        return Object.values(app.comparators).find((c) =>
+            !c.request
+                ? false
+                : c.request.baseline === (app.tabs.left as $FixMe) &&
+                  c.request.scenarios.includes(app.tabs?.right as $FixMe)
+        );
+    }, [app.comparators, app.tabs]);
+
+    const createOutliner = useCallback(
+        (outliner: OutlinerStore) => {
+            setApp((draft) => {
+                draft.outliners[outliner.id] = outliner;
+            });
+        },
+        [setApp]
+    );
 
     const closeOutliner = useCallback(
         (id: keyof AppStore['outliners']) => {
@@ -132,6 +172,11 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             draft.scenarios[id] = {
                 id: id,
                 name: 'Untitled Scenario',
+                worldId: undefined,
+                change: {
+                    features: [],
+                    function: '',
+                },
             };
             draft.tabs.right = id;
         });
@@ -170,6 +215,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         setActiveScenario,
         addScenario,
         removeScenario,
+        addComparator,
+        activeComparator,
+        createOutliner,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

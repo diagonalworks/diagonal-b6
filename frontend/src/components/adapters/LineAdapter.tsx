@@ -23,11 +23,11 @@ export const LineAdapter = ({
         line.value?.clickExpression ?? line.action?.clickExpression;
     const Wrapper = clickable ? Line.Button : React.Fragment;
     const { outliner, close: closeFn } = useOutlinerContext();
-    const { createOutliner } = useScenarioContext();
+    const { createOutlinerInScenario } = useScenarioContext();
 
     const handleLineClick = () => {
         if (!clickable) return;
-        createOutliner({
+        createOutlinerInScenario({
             id: JSON.stringify(clickable),
             properties: {
                 coordinates: { x: 10, y: 60 },

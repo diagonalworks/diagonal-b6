@@ -34,10 +34,10 @@ export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
 };
 
 export const WorldShellAdapter = ({ mapId }: { mapId: string }) => {
-    const { createOutliner } = useScenarioContext();
+    const { createOutlinerInScenario } = useScenarioContext();
 
     const handleSubmit = (e: string) => {
-        createOutliner({
+        createOutlinerInScenario({
             id: `stack_shell_${e}`,
             properties: {
                 scenario: mapId,

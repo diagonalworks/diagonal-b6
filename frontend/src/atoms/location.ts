@@ -4,12 +4,27 @@ import { atomWithStorage } from 'jotai/utils';
 import { ViewState } from 'react-map-gl';
 
 const INITIAL_COORDINATES = { latE7: 515361156, lngE7: -1255161 };
-
 const INITIAL_ZOOM = 16;
 const INITIAL_CENTER = {
     lat: INITIAL_COORDINATES.latE7 / 1e7,
     lng: INITIAL_COORDINATES.lngE7 / 1e7,
 };
+
+const initialViewParamsFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    const mapCenter = params.get('ll')?.split(',');
+    const zoom = params.get('z');
+
+    const initialViewState = {
+        latitude: mapCenter ? parseFloat(mapCenter[0]) : INITIAL_CENTER.lat,
+        longitude: mapCenter ? parseFloat(mapCenter[1]) : INITIAL_CENTER.lng,
+        zoom: zoom ? parseInt(zoom) : INITIAL_ZOOM,
+    };
+
+    return initialViewState;
+};
+
+const { latitude, longitude, zoom } = initialViewParamsFromUrl();
 
 export const zoomStorageAtom = atomWithStorage<number>(
     'z',
@@ -44,8 +59,11 @@ export const centerStorageAtom = atomWithStorage<{ lat: number; lng: number }>(
 const debouncedCenter = atomWithDebounce(INITIAL_CENTER, 200);
 const debouncedZoom = atomWithDebounce(INITIAL_ZOOM, 200);
 
-const centerAtom = atom(INITIAL_CENTER);
-const zoomAtom = atom(INITIAL_ZOOM);
+const centerAtom = atom({
+    lat: latitude,
+    lng: longitude,
+});
+const zoomAtom = atom(zoom);
 
 const centerStorageSetAtom = atom(null, (get, set) => {
     const center = get(debouncedCenter.debouncedValueAtom);
@@ -134,7 +152,7 @@ export default function atomWithDebounce<T>(
     );
 
     // exported atom setter to clear timeout if needed
-    const clearTimeoutAtom = atom(null, (get, set, _arg) => {
+    const clearTimeoutAtom = atom(null, (get, set) => {
         clearTimeout(get(prevTimeoutAtom));
         set(isDebouncingAtom, false);
     });

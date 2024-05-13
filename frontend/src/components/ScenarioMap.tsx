@@ -35,9 +35,15 @@ export function DeckGLOverlay(props: MapboxOverlayProps) {
 }
 
 export const ScenarioMap = ({ children }: PropsWithChildren) => {
-    const { createOutliner } = useScenarioContext();
-    const { getVisibleMarkers, queryLayers, geoJSON, id, mapStyle, tab } =
-        useScenarioContext();
+    const { createOutlinerInScenario } = useScenarioContext();
+    const {
+        getVisibleMarkers,
+        queryLayers,
+        geoJSON,
+        scenario: { id },
+        mapStyle,
+        tab,
+    } = useScenarioContext();
     const { [id]: map } = useMap();
     const [viewState, setViewState] = useAtom(viewAtom);
     const [cursor, setCursor] = useState<'auto' | 'pointer'>('auto');
@@ -161,7 +167,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                         <DotIcon
                             className={twMerge(
                                 'fill-graphite-80',
-                                tab === 'right' && 'fill-orange-80'
+                                tab === 'right' && 'fill-rose-80'
                             )}
                         />
                     );
@@ -174,7 +180,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                                 className={twMerge(
                                     'w-2 h-2 rounded-full bg-ultramarine-50 border border-ultramarine-80',
                                     tab === 'right' &&
-                                        'bg-orange-50 border-orange-80'
+                                        'bg-rose-50 border-rose-80'
                                 )}
                             />
                         );
@@ -201,7 +207,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                     latitude={marker.geometry.coordinates[1]}
                     className={twMerge(
                         '[&>svg]:fill-graphite-80',
-                        tab === 'right' && '[&>svg]:fill-orange-80'
+                        tab === 'right' && '[&>svg]:fill-rose-80'
                     )}
                 >
                     {icon}
@@ -224,7 +230,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                     6
                 )}, ${e.lngLat.lng.toFixed(6)}`;
 
-                createOutliner({
+                createOutlinerInScenario({
                     id: `stack_mlc_${expression}`,
                     properties: outlinerProperties,
                     request: {
@@ -244,7 +250,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 if (feature) {
                     const path = getFeaturePath(feature);
                     const expression = `find-feature ${path}`;
-                    createOutliner({
+                    createOutlinerInScenario({
                         id: `stack_mfc_${expression}`,
                         properties: outlinerProperties,
                         request: {
@@ -258,7 +264,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 }
             }
         },
-        [map, createOutliner, id]
+        [map, createOutlinerInScenario, id]
     );
 
     return (
