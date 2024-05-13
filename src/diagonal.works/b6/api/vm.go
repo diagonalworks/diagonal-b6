@@ -700,18 +700,25 @@ func (p *partialCall) NumArgs() int {
 
 func (p *partialCall) CallFromStack(context *Context, n int, scratch []reflect.Value) ([]reflect.Value, error) {
 	vm := context.VM
-	argsStart := len(vm.Args) - n - 1
 	expression := vm.Stack[len(vm.Stack)-1].Expression
 	if n+p.n == p.c.NumArgs() {
 		vm.Stack = vm.Stack[0 : len(vm.Stack)-1]
 		vm.Stack = append(vm.Stack, p.args[0:p.n]...)
-		vm.Stack = append(vm.Stack, StackFrame{Value: reflect.ValueOf(n + p.n), Expression: expression})
+		call := &b6.CallExpression{
+			Function: expression.AnyExpression.(*b6.CallExpression).Function,
+			Args:     make([]b6.Expression, p.c.NumArgs()),
+		}
+		for i := 0; i < p.c.NumArgs(); i++ {
+			call.Args[i] = vm.Stack[len(vm.Stack)-p.c.NumArgs()+i].Expression
+		}
+		vm.Stack = append(vm.Stack, StackFrame{Value: reflect.ValueOf(n + p.n), Expression: b6.Expression{AnyExpression: call}})
 		oargs := vm.Args
 		vm.Args = p.vmArgs
 		scratch, err := p.c.CallFromStack(context, n+p.n, scratch)
 		vm.Args = oargs
 		return scratch, err
 	} else if n+p.n < p.c.NumArgs() {
+		argsStart := len(vm.Args) - n - 1
 		es := make([]b6.Expression, 0, n)
 		pp := &partialCall{c: p, e: expression, vmArgs: vm.Args}
 		pp.n = n

@@ -71,6 +71,22 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 	} else if vv, ok := convertInterface(v, t); ok {
 		return vv, nil
 	}
+	switch t.Kind() {
+	case reflect.Int:
+		switch v := v.Interface().(type) {
+		case b6.IntNumber:
+			return reflect.ValueOf(int(v)), nil
+		case b6.FloatNumber:
+			return reflect.ValueOf(int(v)), nil
+		}
+	case reflect.Float64:
+		switch v := v.Interface().(type) {
+		case b6.IntNumber:
+			return reflect.ValueOf(float64(v)), nil
+		case b6.FloatNumber:
+			return reflect.ValueOf(float64(v)), nil
+		}
+	}
 	switch t {
 	case featureIDType:
 		if vv, ok := v.Interface().(b6.Identifiable); ok {

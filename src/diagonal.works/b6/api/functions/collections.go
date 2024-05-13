@@ -385,22 +385,38 @@ func flatten(_ *api.Context, collection b6.Collection[any, b6.UntypedCollection]
 // Return a change that adds a histogram for the given collection.
 func histogram(c *api.Context, collection b6.Collection[any, any]) (ingest.Change, error) {
 	id := b6.CollectionID{Namespace: b6.NamespaceUI, Value: rand.Uint64()}
+	return histogramWithID(c, collection, id)
+}
 
+// Return a change that adds a histogram for the given collection with the given ID.
+func histogramWithID(c *api.Context, collection b6.Collection[any, any], id b6.CollectionID) (ingest.Change, error) {
 	histogram, err := api.NewHistogramFromCollection(collection, id)
 	if err != nil {
 		return nil, err
 	}
-	return &ingest.AddFeatures{histogram}, nil
+	expression := &ingest.ExpressionFeature{
+		ExpressionID: b6.MakeExpressionID(id.Namespace, id.Value),
+		Expression:   c.VM.Expression(),
+	}
+	return &ingest.AddFeatures{histogram, expression}, nil
 }
 
 // Return a change that adds a histogram with only colour swatches for the given collection.
 func histogramSwatch(c *api.Context, collection b6.Collection[any, any]) (ingest.Change, error) {
 	id := b6.CollectionID{Namespace: b6.NamespaceUI, Value: rand.Uint64()}
+	return histogramSwatchWithID(c, collection, id)
+}
 
+// Return a change that adds a histogram with only colour swatches for the given collection.
+func histogramSwatchWithID(c *api.Context, collection b6.Collection[any, any], id b6.CollectionID) (ingest.Change, error) {
 	histogram, err := api.NewHistogramFromCollection(collection, id)
 	if err != nil {
 		return nil, err
 	}
 	histogram.AddTag(b6.Tag{Key: "b6:histogram", Value: b6.String("swatch")})
-	return &ingest.AddFeatures{histogram}, nil
+	expression := &ingest.ExpressionFeature{
+		ExpressionID: b6.MakeExpressionID(id.Namespace, id.Value),
+		Expression:   c.VM.Expression(),
+	}
+	return &ingest.AddFeatures{histogram, expression}, nil
 }

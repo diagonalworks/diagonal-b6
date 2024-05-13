@@ -454,3 +454,34 @@ func TestVMProvidesCurrentExpressionWithMap(t *testing.T) {
 		t.Errorf("expected: %s, found: %s", expected, expression)
 	}
 }
+
+func TestVMProvidesCurrentExpressionWithPartialCalls(t *testing.T) {
+	var expression b6.Expression
+	fs := Functions()
+	fs["sub"] = func(c *api.Context, a int, b int) (int, error) {
+		expression = c.VM.Expression()
+		return a - b, nil
+	}
+
+	c := &api.Context{
+		World:           ingest.NewBasicMutableWorld(),
+		FunctionSymbols: fs,
+		Adaptors:        Adaptors(),
+		Context:         context.Background(),
+	}
+
+	e := "add 20 30 | sub 10"
+	_, err := api.EvaluateString(e, c)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	expected, err := api.ParseExpression("sub (add 20 30) 10")
+	if err != nil {
+		t.Fatalf("Failed to parse expected expression: %s", err)
+	}
+
+	if !expression.Equal(expected) {
+		t.Errorf("expected: %s, found: %s", expected, expression)
+	}
+}
