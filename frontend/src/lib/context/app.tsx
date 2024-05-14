@@ -112,7 +112,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
     useEffect(() => {
         setApp((draft) => {
-            startupQuery.data?.docked?.forEach((d, i) => {
+            startupQuery.data?.docked?.forEach((d: $FixMe, i: number) => {
                 draft.outliners[`docked-${i}`] = {
                     id: `docked-${i}`,
                     properties: {
