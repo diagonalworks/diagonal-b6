@@ -1149,7 +1149,7 @@ func (c *CollectionExpression) FromProto(node *pb.NodeProto) error {
 		if err := v.FromProto(n); err != nil {
 			return err
 		}
-		collection.Values[i] = k.Literal()
+		collection.Values[i] = v.Literal()
 	}
 	c.UntypedCollection = Collection[any, any]{
 		AnyCollection: collection,

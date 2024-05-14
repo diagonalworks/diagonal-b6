@@ -100,6 +100,7 @@ func TestMutableWorlds(t *testing.T) {
 		{"AddingFeaturesWithNoIDFails", ValidateAddingFeaturesWithNoIDFails},
 		{"AddTagToExistingFeature", ValidateAddTagToExistingFeature},
 		{"AddSearchableTagToExistingFeature", ValidateAddSearchableTagToExistingFeature},
+		{"ChangeSearchableTagOnExistingFeature", ValidateChangeSearchableTagOnExistingFeature},
 		{"AddTagToNonExistingFeature", ValidateAddTagToNonExistingFeature},
 	}
 
@@ -780,6 +781,30 @@ func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 
 	if !found {
 		t.Error("Expected to find Caravan")
+	}
+}
+
+func ValidateChangeSearchableTagOnExistingFeature(w MutableWorld, t *testing.T) {
+	lighterman := osmPoint(427900370, 51.5353986, -0.1243711)
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
+
+	if err := addFeatures(w, lighterman); err != nil {
+		t.Fatal(err)
+	}
+
+	points := w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	if points.Next() != true && points.Next() != false {
+		t.Fatal("Expected to find 1 point")
+	}
+
+	if err := w.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.String("pub")}); err != nil {
+		t.Fatalf("Failed to add tag: %s", err)
+	}
+
+	points = w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	if points.Next() != false {
+		t.Fatal("Expected to find 0 points")
 	}
 }
 
@@ -1614,6 +1639,45 @@ func TestMergeWorlds(t *testing.T) {
 
 	if point := lower.FindFeatureByID(caravan.FeatureID()); point == nil {
 		t.Error("Expected to find caravan in the lower world.")
+	}
+}
+
+func TestChangeSearchableTagOnFeatureInBaseWorld(t *testing.T) {
+	lighterman := osmPoint(427900370, 51.5353986, -0.1243711)
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
+
+	// Recreate a bug that occured where modified features where incorrectly
+	// returning from a search when embeded between other matching features
+	// that weren't modified.
+	id := lighterman.FeatureID()
+	id.Value--
+	before := lighterman.Clone()
+	before.SetFeatureID(id)
+	id.Value += 2
+	after := lighterman.Clone()
+	after.SetFeatureID(id)
+
+	w := NewBasicMutableWorld()
+	if err := addFeatures(w, lighterman, before, after); err != nil {
+		t.Fatal(err)
+	}
+
+	overlay := NewMutableOverlayWorld(w)
+
+	q := b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}
+	found := b6.AllFeatures(overlay.FindFeatures(q))
+	if len(found) != 3 {
+		t.Fatalf("Expected to find 3 features, found %d", len(found))
+	}
+
+	if err := overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.String("pub")}); err != nil {
+		t.Fatalf("Failed to add tag: %s", err)
+	}
+
+	found = b6.AllFeatures(overlay.FindFeatures(q))
+	if len(found) != 2 {
+		t.Fatalf("Expected to find 2 features, found %d", len(found))
 	}
 }
 

@@ -63,15 +63,12 @@ func (o *overlayFeatures) Next() bool {
 			}
 		}
 	} else {
-		if o.baseOK = o.base.Next(); o.baseOK {
-			o.baseID = o.base.FeatureID()
-		}
+		o.advanceBase()
 	}
 	return o.overlayOK || o.baseOK
 }
 
 func (o *overlayFeatures) advanceBase() {
-	n := 0
 	if o.baseOK {
 		for {
 			if o.baseOK = o.base.Next(); o.baseOK {
@@ -80,7 +77,6 @@ func (o *overlayFeatures) advanceBase() {
 			if !o.baseOK || !o.filter.HasFeatureWithID(o.baseID) {
 				break
 			}
-			n++
 		}
 	}
 }

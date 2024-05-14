@@ -182,13 +182,19 @@ func (c *compilation) Compile(e b6.Expression) error {
 	for i := 0; i < len(c.Targets); i++ {
 		entrypoint := len(c.Instructions)
 		c.Args = c.Targets[i].Args
-		if c.Args != nil {
-			c.Append(Instruction{Op: OpStore})
+		if c.Targets[i].Args != nil {
+			for j := len(c.Targets[i].Args.Args) - 1; j >= 0; j-- {
+				var args [2]int16
+				args[ArgsStoreLocation] = int16(c.Targets[i].Args.Args[j])
+				c.Append(Instruction{Op: OpStore, Args: args})
+			}
 		}
 		if err := compileTarget(c.Targets[i].Expression, c); err != nil {
 			return err
 		}
-		c.Append(Instruction{Op: OpDiscard})
+		if c.Targets[i].Args != nil {
+			c.Append(Instruction{Op: OpDiscard})
+		}
 		c.Append(Instruction{Op: OpReturn})
 		c.Targets[i].Done(entrypoint)
 	}
@@ -327,6 +333,11 @@ func compileLambda(e b6.Expression, c *compilation) (*lambdaCall, error) {
 	lambda := e.AnyExpression.(*b6.LambdaExpression)
 	l := &lambdaCall{args: len(lambda.Args), expression: e}
 	f := &frame{Previous: c.Args}
+	t := target{
+		Expression: lambda.Expression,
+		Args:       f,
+		Done:       func(entrypoint int) { l.pc = entrypoint },
+	}
 	for _, s := range lambda.Args {
 		if c.NumArgs > MaxArgs {
 			return nil, fmt.Errorf("Can't use more than %d args", MaxArgs)
@@ -334,11 +345,7 @@ func compileLambda(e b6.Expression, c *compilation) (*lambdaCall, error) {
 		f.Bind(s, c.NumArgs)
 		c.NumArgs++
 	}
-	c.Targets = append(c.Targets, target{
-		Expression: lambda.Expression,
-		Args:       f,
-		Done:       func(entrypoint int) { l.pc = entrypoint },
-	})
+	c.Targets = append(c.Targets, t)
 	return l, nil
 }
 
@@ -355,6 +362,28 @@ type StackFrame struct {
 	Expression b6.Expression
 }
 
+func (f StackFrame) String() string {
+	var s string
+	if !f.Value.IsValid() {
+		s = "(invalid)"
+	} else if f.Value.Type().Kind() == reflect.Int {
+		s = fmt.Sprintf("int=%d", f.Value.Int())
+	} else {
+		s = f.Value.Type().String()
+	}
+	s = fmt.Sprintf("%-10s ", s)
+	if f.Expression.AnyExpression != nil {
+		e := f.Expression.String()
+		if len(e) > 40 {
+			e = e[0:40] + "..."
+		}
+		s += e
+	} else {
+		s += "(nil)"
+	}
+	return s
+}
+
 type VM struct {
 	Instructions []Instruction
 	PC           int
@@ -367,6 +396,8 @@ const (
 
 	ArgsNumArgs    = 0
 	ArgsEntrypoint = 1
+
+	ArgsStoreLocation = 0
 
 	ArgsArgToPush = 0
 )
@@ -419,17 +450,18 @@ func (v *VM) execute(context *Context) error {
 				Expression: v.Instructions[v.PC].Expression,
 			})
 		case OpStore:
-			n := int(v.Stack[len(v.Stack)-1].Value.Int())
-			argsStart := len(v.Stack) - n - 1
-			for i := 0; i < n; i++ {
-				v.Args[i] = v.Stack[argsStart+i]
-			}
+			v.Args[v.Instructions[v.PC].Args[ArgsStoreLocation]] = v.Stack[len(v.Stack)-2]
+			v.Stack[len(v.Stack)-2] = v.Stack[len(v.Stack)-1] // Skip over the calling expression
+			v.Stack = v.Stack[0 : len(v.Stack)-1]
 		case OpDiscard:
-			n := int(v.Stack[len(v.Stack)-2].Value.Int())
-			v.Stack[len(v.Stack)-n-2] = v.Stack[len(v.Stack)-1]
-			v.Stack = v.Stack[0 : len(v.Stack)-n-1]
+			v.Stack[len(v.Stack)-2] = v.Stack[len(v.Stack)-1]
+			v.Stack = v.Stack[0 : len(v.Stack)-1]
 		case OpLoad:
-			v.Stack = append(v.Stack, v.Args[v.Instructions[v.PC].Args[0]])
+			loaded := v.Args[v.Instructions[v.PC].Args[0]]
+			if !loaded.Value.IsValid() {
+				panic("OpLoad of invalid value")
+			}
+			v.Stack = append(v.Stack, loaded)
 		case OpCallValue:
 			// Before a call, the stack contains the arguments for the
 			// function, followed by the expression representing the
@@ -678,7 +710,7 @@ func (l *lambdaCall) CallFromStack(context *Context, n int, scratch []reflect.Va
 	vm := context.VM
 	argsStart := len(vm.Stack) - n - 1
 	expression := vm.Stack[len(vm.Stack)-1].Expression
-	if n >= l.args {
+	if n == l.args {
 		opc := vm.PC
 		vm.PC = l.pc
 		err = vm.execute(context)
