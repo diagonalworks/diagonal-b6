@@ -14,8 +14,10 @@ import (
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/api/functions"
 	"diagonal.works/b6/ingest"
+	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/test/camden"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func TestStateFilledFromStartupQuery(t *testing.T) {
@@ -94,6 +96,7 @@ func TestEvaluateFunctionThatChangesWorld(t *testing.T) {
 		},
 	}
 	body, _ := json.Marshal(j)
+
 	request := httptest.NewRequest("POST", url, bytes.NewBuffer(body))
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
@@ -177,5 +180,96 @@ func TestEvaluateFunctionViaEvaluateEndpoint(t *testing.T) {
 	json.Unmarshal(body, &actual)
 	if diff := cmp.Diff(expected, actual); diff != "" {
 		t.Errorf("Expected no difference, found: %s", diff)
+	}
+}
+
+func TestCompareScenarios(t *testing.T) {
+	worlds := &ingest.MutableWorlds{
+		Base: camden.BuildGranarySquareForTests(t),
+	}
+
+	var lock sync.RWMutex
+
+	evaluator := api.Evaluator{
+		Worlds:          worlds,
+		FunctionSymbols: functions.Functions(),
+		Adaptors:        functions.Adaptors(),
+		Lock:            &lock,
+	}
+
+	handler := CompareHandler{
+		Evaluator: evaluator,
+		Worlds:    worlds,
+	}
+
+	analysis := b6.FeatureID{Type: b6.FeatureTypeCollection, Namespace: "diagonal.works/test/analysis", Value: 0}
+	baseline := b6.FeatureID{Type: b6.FeatureTypeCollection, Namespace: "diagonal.works/test/world", Value: 0}
+	scenario := b6.FeatureID{Type: b6.FeatureTypeCollection, Namespace: "diagonal.works/test/world", Value: 1}
+
+	lock.RLock()
+	e := "find [#amenity=restaurant] | map (get \"cuisine\") | histogram-with-id /" + analysis.String()
+	if _, err := evaluator.EvaluateString(e, baseline); err != nil {
+		t.Fatalf("Failed to setup baseline analysis: %s", err)
+	}
+	lock.RUnlock()
+
+	w := worlds.FindOrCreateWorld(scenario)
+	// The horror
+	w.AddTag(camden.DishoomID, b6.Tag{Key: "#amenity", Value: b6.String("dentist")})
+
+	url := "http://b6.diagonal.works/compare"
+	j := map[string]interface{}{
+		"analysis": map[string]interface{}{
+			"type":      analysis.Type,
+			"namespace": analysis.Namespace,
+			"value":     analysis.Value,
+		},
+		"baseline": map[string]interface{}{
+			"type":      baseline.Type,
+			"namespace": baseline.Namespace,
+			"value":     baseline.Value,
+		},
+		"scenarios": []map[string]interface{}{
+			{
+				"type":      scenario.Type,
+				"namespace": scenario.Namespace,
+				"value":     scenario.Value,
+			},
+		},
+	}
+	body, _ := json.Marshal(j)
+
+	request := httptest.NewRequest("POST", url, bytes.NewBuffer(body))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	result := response.Result()
+	if result.StatusCode != http.StatusOK {
+		m, _ := io.ReadAll(result.Body)
+		t.Fatalf("Expected status %d, found %d: %s", http.StatusOK, result.StatusCode, string(m))
+	}
+
+	body, _ = io.ReadAll(result.Body)
+	var comparison pb.ComparisonLineProto
+	if err := protojson.Unmarshal(body, &comparison); err != nil {
+		t.Fatalf("Failed to unmarshal response: %s", err)
+	}
+
+	if l := len(comparison.Scenarios); l != 1 {
+		t.Fatalf("Expected one scenario, found %d", l)
+	}
+
+	if len(comparison.Baseline.Bars) != len(comparison.Scenarios[0].Bars) {
+		t.Fatalf("Expected baseline and scenario to have same number of bars")
+	}
+
+	different := 0
+	for i := range comparison.Baseline.Bars {
+		if comparison.Baseline.Bars[i].Value != comparison.Scenarios[0].Bars[i].Value {
+			different++
+		}
+	}
+
+	if different != 1 {
+		t.Errorf("Expected one different bar, found %d", different)
 	}
 }

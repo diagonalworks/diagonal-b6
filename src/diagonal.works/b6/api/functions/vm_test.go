@@ -366,6 +366,22 @@ func TestMapLiteralCollectionWithImplicitKeys(t *testing.T) {
 	}
 }
 
+func TestCallNestedLambda(t *testing.T) {
+	w := ingest.NewBasicMutableWorld()
+	e := `call {a -> call {b -> add a b} 10} 20`
+	parsed, err := api.ParseExpression(e)
+	if err != nil {
+		t.Fatalf("Failed to parse expression: %s", err)
+	}
+	r, err := api.Evaluate(parsed, NewContext(w))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if i, ok := b6.ToInt(r); !ok || i != 30 {
+		t.Errorf("Unexpected result")
+	}
+}
+
 func TestVMProvidesCurrentExpression(t *testing.T) {
 	var expression b6.Expression
 	c := &api.Context{

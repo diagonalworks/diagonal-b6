@@ -48,6 +48,7 @@ message MapLayerProto {
 
 message StackProto {
     repeated SubstackProto substacks = 1;
+    api.FeatureIDProto id = 2;
 }
 
 message SubstackProto {

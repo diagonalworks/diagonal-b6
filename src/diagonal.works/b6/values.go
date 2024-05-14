@@ -50,6 +50,8 @@ func ToInt(v interface{}) (int, bool) {
 		return int(v), true
 	case uint64:
 		return int(v), true
+	case IntNumber:
+		return int(v), true
 	}
 	return 0, false
 }

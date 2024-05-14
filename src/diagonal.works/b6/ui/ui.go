@@ -26,6 +26,7 @@ import (
 	"diagonal.works/b6/renderer"
 	"github.com/golang/geo/s2"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
@@ -123,9 +124,12 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 		stack = options.InstrumentHandler(stack, "ui")
 	}
 	root.Handle("/stack", stack)
-
 	root.Handle("/evaluate", &EvaluateHandler{
 		Evaluator: evaluator,
+	})
+	root.Handle("/compare", &CompareHandler{
+		Evaluator: evaluator,
+		Worlds:    options.Worlds,
 	})
 
 	return nil
@@ -563,6 +567,7 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			}
 		}
 	case b6.Feature:
+		p.Stack.Id = b6.NewProtoFromFeatureID(r.FeatureID())
 		if c, ok := r.(b6.CollectionFeature); ok {
 			if b6 := c.Get("b6"); b6.Value.String() == "histogram" {
 				return fillResponseFromHistogramFeature(response, c, w)
@@ -769,4 +774,110 @@ func (e *EvaluateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Result: node,
 	}
 	SendJSON((*EvaluateResponseProtoJSON)(response), w, r)
+}
+
+type ProtoJSON[Proto proto.Message] struct {
+	m Proto
+}
+
+func (p ProtoJSON[_]) MarshalJSON() ([]byte, error) {
+	return protojson.Marshal(p.m)
+}
+
+func (p ProtoJSON[_]) UnmarshalJSON(buffer []byte) error {
+	return protojson.Unmarshal(buffer, p.m)
+}
+
+func WrapProtoForJSON[Proto proto.Message](m Proto) ProtoJSON[Proto] {
+	return ProtoJSON[Proto]{m: m}
+}
+
+type CompareHandler struct {
+	Evaluator api.Evaluator
+	Worlds    ingest.Worlds
+}
+
+func (c *CompareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request pb.ComparisonRequestProto
+	var body []byte
+	var err error
+	if body, err = io.ReadAll(r.Body); err == nil {
+		err = protojson.Unmarshal(body, &request)
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	baseline := c.Worlds.FindOrCreateWorld(b6.NewFeatureIDFromProto(request.Baseline))
+	scenarios := make([]b6.FeatureID, len(request.Scenarios))
+	for i := range scenarios {
+		scenarios[i] = b6.NewFeatureIDFromProto(request.Scenarios[i])
+	}
+
+	var analysis b6.CollectionFeature
+	var expression b6.ExpressionFeature
+	id := b6.NewFeatureIDFromProto(request.Analysis)
+	if id.Type == b6.FeatureTypeCollection {
+		if analysis = b6.FindCollectionByID(id.ToCollectionID(), baseline); analysis != nil {
+			id.Type = b6.FeatureTypeExpression
+			if expression = b6.FindExpressionByID(id.ToExpressionID(), baseline); expression == nil {
+				err = fmt.Errorf("no expression with ID %s", id)
+			}
+		} else {
+			err = fmt.Errorf("no collection with ID %s", id)
+		}
+	} else {
+		err = fmt.Errorf("analysis is not a collection")
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var response pb.ComparisonLineProto
+	response.Baseline = newComparisonHistogram(analysis, baseline)
+
+	c.Evaluator.Lock.RLock()
+	defer c.Evaluator.Lock.RUnlock()
+	for _, scenario := range scenarios {
+		if _, err = c.Evaluator.EvaluateExpression(expression.Expression(), scenario); err == nil {
+			w := c.Worlds.FindOrCreateWorld(scenario)
+			if comparison := b6.FindCollectionByID(analysis.CollectionID(), w); comparison != nil {
+				response.Scenarios = append(response.Scenarios, newComparisonHistogram(comparison, w))
+			} else {
+				err = fmt.Errorf("expression didn't produce required analysis")
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	SendJSON(WrapProtoForJSON(&response), w, r)
+}
+
+func newComparisonHistogram(c b6.CollectionFeature, w b6.World) *pb.ComparisonHistogramProto {
+	var comparison pb.ComparisonHistogramProto
+	response := NewUIResponseJSON()
+	fillResponseFromHistogramFeature(response, c, w)
+	p := (*pb.UIResponseProto)(response.Proto)
+	for _, s := range p.Stack.Substacks {
+		for _, line := range s.Lines {
+			if bar, ok := line.Line.(*pb.LineProto_HistogramBar); ok {
+				comparison.Bars = append(comparison.Bars, bar.HistogramBar)
+			}
+		}
+	}
+	return &comparison
 }
