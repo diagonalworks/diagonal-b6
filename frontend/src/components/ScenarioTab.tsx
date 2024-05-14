@@ -243,9 +243,9 @@ const ChangeCombo = () => {
     const analysisOptions = useMemo(() => {
         const dockedAnalysis = startupQuery.data?.docked;
         return (
-            dockedAnalysis?.flatMap((analysis) => {
+            dockedAnalysis?.flatMap((analysis: $FixMe) => {
                 const label = analysis.proto.stack?.substacks[0].lines.map(
-                    (l) => l.header
+                    (l: $FixMe) => l.header
                 )[0];
 
                 return {
@@ -257,7 +257,7 @@ const ChangeCombo = () => {
     }, [startupQuery.data?.docked]);
 
     const selectedAnalysis = useMemo(() => {
-        return analysisOptions.find((analysis) =>
+        return analysisOptions.find((analysis: $FixMe) =>
             isEqual(change?.analysis, analysis.node)
         );
     }, [change?.analysis, analysisOptions]);
@@ -320,7 +320,8 @@ const ChangeCombo = () => {
                         value={selectedAnalysisLabel}
                         onValueChange={(v) => {
                             const option = analysisOptions.find(
-                                (analysis) => analysis.label?.title?.value === v
+                                (analysis: $FixMe) =>
+                                    analysis.label?.title?.value === v
                             );
                             if (!option?.node) return;
                             setChangeAnalysis(option.node);
@@ -349,17 +350,20 @@ const ChangeCombo = () => {
                             }}
                         >
                             <Select.Viewport>
-                                {analysisOptions.map((analysis, i) => (
-                                    <Select.Item
-                                        key={i}
-                                        value={
-                                            analysis.label?.title?.value ?? ''
-                                        }
-                                        className=" cursor-pointer data-[state=checked]:bg-rose-10  data-[highlighted]:bg-rose-10 text-sm py-3 px-2 border-x border-b border-graphite-20 first:border-t items-center focus:outline-none "
-                                    >
-                                        {analysis?.label?.title?.value}
-                                    </Select.Item>
-                                ))}
+                                {analysisOptions.map(
+                                    (analysis: $FixMe, i: number) => (
+                                        <Select.Item
+                                            key={i}
+                                            value={
+                                                analysis.label?.title?.value ??
+                                                ''
+                                            }
+                                            className=" cursor-pointer data-[state=checked]:bg-rose-10  data-[highlighted]:bg-rose-10 text-sm py-3 px-2 border-x border-b border-graphite-20 first:border-t items-center focus:outline-none "
+                                        >
+                                            {analysis?.label?.title?.value}
+                                        </Select.Item>
+                                    )
+                                )}
                             </Select.Viewport>
                         </Select.Content>
                     </Select.Root>
