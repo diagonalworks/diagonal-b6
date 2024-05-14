@@ -6,6 +6,27 @@ import (
 	pb "diagonal.works/b6/proto"
 )
 
+func addLabel(response *UIResponseJSON, f b6.Feature) {
+	if label := f.Get("b6:label"); label.IsValid() {
+		substack := pb.SubstackProto{
+			Lines: []*pb.LineProto{
+				{
+					Line: &pb.LineProto_Header{
+						Header: &pb.HeaderLineProto{
+							Title: &pb.AtomProto{
+								Atom: &pb.AtomProto_Value{
+									Value: label.Value.String(),
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
+	}
+}
+
 func fillResponseFromHistogramFeature(response *UIResponseJSON, c b6.CollectionFeature, w b6.World) error {
 	p := (*pb.UIResponseProto)(response.Proto)
 	labels := api.HistogramBucketLabels(c)
@@ -21,6 +42,8 @@ func fillResponseFromHistogramFeature(response *UIResponseJSON, c b6.CollectionF
 	for _, count := range counts {
 		total += count
 	}
+
+	addLabel(response, c)
 
 	substack := &pb.SubstackProto{}
 	if h := c.Get("b6:histogram"); h.Value.String() == "swatch" {

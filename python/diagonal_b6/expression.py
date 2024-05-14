@@ -23,7 +23,7 @@ class Literal(Node):
     def to_node_proto(self):
         n = api_pb2.NodeProto()
         if self.name is not None:
-            n.name = self.name     
+            n.name = self.name
         n.literal.CopyFrom(self.to_literal_proto())
         return n
 
@@ -149,6 +149,9 @@ class Result(Node):
 
     def to_node_proto(self):
         return self.node.to_node_proto()
+
+    def _values(cls):
+        return Result
 
 class ListCollectionResult(Result):
 
