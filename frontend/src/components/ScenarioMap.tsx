@@ -1,7 +1,7 @@
 import * as circleIcons from '@/assets/icons/circle';
 import { viewAtom } from '@/atoms/location';
 import { colorToRgbArray } from '@/lib/colors';
-import { getFeaturePath, getRoadWidth } from '@/lib/map';
+import { getFeaturePath } from '@/lib/map';
 import { MVTLayer } from '@deck.gl/geo-layers/typed';
 import {
     MapboxOverlay as DeckOverlay,
@@ -95,7 +95,10 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 },
                 getLineWidth: (f: Feature) => {
                     if (f.properties?.layerName === ql.layer.path) {
-                        const queryFeatures = map.querySourceFeatures(
+                        /**
+                         * skipping road highlighing for performance reasons
+                         */
+                        /* const queryFeatures = map.querySourceFeatures(
                             'diagonal',
                             {
                                 sourceLayer: 'road',
@@ -110,7 +113,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                                 getRoadWidth(feature.properties?.highway) * 1.5
                             );
                         }
-
+ */
                         const isSelected =
                             histogram?.selected &&
                             histogram.selected.toString() ===
