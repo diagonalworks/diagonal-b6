@@ -6,6 +6,19 @@ export type b6Route = 'startup' | 'stack';
 
 export const b6Path = `${import.meta.env.VITE_B6_BASE_PATH}`;
 
+const formatResponse = (res: Response) => {
+    if (!res.ok) {
+        return res.text().then((v) =>
+            Promise.reject({
+                status: res.status,
+                statusText: res.statusText,
+                message: v,
+            })
+        );
+    }
+    return res.json();
+};
+
 const stack = async (request: UIRequestProto & { logEvent: Event }) => {
     return fetch(`${b6Path}stack`, {
         method: 'POST',
@@ -13,17 +26,13 @@ const stack = async (request: UIRequestProto & { logEvent: Event }) => {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
-    });
+    }).then((res) => formatResponse(res));
 };
 
-const startup = async (request: UIRequestProto) => {
-    return fetch(`${b6Path}startup`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-    });
+const startup = async (urlParams: { z: string; ll: string; r: string }) => {
+    return fetch(`${b6Path}startup?` + new URLSearchParams(urlParams)).then(
+        (res) => formatResponse(res)
+    );
 };
 
 const evaluate = async (request: EvaluateRequestProto) => {
@@ -33,16 +42,9 @@ const evaluate = async (request: EvaluateRequestProto) => {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
-    })
-        .then((res) => {
-            return res.json();
-        })
-        .catch((e) => {
-            console.error(e);
-            return {
-                error: e,
-            };
-        });
+    }).then((res) => {
+        return formatResponse(res);
+    });
 };
 
 export const b6 = {

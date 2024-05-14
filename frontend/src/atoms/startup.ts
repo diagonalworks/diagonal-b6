@@ -1,5 +1,4 @@
-import { b6Path } from '@/lib/b6';
-import { StartupResponse } from '@/types/startup';
+import { b6 } from '@/lib/b6';
 import { atomWithQuery } from 'jotai-tanstack-query';
 import { collectionAtom } from './app';
 import { viewAtom } from './location';
@@ -10,13 +9,10 @@ export const startupQueryAtom = atomWithQuery((get) => {
     return {
         queryKey: ['startup', collection],
         queryFn: () =>
-            fetch(
-                `${b6Path}startup?` +
-                    new URLSearchParams({
-                        z: viewState.zoom.toString(),
-                        ll: `${viewState.latitude},${viewState.longitude}`,
-                        r: collection,
-                    })
-            ).then((res) => res.json() as Promise<StartupResponse>),
+            b6.startup({
+                z: viewState.zoom.toString(),
+                ll: `${viewState.latitude},${viewState.longitude}`,
+                r: collection,
+            }),
     };
 });

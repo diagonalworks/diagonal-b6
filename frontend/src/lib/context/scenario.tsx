@@ -11,7 +11,10 @@ import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
 import { Change, Scenario } from '@/atoms/app';
-import { EvaluateResponseProto, FeatureType } from '@/types/generated/api';
+import {
+    EvaluateRequestProto,
+    EvaluateResponseProto,
+} from '@/types/generated/api';
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
 import { UseQueryResult, useQuery } from '@tanstack/react-query';
@@ -84,73 +87,48 @@ export const ScenarioProvider = ({
         queryFn: async () => {
             return b6.evaluate({
                 root: {
-                    type: 'FeatureTypeCollection' as unknown as FeatureType,
+                    type: 'FeatureTypeCollection',
                     namespace: 'diagonal.works/world',
                     value: 0,
                 },
-                version: 'something',
                 request: {
                     call: {
-                        pipelined: true, // can't be undefined per the schema.
                         function: {
                             symbol: 'add-world-with-change',
-                            /** the following can't be undefined per the schema */
-                            name: 'add-world',
-                            begin: 0,
-                            end: 0,
                         },
                         args: [
                             {
                                 literal: {
                                     featureIDValue: {
-                                        type: 'FeatureTypeCollection' as unknown as FeatureType,
+                                        type: 'FeatureTypeCollection',
                                         namespace: 'diagonal.works/world',
                                         value: 1,
                                     },
                                 },
-                                /** the following can't be undefined per the schema */
-                                name: 'new-world-id',
-                                begin: 0,
-                                end: 0,
                             },
                             {
                                 call: {
-                                    pipelined: true, // can't be undefined
                                     function: {
-                                        symbol: 'add-service-bank',
-                                        name: 'add-service-bank',
-                                        begin: 0,
-                                        end: 0,
+                                        symbol: 'add-service',
                                     },
                                     args: [
                                         {
                                             literal: {
                                                 featureIDValue: {
-                                                    type: 'FeatureTypeArea' as unknown as FeatureType,
+                                                    type: 'FeatureTypeArea',
                                                     namespace:
                                                         'openstreetmap.org/way',
                                                     value: 532767912,
                                                 },
                                             },
-                                            name: 'feature-0',
-                                            begin: 0,
-                                            end: 0,
                                         },
                                     ],
                                 },
-                                /** the following can't be undefined per the schema */
-                                name: 'something',
-                                begin: 0,
-                                end: 0,
                             },
                         ],
                     },
-                    /** the following can't be undefined per the schema */
-                    name: 'new-world',
-                    begin: 0,
-                    end: 0,
                 },
-            });
+            } as unknown as EvaluateRequestProto);
         },
     });
 

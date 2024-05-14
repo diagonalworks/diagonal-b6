@@ -194,7 +194,6 @@ export const ComparatorProvider = ({
 
     return (
         <ComparatorContext.Provider value={value}>
-            <Comparator />
             {children}
         </ComparatorContext.Provider>
     );

@@ -5,12 +5,14 @@ export const RightComparatorTeleporter = createTeleporter();
 
 export function Comparator() {
     return (
-        <div className="flex flex-row">
-            <div className="flex-grow">
-                <LeftComparatorTeleporter.Target />
-            </div>
-            <div className="flex-grow">
-                <RightComparatorTeleporter.Target />
+        <div>
+            <div className="flex flex-row">
+                <div className="flex-grow">
+                    <LeftComparatorTeleporter.Target />
+                </div>
+                <div className="flex-grow">
+                    <RightComparatorTeleporter.Target />
+                </div>
             </div>
         </div>
     );

@@ -114,21 +114,19 @@ export const OutlinerProvider = ({
         ],
         queryFn: () => {
             if (!request) return Promise.reject('No request');
-            return b6
-                .stack({
-                    expression: request.expression || '',
-                    logEvent: request.eventType,
-                    locked: request.locked,
-                    node: request?.node,
-                    root: request?.root,
-                    logMapCenter: {
-                        latE7: Math.round(viewState.latitude * 1e7),
-                        lngE7: Math.round(viewState.longitude * 1e7),
-                    },
-                    logMapZoom: 0,
-                    session: data?.session || 0,
-                })
-                .then((res) => res.json() as Promise<StackResponse>);
+            return b6.stack({
+                expression: request.expression || '',
+                logEvent: request.eventType,
+                locked: request.locked,
+                node: request?.node,
+                root: request?.root,
+                logMapCenter: {
+                    latE7: Math.round(viewState.latitude * 1e7),
+                    lngE7: Math.round(viewState.longitude * 1e7),
+                },
+                logMapZoom: 0,
+                session: data?.session || 0,
+            });
         },
         enabled: !!request,
     });
