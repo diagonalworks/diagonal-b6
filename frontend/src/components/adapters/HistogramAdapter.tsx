@@ -18,16 +18,22 @@ type HistogramData = {
     index: number;
     label: string;
     count: number;
+    origin: number | null;
 };
 
 export const HistogramAdaptor = ({
     type,
     bars,
     swatches,
+    origin,
 }: {
     type: 'swatch' | 'histogram';
     bars?: HistogramBarLineProto[];
     swatches?: SwatchLineProto[];
+    origin?: {
+        bars?: HistogramBarLineProto[];
+        swatches?: SwatchLineProto[];
+    };
 }) => {
     const { outliner, setHistogramColorScale, setHistogramBucket } =
         useOutlinerContext();
@@ -38,11 +44,12 @@ export const HistogramAdaptor = ({
             .with(
                 'histogram',
                 () =>
-                    bars?.flatMap((bar) => {
+                    bars?.flatMap((bar, i) => {
                         return {
                             index: bar.index ?? 0,
                             label: bar.range?.value ?? '',
                             count: bar.value,
+                            origin: origin?.bars?.[i]?.value ?? null,
                         };
                     }) ?? []
             )
@@ -56,6 +63,7 @@ export const HistogramAdaptor = ({
                             /* Swatches do not have a count. Should be null but setting it to 0 
                             for now to avoid type errors. */
                             count: 0,
+                            origin: null,
                         };
                     }) ?? []
             )
@@ -87,6 +95,7 @@ export const HistogramAdaptor = ({
             label={(d) => d.label}
             bucket={(d) => d.index.toString()}
             value={(d) => d.count}
+            origin={(d) => d.origin}
             color={(d) => (scale ? scale(`${d.index}`) : '#fff')}
             onSelect={handleSelect}
             selected={selected}

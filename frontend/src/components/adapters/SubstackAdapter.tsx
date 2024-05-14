@@ -8,10 +8,12 @@ export const SubstackAdapter = ({
     substack,
     collapsible = false,
     close,
+    origin,
 }: {
     substack: SubstackProto;
     collapsible?: boolean;
     close?: boolean;
+    origin?: SubstackProto;
 }) => {
     const [open, setOpen] = useState(collapsible ? false : true);
 
@@ -36,6 +38,18 @@ export const SubstackAdapter = ({
                     | 'histogram',
                 bars: contentLines.flatMap((l) => l.histogramBar ?? []),
                 swatches: contentLines.flatMap((l) => l.swatch ?? []),
+                origin: {
+                    bars: origin
+                        ? origin.lines
+                              ?.slice(header ? 1 : 0)
+                              ?.flatMap((l) => l.histogramBar ?? [])
+                        : [],
+                    swatches: origin
+                        ? origin.lines
+                              ?.slice(header ? 1 : 0)
+                              ?.flatMap((l) => l.swatch ?? [])
+                        : [],
+                },
             };
         }
         return null;

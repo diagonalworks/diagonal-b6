@@ -11,11 +11,17 @@ import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
 import { Change, Scenario } from '@/atoms/app';
+import {
+    EvaluateRequestProto,
+    EvaluateResponseProto,
+} from '@/types/generated/api';
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
+import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
 import { isUndefined, pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
+import { b6, b6Path } from '../b6';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
 
@@ -37,6 +43,7 @@ const ScenarioContext = createContext<{
     isDefiningChange?: boolean;
     setWorldId: (id: string) => void;
     setWorldChange: (change: Change) => void;
+    query?: UseQueryResult<EvaluateResponseProto>;
 }>({
     tab: 'left',
     scenario: {} as Scenario,
@@ -74,6 +81,57 @@ export const ScenarioProvider = ({
         createOutliner,
         setApp,
     } = useAppContext();
+
+    const query = useQuery<EvaluateResponseProto, Error>({
+        queryKey: ['scenario', scenario.id],
+        queryFn: async () => {
+            return b6.evaluate({
+                root: {
+                    type: 'FeatureTypeCollection',
+                    namespace: 'diagonal.works/world',
+                    value: 0,
+                },
+                request: {
+                    call: {
+                        function: {
+                            symbol: 'add-world-with-change',
+                        },
+                        args: [
+                            {
+                                literal: {
+                                    featureIDValue: {
+                                        type: 'FeatureTypeCollection',
+                                        namespace: 'diagonal.works/world',
+                                        value: 1,
+                                    },
+                                },
+                            },
+                            {
+                                call: {
+                                    function: {
+                                        symbol: 'add-service',
+                                    },
+                                    args: [
+                                        {
+                                            literal: {
+                                                featureIDValue: {
+                                                    type: 'FeatureTypeArea',
+                                                    namespace:
+                                                        'openstreetmap.org/way',
+                                                    value: 532767912,
+                                                },
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    },
+                },
+            } as unknown as EvaluateRequestProto);
+        },
+        enabled: scenario.id !== 'baseline',
+    });
 
     const isDefiningChange = useMemo(() => {
         return scenario.id !== 'baseline' && isUndefined(scenario.worldId);
@@ -171,7 +229,21 @@ export const ScenarioProvider = ({
 
     const mapStyle = useMemo(() => {
         return (
-            tab === 'right' ? basemapStyleRose : basemapStyle
+            tab === 'right'
+                ? {
+                      ...basemapStyleRose,
+                      sources: {
+                          ...basemapStyle.sources,
+                          diagonal: {
+                              ...basemapStyle.sources.diagonal,
+                              tiles: [
+                                  // so we can set a new basemap for this scenario
+                                  `${window.location.origin}${b6Path}tiles/base/{z}/{x}/{y}.mvt`,
+                              ],
+                          },
+                      },
+                  }
+                : basemapStyle
         ) as StyleSpecification;
     }, [tab]);
 
@@ -210,6 +282,7 @@ export const ScenarioProvider = ({
             createOutlinerInScenario,
             setWorldChange,
             setWorldId,
+            query,
         };
     }, [
         scenario,
@@ -226,6 +299,7 @@ export const ScenarioProvider = ({
         comparisonOutliners,
         setWorldId,
         setWorldChange,
+        query,
     ]);
 
     return (

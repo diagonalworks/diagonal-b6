@@ -20,7 +20,7 @@ import {
 import { useMap } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
 import { useImmer } from 'use-immer';
-import { fetchB6 } from '../b6';
+import { b6 } from '../b6';
 import { useAppContext } from './app';
 
 export type OutlinerSpec = {
@@ -33,6 +33,7 @@ export type OutlinerSpec = {
         scenario?: string;
         changeable?: boolean;
         comparison?: boolean;
+        origin?: string;
     };
     request?: {
         eventType: Event;
@@ -114,7 +115,7 @@ export const OutlinerProvider = ({
         ],
         queryFn: () => {
             if (!request) return Promise.reject('No request');
-            return fetchB6('stack', {
+            return b6.stack({
                 expression: request.expression || '',
                 logEvent: request.eventType,
                 locked: request.locked,
@@ -126,7 +127,7 @@ export const OutlinerProvider = ({
                 },
                 logMapZoom: 0,
                 session: data?.session || 0,
-            }).then((res) => res.json() as Promise<StackResponse>);
+            });
         },
         enabled: !!request,
     });

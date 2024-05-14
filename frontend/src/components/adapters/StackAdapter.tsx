@@ -1,3 +1,4 @@
+import { useAppContext } from '@/lib/context/app';
 import { useOutlinerContext } from '@/lib/context/outliner';
 import { useScenarioContext } from '@/lib/context/scenario';
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
@@ -8,6 +9,9 @@ import { Stack } from '../system/Stack';
 import { SubstackAdapter } from './SubstackAdapter';
 
 export const StackAdapter = () => {
+    const {
+        app: { outliners },
+    } = useAppContext();
     const { outliner } = useOutlinerContext();
     const {
         setWorldChange,
@@ -15,6 +19,10 @@ export const StackAdapter = () => {
         isDefiningChange,
     } = useScenarioContext();
     const [open, setOpen] = useState(outliner.properties.docked ? false : true);
+
+    const originOutliner = outliner.properties?.origin
+        ? outliners?.[outliner.properties.origin]
+        : null;
 
     if (outliner.query?.isLoading) {
         return (
@@ -35,6 +43,10 @@ export const StackAdapter = () => {
 
     const firstSubstack = outliner.data.proto.stack?.substacks[0];
     const otherSubstacks = outliner.data.proto.stack?.substacks.slice(1);
+
+    const originFirstSubstack = originOutliner?.data?.proto.stack?.substacks[0];
+    const originOtherSubstacks =
+        originOutliner?.data?.proto.stack?.substacks.slice(1);
 
     const expression = outliner.data?.proto?.expression;
 
@@ -92,6 +104,7 @@ export const StackAdapter = () => {
                                 substack={firstSubstack}
                                 collapsible={firstSubstack.collapsable}
                                 close={!outliner.properties.docked}
+                                origin={originFirstSubstack}
                             />
                         </Stack.Trigger>
                     )}
@@ -103,6 +116,7 @@ export const StackAdapter = () => {
                                         key={i}
                                         substack={substack}
                                         collapsible={substack.collapsable}
+                                        origin={originOtherSubstacks?.[i]}
                                     />
                                 );
                             })}

@@ -1,19 +1,54 @@
 import { Event } from '@/types/events';
+import { EvaluateRequestProto } from '@/types/generated/api';
 import { UIRequestProto } from '@/types/generated/ui';
 
 export type b6Route = 'startup' | 'stack';
 
 export const b6Path = `${import.meta.env.VITE_B6_BASE_PATH}`;
 
-export const fetchB6 = async (
-    route: b6Route,
-    request: UIRequestProto & { logEvent: Event }
-) => {
-    return fetch(`${b6Path}${route}`, {
+const formatResponse = (res: Response) => {
+    if (!res.ok) {
+        return res.text().then((v) =>
+            Promise.reject({
+                status: res.status,
+                statusText: res.statusText,
+                message: v,
+            })
+        );
+    }
+    return res.json();
+};
+
+const stack = async (request: UIRequestProto & { logEvent: Event }) => {
+    return fetch(`${b6Path}stack`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+    }).then((res) => formatResponse(res));
+};
+
+const startup = async (urlParams: { z: string; ll: string; r: string }) => {
+    return fetch(`${b6Path}startup?` + new URLSearchParams(urlParams)).then(
+        (res) => formatResponse(res)
+    );
+};
+
+const evaluate = async (request: EvaluateRequestProto) => {
+    return fetch(`${b6Path}evaluate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+    }).then((res) => {
+        return formatResponse(res);
     });
+};
+
+export const b6 = {
+    stack,
+    startup,
+    evaluate,
 };

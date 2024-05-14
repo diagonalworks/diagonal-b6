@@ -153,6 +153,7 @@ export const ComparatorProvider = ({
                             id: `comparison-scenario-${i}`,
                             properties: {
                                 comparison: true,
+                                origin: `comparison-baseline`,
                                 scenario: scenarioId as $FixMe,
                                 docked: false,
                                 transient: false,
@@ -194,7 +195,6 @@ export const ComparatorProvider = ({
 
     return (
         <ComparatorContext.Provider value={value}>
-            <Comparator />
             {children}
         </ComparatorContext.Provider>
     );

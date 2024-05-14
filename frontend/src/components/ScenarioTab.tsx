@@ -6,7 +6,6 @@ import { $FixMe } from '@/utils/defs';
 import { Combobox } from '@headlessui/react';
 import { Cross1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
-import { isUndefined } from 'lodash';
 import { QuickScore } from 'quick-score';
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -164,7 +163,6 @@ const ChangeCombo = () => {
         (typeof CHANGES)[number] | undefined
     >();
     const [search, setSearch] = useState('');
-    const [argument, setArgument] = useState<string | undefined>();
 
     const functionResults = useMemo(() => {
         if (!search) return [];
@@ -172,18 +170,18 @@ const ChangeCombo = () => {
     }, [search]);
 
     const handleClick = useCallback(() => {
-        if (!selectedFunction || !argument) return;
+        if (!selectedFunction) return;
         addComparator({
             baseline: 'baseline' as $FixMe,
             scenarios: [id] as $FixMe,
             analysis: 'test' as $FixMe,
         });
         setWorldId('something');
-    }, [selectedFunction, argument, addComparator, id]);
+    }, [selectedFunction, addComparator, id]);
 
     return (
-        <div>
-            <span className="ml-2 text-xs text-rose-90">Function</span>
+        <div className="flex flex-col gap-2">
+            <span className="ml-2 text-xs text-rose-90">Change</span>
             <Combobox value={selectedFunction} onChange={setSelectedFunction}>
                 <div className="w-full text-sm flex gap-2 bg-white hover:bg-ultramarine-10 py-2.5 px-2">
                     <span className="text-ultramarine-70 "> b6</span>
@@ -206,23 +204,9 @@ const ChangeCombo = () => {
                     ))}
                 </Combobox.Options>
             </Combobox>
-            {!isUndefined(selectedFunction) && (
-                <div className="flex flex-col gap-4 py-2">
-                    <div className="flex flex-col gap-2">
-                        <span className="ml-2 text-xs text-rose-90">
-                            [argument]
-                        </span>
-                        <input
-                            className="text-sm py-2 px-1 focus:ring-0 focus:outline-none"
-                            value={argument}
-                            onChange={(e) => setArgument(e.target.value)}
-                        />
-                    </div>
-                </div>
-            )}
-            {selectedFunction && argument && (
+            {selectedFunction && (
                 <button
-                    className="w-full text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80"
+                    className="w-full  text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80"
                     onClick={handleClick}
                 >
                     Apply change
