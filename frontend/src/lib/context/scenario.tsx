@@ -21,7 +21,7 @@ import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
 import { isUndefined, pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
-import { b6 } from '../b6';
+import { b6, b6Path } from '../b6';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
 
@@ -130,6 +130,7 @@ export const ScenarioProvider = ({
                 },
             } as unknown as EvaluateRequestProto);
         },
+        enabled: scenario.id !== 'baseline',
     });
 
     const isDefiningChange = useMemo(() => {
@@ -228,7 +229,21 @@ export const ScenarioProvider = ({
 
     const mapStyle = useMemo(() => {
         return (
-            tab === 'right' ? basemapStyleRose : basemapStyle
+            tab === 'right'
+                ? {
+                      ...basemapStyleRose,
+                      sources: {
+                          ...basemapStyle.sources,
+                          diagonal: {
+                              ...basemapStyle.sources.diagonal,
+                              tiles: [
+                                  // so we can set a new basemap for this scenario
+                                  `${window.location.origin}${b6Path}tiles/base/{z}/{x}/{y}.mvt`,
+                              ],
+                          },
+                      },
+                  }
+                : basemapStyle
         ) as StyleSpecification;
     }, [tab]);
 

@@ -153,6 +153,7 @@ export const ComparatorProvider = ({
                             id: `comparison-scenario-${i}`,
                             properties: {
                                 comparison: true,
+                                origin: `comparison-baseline`,
                                 scenario: scenarioId as $FixMe,
                                 docked: false,
                                 transient: false,

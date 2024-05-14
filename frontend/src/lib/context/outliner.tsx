@@ -33,6 +33,7 @@ export type OutlinerSpec = {
         scenario?: string;
         changeable?: boolean;
         comparison?: boolean;
+        origin?: string;
     };
     request?: {
         eventType: Event;
