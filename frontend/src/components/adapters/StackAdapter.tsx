@@ -17,8 +17,7 @@ export const StackAdapter = () => {
     } = useAppContext();
     const { outliner } = useOutlinerContext();
     const {
-        scenario: { change },
-        isDefiningChange,
+        scenario: { change, submitted },
         addFeatureToChange,
         removeFeatureFromChange,
     } = useScenarioContext();
@@ -61,8 +60,7 @@ export const StackAdapter = () => {
     const featureNode = outliner.data?.proto?.node;
 
     const isInChange = change?.features?.find((f) => isEqual(f, featureNode));
-    const showChangeElements =
-        isDefiningChange && outliner.properties.changeable;
+    const showChangeElements = !submitted && outliner.properties.changeable;
 
     const labelledIcon = outliner.data.proto.stack?.substacks[1]?.lines.flatMap(
         (l) => findAtoms(l, 'labelledIcon')

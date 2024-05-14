@@ -45,6 +45,7 @@ const ScenarioContext = createContext<{
     setChangeFunction: (changeFunction: ChangeFunction) => void;
     setChangeAnalysis: (analysis: NodeProto) => void;
     queryScenario?: UseQueryResult<EvaluateResponseProto>;
+    setSubmitted: (submitted: boolean) => void;
 }>({
     tab: 'left',
     scenario: {} as Scenario,
@@ -62,6 +63,7 @@ const ScenarioContext = createContext<{
     removeFeatureFromChange: () => {},
     setChangeFunction: () => {},
     setChangeAnalysis: () => {},
+    setSubmitted: () => {},
 });
 
 /**
@@ -85,6 +87,15 @@ export const ScenarioProvider = ({
         setApp,
     } = useAppContext();
     //const startupQuery = useAtomValue(startupQueryAtom);
+
+    const setSubmitted = useCallback(
+        (submitted: boolean) => {
+            setApp((draft) => {
+                draft.scenarios[scenario.id].submitted = submitted;
+            });
+        },
+        [scenario.id, setApp]
+    );
 
     const queryScenario = useQuery<EvaluateResponseProto, Error>({
         enabled: false,
@@ -340,6 +351,7 @@ export const ScenarioProvider = ({
             setChangeFunction,
             setChangeAnalysis,
             queryScenario,
+            setSubmitted,
         };
     }, [
         scenario,
@@ -359,6 +371,7 @@ export const ScenarioProvider = ({
         setChangeFunction,
         setChangeAnalysis,
         queryScenario,
+        setSubmitted,
     ]);
 
     return (

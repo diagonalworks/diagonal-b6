@@ -294,7 +294,9 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 interleaved
             />
 
-            <MapControls>
+            <MapControls
+                className={twMerge(tab === 'right' && 'right-0 left-auto')}
+            >
                 <MapControls.Button
                     onClick={() => map?.zoomIn({ duration: 200 })}
                 >

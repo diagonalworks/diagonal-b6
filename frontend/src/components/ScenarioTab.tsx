@@ -15,7 +15,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAtomValue } from 'jotai';
 import { isEqual } from 'lodash';
 import { QuickScore } from 'quick-score';
-import { HTMLAttributes, useCallback, useMemo, useState } from 'react';
+import {
+    HTMLAttributes,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { twMerge } from 'tailwind-merge';
 import { match } from 'ts-pattern';
@@ -122,44 +128,78 @@ const GlobalShell = ({ show, mapId }: { show: boolean; mapId: string }) => {
 const ChangePanel = () => {
     const {
         removeFeatureFromChange,
-        scenario: { change },
+        scenario: { change, submitted },
     } = useScenarioContext();
+
+    const [open, setOpen] = useState(true);
+
+    useEffect(() => {
+        if (submitted) setOpen(false);
+    }, [submitted]);
 
     return (
         <div className="border  bg-rose-30 p-0.5  border-rose-40  shadow-lg">
             <div className="bg-rose-30 flex flex-col gap-2">
-                <div>
-                    {change?.features && change.features.length > 0 ? (
-                        change.features.map((feature, i) => (
-                            <Line
-                                className="text-sm py-1 flex gap-2 items-center justify-between"
-                                key={i}
-                            >
-                                {feature.label ? (
-                                    <LabelledIconAdapter
-                                        labelledIcon={feature.label}
-                                    />
-                                ) : (
-                                    <span>{feature.expression}</span>
+                {submitted && (
+                    <div>
+                        <button
+                            className="px-2 text-sm flex gap-1 items-center py-1  rounded hover:underline  text-rose-80 focus-within:outline-none"
+                            onClick={() => setOpen((prev) => !prev)}
+                        >
+                            Scenario Details
+                            <ChevronDownIcon
+                                className={twMerge(
+                                    'h-4 w-4',
+                                    open && 'transform rotate-180'
                                 )}
-                                <button
-                                    className="text-xs hover:bg-graphite-20 p-1 hover:text-graphite-100 text-graphite-70 rounded-full w-5 h-5 flex items-center justify-center"
-                                    onClick={() =>
-                                        removeFeatureFromChange(feature)
-                                    }
-                                >
-                                    <Cross1Icon />
-                                </button>
-                            </Line>
-                        ))
-                    ) : (
-                        <div className=" text-graphite-90 italic text-xs py-2 px-3 ">
-                            Click on a feature to add it to the change
+                            />
+                        </button>
+                    </div>
+                )}
+                {open && (
+                    <div>
+                        <div className="flex flex-col gap-2">
+                            {change?.features && change.features.length > 0 ? (
+                                change.features.map((feature, i) => (
+                                    <Line
+                                        className={twMerge(
+                                            'text-sm py-1 flex gap-2 items-center justify-between',
+                                            submitted &&
+                                                'bg-rose-10 hover:bg-rose-10 italic'
+                                        )}
+                                        key={i}
+                                    >
+                                        {feature.label ? (
+                                            <LabelledIconAdapter
+                                                labelledIcon={feature.label}
+                                            />
+                                        ) : (
+                                            <span>{feature.expression}</span>
+                                        )}
+                                        {!submitted && (
+                                            <button
+                                                className="text-xs hover:bg-graphite-20 p-1 hover:text-graphite-100 text-graphite-70 rounded-full w-5 h-5 flex items-center justify-center"
+                                                onClick={() =>
+                                                    removeFeatureFromChange(
+                                                        feature
+                                                    )
+                                                }
+                                            >
+                                                <Cross1Icon />
+                                            </button>
+                                        )}
+                                    </Line>
+                                ))
+                            ) : (
+                                <div className=" text-graphite-90 italic text-xs py-2 px-3 ">
+                                    Click on a feature to add it to the change
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-                {change?.features && change.features.length > 0 && (
-                    <ChangeCombo />
+                        {change?.features && change.features.length > 0 && (
+                            <ChangeCombo />
+                        )}
+                    </div>
                 )}
             </div>
         </div>
@@ -170,10 +210,11 @@ const ChangeCombo = () => {
     const { addComparator } = useAppContext();
     const { changes } = useAppContext();
     const {
-        scenario: { id, change },
+        scenario: { id, change, submitted },
         setChangeAnalysis,
         setChangeFunction,
         queryScenario,
+        setSubmitted,
     } = useScenarioContext();
     const startupQuery = useAtomValue(startupQueryAtom);
 
@@ -191,6 +232,7 @@ const ChangeCombo = () => {
     const handleClick = useCallback(() => {
         if (!change) return;
         queryScenario?.refetch();
+        setSubmitted(true);
         addComparator({
             baseline: 'baseline' as $FixMe,
             scenarios: [id] as $FixMe,
@@ -226,6 +268,7 @@ const ChangeCombo = () => {
             <div>
                 <span className="ml-2 text-xs text-rose-90">Change</span>
                 <Combobox
+                    disabled={submitted}
                     value={change?.changeFunction?.label}
                     onChange={(v) => {
                         const option = functionResults.find(
@@ -235,13 +278,21 @@ const ChangeCombo = () => {
                         setChangeFunction(option.item);
                     }}
                 >
-                    <div className="w-full text-sm flex gap-2 bg-white focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40 hover:bg-rose-10 py-2.5 px-2">
-                        <span className="text-rose-70 "> b6</span>
+                    <div
+                        className={twMerge(
+                            'w-full text-sm flex gap-2 bg-white focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40 hover:bg-rose-10 py-2.5 px-2',
+                            submitted && 'italic bg-rose-10'
+                        )}
+                    >
+                        <span className={twMerge('text-rose-80')}> b6</span>
 
                         <Combobox.Input
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="define the change"
-                            className=" relative flex-grow bg-transparent text-graphite-70 focus:outline-none w-full"
+                            className={twMerge(
+                                'relative flex-grow bg-transparent text-graphite-70 focus:outline-none w-full',
+                                submitted && 'italic text-graphite-100'
+                            )}
                         />
                     </div>
                     <Combobox.Options className="max-h-64 overflow-y-auto border border-graphite-20 ">
@@ -265,6 +316,7 @@ const ChangeCombo = () => {
                     <span className="ml-2 text-xs text-rose-90">Analysis</span>
 
                     <Select.Root
+                        disabled={submitted}
                         value={selectedAnalysisLabel}
                         onValueChange={(v) => {
                             const option = analysisOptions.find(
@@ -274,7 +326,7 @@ const ChangeCombo = () => {
                             setChangeAnalysis(option.node);
                         }}
                     >
-                        <Select.Trigger className=" bg-white text-graphite-70 h-10 py-2 px-2 text-sm inline-flex items-center justify-between w-full focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40">
+                        <Select.Trigger className=" bg-white text-graphite-70 h-10 py-2 px-2 text-sm inline-flex items-center justify-between w-full focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40 data-[disabled]:bg-rose-10 data-[disabled]:italic">
                             <Select.Value placeholder="Select an analysis...">
                                 {selectedAnalysis?.label && (
                                     <HeaderAdapter
@@ -282,9 +334,11 @@ const ChangeCombo = () => {
                                     />
                                 )}
                             </Select.Value>
-                            <Select.Icon>
-                                <ChevronDownIcon />
-                            </Select.Icon>
+                            {!submitted && (
+                                <Select.Icon>
+                                    <ChevronDownIcon />
+                                </Select.Icon>
+                            )}
                         </Select.Trigger>
 
                         <Select.Content
@@ -311,7 +365,7 @@ const ChangeCombo = () => {
                     </Select.Root>
                 </div>
             )}
-            {change?.changeFunction && (
+            {change?.changeFunction && !submitted && (
                 <button
                     className="w-full  text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80 focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40  "
                     onClick={handleClick}

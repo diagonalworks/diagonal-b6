@@ -32,6 +32,7 @@ export type Scenario = ScenarioSpec & {
     node?: FeatureIDProto;
     worldCreated?: boolean;
     change?: Change;
+    submitted?: boolean;
 };
 
 export type Scenarios = Record<string, Scenario>;
