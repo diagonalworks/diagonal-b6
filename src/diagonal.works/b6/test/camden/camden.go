@@ -23,6 +23,7 @@ const (
 	GasholdersRelation             osm.RelationID = 7972217
 	GranarySquareWay               osm.WayID      = 222021571
 	GranarySquareBikeParkingNode   osm.NodeID     = 2713224957
+	DishoomNode                    osm.NodeID     = 3501612811
 
 	BuildingsInGranarySquare = 13
 )
@@ -39,6 +40,7 @@ var (
 	LightermanID                 = ingest.AreaIDFromOSMWayID(LightermanWay)
 	GranarySquareID              = ingest.AreaIDFromOSMWayID(GranarySquareWay)
 	GranarySquareBikeParkingID   = ingest.FromOSMNodeID(GranarySquareBikeParkingNode)
+	DishoomID                    = ingest.FromOSMNodeID(DishoomNode)
 )
 
 var (
