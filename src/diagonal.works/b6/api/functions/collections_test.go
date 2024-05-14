@@ -7,6 +7,7 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
+	"diagonal.works/b6/ingest"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -286,6 +287,42 @@ func TestFlatten(t *testing.T) {
 		"kd": "vd",
 		"ke": "ve",
 		"kf": "vf",
+	}
+	if diff := cmp.Diff(expected, filled); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
+	}
+}
+
+func TestListFeature(t *testing.T) {
+	id := b6.MakeCollectionID("diagonal.works/test", 0)
+	c := ingest.CollectionFeature{
+		CollectionID: id,
+		Keys:         []interface{}{"epc:habitablerooms", "epc:bedrooms"},
+		Values:       []interface{}{1, 2},
+	}
+	add := ingest.AddFeatures([]ingest.Feature{&c})
+
+	w := ingest.NewBasicMutableWorld()
+	_, err := add.Apply(w)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	context := &api.Context{
+		World: w,
+	}
+	r, err := listFeature(context, id)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	filled := make(map[string]int)
+	if err := api.FillMap(r, filled); err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+	expected := map[string]int{
+		"epc:habitablerooms": 1,
+		"epc:bedrooms":       2,
 	}
 	if diff := cmp.Diff(expected, filled); diff != "" {
 		t.Errorf("Found diff (-want, +got):\n%s", diff)
