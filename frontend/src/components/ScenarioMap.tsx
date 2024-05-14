@@ -64,7 +64,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
         if (!map) return null;
         return queryLayers.map((ql) => {
             const histogram = ql.histogram;
-            if (!histogram) return null;
+            if (!histogram || !ql.show) return null;
             return new MVTLayer({
                 data: [
                     `${b6Path}tiles/${ql.layer.path}/{z}/{x}/{y}.mvt?q=${ql.layer.q}`,

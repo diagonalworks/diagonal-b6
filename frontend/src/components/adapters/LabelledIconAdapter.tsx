@@ -9,6 +9,7 @@ export const LabelledIconAdapter = ({
 }: {
     labelledIcon: LabelledIconProto;
 }) => {
+    console.log('labelledIcon', labelledIcon);
     const icon = match(labelledIcon.icon)
         .with('area', () => <FrameIcon />)
         .with('point', () => <DotIcon />)

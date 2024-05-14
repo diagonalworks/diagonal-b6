@@ -17,6 +17,7 @@ import {
 } from './Comparator';
 import { OutlinersLayer } from './Outliners';
 import { ScenarioMap } from './ScenarioMap';
+import { LabelledIconAdapter } from './adapters/LabelledIconAdapter';
 import { WorldShellAdapter } from './adapters/ShellAdapter';
 import { StackAdapter } from './adapters/StackAdapter';
 import { Line } from './system/Line';
@@ -114,8 +115,8 @@ const matcher = new QuickScore(CHANGES);
 
 const ChangePanel = () => {
     const {
+        removeFeatureFromChange,
         scenario: { change },
-        setWorldChange,
     } = useScenarioContext();
 
     return (
@@ -123,18 +124,22 @@ const ChangePanel = () => {
             <div className="bg-rose-30 flex flex-col gap-2">
                 <div>
                     {change.features.length > 0 ? (
-                        change.features.map((feature) => (
-                            <Line className="text-sm py-1 flex gap-2 items-center ">
-                                <span>{feature}</span>
+                        change.features.map((feature, i) => (
+                            <Line
+                                className="text-sm py-1 flex gap-2 items-center justify-between"
+                                key={i}
+                            >
+                                {feature.label ? (
+                                    <LabelledIconAdapter
+                                        labelledIcon={feature.label}
+                                    />
+                                ) : (
+                                    <span>{feature.expression}</span>
+                                )}
                                 <button
                                     className="text-xs hover:bg-graphite-20 p-1 hover:text-graphite-100 text-graphite-70 rounded-full w-5 h-5 flex items-center justify-center"
                                     onClick={() =>
-                                        setWorldChange({
-                                            ...change,
-                                            features: change.features.filter(
-                                                (f) => f !== feature
-                                            ),
-                                        })
+                                        removeFeatureFromChange(feature)
                                     }
                                 >
                                     <Cross1Icon />
@@ -157,7 +162,6 @@ const ChangeCombo = () => {
     const { addComparator } = useAppContext();
     const {
         scenario: { id },
-        setWorldId,
     } = useScenarioContext();
     const [selectedFunction, setSelectedFunction] = useState<
         (typeof CHANGES)[number] | undefined
@@ -176,7 +180,6 @@ const ChangeCombo = () => {
             scenarios: [id] as $FixMe,
             analysis: 'test' as $FixMe,
         });
-        setWorldId('something');
     }, [selectedFunction, addComparator, id]);
 
     return (

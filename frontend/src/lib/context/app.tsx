@@ -1,5 +1,6 @@
 import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
+import { FeatureType } from '@/types/generated/api';
 import { $FixMe } from '@/utils/defs';
 import { useAtom, useAtomValue } from 'jotai';
 import { uniqueId } from 'lodash';
@@ -167,12 +168,19 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     }, [app.scenarios]);
 
     const addScenario = useCallback(() => {
-        const id = uniqueId('scenario-');
+        const id = uniqueId();
+        console.log('ns', startupQuery.data?.root?.namespace);
         setApp((draft) => {
             draft.scenarios[id] = {
                 id: id,
                 name: 'Untitled Scenario',
-                worldId: undefined,
+                node: {
+                    type: 'FeatureTypeCollection' as unknown as FeatureType,
+                    namespace:
+                        startupQuery.data?.root?.namespace || 'diagonal.works',
+                    value: +id,
+                },
+                worldCreated: false,
                 change: {
                     features: [],
                     function: '',
@@ -180,7 +188,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             };
             draft.tabs.right = id;
         });
-    }, [setApp, changedWorldScenarios]);
+    }, [setApp, changedWorldScenarios, startupQuery.data?.root?.namespace]);
 
     const setActiveScenario = useCallback(
         (id?: string) => {

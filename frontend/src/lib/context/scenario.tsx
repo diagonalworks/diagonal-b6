@@ -4,13 +4,15 @@ import {
     createContext,
     useCallback,
     useContext,
+    useEffect,
     useMemo,
 } from 'react';
 
 import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
-import { Change, Scenario } from '@/atoms/app';
+import { ChangeFeature, Scenario } from '@/atoms/app';
+import { startupQueryAtom } from '@/atoms/startup';
 import {
     EvaluateRequestProto,
     EvaluateResponseProto,
@@ -19,7 +21,8 @@ import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
 import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
-import { isUndefined, pickBy } from 'lodash';
+import { useAtomValue } from 'jotai';
+import { pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
 import { b6, b6Path } from '../b6';
 import { useAppContext } from './app';
@@ -39,10 +42,11 @@ const ScenarioContext = createContext<{
     queryLayers: Array<{
         layer: MapLayerProto;
         histogram: OutlinerStore['histogram'];
+        show?: boolean;
     }>;
     isDefiningChange?: boolean;
-    setWorldId: (id: string) => void;
-    setWorldChange: (change: Change) => void;
+    addFeatureToChange: (feature: ChangeFeature) => void;
+    removeFeatureFromChange: (feature: ChangeFeature) => void;
     query?: UseQueryResult<EvaluateResponseProto>;
 }>({
     tab: 'left',
@@ -57,8 +61,8 @@ const ScenarioContext = createContext<{
     geoJSON: [],
     isDefiningChange: false,
     createOutlinerInScenario: () => {},
-    setWorldId: () => {},
-    setWorldChange: () => {},
+    addFeatureToChange: () => {},
+    removeFeatureFromChange: () => {},
 });
 
 /**
@@ -81,15 +85,62 @@ export const ScenarioProvider = ({
         createOutliner,
         setApp,
     } = useAppContext();
+    const startupQuery = useAtomValue(startupQueryAtom);
 
-    const query = useQuery<EvaluateResponseProto, Error>({
+    const changesQuery = useQuery<EvaluateResponseProto, Error>({
+        enabled: scenario.id !== 'baseline',
+        queryKey: [
+            'evaluate',
+            'expressions',
+            JSON.stringify(startupQuery.data?.root),
+            JSON.stringify(scenario.node),
+        ],
+        queryFn: () => {
+            console.log('startupQuery', startupQuery.data?.root, scenario);
+            if (!startupQuery.data?.root || !scenario.node)
+                return Promise.resolve({ data: {} });
+            return b6.evaluate({
+                root: {
+                    type: 'FeatureTypeCollection',
+                    namespace: 'diagonal.works/skyline-demo-05-2024',
+                    value: 0,
+                },
+                request: {
+                    call: {
+                        function: {
+                            symbol: 'list-feature',
+                        },
+                        args: [
+                            {
+                                literal: {
+                                    featureIDValue: {
+                                        type: 'FeatureTypeCollection',
+                                        namespace:
+                                            'diagonal.works/skyline-demo-05-2024',
+                                        value: 5,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+            } as unknown as EvaluateRequestProto);
+        },
+    });
+
+    useEffect(() => {
+        //console.log(changesQuery);
+    }, [changesQuery]);
+
+    const queryScenario = useQuery<EvaluateResponseProto, Error>({
+        enabled: false,
         queryKey: ['scenario', scenario.id],
         queryFn: async () => {
             return b6.evaluate({
                 root: {
                     type: 'FeatureTypeCollection',
                     namespace: 'diagonal.works/world',
-                    value: 0,
+                    value: scenario.id,
                 },
                 request: {
                     call: {
@@ -130,12 +181,41 @@ export const ScenarioProvider = ({
                 },
             } as unknown as EvaluateRequestProto);
         },
-        enabled: scenario.id !== 'baseline',
     });
 
+    const addFeatureToChange = useCallback(
+        (feature: ChangeFeature) => {
+            setApp((draft) => {
+                draft.scenarios[scenario.id].change.features.push(feature);
+            });
+        },
+        [scenario.id, setApp]
+    );
+
+    const removeFeatureFromChange = useCallback(
+        (feature: ChangeFeature) => {
+            setApp((draft) => {
+                draft.scenarios[scenario.id].change.features = draft.scenarios[
+                    scenario.id
+                ].change.features.filter(
+                    (f) => f.expression !== feature.expression
+                );
+            });
+        },
+        [scenario.id, setApp]
+    );
+
+    useEffect(() => {
+        //console.log(queryScenario);
+        return;
+        /* setApp((draft) => {
+            draft.scenarios[scenario.id].node = queryScenario.data?.result
+        }); */
+    }, [queryScenario]);
+
     const isDefiningChange = useMemo(() => {
-        return scenario.id !== 'baseline' && isUndefined(scenario.worldId);
-    }, [scenario.id, scenario.worldId]);
+        return scenario.id !== 'baseline' && !scenario.worldCreated;
+    }, [scenario.id, scenario.node]);
 
     const _removeTransientStacks = useCallback(() => {
         setApp((draft) => {
@@ -203,6 +283,7 @@ export const ScenarioProvider = ({
                 outliner.data?.proto.layers?.map((l) => ({
                     layer: l,
                     histogram: outliner.histogram,
+                    show: outliner.active,
                 })) || []
             );
         });
@@ -247,25 +328,6 @@ export const ScenarioProvider = ({
         ) as StyleSpecification;
     }, [tab]);
 
-    /** temporary while we don't have an API route form making a change to the world */
-    const setWorldId = useCallback(
-        (id: string) => {
-            setApp((draft) => {
-                draft.scenarios[scenario.id].worldId = id;
-            });
-        },
-        [setApp, scenario.id]
-    );
-
-    const setWorldChange = useCallback(
-        (change: Change) => {
-            setApp((draft) => {
-                draft.scenarios[scenario.id].change = change;
-            });
-        },
-        [setApp, scenario.id]
-    );
-
     const value = useMemo(() => {
         return {
             tab,
@@ -280,9 +342,8 @@ export const ScenarioProvider = ({
             queryLayers,
             isDefiningChange,
             createOutlinerInScenario,
-            setWorldChange,
-            setWorldId,
-            query,
+            addFeatureToChange,
+            removeFeatureFromChange,
         };
     }, [
         scenario,
@@ -297,9 +358,8 @@ export const ScenarioProvider = ({
         getVisibleMarkers,
         createOutlinerInScenario,
         comparisonOutliners,
-        setWorldId,
-        setWorldChange,
-        query,
+        addFeatureToChange,
+        removeFeatureFromChange,
     ]);
 
     return (
