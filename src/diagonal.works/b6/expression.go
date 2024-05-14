@@ -1422,7 +1422,7 @@ func (l *LambdaExpression) String() string {
 		}
 		s += l.Args[i]
 	}
-	return " -> " + l.Expression.String() + "}"
+	return s + " -> " + l.Expression.String() + "}"
 
 }
 

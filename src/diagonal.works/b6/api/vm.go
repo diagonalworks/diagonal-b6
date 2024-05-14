@@ -51,6 +51,10 @@ func (c *Context) Fork(n int) []*Context {
 	return ctxs
 }
 
+func (c *Context) Evaluate(e b6.Expression) (interface{}, error) {
+	return c.VM.Evaluate(e, c)
+}
+
 type Op uint8
 
 const (
@@ -97,10 +101,6 @@ type Callable interface {
 	// result at the top of the stack.
 	// Scratch is a temporary buffer used to avoid allocations.
 	CallFromStack(context *Context, n int, scratch []reflect.Value) ([]reflect.Value, error)
-	// Call a function using arguments passed to the method. Scratch is a temporary
-	// buffer used to avoid allocations. Execution happens in the VM specified by
-	// the context, and the stack is left unmodified.
-	//CallWithArgs(context *Context, args []interface{}, scratch []reflect.Value) (interface{}, []reflect.Value, error)
 	ToFunctionValue(t reflect.Type, context *Context) reflect.Value
 	Expression() b6.Expression
 }
@@ -177,6 +177,24 @@ type compilation struct {
 	NumArgs      int
 }
 
+func (c *compilation) Compile(e b6.Expression) error {
+	c.Targets = append(c.Targets, target{Expression: e, Done: func(int) {}})
+	for i := 0; i < len(c.Targets); i++ {
+		entrypoint := len(c.Instructions)
+		c.Args = c.Targets[i].Args
+		if c.Args != nil {
+			c.Append(Instruction{Op: OpStore})
+		}
+		if err := compileTarget(c.Targets[i].Expression, c); err != nil {
+			return err
+		}
+		c.Append(Instruction{Op: OpDiscard})
+		c.Append(Instruction{Op: OpReturn})
+		c.Targets[i].Done(entrypoint)
+	}
+	return nil
+}
+
 func (c *compilation) Append(i Instruction) {
 	c.Instructions = append(c.Instructions, i)
 }
@@ -226,30 +244,19 @@ func EvaluateString(e string, context *Context) (interface{}, error) {
 func newVM(expression b6.Expression, fs FunctionSymbols) (*VM, error) {
 	c := compilation{
 		Globals: fs,
-		Targets: []target{{Expression: expression, Done: func(int) {}}},
 		Instructions: []Instruction{{
 			Op:         OpPushValue,
 			Value:      reflect.ValueOf(0),
 			Expression: expression,
 		}},
 	}
-	for i := 0; i < len(c.Targets); i++ {
-		entrypoint := len(c.Instructions)
-		c.Args = c.Targets[i].Args
-		if c.Args != nil {
-			c.Append(Instruction{Op: OpStore})
-		}
-		if err := compile(c.Targets[i].Expression, &c); err != nil {
-			return nil, err
-		}
-		c.Append(Instruction{Op: OpDiscard})
-		c.Append(Instruction{Op: OpReturn})
-		c.Targets[i].Done(entrypoint)
+	if err := c.Compile(expression); err != nil {
+		return nil, err
 	}
 	return &VM{Instructions: c.Instructions}, nil
 }
 
-func compile(e b6.Expression, c *compilation) error {
+func compileTarget(e b6.Expression, c *compilation) error {
 	var err error
 	switch e.AnyExpression.(type) {
 	case *b6.CallExpression:
@@ -273,7 +280,7 @@ func compile(e b6.Expression, c *compilation) error {
 func compileCall(e b6.Expression, c *compilation) error {
 	call := e.AnyExpression.(*b6.CallExpression)
 	for _, a := range call.Args {
-		if err := compile(a, c); err != nil {
+		if err := compileTarget(a, c); err != nil {
 			return err
 		}
 	}
@@ -294,7 +301,7 @@ func compileCall(e b6.Expression, c *compilation) error {
 			return err
 		}
 	case *b6.CallExpression:
-		if err := compile(call.Function, c); err != nil {
+		if err := compileTarget(call.Function, c); err != nil {
 			return err
 		}
 		c.Append(Instruction{Op: OpCallStack, Args: [2]int16{int16(len(call.Args)), 0}, Expression: e})
@@ -372,6 +379,20 @@ func (v *VM) Fork(n int) []VM {
 		copy(vms[i].Stack, v.Stack)
 	}
 	return vms
+}
+
+func (v *VM) Evaluate(e b6.Expression, context *Context) (interface{}, error) {
+	entrypoint := len(v.Instructions)
+	c := compilation{Globals: context.FunctionSymbols, Instructions: v.Instructions}
+	if err := c.Compile(e); err != nil {
+		return nil, err
+	}
+	context.VM.Instructions = c.Instructions
+	pc := context.VM.PC
+	context.VM.PC = entrypoint
+	r, err := context.VM.Execute(context)
+	context.VM.PC = pc
+	return r, err
 }
 
 func (v *VM) Execute(context *Context) (interface{}, error) {

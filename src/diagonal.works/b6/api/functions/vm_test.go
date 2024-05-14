@@ -485,3 +485,81 @@ func TestVMProvidesCurrentExpressionWithPartialCalls(t *testing.T) {
 		t.Errorf("expected: %s, found: %s", expected, expression)
 	}
 }
+
+func TestCallExpressionFeature(t *testing.T) {
+	w := ingest.NewBasicMutableWorld()
+	id := b6.FeatureID{Type: b6.FeatureTypeExpression, Namespace: "diagonal.works/test", Value: 0}
+	f := &ingest.ExpressionFeature{
+		ExpressionID: id.ToExpressionID(),
+		Expression: b6.NewCallExpression(
+			b6.NewSymbolExpression("add"),
+			[]b6.Expression{b6.NewIntExpression(10)},
+		),
+	}
+	if err := w.AddFeature(f); err != nil {
+		t.Fatalf("Failed to add feature")
+	}
+
+	fs := Functions()
+	fs["add"] = func(c *api.Context, a int, b int) (int, error) {
+		return a + b, nil
+	}
+
+	c := &api.Context{
+		World:           w,
+		FunctionSymbols: fs,
+		Adaptors:        Adaptors(),
+		Context:         context.Background(),
+	}
+
+	r, err := api.EvaluateString("call (evaluate-feature /expression/diagonal.works/test/0) 20", c)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if i, ok := r.(int); !ok || i != 30 {
+		t.Errorf("Expected 30, found %T %v", r, r)
+	}
+}
+
+func TestCallExpressionFeatureWithLambda(t *testing.T) {
+	w := ingest.NewBasicMutableWorld()
+	id := b6.FeatureID{Type: b6.FeatureTypeExpression, Namespace: "diagonal.works/test", Value: 0}
+	f := &ingest.ExpressionFeature{
+		ExpressionID: id.ToExpressionID(),
+		Expression: b6.NewLambdaExpression(
+			[]string{"i"},
+			b6.NewCallExpression(
+				b6.NewSymbolExpression("add"),
+				[]b6.Expression{
+					b6.NewSymbolExpression("i"),
+					b6.NewIntExpression(10),
+				},
+			),
+		),
+	}
+	if err := w.AddFeature(f); err != nil {
+		t.Fatalf("Failed to add feature")
+	}
+
+	fs := Functions()
+	fs["add"] = func(c *api.Context, a int, b int) (int, error) {
+		return a + b, nil
+	}
+
+	c := &api.Context{
+		World:           w,
+		FunctionSymbols: fs,
+		Adaptors:        Adaptors(),
+		Context:         context.Background(),
+	}
+
+	r, err := api.EvaluateString("call (evaluate-feature /expression/diagonal.works/test/0) 20", c)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if i, ok := r.(int); !ok || i != 30 {
+		t.Errorf("Expected 30, found %T %v", r, r)
+	}
+}

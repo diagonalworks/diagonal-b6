@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strconv"
 
@@ -52,6 +51,7 @@ func Resolve(id b6.Identifiable, w b6.World) b6.Feature {
 var featureInterface = reflect.TypeOf((*b6.Feature)(nil)).Elem()
 var queryInterface = reflect.TypeOf((*b6.Query)(nil)).Elem()
 var numberInterface = reflect.TypeOf((*b6.Number)(nil)).Elem()
+var expressionInterface = reflect.TypeOf((*b6.Expression)(nil)).Elem()
 var queryProtoPtrType = reflect.TypeOf((*pb.QueryProto)(nil))
 var featureIDType = reflect.TypeOf(b6.FeatureID{})
 
@@ -70,22 +70,6 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 		return v.Convert(t), nil
 	} else if vv, ok := convertInterface(v, t); ok {
 		return vv, nil
-	}
-	switch t.Kind() {
-	case reflect.Int:
-		switch v := v.Interface().(type) {
-		case b6.IntNumber:
-			return reflect.ValueOf(int(v)), nil
-		case b6.FloatNumber:
-			return reflect.ValueOf(int(v)), nil
-		}
-	case reflect.Float64:
-		switch v := v.Interface().(type) {
-		case b6.IntNumber:
-			return reflect.ValueOf(float64(v)), nil
-		case b6.FloatNumber:
-			return reflect.ValueOf(float64(v)), nil
-		}
 	}
 	switch t {
 	case featureIDType:
@@ -127,19 +111,34 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 				return reflect.ValueOf(b6.IntNumber(i)), nil
 			}
 		}
+	case expressionInterface:
+		switch vv := v.Interface().(type) {
+		case Callable:
+			return reflect.ValueOf(vv.Expression()), nil
+		}
 	case reflect.TypeOf(""):
 		if tag, ok := v.Interface().(b6.Tag); ok {
 			return reflect.ValueOf(tag.Value.String()), nil
 		}
 	case reflect.TypeOf(int(1)):
-		if tag, ok := v.Interface().(b6.Tag); ok {
-			i, _ := strconv.Atoi(tag.Value.String())
+		switch v := v.Interface().(type) {
+		case b6.Tag:
+			i, _ := strconv.Atoi(v.Value.String())
 			return reflect.ValueOf(i), nil
+		case b6.IntNumber:
+			return reflect.ValueOf(int(v)), nil
+		case b6.FloatNumber:
+			return reflect.ValueOf(int(v)), nil
 		}
 	case reflect.TypeOf(float64(1.0)):
-		if tag, ok := v.Interface().(b6.Tag); ok {
-			f, _ := strconv.ParseFloat(tag.Value.String(), 64)
+		switch v := v.Interface().(type) {
+		case b6.Tag:
+			f, _ := strconv.ParseFloat(v.Value.String(), 64)
 			return reflect.ValueOf(f), nil
+		case b6.IntNumber:
+			return reflect.ValueOf(float64(v)), nil
+		case b6.FloatNumber:
+			return reflect.ValueOf(float64(v)), nil
 		}
 	}
 	return reflect.Value{}, fmt.Errorf("expected %s, found %s", t, v.Type())
@@ -176,8 +175,8 @@ func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (refl
 			}
 		}
 	} else if t.Implements(callableInterface) {
-		if _, ok := v.Interface().(Callable); ok {
-			return v, nil
+		if callable, ok := v.Interface().(Callable); ok {
+			return reflect.ValueOf(callable), nil
 		} else if matches, ok := convertQueryToCallable(v, t); ok {
 			return reflect.ValueOf(matches), nil
 		} else {
@@ -203,7 +202,6 @@ func ConvertWithContext(v reflect.Value, t reflect.Type, context *Context) (refl
 
 func convertQueryToCallable(v reflect.Value, t reflect.Type) (Callable, bool) {
 	if !v.Type().Implements(queryInterface) {
-		log.Printf("not a query")
 		return nil, false
 	}
 	if t.Kind() == reflect.Func {

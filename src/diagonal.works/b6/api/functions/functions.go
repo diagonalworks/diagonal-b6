@@ -85,7 +85,9 @@ var functions = api.FunctionSymbols{
 	"sample-points-along-paths": samplePointsAlongPaths,
 	"join":                      join,
 	"ordered-join":              orderedJoin,
-	"call-id":                   callID,
+	"list-feature":              listFeature,
+	"evaluate-feature":          evaluateFeature,
+	"call":                      call,
 	// s2
 	"s2-points":   s2Points,
 	"s2-covering": s2Covering,
@@ -156,6 +158,7 @@ var functions = api.FunctionSymbols{
 	"add-point":             addPoint,
 	"add-relation":          addRelation,
 	"add-collection":        addCollection,
+	"add-expression":        addExpression,
 	"merge-changes":         mergeChanges,
 	"with-change":           withChange,
 	"add-world-with-change": addWorldWithChange,

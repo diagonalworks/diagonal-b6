@@ -71,3 +71,35 @@ func TestAddCollection(t *testing.T) {
 		t.Errorf("Expected to find added collection, found none")
 	}
 }
+
+func TestAddExpression(t *testing.T) {
+	m := ingest.NewMutableOverlayWorld(b6.EmptyWorld{})
+	id := b6.MakeExpressionID("diagonal.works/test", 1)
+
+	tags := b6.AdaptCollection[any, b6.Tag](
+		b6.ArrayValuesCollection[b6.Tag]{
+			{Key: "b6", Value: b6.String("docked")},
+		}.Collection(),
+	)
+
+	expression := b6.NewCallExpression(
+		b6.NewSymbolExpression("add"),
+		[]b6.Expression{
+			b6.NewIntExpression(10),
+			b6.NewIntExpression(20),
+		},
+	)
+
+	change, err := addExpression(nil, id, tags, expression)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	if _, err := change.Apply(m); err != nil {
+		t.Fatalf("Expected no error applying change, found: %s", err)
+	}
+
+	if collection := b6.FindExpressionByID(id, m); collection == nil {
+		t.Errorf("Expected to find added expression, found none")
+	}
+}

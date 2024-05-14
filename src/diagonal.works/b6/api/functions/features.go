@@ -2,6 +2,7 @@ package functions
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"diagonal.works/b6"
@@ -513,10 +514,29 @@ func orderedJoin(context *api.Context, pathA b6.Geometry, pathB b6.Geometry) (b6
 	return b6.GeometryFromPoints(points), nil
 }
 
-func callID(context *api.Context, id b6.ExpressionID) (interface{}, error) {
+func listFeature(context *api.Context, id b6.CollectionID) (b6.Collection[any, any], error) {
+	c := b6.FindCollectionByID(id, context.World)
+	if c == nil {
+		return b6.Collection[any, any]{}, fmt.Errorf("no collection with ID %s", id)
+	}
+	return b6.AdaptCollection[any, any](c), nil
+}
+
+func evaluateFeature(context *api.Context, id b6.ExpressionID) (interface{}, error) {
 	e := b6.FindExpressionByID(id, context.World)
 	if e == nil {
-		return b6.FeatureIDInvalid, nil
+		return nil, fmt.Errorf("no expression with ID %s", id)
 	}
-	return api.Evaluate(e.Expression(), context)
+	r, err := context.Evaluate(e.Expression())
+	return r, err
+}
+
+func call(context *api.Context, f api.Callable, args ...interface{}) (interface{}, error) {
+	es := context.VM.ArgExpressions()
+	frames := make([]api.StackFrame, len(args))
+	for i := range frames {
+		frames[i].Value = reflect.ValueOf(args[i])
+		frames[i].Expression = es[i+1]
+	}
+	return context.VM.CallWithArgsAndExpressions(context, f, frames)
 }
