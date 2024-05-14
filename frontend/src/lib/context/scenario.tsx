@@ -11,18 +11,15 @@ import {
 import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
-import { ChangeFeature, Scenario } from '@/atoms/app';
-import {
-    EvaluateRequestProto,
-    EvaluateResponseProto,
-} from '@/types/generated/api';
+import { ChangeFeature, ChangeFunction, Scenario } from '@/atoms/app';
+import { EvaluateResponseProto, NodeProto } from '@/types/generated/api';
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
 import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
 import { pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
-import { b6, b6Path } from '../b6';
+import { b6Path } from '../b6';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
 
@@ -45,7 +42,9 @@ const ScenarioContext = createContext<{
     isDefiningChange?: boolean;
     addFeatureToChange: (feature: ChangeFeature) => void;
     removeFeatureFromChange: (feature: ChangeFeature) => void;
-    query?: UseQueryResult<EvaluateResponseProto>;
+    setChangeFunction: (changeFunction: ChangeFunction) => void;
+    setChangeAnalysis: (analysis: NodeProto) => void;
+    queryScenario?: UseQueryResult<EvaluateResponseProto>;
 }>({
     tab: 'left',
     scenario: {} as Scenario,
@@ -61,6 +60,8 @@ const ScenarioContext = createContext<{
     createOutlinerInScenario: () => {},
     addFeatureToChange: () => {},
     removeFeatureFromChange: () => {},
+    setChangeFunction: () => {},
+    setChangeAnalysis: () => {},
 });
 
 /**
@@ -83,17 +84,15 @@ export const ScenarioProvider = ({
         createOutliner,
         setApp,
     } = useAppContext();
+    //const startupQuery = useAtomValue(startupQueryAtom);
 
     const queryScenario = useQuery<EvaluateResponseProto, Error>({
         enabled: false,
-        queryKey: ['scenario', scenario.id],
+        queryKey: ['scenario', scenario.id, JSON.stringify(scenario.change)],
         queryFn: async () => {
-            return b6.evaluate({
-                root: {
-                    type: 'FeatureTypeCollection',
-                    namespace: 'diagonal.works/world',
-                    value: scenario.id,
-                },
+            return Promise.reject('not implemented');
+            /* return b6.evaluate({
+                root: startupQuery.data?.root,
                 request: {
                     call: {
                         function: {
@@ -104,41 +103,56 @@ export const ScenarioProvider = ({
                                 literal: {
                                     featureIDValue: {
                                         type: 'FeatureTypeCollection',
-                                        namespace: 'diagonal.works/world',
-                                        value: 1,
+                                        namespace: `${
+                                            startupQuery.data?.root
+                                                ?.namespace ?? 'diagonal.works'
+                                        }/scenario`,
+                                        value: +scenario.id,
                                     },
                                 },
                             },
                             {
                                 call: {
                                     function: {
-                                        symbol: 'add-service',
-                                    },
-                                    args: [
-                                        {
-                                            literal: {
-                                                featureIDValue: {
-                                                    type: 'FeatureTypeArea',
-                                                    namespace:
-                                                        'openstreetmap.org/way',
-                                                    value: 532767912,
-                                                },
+                                        call: {
+                                            function: {
+                                                symbol: 'evaluate-feature',
                                             },
+                                            args: [
+                                                {
+                                                    literal: {
+                                                        featureIDValue: {
+                                                            type: 'FeatureTypeExpression',
+                                                            namespace:
+                                                                'diagonal.works/skyline-demo-05-2024',
+                                                            value: 5,
+                                                        },
+                                                    },
+                                                },
+                                            ],
                                         },
-                                    ],
+                                    },
+                                    args: [],
                                 },
                             },
                         ],
                     },
                 },
-            } as unknown as EvaluateRequestProto);
+            } as unknown as EvaluateRequestProto); */
         },
     });
 
     const addFeatureToChange = useCallback(
         (feature: ChangeFeature) => {
             setApp((draft) => {
-                draft.scenarios[scenario.id].change.features.push(feature);
+                draft.scenarios[scenario.id].change = {
+                    ...draft.scenarios[scenario.id].change,
+                    features: [
+                        ...(draft.scenarios[scenario.id].change?.features ||
+                            []),
+                        feature,
+                    ],
+                };
             });
         },
         [scenario.id, setApp]
@@ -147,11 +161,38 @@ export const ScenarioProvider = ({
     const removeFeatureFromChange = useCallback(
         (feature: ChangeFeature) => {
             setApp((draft) => {
-                draft.scenarios[scenario.id].change.features = draft.scenarios[
-                    scenario.id
-                ].change.features.filter(
-                    (f) => f.expression !== feature.expression
-                );
+                if (!draft.scenarios[scenario.id].change?.features) return;
+                draft.scenarios[scenario.id].change = {
+                    ...draft.scenarios[scenario.id].change,
+                    features:
+                        draft.scenarios[scenario.id].change?.features?.filter(
+                            (f) => f.expression !== feature.expression
+                        ) || [],
+                };
+            });
+        },
+        [scenario.id, setApp]
+    );
+
+    const setChangeFunction = useCallback(
+        (changeFunction: ChangeFunction) => {
+            setApp((draft) => {
+                draft.scenarios[scenario.id].change = {
+                    ...draft.scenarios[scenario.id].change,
+                    changeFunction,
+                };
+            });
+        },
+        [scenario.id, setApp]
+    );
+
+    const setChangeAnalysis = useCallback(
+        (analysis: NodeProto) => {
+            setApp((draft) => {
+                draft.scenarios[scenario.id].change = {
+                    ...draft.scenarios[scenario.id].change,
+                    analysis,
+                };
             });
         },
         [scenario.id, setApp]
@@ -296,6 +337,9 @@ export const ScenarioProvider = ({
             createOutlinerInScenario,
             addFeatureToChange,
             removeFeatureFromChange,
+            setChangeFunction,
+            setChangeAnalysis,
+            queryScenario,
         };
     }, [
         scenario,
@@ -312,6 +356,9 @@ export const ScenarioProvider = ({
         comparisonOutliners,
         addFeatureToChange,
         removeFeatureFromChange,
+        setChangeFunction,
+        setChangeAnalysis,
+        queryScenario,
     ]);
 
     return (

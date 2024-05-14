@@ -12,20 +12,26 @@ export type ChangeFeature = {
     expression: string;
 };
 
+export type ChangeFunction = {
+    label?: string;
+    id: FeatureIDProto;
+};
+
 export type Change = {
-    features: ChangeFeature[];
-    function: string;
+    analysis?: NodeProto;
+    features?: ChangeFeature[];
+    changeFunction?: ChangeFunction;
 };
 
 export type ScenarioSpec = {
     name: string;
     id: string;
-    change: Change;
 };
 
 export type Scenario = ScenarioSpec & {
     node?: FeatureIDProto;
     worldCreated?: boolean;
+    change?: Change;
 };
 
 export type Scenarios = Record<string, Scenario>;
@@ -56,10 +62,6 @@ export const initialAppStore: AppStore = {
         baseline: {
             id: 'baseline',
             name: 'Baseline',
-            change: {
-                features: [],
-                function: '',
-            },
         },
     },
     tabs: {

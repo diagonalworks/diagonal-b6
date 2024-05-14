@@ -13,6 +13,7 @@ import {
 import * as Select from '@radix-ui/react-select';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAtomValue } from 'jotai';
+import { isEqual } from 'lodash';
 import { QuickScore } from 'quick-score';
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -128,7 +129,7 @@ const ChangePanel = () => {
         <div className="border  bg-rose-30 p-0.5  border-rose-40  shadow-lg">
             <div className="bg-rose-30 flex flex-col gap-2">
                 <div>
-                    {change.features.length > 0 ? (
+                    {change?.features && change.features.length > 0 ? (
                         change.features.map((feature, i) => (
                             <Line
                                 className="text-sm py-1 flex gap-2 items-center justify-between"
@@ -157,7 +158,9 @@ const ChangePanel = () => {
                         </div>
                     )}
                 </div>
-                {change.features.length > 0 && <ChangeCombo />}
+                {change?.features && change.features.length > 0 && (
+                    <ChangeCombo />
+                )}
             </div>
         </div>
     );
@@ -167,13 +170,13 @@ const ChangeCombo = () => {
     const { addComparator } = useAppContext();
     const { changes } = useAppContext();
     const {
-        scenario: { id },
+        scenario: { id, change },
+        setChangeAnalysis,
+        setChangeFunction,
+        queryScenario,
     } = useScenarioContext();
     const startupQuery = useAtomValue(startupQueryAtom);
 
-    const [selectedFunction, setSelectedFunction] = useState<string>();
-    const [selectedAnalysisLabel, setSelectedAnalysisLabel] =
-        useState<string>();
     const [search, setSearch] = useState('');
 
     const matcher = useMemo(() => {
@@ -186,13 +189,14 @@ const ChangeCombo = () => {
     }, [search, matcher]);
 
     const handleClick = useCallback(() => {
-        if (!selectedFunction) return;
+        if (!change) return;
+        queryScenario?.refetch();
         addComparator({
             baseline: 'baseline' as $FixMe,
             scenarios: [id] as $FixMe,
             analysis: 'test' as $FixMe,
         });
-    }, [selectedFunction, addComparator, id]);
+    }, [change?.analysis, addComparator, id]);
 
     const analysisOptions = useMemo(() => {
         const dockedAnalysis = startupQuery.data?.docked;
@@ -211,18 +215,25 @@ const ChangeCombo = () => {
     }, [startupQuery.data?.docked]);
 
     const selectedAnalysis = useMemo(() => {
-        return analysisOptions.find(
-            (analysis) => analysis.label?.title?.value === selectedAnalysisLabel
+        return analysisOptions.find((analysis) =>
+            isEqual(change?.analysis, analysis.node)
         );
-    }, [selectedAnalysisLabel, analysisOptions]);
+    }, [change?.analysis, analysisOptions]);
+    const selectedAnalysisLabel = selectedAnalysis?.label?.title?.value ?? '';
 
     return (
         <div className="flex flex-col gap-2 ">
             <div>
                 <span className="ml-2 text-xs text-rose-90">Change</span>
                 <Combobox
-                    value={selectedFunction}
-                    onChange={setSelectedFunction}
+                    value={change?.changeFunction?.label}
+                    onChange={(v) => {
+                        const option = functionResults.find(
+                            (f) => f.item.label === v
+                        );
+                        if (!option) return;
+                        setChangeFunction(option.item);
+                    }}
                 >
                     <div className="w-full text-sm flex gap-2 bg-white focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40 hover:bg-rose-10 py-2.5 px-2">
                         <span className="text-rose-70 "> b6</span>
@@ -249,13 +260,19 @@ const ChangeCombo = () => {
                     </Combobox.Options>
                 </Combobox>
             </div>
-            {selectedFunction && (
+            {change?.changeFunction && (
                 <div>
                     <span className="ml-2 text-xs text-rose-90">Analysis</span>
 
                     <Select.Root
                         value={selectedAnalysisLabel}
-                        onValueChange={setSelectedAnalysisLabel}
+                        onValueChange={(v) => {
+                            const option = analysisOptions.find(
+                                (analysis) => analysis.label?.title?.value === v
+                            );
+                            if (!option?.node) return;
+                            setChangeAnalysis(option.node);
+                        }}
                     >
                         <Select.Trigger className=" bg-white text-graphite-70 h-10 py-2 px-2 text-sm inline-flex items-center justify-between w-full focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40">
                             <Select.Value placeholder="Select an analysis...">
@@ -294,9 +311,9 @@ const ChangeCombo = () => {
                     </Select.Root>
                 </div>
             )}
-            {selectedFunction && (
+            {change?.changeFunction && (
                 <button
-                    className="w-full  text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80"
+                    className="w-full  text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80 focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40  "
                     onClick={handleClick}
                 >
                     Run Scenario

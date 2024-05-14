@@ -4,7 +4,6 @@ import {
     EvaluateRequestProto,
     EvaluateResponseProto,
     FeatureIDProto,
-    FeatureType,
 } from '@/types/generated/api';
 import { $FixMe } from '@/utils/defs';
 import { useQuery } from '@tanstack/react-query';
@@ -227,17 +226,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             draft.scenarios[id] = {
                 id: id,
                 name: 'Untitled Scenario',
-                node: {
-                    type: 'FeatureTypeCollection' as unknown as FeatureType,
-                    namespace:
-                        startupQuery.data?.root?.namespace || 'diagonal.works',
-                    value: +id,
-                },
-                worldCreated: false,
-                change: {
-                    features: [],
-                    function: '',
-                },
             };
             draft.tabs.right = id;
         });
