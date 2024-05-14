@@ -1,19 +1,38 @@
 import { Comparator } from '@/lib/context/comparator';
 import { OutlinerStore } from '@/lib/context/outliner';
 import { urlSearchParamsStorage } from '@/lib/storage';
+import { FeatureIDProto, NodeProto } from '@/types/generated/api';
+import { LabelledIconProto } from '@/types/generated/ui';
 import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
 
-export type Change = {
-    features: string[];
-    function: string;
+export type ChangeFeature = {
+    node: NodeProto;
+    label?: LabelledIconProto;
+    expression: string;
 };
 
-export type Scenario = {
+export type ChangeFunction = {
+    label?: string;
+    id: FeatureIDProto;
+};
+
+export type Change = {
+    analysis?: NodeProto;
+    features?: ChangeFeature[];
+    changeFunction?: ChangeFunction;
+};
+
+export type ScenarioSpec = {
     name: string;
     id: string;
-    worldId?: string;
-    change: Change;
+};
+
+export type Scenario = ScenarioSpec & {
+    node?: FeatureIDProto;
+    worldCreated?: boolean;
+    change?: Change;
+    submitted?: boolean;
 };
 
 export type Scenarios = Record<string, Scenario>;
@@ -44,11 +63,6 @@ export const initialAppStore: AppStore = {
         baseline: {
             id: 'baseline',
             name: 'Baseline',
-            worldId: 'baseline',
-            change: {
-                features: [],
-                function: '',
-            },
         },
     },
     tabs: {

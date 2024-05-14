@@ -1,7 +1,7 @@
 import * as circleIcons from '@/assets/icons/circle';
 import { viewAtom } from '@/atoms/location';
 import { colorToRgbArray } from '@/lib/colors';
-import { getFeaturePath, getRoadWidth } from '@/lib/map';
+import { getFeaturePath } from '@/lib/map';
 import { MVTLayer } from '@deck.gl/geo-layers/typed';
 import {
     MapboxOverlay as DeckOverlay,
@@ -64,7 +64,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
         if (!map) return null;
         return queryLayers.map((ql) => {
             const histogram = ql.histogram;
-            if (!histogram) return null;
+            if (!histogram || !ql.show) return null;
             return new MVTLayer({
                 data: [
                     `${b6Path}tiles/${ql.layer.path}/{z}/{x}/{y}.mvt?q=${ql.layer.q}`,
@@ -95,7 +95,10 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 },
                 getLineWidth: (f: Feature) => {
                     if (f.properties?.layerName === ql.layer.path) {
-                        const queryFeatures = map.querySourceFeatures(
+                        /**
+                         * skipping road highlighing for performance reasons
+                         */
+                        /* const queryFeatures = map.querySourceFeatures(
                             'diagonal',
                             {
                                 sourceLayer: 'road',
@@ -110,7 +113,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                                 getRoadWidth(feature.properties?.highway) * 1.5
                             );
                         }
-
+ */
                         const isSelected =
                             histogram?.selected &&
                             histogram.selected.toString() ===
@@ -294,7 +297,9 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 interleaved
             />
 
-            <MapControls>
+            <MapControls
+                className={twMerge(tab === 'right' && 'right-0 left-auto')}
+            >
                 <MapControls.Button
                     onClick={() => map?.zoomIn({ duration: 200 })}
                 >
