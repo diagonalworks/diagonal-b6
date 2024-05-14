@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 
@@ -127,7 +128,8 @@ func TestFilter(t *testing.T) {
 
 	limit := 0.5
 	f := func(_ *api.Context, v interface{}) (bool, error) { return v.(float64) > limit, nil }
-	filtered, err := filter(&api.Context{}, collection.Collection(), f)
+	c := &api.Context{Cores: 8, Context: context.Background(), VM: &api.VM{}}
+	filtered, err := filter(c, collection.Collection(), api.NewNativeFunction1(f, b6.NewSymbolExpression("x-native")))
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -189,6 +191,64 @@ func TestCountValues(t *testing.T) {
 	expected := map[int]int{
 		2: 2,
 		3: 1,
+	}
+	if diff := cmp.Diff(expected, filled); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
+	}
+}
+
+func TestCountKeys(t *testing.T) {
+	collection := b6.ArrayCollection[string, int]{
+		Keys:   []string{"epc:habitablerooms", "epc:habitablerooms", "epc:bedrooms"},
+		Values: []int{2, 3, 4},
+	}
+
+	c := b6.AdaptCollection[any, any](collection.Collection())
+	counted, err := countKeys(&api.Context{}, c)
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+	filled := make(map[string]int)
+	if err := api.FillMap(counted, filled); err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+	expected := map[string]int{
+		"epc:habitablerooms": 2,
+		"epc:bedrooms":       1,
+	}
+	if diff := cmp.Diff(expected, filled); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
+	}
+}
+
+func TestCountValidKeys(t *testing.T) {
+	origins := []b6.FeatureID{
+		b6.FeatureID{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/origin", Value: 0},
+		b6.FeatureID{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/origin", Value: 1},
+	}
+
+	destinations := []b6.FeatureID{
+		b6.FeatureID{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/destination", Value: 0},
+		b6.FeatureID{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/destination", Value: 1},
+	}
+
+	collection := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{
+		Keys:   []b6.FeatureID{origins[0], origins[0], origins[1]},
+		Values: []b6.FeatureID{destinations[0], destinations[1], b6.FeatureIDInvalid},
+	}
+
+	c := b6.AdaptCollection[any, any](collection.Collection())
+	counted, err := countValidKeys(&api.Context{}, c)
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+	filled := make(map[b6.FeatureID]int)
+	if err := api.FillMap(counted, filled); err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+	expected := map[b6.FeatureID]int{
+		origins[0]: 2,
+		origins[1]: 0,
 	}
 	if diff := cmp.Diff(expected, filled); diff != "" {
 		t.Errorf("Found diff (-want, +got):\n%s", diff)

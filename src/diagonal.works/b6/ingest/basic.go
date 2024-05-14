@@ -192,6 +192,22 @@ func (c collectionFeatureIterator) Value() interface{} {
 	return c.c.Values[c.i-1]
 }
 
+func (c *collectionFeatureIterator) KeyExpression() b6.Expression {
+	if l, err := b6.FromLiteral(c.Key()); err == nil {
+		return b6.Expression{AnyExpression: l.AnyLiteral}
+	} else {
+		panic(err.Error())
+	}
+}
+
+func (c collectionFeatureIterator) ValueExpression() b6.Expression {
+	if l, err := b6.FromLiteral(c.Value()); err == nil {
+		return b6.Expression{AnyExpression: l.AnyLiteral}
+	} else {
+		panic(err.Error())
+	}
+}
+
 type expressionFeature struct {
 	*ExpressionFeature
 }

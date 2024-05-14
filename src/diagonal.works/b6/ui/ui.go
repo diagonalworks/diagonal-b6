@@ -476,8 +476,8 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 
 	if err == nil {
 		if a, ok := result.(*api.AppliedChange); ok {
-			if first, ok := firstValueIfOnlyItem(a.Modified); ok {
-				err = ui.Render(response, first, root.ToCollectionID(), request.Locked, ui)
+			if f, ok := o.uiFeature(a.Modified, root); ok {
+				err = ui.Render(response, f, root.ToCollectionID(), request.Locked, ui)
 			} else {
 				err = ui.Render(response, a.Modified, root.ToCollectionID(), request.Locked, ui)
 			}
@@ -492,18 +492,22 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 	return nil
 }
 
-func firstValueIfOnlyItem(c b6.UntypedCollection) (any, bool) {
+func (o *OpenSourceUI) uiFeature(c b6.UntypedCollection, root b6.FeatureID) (b6.Feature, bool) {
+	w := o.Worlds.FindOrCreateWorld(root)
 	i := c.BeginUntyped()
-	ok, err := i.Next()
-	if !ok || err != nil {
-		return nil, false
+	for {
+		ok, err := i.Next()
+		if !ok || err != nil {
+			return nil, false
+		}
+		if id, ok := i.Value().(b6.Identifiable); ok {
+			if f := w.FindFeatureByID(id.FeatureID()); f != nil {
+				if t := f.Get("b6"); t.IsValid() && t.Value.String() == "histogram" {
+					return f, true
+				}
+			}
+		}
 	}
-	first := i.Value()
-	ok, err = i.Next()
-	if !ok && err == nil {
-		return first, true
-	}
-	return nil, false
 }
 
 func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root b6.CollectionID, locked bool, ui UI) error {

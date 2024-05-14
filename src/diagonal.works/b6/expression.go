@@ -32,6 +32,7 @@ type AnyExpression interface {
 	FromProto(node *pb.NodeProto) error
 	Equal(other AnyExpression) bool
 	Clone() Expression
+	String() string
 }
 
 type Expression struct {
@@ -201,6 +202,9 @@ func (e Expression) Clone() Expression {
 }
 
 func (e Expression) Equal(other Expression) bool {
+	if e.AnyExpression == nil {
+		return other.AnyExpression == nil
+	}
 	return e.AnyExpression.Equal(other.AnyExpression)
 }
 
@@ -294,6 +298,8 @@ func FromLiteral(l interface{}) (Literal, error) {
 		// TODO(mari): Remove and only use Geo(metry). Needed because tag values can current be LatLng.
 		ll := PointExpression(l)
 		return Literal{AnyLiteral: &ll}, nil
+	case Area:
+		return Literal{AnyLiteral: &AreaExpression{Area: l}}, nil
 	case Geometry:
 		switch l.GeometryType() {
 		case GeometryTypePoint:
@@ -305,8 +311,6 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case s2.LatLng:
 		ll := PointExpression(l)
 		return Literal{AnyLiteral: &ll}, nil
-	case Area:
-		return Literal{AnyLiteral: &AreaExpression{Area: l}}, nil
 	case geojson.GeoJSON:
 		return Literal{AnyLiteral: &GeoJSONExpression{GeoJSON: l}}, nil
 	case Route:
@@ -391,6 +395,10 @@ func (i IntExpression) Literal() interface{} {
 	return int(i)
 }
 
+func (i IntExpression) String() string {
+	return fmt.Sprintf("%d", i)
+}
+
 func (i IntExpression) Equal(other AnyExpression) bool {
 	if ii, ok := other.(*IntExpression); ok {
 		return i == *ii
@@ -429,6 +437,10 @@ func (f *FloatExpression) Clone() Expression {
 
 func (f FloatExpression) Literal() interface{} {
 	return float64(f)
+}
+
+func (f FloatExpression) String() string {
+	return fmt.Sprintf("%f", f)
 }
 
 func (f FloatExpression) Equal(other AnyExpression) bool {
@@ -478,6 +490,13 @@ func (b BoolExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (b BoolExpression) String() string {
+	if bool(b) {
+		return "true"
+	}
+	return "false"
+}
+
 type StringExpression string
 
 func (s *StringExpression) ToProto() (*pb.NodeProto, error) {
@@ -511,6 +530,10 @@ func (s StringExpression) Equal(other AnyExpression) bool {
 		return s == *ss
 	}
 	return false
+}
+
+func (s StringExpression) String() string {
+	return string(s)
 }
 
 func NewStringExpression(s string) Expression {
@@ -559,6 +582,10 @@ func (f FeatureIDExpression) Equal(other AnyExpression) bool {
 		return f == *ff
 	}
 	return false
+}
+
+func (f FeatureIDExpression) String() string {
+	return "/" + FeatureID(f).String()
 }
 
 func NewFeatureIDExpression(id FeatureID) Expression {
@@ -667,6 +694,10 @@ func (q QueryExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (q QueryExpression) String() string {
+	return q.Query.String()
+}
+
 func NewQueryExpression(query Query) Expression {
 	return Expression{AnyExpression: &QueryExpression{
 		Query: query,
@@ -726,6 +757,10 @@ func (g GeoJSONExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (g GeoJSONExpression) String() string {
+	return "x-geojson"
+}
+
 type RouteExpression Route
 
 func (r *RouteExpression) ToProto() (*pb.NodeProto, error) {
@@ -769,6 +804,10 @@ func (r *RouteExpression) Equal(other AnyExpression) bool {
 		}
 	}
 	return true
+}
+
+func (r *RouteExpression) String() string {
+	return "x-route"
 }
 
 type FeatureExpression struct {
@@ -825,6 +864,10 @@ func (f FeatureExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (f FeatureExpression) String() string {
+	return "x-feature"
+}
+
 type PointExpression s2.LatLng
 
 func (p *PointExpression) ToProto() (*pb.NodeProto, error) {
@@ -876,6 +919,10 @@ func (p PointExpression) Equal(other AnyExpression) bool {
 		return p == *pp
 	}
 	return false
+}
+
+func (p PointExpression) String() string {
+	return LatLngToString(s2.LatLng(p))
 }
 
 func NewPointExpressionFromLatLng(ll s2.LatLng) Expression {
@@ -942,6 +989,10 @@ func (p PathExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (p PathExpression) String() string {
+	return "x-path"
+}
+
 type AreaExpression struct {
 	Area Area
 }
@@ -984,6 +1035,10 @@ func (a AreaExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (a AreaExpression) String() string {
+	return "x-area"
+}
+
 type NilExpression struct{}
 
 func (_ NilExpression) ToProto() (*pb.NodeProto, error) {
@@ -1011,6 +1066,10 @@ func (n NilExpression) Literal() interface{} {
 func (n NilExpression) Equal(other AnyExpression) bool {
 	_, ok := other.(NilExpression)
 	return ok
+}
+
+func (n NilExpression) String() string {
+	return "x-nil"
 }
 
 type CollectionExpression struct {
@@ -1123,6 +1182,24 @@ func (c CollectionExpression) Equal(other AnyExpression) bool {
 		return true
 	}
 	return false
+}
+
+func (c CollectionExpression) String() string {
+	s := "{"
+	i := c.UntypedCollection.BeginUntyped()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return "x-broken-collection"
+		} else if !ok {
+			break
+		}
+		if len(s) > 1 {
+			s += ", "
+		}
+		s += i.KeyExpression().String() + ": " + i.ValueExpression().String()
+	}
+	return s + "}"
 }
 
 func NewCollectionExpression(c UntypedCollection) Expression {
@@ -1255,6 +1332,29 @@ func (c *CallExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (c *CallExpression) String() string {
+	s := ""
+	if _, ok := c.Function.AnyExpression.(*CallExpression); ok {
+		s += "(" + c.Function.String() + ")"
+	} else {
+		s += c.Function.String()
+	}
+	if len(c.Args) > 0 {
+		s += " "
+		for i, arg := range c.Args {
+			if i > 0 {
+				s += " "
+			}
+			if _, ok := arg.AnyExpression.(*CallExpression); ok {
+				s += "(" + arg.String() + ")"
+			} else {
+				s += arg.String()
+			}
+		}
+	}
+	return s
+}
+
 func NewCallExpression(function Expression, args []Expression) Expression {
 	return Expression{AnyExpression: &CallExpression{Function: function, Args: args}}
 }
@@ -1312,6 +1412,18 @@ func (l *LambdaExpression) Equal(other AnyExpression) bool {
 		return true
 	}
 	return false
+}
+
+func (l *LambdaExpression) String() string {
+	s := "{"
+	for i := range l.Args {
+		if i > 0 {
+			s += ", "
+		}
+		s += l.Args[i]
+	}
+	return " -> " + l.Expression.String() + "}"
+
 }
 
 func NewLambdaExpression(args []string, e Expression) Expression {

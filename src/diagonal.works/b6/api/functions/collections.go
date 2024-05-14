@@ -4,27 +4,68 @@ import (
 	"container/heap"
 	"fmt"
 	"math/rand"
+	"reflect"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
 )
 
+type pairCollection struct {
+	ps []api.Pair
+	es []b6.Expression
+	i  int
+}
+
+func (p *pairCollection) Begin() b6.Iterator[any, any] {
+	return &pairCollection{ps: p.ps, es: p.es}
+}
+
+func (p *pairCollection) Next() (bool, error) {
+	p.i++
+	return p.i <= len(p.ps), nil
+}
+
+func (p *pairCollection) Key() interface{} {
+	return p.ps[p.i-1].First()
+}
+
+func (p *pairCollection) Value() interface{} {
+	return p.ps[p.i-1].Second()
+}
+
+func (p *pairCollection) KeyExpression() b6.Expression {
+	return b6.NewCallExpression(
+		b6.NewSymbolExpression("first"),
+		[]b6.Expression{p.es[p.i-1]},
+	)
+}
+
+func (p *pairCollection) ValueExpression() b6.Expression {
+	return b6.NewCallExpression(
+		b6.NewSymbolExpression("second"),
+		[]b6.Expression{p.es[p.i-1]},
+	)
+}
+
+func (p *pairCollection) Count() (int, bool) {
+	return len(p.ps) - p.i, true
+}
+
 // Return a collection of the given key value pairs.
-func collection(_ *api.Context, pairs ...interface{}) (b6.Collection[any, any], error) {
-	c := &b6.ArrayCollection[interface{}, interface{}]{
-		Keys:   make([]interface{}, len(pairs)),
-		Values: make([]interface{}, len(pairs)),
+func collection(context *api.Context, pairs ...interface{}) (b6.Collection[any, any], error) {
+	c := &pairCollection{
+		ps: make([]api.Pair, len(pairs)),
+		es: context.VM.ArgExpressions(),
 	}
 	for i, arg := range pairs {
 		if pair, ok := arg.(api.Pair); ok {
-			c.Keys[i] = pair.First()
-			c.Values[i] = pair.Second()
+			c.ps[i] = pair
 		} else {
 			return b6.Collection[any, any]{}, fmt.Errorf("Expected a pair, found %T", arg)
 		}
 	}
-	return c.Collection(), nil
+	return b6.Collection[any, any]{AnyCollection: c}, nil
 }
 
 type takeCollection struct {
@@ -52,6 +93,14 @@ func (t *takeCollection) Key() interface{} {
 
 func (t *takeCollection) Value() interface{} {
 	return t.i.Value()
+}
+
+func (t *takeCollection) KeyExpression() b6.Expression {
+	return t.i.KeyExpression()
+}
+
+func (t *takeCollection) ValueExpression() b6.Expression {
+	return t.i.ValueExpression()
 }
 
 func (t *takeCollection) Count() (int, bool) {
@@ -166,7 +215,7 @@ func top(_ *api.Context, collection b6.UntypedCollection, n int) (b6.Collection[
 type filterCollection struct {
 	c       b6.UntypedCollection
 	i       b6.Iterator[any, any]
-	f       func(*api.Context, interface{}) (bool, error)
+	f       api.Callable
 	context *api.Context
 }
 
@@ -175,14 +224,24 @@ func (f *filterCollection) Begin() b6.Iterator[any, any] {
 }
 
 func (f *filterCollection) Next() (bool, error) {
+	var frames [1]api.StackFrame
 	for {
 		ok, err := f.i.Next()
 		if !ok || err != nil {
 			return ok, err
 		}
-		ok, err = f.f(f.context, f.i.Value())
-		if ok || err != nil {
-			return ok, err
+		frames[0].Value = reflect.ValueOf(f.i.Value())
+		frames[0].Expression = f.i.ValueExpression()
+		r, err := f.context.VM.CallWithArgsAndExpressions(f.context, f.f, frames[0:1])
+		if err != nil {
+			return false, err
+		}
+		if b, ok := r.(bool); ok {
+			if b {
+				return true, nil
+			}
+		} else {
+			return false, fmt.Errorf("expected bool, found %T", r)
 		}
 	}
 }
@@ -195,6 +254,14 @@ func (f *filterCollection) Value() interface{} {
 	return f.i.Value()
 }
 
+func (f *filterCollection) KeyExpression() b6.Expression {
+	return f.i.KeyExpression()
+}
+
+func (f *filterCollection) ValueExpression() b6.Expression {
+	return f.i.ValueExpression()
+}
+
 func (f *filterCollection) Count() (int, bool) {
 	return 0, false
 }
@@ -202,7 +269,7 @@ func (f *filterCollection) Count() (int, bool) {
 var _ b6.AnyCollection[any, any] = &filterCollection{}
 
 // Return a collection of the items of the given collection for which the value of the given function applied to each value is true.
-func filter(context *api.Context, collection b6.UntypedCollection, function func(*api.Context, interface{}) (bool, error)) (b6.Collection[any, any], error) {
+func filter(context *api.Context, collection b6.UntypedCollection, function api.Callable) (b6.Collection[any, any], error) {
 	return b6.Collection[any, any]{AnyCollection: &filterCollection{c: collection, f: function, context: context}}, nil
 }
 
@@ -258,6 +325,67 @@ func countValues(_ *api.Context, collection b6.Collection[any, any]) (b6.Collect
 	return r.Collection(), nil
 }
 
+// Return a collection of the number of occurances of each value in the given collection.
+func countKeys(_ *api.Context, collection b6.Collection[any, any]) (b6.Collection[any, int], error) {
+	counts := make(map[interface{}]int)
+	i := collection.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return b6.Collection[any, int]{}, err
+		}
+		if !ok {
+			break
+		}
+		// TODO: return an error if the value can't be used as a map key
+		counts[i.Key()]++
+	}
+	r := &b6.ArrayCollection[interface{}, int]{
+		Keys:   make([]interface{}, 0, len(counts)),
+		Values: make([]int, 0, len(counts)),
+	}
+	for k, v := range counts {
+		r.Keys = append(r.Keys, k)
+		r.Values = append(r.Values, v)
+	}
+	return r.Collection(), nil
+}
+
+// Return a collection of the number of occurances of each valid value in the given collection.
+// Invalid values are not counted, but case the key to appear in the output.
+func countValidKeys(_ *api.Context, collection b6.Collection[any, any]) (b6.Collection[any, int], error) {
+	counts := make(map[interface{}]int)
+	i := collection.Begin()
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return b6.Collection[any, int]{}, err
+		}
+		if !ok {
+			break
+		}
+		// TODO: return an error if the value can't be used as a map key
+		if id, ok := i.Value().(b6.FeatureID); ok {
+			if id.IsValid() {
+				counts[i.Key()]++
+			} else {
+				counts[i.Key()] += 0
+			}
+		} else {
+			counts[i.Key()]++
+		}
+	}
+	r := &b6.ArrayCollection[interface{}, int]{
+		Keys:   make([]interface{}, 0, len(counts)),
+		Values: make([]int, 0, len(counts)),
+	}
+	for k, v := range counts {
+		r.Keys = append(r.Keys, k)
+		r.Values = append(r.Values, v)
+	}
+	return r.Collection(), nil
+}
+
 type flattenCollection struct {
 	c  b6.Collection[any, b6.UntypedCollection]
 	i  b6.Iterator[any, b6.UntypedCollection]
@@ -294,6 +422,14 @@ func (f *flattenCollection) Next() (bool, error) {
 	}
 }
 
+func (f *flattenCollection) KeyExpression() b6.Expression {
+	return f.ii.KeyExpression()
+}
+
+func (f *flattenCollection) ValueExpression() b6.Expression {
+	return f.ii.ValueExpression()
+}
+
 func (f *flattenCollection) Count() (int, bool) {
 	return 0, false
 }
@@ -310,22 +446,38 @@ func flatten(_ *api.Context, collection b6.Collection[any, b6.UntypedCollection]
 // Return a change that adds a histogram for the given collection.
 func histogram(c *api.Context, collection b6.Collection[any, any]) (ingest.Change, error) {
 	id := b6.CollectionID{Namespace: b6.NamespaceUI, Value: rand.Uint64()}
+	return histogramWithID(c, collection, id)
+}
 
+// Return a change that adds a histogram for the given collection with the given ID.
+func histogramWithID(c *api.Context, collection b6.Collection[any, any], id b6.CollectionID) (ingest.Change, error) {
 	histogram, err := api.NewHistogramFromCollection(collection, id)
 	if err != nil {
 		return nil, err
 	}
-	return &ingest.AddFeatures{histogram}, nil
+	expression := &ingest.ExpressionFeature{
+		ExpressionID: b6.MakeExpressionID(id.Namespace, id.Value),
+		Expression:   c.VM.Expression(),
+	}
+	return &ingest.AddFeatures{histogram, expression}, nil
 }
 
 // Return a change that adds a histogram with only colour swatches for the given collection.
 func histogramSwatch(c *api.Context, collection b6.Collection[any, any]) (ingest.Change, error) {
 	id := b6.CollectionID{Namespace: b6.NamespaceUI, Value: rand.Uint64()}
+	return histogramSwatchWithID(c, collection, id)
+}
 
+// Return a change that adds a histogram with only colour swatches for the given collection.
+func histogramSwatchWithID(c *api.Context, collection b6.Collection[any, any], id b6.CollectionID) (ingest.Change, error) {
 	histogram, err := api.NewHistogramFromCollection(collection, id)
 	if err != nil {
 		return nil, err
 	}
 	histogram.AddTag(b6.Tag{Key: "b6:histogram", Value: b6.String("swatch")})
-	return &ingest.AddFeatures{histogram}, nil
+	expression := &ingest.ExpressionFeature{
+		ExpressionID: b6.MakeExpressionID(id.Namespace, id.Value),
+		Expression:   c.VM.Expression(),
+	}
+	return &ingest.AddFeatures{histogram, expression}, nil
 }

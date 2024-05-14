@@ -8,6 +8,9 @@ type Iterator[Key any, Value any] interface {
 	Key() Key
 	Value() Value
 	Next() (bool, error)
+
+	KeyExpression() Expression
+	ValueExpression() Expression
 }
 
 type emptyIterator[Key any, Value any] struct{}
@@ -22,6 +25,14 @@ func (e emptyIterator[_, Value]) Value() Value {
 
 func (e emptyIterator[_, _]) Next() (bool, error) {
 	return false, nil
+}
+
+func (e emptyIterator[_, _]) KeyExpression() Expression {
+	panic("KeyExpression() on emptyIterator")
+}
+
+func (e emptyIterator[_, _]) ValueExpression() Expression {
+	panic("ValueExpression() on emptyIterator")
 }
 
 type AnyCollection[Key any, Value any] interface {
@@ -63,6 +74,14 @@ func (a adaptBeginUntyped[_, _]) Next() (bool, error) {
 	return a.i.Next()
 }
 
+func (a adaptBeginUntyped[_, _]) KeyExpression() Expression {
+	return a.i.KeyExpression()
+}
+
+func (a adaptBeginUntyped[_, _]) ValueExpression() Expression {
+	return a.i.ValueExpression()
+}
+
 func (c Collection[Key, Value]) BeginUntyped() Iterator[any, any] {
 	return adaptBeginUntyped[Key, Value]{
 		i: c.AnyCollection.Begin(),
@@ -83,6 +102,14 @@ func (a adaptBeginValues[_, Value]) Value() Value {
 
 func (a adaptBeginValues[_, _]) Next() (bool, error) {
 	return a.i.Next()
+}
+
+func (a adaptBeginValues[_, _]) KeyExpression() Expression {
+	return a.i.KeyExpression()
+}
+
+func (a adaptBeginValues[_, Value]) ValueExpression() Expression {
+	return a.i.ValueExpression()
 }
 
 func (c Collection[Key, Value]) BeginValues() Iterator[any, Value] {
@@ -189,6 +216,14 @@ func (a *adaptIterator[_, Value]) AnyValue() interface{} {
 	return a.Value()
 }
 
+func (a *adaptIterator[_, _]) KeyExpression() Expression {
+	return a.i.KeyExpression()
+}
+
+func (a *adaptIterator[_, _]) ValueExpression() Expression {
+	return a.i.ValueExpression()
+}
+
 func FillMap[Key comparable, Value any](c Collection[Key, Value], m map[Key]Value) error {
 	i := c.Begin()
 	for {
@@ -254,6 +289,22 @@ func (a *arrayIterator[_, _]) Next() (bool, error) {
 	return a.i <= len(a.keys), nil
 }
 
+func (a arrayIterator[_, _]) KeyExpression() Expression {
+	if l, err := FromLiteral(a.Key()); err == nil {
+		return Expression{AnyExpression: l.AnyLiteral}
+	} else {
+		panic(err.Error())
+	}
+}
+
+func (a arrayIterator[_, _]) ValueExpression() Expression {
+	if l, err := FromLiteral(a.Value()); err == nil {
+		return Expression{AnyExpression: l.AnyLiteral}
+	} else {
+		panic(err.Error())
+	}
+}
+
 func (a ArrayCollection[Key, Value]) Collection() Collection[Key, Value] {
 	return Collection[Key, Value]{AnyCollection: a}
 }
@@ -298,6 +349,18 @@ func (a *arrayValuesIterator[_]) Next() (bool, error) {
 	return a.i <= len(a.values), nil
 }
 
+func (a arrayValuesIterator[_]) KeyExpression() Expression {
+	return NewIntExpression(a.Key())
+}
+
+func (a arrayValuesIterator[_]) ValueExpression() Expression {
+	if l, err := FromLiteral(a.Value()); err == nil {
+		return Expression{AnyExpression: l.AnyLiteral}
+	} else {
+		panic(err.Error())
+	}
+}
+
 func (a ArrayValuesCollection[Value]) Collection() Collection[int, Value] {
 	return Collection[int, Value]{AnyCollection: a}
 }
@@ -338,6 +401,18 @@ func (a arrayFeatureIterator[Value]) Value() Value {
 func (a *arrayFeatureIterator[_]) Next() (bool, error) {
 	a.i++
 	return a.i <= len(a.values), nil
+}
+
+func (a *arrayFeatureIterator[_]) KeyExpression() Expression {
+	return NewFeatureIDExpression(a.Key())
+}
+
+func (a *arrayFeatureIterator[_]) ValueExpression() Expression {
+	if l, err := FromLiteral(a.Value()); err == nil {
+		return Expression{AnyExpression: l.AnyLiteral}
+	} else {
+		panic(err.Error())
+	}
 }
 
 func (a ArrayFeatureCollection[Value]) Collection() Collection[FeatureID, Value] {

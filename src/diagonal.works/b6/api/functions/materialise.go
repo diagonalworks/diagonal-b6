@@ -39,7 +39,7 @@ func materialise(context *api.Context, id b6.CollectionID, function api.Callable
 		return nil, fmt.Errorf("expected a function with no arguments, found %d", function.NumArgs())
 	}
 
-	result, _, err := function.CallWithArgs(context, []interface{}{}, nil)
+	result, err := context.VM.CallWithArgs(context, function, []interface{}{})
 	if err != nil {
 		return nil, err
 	}
@@ -53,12 +53,9 @@ func materialise(context *api.Context, id b6.CollectionID, function api.Callable
 		return nil, err
 	}
 
-	var expression ingest.ExpressionFeature
-	if e, ok := function.Expression(); ok {
-		expression = ingest.ExpressionFeature{
-			ExpressionID: b6.ExpressionID(id),
-			Expression:   e,
-		}
+	expression := ingest.ExpressionFeature{
+		ExpressionID: b6.ExpressionID(id),
+		Expression:   function.Expression(),
 	}
 
 	add := ingest.AddFeatures([]ingest.Feature{&expression, collection})
@@ -75,7 +72,7 @@ func materialiseMap(context *api.Context, collection b6.Collection[any, b6.Featu
 		cores = 1
 	}
 
-	expression, _ := function.Expression()
+	expression := function.Expression()
 	results := &ingest.CollectionFeature{
 		CollectionID: id,
 	}
@@ -90,7 +87,7 @@ func materialiseMap(context *api.Context, collection b6.Collection[any, b6.Featu
 		context := contexts[i]
 		g.Go(func() error {
 			for f := range in {
-				result, _, err := function.CallWithArgs(context, []interface{}{f}, nil)
+				result, err := context.VM.CallWithArgs(context, function, []interface{}{f})
 				if err != nil {
 					return err
 				}
