@@ -12,7 +12,6 @@ import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
 import { ChangeFeature, Scenario } from '@/atoms/app';
-import { startupQueryAtom } from '@/atoms/startup';
 import {
     EvaluateRequestProto,
     EvaluateResponseProto,
@@ -21,7 +20,6 @@ import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
 import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
-import { useAtomValue } from 'jotai';
 import { pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
 import { b6, b6Path } from '../b6';
@@ -85,52 +83,6 @@ export const ScenarioProvider = ({
         createOutliner,
         setApp,
     } = useAppContext();
-    const startupQuery = useAtomValue(startupQueryAtom);
-
-    const changesQuery = useQuery<EvaluateResponseProto, Error>({
-        enabled: scenario.id !== 'baseline',
-        queryKey: [
-            'evaluate',
-            'expressions',
-            JSON.stringify(startupQuery.data?.root),
-            JSON.stringify(scenario.node),
-        ],
-        queryFn: () => {
-            console.log('startupQuery', startupQuery.data?.root, scenario);
-            if (!startupQuery.data?.root || !scenario.node)
-                return Promise.resolve({ data: {} });
-            return b6.evaluate({
-                root: {
-                    type: 'FeatureTypeCollection',
-                    namespace: 'diagonal.works/skyline-demo-05-2024',
-                    value: 0,
-                },
-                request: {
-                    call: {
-                        function: {
-                            symbol: 'list-feature',
-                        },
-                        args: [
-                            {
-                                literal: {
-                                    featureIDValue: {
-                                        type: 'FeatureTypeCollection',
-                                        namespace:
-                                            'diagonal.works/skyline-demo-05-2024',
-                                        value: 5,
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                },
-            } as unknown as EvaluateRequestProto);
-        },
-    });
-
-    useEffect(() => {
-        //console.log(changesQuery);
-    }, [changesQuery]);
 
     const queryScenario = useQuery<EvaluateResponseProto, Error>({
         enabled: false,

@@ -1,7 +1,13 @@
 import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
-import { FeatureType } from '@/types/generated/api';
+import {
+    EvaluateRequestProto,
+    EvaluateResponseProto,
+    FeatureIDProto,
+    FeatureType,
+} from '@/types/generated/api';
 import { $FixMe } from '@/utils/defs';
+import { useQuery } from '@tanstack/react-query';
 import { useAtom, useAtomValue } from 'jotai';
 import { uniqueId } from 'lodash';
 import {
@@ -12,6 +18,7 @@ import {
     useEffect,
     useMemo,
 } from 'react';
+import { b6 } from '../b6';
 import { Comparator } from './comparator';
 import { OutlinerStore } from './outliner';
 
@@ -39,6 +46,7 @@ export const AppContext = createContext<{
     setActiveScenario: (id: string) => void;
     addComparator: (req: Comparator['request']) => void;
     activeComparator?: Comparator;
+    changes: Array<{ label?: string; id: FeatureIDProto }>;
 }>({
     app: initialAppStore,
     setApp: () => {},
@@ -52,6 +60,7 @@ export const AppContext = createContext<{
     removeScenario: () => {},
     setActiveScenario: () => {},
     addComparator: () => {},
+    changes: [],
 });
 
 /**
@@ -69,6 +78,51 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }: PropsWithChildren) => {
     const [app, setApp] = useAtom(appAtom);
     const startupQuery = useAtomValue(startupQueryAtom);
+
+    const changesQuery = useQuery<EvaluateResponseProto, Error>({
+        queryKey: [
+            'evaluate',
+            'expressions',
+            JSON.stringify(startupQuery.data?.root),
+        ],
+        queryFn: () => {
+            if (!startupQuery.data?.root) return Promise.resolve({ data: {} });
+            return b6.evaluate({
+                root: startupQuery.data?.root,
+                request: {
+                    call: {
+                        function: {
+                            symbol: 'list-feature',
+                        },
+                        args: [
+                            {
+                                literal: {
+                                    featureIDValue: {
+                                        type: 'FeatureTypeCollection',
+                                        namespace:
+                                            'diagonal.works/skyline-demo-05-2024',
+                                        value: 1,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+            } as unknown as EvaluateRequestProto);
+        },
+    });
+
+    const changes = useMemo(() => {
+        const changes = changesQuery.data?.result?.literal?.collectionValue;
+        if (!changes) return [];
+        return changes.values.flatMap((v, i) => {
+            if (!v.featureIDValue || !changes.keys[i].stringValue) return [];
+            return {
+                label: changes.keys[i].stringValue,
+                id: v.featureIDValue,
+            };
+        });
+    }, [changesQuery.data]);
 
     const addComparator = useCallback(
         (request: Comparator['request']) => {
@@ -169,7 +223,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
     const addScenario = useCallback(() => {
         const id = uniqueId();
-        console.log('ns', startupQuery.data?.root?.namespace);
         setApp((draft) => {
             draft.scenarios[id] = {
                 id: id,
@@ -226,6 +279,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         addComparator,
         activeComparator,
         createOutliner,
+        changes,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

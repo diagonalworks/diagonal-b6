@@ -14,6 +14,7 @@ const initialViewParamsFromUrl = () => {
     const params = new URLSearchParams(window.location.search);
     const mapCenter = params.get('ll')?.split(',');
     const zoom = params.get('z');
+    console.log('mapCenter', mapCenter);
 
     const initialViewState = {
         latitude: mapCenter ? parseFloat(mapCenter[0]) : INITIAL_CENTER.lat,
