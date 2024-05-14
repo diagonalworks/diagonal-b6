@@ -11,11 +11,14 @@ import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
 import { Change, Scenario } from '@/atoms/app';
+import { EvaluateResponseProto, FeatureType } from '@/types/generated/api';
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
+import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
 import { isUndefined, pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
+import { b6 } from '../b6';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
 
@@ -37,6 +40,7 @@ const ScenarioContext = createContext<{
     isDefiningChange?: boolean;
     setWorldId: (id: string) => void;
     setWorldChange: (change: Change) => void;
+    query?: UseQueryResult<EvaluateResponseProto>;
 }>({
     tab: 'left',
     scenario: {} as Scenario,
@@ -74,6 +78,81 @@ export const ScenarioProvider = ({
         createOutliner,
         setApp,
     } = useAppContext();
+
+    const query = useQuery<EvaluateResponseProto, Error>({
+        queryKey: ['scenario', scenario.id],
+        queryFn: async () => {
+            return b6.evaluate({
+                root: {
+                    type: 'FeatureTypeCollection' as unknown as FeatureType,
+                    namespace: 'diagonal.works/world',
+                    value: 0,
+                },
+                version: 'something',
+                request: {
+                    call: {
+                        pipelined: true, // can't be undefined per the schema.
+                        function: {
+                            symbol: 'add-world-with-change',
+                            /** the following can't be undefined per the schema */
+                            name: 'add-world',
+                            begin: 0,
+                            end: 0,
+                        },
+                        args: [
+                            {
+                                literal: {
+                                    featureIDValue: {
+                                        type: 'FeatureTypeCollection' as unknown as FeatureType,
+                                        namespace: 'diagonal.works/world',
+                                        value: 1,
+                                    },
+                                },
+                                /** the following can't be undefined per the schema */
+                                name: 'new-world-id',
+                                begin: 0,
+                                end: 0,
+                            },
+                            {
+                                call: {
+                                    pipelined: true, // can't be undefined
+                                    function: {
+                                        symbol: 'add-service-bank',
+                                        name: 'add-service-bank',
+                                        begin: 0,
+                                        end: 0,
+                                    },
+                                    args: [
+                                        {
+                                            literal: {
+                                                featureIDValue: {
+                                                    type: 'FeatureTypeArea' as unknown as FeatureType,
+                                                    namespace:
+                                                        'openstreetmap.org/way',
+                                                    value: 532767912,
+                                                },
+                                            },
+                                            name: 'feature-0',
+                                            begin: 0,
+                                            end: 0,
+                                        },
+                                    ],
+                                },
+                                /** the following can't be undefined per the schema */
+                                name: 'something',
+                                begin: 0,
+                                end: 0,
+                            },
+                        ],
+                    },
+                    /** the following can't be undefined per the schema */
+                    name: 'new-world',
+                    begin: 0,
+                    end: 0,
+                },
+            });
+        },
+    });
 
     const isDefiningChange = useMemo(() => {
         return scenario.id !== 'baseline' && isUndefined(scenario.worldId);
@@ -210,6 +289,7 @@ export const ScenarioProvider = ({
             createOutlinerInScenario,
             setWorldChange,
             setWorldId,
+            query,
         };
     }, [
         scenario,
@@ -226,6 +306,7 @@ export const ScenarioProvider = ({
         comparisonOutliners,
         setWorldId,
         setWorldChange,
+        query,
     ]);
 
     return (
