@@ -209,6 +209,9 @@ func withChange(c *api.Context, change ingest.Change, function func(c *api.Conte
 }
 
 func addWorldWithChange(c *api.Context, id b6.FeatureID, change ingest.Change) (b6.Collection[b6.FeatureID, b6.FeatureID], error) {
+	// TODO: this should actually return a Change, to be applied at the top
+	// level
+	c.Worlds.DeleteWorld(id)
 	return change.Apply(c.Worlds.FindOrCreateWorld(id))
 }
 
