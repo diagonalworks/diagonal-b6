@@ -82,7 +82,7 @@ def output_traits(t, functions, collections, hints, parents):
     else:
         print("class %s:" % name_for_traits(t))
     methods = 0
-    for f in functions:            
+    for f in functions:
         if len(f["ArgTypes"]) > 0 and f["ArgTypes"][0] == t:
             if methods == 0:
                 print("")
@@ -104,7 +104,7 @@ def output_collection_values_traits(t, functions, collections, hints, parents):
     else:
         print("class %s:" % name_for_traits(n))
     methods = 0
-    for f in functions:            
+    for f in functions:
         if len(f["ArgTypes"]) > 0 and f["ArgTypes"][0] == t:
             if methods == 0:
                 print("")
@@ -120,7 +120,7 @@ def output_collection_values_traits(t, functions, collections, hints, parents):
     if methods == 0:
         print("    pass")
         print("")
-    
+
     print("class %s(Result, %s, %s):" % (name_for_any_key_result(n), name_for_traits(n), GENERIC_COLLECTION_TRAITS))
     print("")
     print("    def __init__(self, node):")
@@ -145,7 +145,7 @@ def output_function_arg_result(t, hints):
 def ancestors(t, parents):
     queue = copy(parents.get(t, []))
     ancestors = []
-    while len(queue) > 0:        
+    while len(queue) > 0:
         ancestors.append(queue.pop())
         queue.extend(parents.get(ancestors[-1], []))
     return ancestors
@@ -221,7 +221,7 @@ def main():
         parents.extend(EXTRA_TRAITS.get(name_for_result(t), []))
         print("class %s(%s):" % (name_for_result(t), ",".join(parents)))
         print("    def __init__(self, node):")
-        print("        Result.__init__(self, node)")        
+        print("        Result.__init__(self, node)")
         print("")
         if t in collections:
             _, values = collections[t]
@@ -247,10 +247,10 @@ def main():
             n = len(f["ArgTypes"])
             if f["IsVariadic"]:
                 n -= 1
-            print("    args = [%s]" % ", ".join([escape_name(name) for name in f["ArgNames"][0:n]]))
+            print("    args_ = [%s]" % ", ".join([escape_name(name) for name in f["ArgNames"][0:n]]))
             if f["IsVariadic"]:
-                print("    args.extend(%s)" % (escape_name(f["ArgNames"][-1],)))
-            print("    return %s(Call(Symbol(%s), args))" % (name_for_result(f["Result"]), repr(f["Name"])))
+                print("    args_.extend(%s)" % (escape_name(f["ArgNames"][-1],)))
+            print("    return %s(Call(Symbol(%s), args_))" % (name_for_result(f["Result"]), repr(f["Name"])))
         print("")
 
     print("name = diagonal_b6.expression._name")

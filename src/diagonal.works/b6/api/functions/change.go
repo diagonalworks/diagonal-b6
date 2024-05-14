@@ -155,6 +155,28 @@ func addCollection(c *api.Context, id b6.CollectionID, tags b6.Collection[any, b
 	return &add, nil
 }
 
+// Add an expression feature with the given id, tags and expression.
+func addExpression(c *api.Context, id b6.ExpressionID, tags b6.Collection[any, b6.Tag], expresson b6.Expression) (ingest.Change, error) {
+	feature := &ingest.ExpressionFeature{
+		ExpressionID: id,
+		Expression:   expresson,
+	}
+
+	t := tags.Begin()
+	for {
+		ok, err := t.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
+			break
+		}
+		feature.Tags = append(feature.Tags, t.Value())
+	}
+
+	add := ingest.AddFeatures([]ingest.Feature{feature})
+	return &add, nil
+}
+
 // Return a change that will apply all the changes in the given collection.
 // Changes are applied transactionally. If the application of one change
 // fails (for example, because it includes a path that references a missing

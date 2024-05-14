@@ -643,6 +643,12 @@ class B6Test(unittest.TestCase):
         new_connection = b6.connect_insecure(self.grpc_address, root=root)
         self.assertEqual(new_connection(b6.get_string(bridge, "maxspeed")), "10")
 
+    def test_add_and_call_expression(self):
+        id = b6.FeatureID(b6.FEATURE_TYPE_EXPRESSION, "diagonal.works/test_add_and_call_expression", 0)
+        add = b6.add_expression(id, [b6.tag("help", "Add 10")], lambda i: b6.add(i, 10))
+        self.connection(add)
+        self.assertEqual(self.connection(b6.call(b6.evaluate_feature(id), 20)), 30)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")

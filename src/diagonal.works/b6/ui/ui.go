@@ -93,19 +93,21 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 		}))
 	}
 
+	evaluator := api.Evaluator{
+		Worlds:          options.Worlds,
+		Options:         options.APIOptions,
+		FunctionSymbols: functions.Functions(),
+		Adaptors:        functions.Adaptors(),
+		Lock:            options.Lock,
+	}
+
 	var ui UI
 	if options.UI != nil {
 		ui = options.UI
 	} else {
 		ui = &OpenSourceUI{
-			Worlds: options.Worlds,
-			Evaluator: api.Evaluator{
-				Worlds:          options.Worlds,
-				Options:         options.APIOptions,
-				FunctionSymbols: functions.Functions(),
-				Adaptors:        functions.Adaptors(),
-				Lock:            options.Lock,
-			},
+			Worlds:          options.Worlds,
+			Evaluator:       evaluator,
 			BasemapRules:    renderer.BasemapRenderRules,
 			FunctionSymbols: functions.Functions(),
 			Lock:            options.Lock,
@@ -121,6 +123,10 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 		stack = options.InstrumentHandler(stack, "ui")
 	}
 	root.Handle("/stack", stack)
+
+	root.Handle("/evaluate", &EvaluateHandler{
+		Evaluator: evaluator,
+	})
 
 	return nil
 }
