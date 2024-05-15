@@ -8,11 +8,16 @@ import { match } from 'ts-pattern';
 import { Histogram } from '../system/Histogram';
 
 const colorInterpolator = interpolateRgbBasis([
-    '#fff',
     colors.green[20],
     colors.cyan[50],
     colors.violet[80],
 ]);
+
+// default color range uses the colorInterpolator to define a 6 color range
+const defaultColorRange = [
+    '#fff',
+    ...Array.from({ length: 4 }, (_, i) => colorInterpolator(i / 4)),
+];
 
 type HistogramData = {
     index: number;
@@ -73,7 +78,15 @@ export const HistogramAdaptor = ({
     useEffect(() => {
         const scale = scaleOrdinal({
             domain: data.map((d) => `${d.index}`),
-            range: data.map((_, i) => colorInterpolator(i / data.length)),
+            range:
+                data.length <= defaultColorRange.length
+                    ? defaultColorRange
+                    : [
+                          '#fff',
+                          ...data.map((_, i) =>
+                              colorInterpolator(i / data.length)
+                          ),
+                      ],
         });
         setHistogramColorScale(scale);
     }, [data]);
