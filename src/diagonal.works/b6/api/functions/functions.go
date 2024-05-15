@@ -41,6 +41,8 @@ var functions = api.FunctionSymbols{
 	"histogram-with-id":        histogramWithID,
 	"histogram-swatch":         histogramSwatch,
 	"histogram-swatch-with-id": histogramSwatchWithID,
+	"join-missing":             joinMissing,
+	"list-feature":             listFeature,
 	// search
 	"find-feature":     findFeature,
 	"find-area":        findAreaFeature,
@@ -85,7 +87,6 @@ var functions = api.FunctionSymbols{
 	"sample-points-along-paths": samplePointsAlongPaths,
 	"join":                      join,
 	"ordered-join":              orderedJoin,
-	"list-feature":              listFeature,
 	"evaluate-feature":          evaluateFeature,
 	"call":                      call,
 	// s2

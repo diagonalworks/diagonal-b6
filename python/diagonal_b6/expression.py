@@ -165,6 +165,12 @@ class DictCollectionResult(Result):
     def _values(cls):
         return Result
 
+class FeatureIDCollectionResult(Result):
+
+    @classmethod
+    def _values(cls):
+        return Result
+
 class Placeholder(Node):
 
     def to_node_proto(self):
