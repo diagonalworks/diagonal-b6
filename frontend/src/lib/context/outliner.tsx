@@ -167,6 +167,7 @@ export const OutlinerProvider = ({
     }, [outliner.data?.proto.stack?.substacks]);
 
     useEffect(() => {
+        // Set the map center from newly opened outliners
         const lat = query.data?.proto.mapCenter?.latE7;
         const lng = query.data?.proto.mapCenter?.lngE7;
         if (lat && lng) {
@@ -182,6 +183,19 @@ export const OutlinerProvider = ({
             }
         }
     }, [query.data, setViewState]);
+
+    useEffect(() => {
+        // Set the map center at startup
+        const lat = data?.mapCenter?.latE7;
+        const lng = data?.mapCenter?.lngE7;
+        if (lat && lng) {
+            setViewState({
+                ...viewState,
+                latitude: lat / 1e7,
+                longitude: lng / 1e7,
+            });
+        }
+    }, [data, setViewState])
 
     const setChoiceChipValue = useCallback(
         (index: number, value: number) => {

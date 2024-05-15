@@ -71,7 +71,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                     `${b6Path}tiles/${ql.layer.path}/{z}/{x}/{y}.mvt?q=${
                         ql.layer.q
                     }${
-                        featureId && featureId?.value
+                        featureId && featureId?.namespace
                             ? `&r=collection/${featureId.namespace}/${featureId.value}`
                             : ''
                     }`,

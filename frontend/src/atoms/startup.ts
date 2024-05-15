@@ -11,7 +11,6 @@ export const startupQueryAtom = atomWithQuery((get) => {
         queryFn: () =>
             b6.startup({
                 z: viewState.zoom.toString(),
-                ll: `${viewState.latitude},${viewState.longitude}`,
                 r: collection,
             }),
     };
