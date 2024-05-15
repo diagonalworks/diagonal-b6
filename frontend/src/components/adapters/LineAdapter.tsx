@@ -30,7 +30,7 @@ export const LineAdapter = ({
         createOutlinerInScenario({
             id: JSON.stringify(clickable),
             properties: {
-                coordinates: { x: 10, y: 60 },
+                coordinates: { x: 4, y: 240 },
                 scenario: outliner.properties.scenario,
                 transient: outliner.properties.transient,
                 docked: outliner.properties.docked,
@@ -74,7 +74,7 @@ export const LineAdapter = ({
                                 )}
                             </div>
                             {line.leftRightValue.right?.atom && (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 text-ultramarine-50">
                                     <AtomAdapter
                                         atom={line.leftRightValue.right.atom}
                                     />

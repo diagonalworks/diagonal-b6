@@ -348,7 +348,6 @@ export const ScenarioProvider = ({
 
     const getVisibleMarkers = useCallback(
         (map: MapRef) => {
-            console.log({ cenas: Object.values(scenarioOutliners) });
             const features = Object.values(scenarioOutliners)
                 .filter(
                     (outliner) =>
@@ -370,7 +369,6 @@ export const ScenarioProvider = ({
                             );
                     return true;
                 });
-            console.log({ features });
             return features;
         },
         [scenarioOutliners]
