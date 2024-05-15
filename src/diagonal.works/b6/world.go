@@ -1306,6 +1306,7 @@ type CollectionFeature interface {
 	CollectionID() CollectionID
 	IsSortedByKey() bool
 	FindValue(key any) (any, bool)
+	FindValues(key any, values []any) []any
 }
 
 type ExpressionFeature interface {
