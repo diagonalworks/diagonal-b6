@@ -40,7 +40,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
         getVisibleMarkers,
         queryLayers,
         geoJSON,
-        scenario: { id },
+        scenario: { id, featureId, worldCreated },
         mapStyle,
         tab,
     } = useScenarioContext();
@@ -64,10 +64,17 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
         if (!map) return null;
         return queryLayers.map((ql) => {
             const histogram = ql.histogram;
+
             if (!histogram || !ql.show) return null;
             return new MVTLayer({
                 data: [
-                    `${b6Path}tiles/${ql.layer.path}/{z}/{x}/{y}.mvt?q=${ql.layer.q}`,
+                    `${b6Path}tiles/${ql.layer.path}/{z}/{x}/{y}.mvt?q=${
+                        ql.layer.q
+                    }${
+                        featureId && featureId?.value
+                            ? `&r=collection/${featureId.namespace}/${featureId.value}`
+                            : ''
+                    }`,
                 ],
                 beforeId: 'road-label',
                 id: `${ql.layer.path}+${ql.layer.q}`,
@@ -272,7 +279,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
 
     return (
         <MapLibre
-            key={id}
+            key={`${id}-${worldCreated ? '-world' : ''}`}
             id={id}
             {...viewState}
             onMove={(evt) => {

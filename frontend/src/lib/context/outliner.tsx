@@ -93,10 +93,18 @@ export const OutlinerProvider = ({
     outliner: OutlinerStore;
 }) => {
     const { request } = outliner;
-    const { setApp, closeOutliner } = useAppContext();
+    const {
+        setApp,
+        closeOutliner,
+        app: { scenarios },
+    } = useAppContext();
     const viewState = useAtomValue(viewAtom);
     const { data } = useAtomValue(startupQueryAtom);
     const { [outliner.properties?.scenario || 'baseline']: map } = useMap();
+
+    const scenario = useMemo(() => {
+        return scenarios[outliner.properties?.scenario || 'baseline'];
+    }, [outliner.properties?.scenario, scenarios]);
 
     const close = useCallback(() => {
         closeOutliner(outliner.id);
@@ -111,7 +119,7 @@ export const OutlinerProvider = ({
             request?.expression,
             request?.eventType,
             request?.locked,
-            JSON.stringify(request?.node),
+            JSON.stringify(scenario?.featureId),
         ],
         queryFn: () => {
             if (!request) return Promise.reject('No request');
@@ -120,7 +128,7 @@ export const OutlinerProvider = ({
                 logEvent: request.eventType,
                 locked: request.locked,
                 node: request?.node,
-                root: request?.root,
+                root: scenario?.featureId,
                 logMapCenter: {
                     latE7: Math.round(viewState.latitude * 1e7),
                     lngE7: Math.round(viewState.longitude * 1e7),

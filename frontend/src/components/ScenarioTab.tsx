@@ -3,6 +3,9 @@ import { useAppContext } from '@/lib/context/app';
 import { OutlinerProvider } from '@/lib/context/outliner';
 import { useScenarioContext } from '@/lib/context/scenario';
 import { highlighted } from '@/lib/text';
+import { FeatureIDProto } from '@/types/generated/api';
+import { HeaderLineProto, LineProto } from '@/types/generated/ui';
+import { Docked } from '@/types/startup';
 import { $FixMe } from '@/utils/defs';
 import { Combobox } from '@headlessui/react';
 import {
@@ -54,8 +57,8 @@ export const ScenarioTab = ({
     });
 
     const showComparator =
-        activeComparator?.request?.scenarios?.includes(id as $FixMe) ||
-        activeComparator?.request?.baseline === (id as $FixMe);
+        activeComparator?.scenarios?.includes(id as $FixMe) ||
+        activeComparator?.baseline === (id as $FixMe);
 
     const Teleporter = useMemo(() => {
         return match(tab)
@@ -127,21 +130,22 @@ const GlobalShell = ({ show, mapId }: { show: boolean; mapId: string }) => {
 const ChangePanel = () => {
     const {
         removeFeatureFromChange,
-        queryScenario,
-        scenario: { change },
+        scenario: { change, worldCreated },
     } = useScenarioContext();
 
     const [open, setOpen] = useState(true);
-
-    const worldCreated = useMemo(() => {
-        return queryScenario?.isSuccess;
-    }, [queryScenario?.isSuccess]);
 
     useEffect(() => {
         if (worldCreated) {
             setOpen(false);
         }
     }, [worldCreated]);
+
+    useEffect(() => {
+        if (!change?.features) {
+            setOpen(true);
+        }
+    }, [change]);
 
     return (
         <div className="border  bg-rose-30 p-0.5  border-rose-40  shadow-lg">
@@ -212,22 +216,22 @@ const ChangePanel = () => {
     );
 };
 
+type AnalysisOption = {
+    id: FeatureIDProto;
+    label?: HeaderLineProto;
+};
 const ChangeCombo = () => {
-    const { addComparator } = useAppContext();
     const { changes } = useAppContext();
     const {
-        scenario: { id, change },
+        scenario: { change, worldCreated },
         setChangeAnalysis,
         setChangeFunction,
         queryScenario,
+        runScenario,
     } = useScenarioContext();
     const startupQuery = useAtomValue(startupQueryAtom);
 
     const [search, setSearch] = useState('');
-
-    const worldCreated = useMemo(() => {
-        return queryScenario?.isSuccess;
-    }, [queryScenario?.isSuccess]);
 
     const matcher = useMemo(() => {
         return new QuickScore(changes, ['label']);
@@ -240,36 +244,30 @@ const ChangeCombo = () => {
 
     const handleClick = useCallback(() => {
         if (!change) return;
-        queryScenario?.refetch();
-        addComparator({
-            baseline: 'baseline' as $FixMe,
-            scenarios: [id] as $FixMe,
-            analysis: 'test' as $FixMe,
-        });
-    }, [change?.analysis, addComparator, id]);
+        runScenario();
+    }, [change, queryScenario]);
 
     const analysisOptions = useMemo(() => {
         const dockedAnalysis = startupQuery.data?.docked;
         return (
-            dockedAnalysis?.flatMap((analysis: $FixMe) => {
-                const label = analysis.proto.stack?.substacks[0].lines.map(
-                    (l: $FixMe) => l.header
+            dockedAnalysis?.flatMap((analysis: Docked) => {
+                const label = analysis.proto.stack?.substacks?.[0].lines?.map(
+                    (l: LineProto) => l.header
                 )[0];
 
                 return {
-                    node: analysis.proto.node,
+                    id: analysis.proto.stack?.id,
                     label,
-                };
+                } as AnalysisOption;
             }) ?? []
         );
     }, [startupQuery.data?.docked]);
 
     const selectedAnalysis = useMemo(() => {
-        return analysisOptions.find((analysis: $FixMe) =>
-            isEqual(change?.analysis, analysis.node)
+        return analysisOptions.find((analysis) =>
+            isEqual(change?.analysis, analysis.id)
         );
     }, [change?.analysis, analysisOptions]);
-    const selectedAnalysisLabel = selectedAnalysis?.label?.title?.value ?? '';
 
     return (
         <div className="flex flex-col gap-2 ">
@@ -325,14 +323,14 @@ const ChangeCombo = () => {
 
                     <Select.Root
                         disabled={worldCreated}
-                        value={selectedAnalysisLabel}
+                        value={change.analysis?.value?.toString()}
                         onValueChange={(v) => {
                             const option = analysisOptions.find(
-                                (analysis: $FixMe) =>
-                                    analysis.label?.title?.value === v
+                                (analysis) =>
+                                    analysis.id.value?.toString() === v
                             );
-                            if (!option?.node) return;
-                            setChangeAnalysis(option.node);
+                            if (!option?.id) return;
+                            setChangeAnalysis(option?.id);
                         }}
                     >
                         <Select.Trigger className=" bg-white text-graphite-70 h-10 py-2 px-2 text-sm inline-flex items-center justify-between w-full focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40 data-[disabled]:bg-rose-10 data-[disabled]:italic">
@@ -362,10 +360,7 @@ const ChangeCombo = () => {
                                     (analysis: $FixMe, i: number) => (
                                         <Select.Item
                                             key={i}
-                                            value={
-                                                analysis.label?.title?.value ??
-                                                ''
-                                            }
+                                            value={analysis.id.value?.toString()}
                                             className=" cursor-pointer data-[state=checked]:bg-rose-10  data-[highlighted]:bg-rose-10 text-sm py-3 px-2 border-x border-b border-graphite-20 first:border-t items-center focus:outline-none "
                                         >
                                             {analysis?.label?.title?.value}

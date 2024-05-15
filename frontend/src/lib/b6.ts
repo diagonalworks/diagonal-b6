@@ -1,6 +1,7 @@
 import { Event } from '@/types/events';
 import { EvaluateRequestProto } from '@/types/generated/api';
-import { UIRequestProto } from '@/types/generated/ui';
+import { ComparisonRequestProto, UIRequestProto } from '@/types/generated/ui';
+import { StartupResponse } from '@/types/startup';
 
 export type b6Route = 'startup' | 'stack';
 
@@ -29,7 +30,11 @@ const stack = async (request: UIRequestProto & { logEvent: Event }) => {
     }).then((res) => formatResponse(res));
 };
 
-const startup = async (urlParams: { z: string; ll: string; r: string }) => {
+const startup = async (urlParams: {
+    z: string;
+    ll: string;
+    r: string;
+}): Promise<StartupResponse> => {
     return fetch(`${b6Path}startup?` + new URLSearchParams(urlParams)).then(
         (res) => formatResponse(res)
     );
@@ -47,8 +52,21 @@ const evaluate = async (request: EvaluateRequestProto) => {
     });
 };
 
+const compare = async (request: ComparisonRequestProto) => {
+    return fetch(`${b6Path}compare`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+    }).then((res) => {
+        return formatResponse(res);
+    });
+};
+
 export const b6 = {
     stack,
     startup,
     evaluate,
+    compare,
 };

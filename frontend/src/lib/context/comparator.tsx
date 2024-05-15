@@ -1,58 +1,34 @@
+import { startupQueryAtom } from '@/atoms/startup';
 import { Comparator } from '@/components/Comparator';
-import { ComparisonRequestProto } from '@/types/generated/ui';
-import { StackResponse } from '@/types/stack';
+import { FeatureIDProto } from '@/types/generated/api';
+import { ComparisonLineProto } from '@/types/generated/ui';
+import { Docked } from '@/types/startup';
 import { $FixMe } from '@/utils/defs';
 import { useQuery } from '@tanstack/react-query';
-import { FeatureCollection, GeoJsonProperties, Geometry } from 'geojson';
-import { PropsWithChildren, createContext, useContext, useEffect } from 'react';
+import { useAtomValue } from 'jotai';
+import { isEqual } from 'lodash';
+import {
+    PropsWithChildren,
+    createContext,
+    useContext,
+    useEffect,
+    useMemo,
+} from 'react';
+import { b6 } from '../b6';
 import { useAppContext } from './app';
 
 export type Comparator = {
     id: string;
-    request?: ComparisonRequestProto;
-    query?: ReturnType<typeof useQuery<StackResponse, Error>>;
-    data?: StackResponse;
-};
-
-const testDataComparison = {
-    baseline: {
-        bars: [
-            {
-                value: 5,
-                total: 20,
-                index: 1,
-                range: { value: 'test-a' },
-            },
-            {
-                value: 15,
-                total: 20,
-                index: 2,
-                range: { value: 'test-b' },
-            },
-        ],
-    },
-    scenarios: [
-        {
-            bars: [
-                {
-                    value: 18,
-                    total: 20,
-                    index: 1,
-                    range: { value: 'test-a' },
-                },
-                {
-                    value: 2,
-                    total: 20,
-                    index: 2,
-                    range: { value: 'test-b' },
-                },
-            ],
-        },
-    ],
+    baseline?: string;
+    scenarios?: string[];
+    analysis?: FeatureIDProto;
+    query?: ReturnType<typeof useQuery<ComparisonLineProto, Error>>;
+    data?: ComparisonLineProto;
 };
 
 const ComparatorContext = createContext<{
     comparator: Comparator;
+    analysis?: Docked;
 }>({
     comparator: {} as Comparator,
 });
@@ -66,77 +42,101 @@ export const ComparatorProvider = ({
     comparator,
 }: PropsWithChildren & { comparator: Comparator }) => {
     const { createOutliner } = useAppContext();
-    const query = useQuery<StackResponse, Error>({
+    const {
+        app: { scenarios },
+    } = useAppContext();
+    const startupQuery = useAtomValue(startupQueryAtom);
+
+    const query = useQuery<ComparisonLineProto, Error>({
         queryKey: [
             'comparison',
-            comparator.request?.baseline,
-            comparator.request?.scenarios,
-            comparator.request?.analysis,
+            comparator?.baseline,
+            comparator?.scenarios,
+            comparator?.analysis,
         ],
         queryFn: async () => {
-            console.warn(
-                'comparison request not yet available, returning template data.'
-            );
-            return new Promise((resolve) => {
-                resolve({
-                    geoJSON: [] as unknown as FeatureCollection<
-                        Geometry,
-                        GeoJsonProperties
-                    >[],
+            return b6.compare({
+                analysis: comparator?.analysis,
+                baseline: {
+                    ...startupQuery.data?.root,
+                    value: 0,
+                },
+                scenarios: comparator?.scenarios?.flatMap((s) => {
+                    const scenarioFeatureId = scenarios[s].featureId;
+                    if (!scenarioFeatureId) return [];
+                    return scenarioFeatureId;
+                }),
+            });
+        },
+    });
+
+    const analysis = useMemo(() => {
+        return startupQuery.data?.docked?.find((d) => {
+            return isEqual(d.proto.stack?.id, comparator.analysis);
+        });
+    }, [startupQuery.data?.docked, comparator.analysis]);
+
+    useEffect(() => {
+        if (!query.data) return;
+
+        if (query.data.baseline) {
+            createOutliner({
+                id: `${comparator.id}-baseline`,
+                properties: {
+                    comparison: true,
+                    scenario: comparator?.baseline as $FixMe,
+                    docked: false,
+                    transient: false,
+                    coordinates: { x: 0, y: 0 },
+                },
+                data: {
+                    geoJSON: [],
                     proto: {
-                        node: undefined,
-                        geoJSON: [] as $FixMe,
-                        layers: [],
-                        mapCenter: { latE7: 0, lngE7: 0 },
-                        locked: false,
-                        chipValues: [],
-                        logDetail: '',
-                        tilesChanged: false,
-                        expression: '',
-                        highlighted: { namespaces: [], ids: [] },
                         stack: {
                             substacks: [
                                 {
-                                    lines: [{ comparison: testDataComparison }],
+                                    lines:
+                                        query.data.baseline?.bars?.map((b) => {
+                                            return {
+                                                histogramBar: b,
+                                            };
+                                        }) ?? [],
                                     collapsable: false,
                                 },
                             ],
                         },
                     },
-                });
+                },
             });
-        },
-    });
+        }
 
-    useEffect(() => {
-        if (!query.data) return;
+        query.data.scenarios?.forEach((scenario, i) => {
+            const scenarioId = comparator?.scenarios?.[i];
 
-        query.data.proto.stack?.substacks?.[0].lines?.forEach((line) => {
-            if (line.comparison) {
+            if (scenarioId) {
                 createOutliner({
-                    id: `comparison-baseline`,
+                    id: `${comparator.id}-scenario-${i}`,
                     properties: {
                         comparison: true,
-                        scenario: comparator.request?.baseline as $FixMe,
+                        origin: `${comparator.id}-baseline`,
+                        scenario: scenarioId as $FixMe,
                         docked: false,
                         transient: false,
                         coordinates: { x: 0, y: 0 },
                     },
                     data: {
-                        ...query.data,
+                        geoJSON: [],
                         proto: {
-                            ...query.data.proto,
+                            layers: analysis ? analysis.proto.layers : [],
                             stack: {
                                 substacks: [
                                     {
                                         lines:
-                                            line.comparison.baseline?.bars?.map(
-                                                (b) => {
-                                                    return {
-                                                        histogramBar: b,
-                                                    };
-                                                }
-                                            ) ?? [],
+                                            scenario?.bars?.map((b) => {
+                                                return {
+                                                    histogramBar: b,
+                                                };
+                                            }) ?? [],
                                         collapsable: false,
                                     },
                                 ],
@@ -144,48 +144,12 @@ export const ComparatorProvider = ({
                         },
                     },
                 });
-
-                line.comparison?.scenarios?.forEach((scenario, i) => {
-                    const scenarioId = comparator.request?.scenarios?.[i];
-
-                    if (scenarioId) {
-                        createOutliner({
-                            id: `comparison-scenario-${i}`,
-                            properties: {
-                                comparison: true,
-                                origin: `comparison-baseline`,
-                                scenario: scenarioId as $FixMe,
-                                docked: false,
-                                transient: false,
-                                coordinates: { x: 0, y: 0 },
-                            },
-                            data: {
-                                ...query.data,
-                                proto: {
-                                    ...query.data.proto,
-                                    stack: {
-                                        substacks: [
-                                            {
-                                                lines:
-                                                    scenario?.bars?.map((b) => {
-                                                        return {
-                                                            histogramBar: b,
-                                                        };
-                                                    }) ?? [],
-                                                collapsable: false,
-                                            },
-                                        ],
-                                    },
-                                },
-                            },
-                        });
-                    }
-                }) ?? [];
             }
-        }) ?? [];
-    }, [query.data]);
+        });
+    }, [query.data, analysis]);
 
     const value = {
+        analysis,
         comparator: {
             ...comparator,
             query,

@@ -4,6 +4,7 @@ import {
     createContext,
     useCallback,
     useContext,
+    useEffect,
     useMemo,
 } from 'react';
 
@@ -14,8 +15,8 @@ import { ChangeFeature, ChangeFunction, Scenario } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
 import {
     EvaluateResponseProto,
+    FeatureIDProto,
     FeatureType,
-    NodeProto,
 } from '@/types/generated/api';
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
@@ -48,8 +49,9 @@ const ScenarioContext = createContext<{
     addFeatureToChange: (feature: ChangeFeature) => void;
     removeFeatureFromChange: (feature: ChangeFeature) => void;
     setChangeFunction: (changeFunction: ChangeFunction) => void;
-    setChangeAnalysis: (analysis: NodeProto) => void;
+    setChangeAnalysis: (analysis: FeatureIDProto) => void;
     queryScenario?: UseQueryResult<EvaluateResponseProto>;
+    runScenario: () => void;
 }>({
     tab: 'left',
     scenario: {} as Scenario,
@@ -67,6 +69,7 @@ const ScenarioContext = createContext<{
     removeFeatureFromChange: () => {},
     setChangeFunction: () => {},
     setChangeAnalysis: () => {},
+    runScenario: () => {},
 });
 
 /**
@@ -87,9 +90,22 @@ export const ScenarioProvider = ({
     const {
         app: { outliners },
         createOutliner,
+        addComparator,
         setApp,
     } = useAppContext();
     const startupQuery = useAtomValue(startupQueryAtom);
+
+    useEffect(() => {
+        setApp((draft) => {
+            draft.scenarios[scenario.id].featureId = {
+                type: 'FeatureTypeCollection' as unknown as FeatureType,
+                namespace: `${
+                    startupQuery.data?.root?.namespace ?? 'diagonal.works'
+                }/scenario`,
+                value: +scenario.id,
+            };
+        });
+    }, [startupQuery.data?.root?.namespace, scenario.id]);
 
     const queryScenario = useQuery<EvaluateResponseProto, Error>({
         enabled: false,
@@ -116,14 +132,7 @@ export const ScenarioProvider = ({
                         args: [
                             {
                                 literal: {
-                                    featureIDValue: {
-                                        type: 'FeatureTypeCollection' as unknown as FeatureType,
-                                        namespace: `${
-                                            startupQuery.data?.root
-                                                ?.namespace ?? 'diagonal.works'
-                                        }/scenario`,
-                                        value: +scenario.id,
-                                    },
+                                    featureIDValue: scenario.featureId,
                                 },
                             },
                             {
@@ -222,7 +231,7 @@ export const ScenarioProvider = ({
     );
 
     const setChangeAnalysis = useCallback(
-        (analysis: NodeProto) => {
+        (analysis: FeatureIDProto) => {
             setApp((draft) => {
                 draft.scenarios[scenario.id].change = {
                     ...draft.scenarios[scenario.id].change,
@@ -233,9 +242,37 @@ export const ScenarioProvider = ({
         [scenario.id, setApp]
     );
 
+    const runScenario = useCallback(() => {
+        queryScenario.refetch().then((res) => {
+            if (res.isSuccess) {
+                setApp((draft) => {
+                    draft.scenarios[scenario.id].worldCreated = true;
+
+                    for (const id in draft.outliners) {
+                        if (
+                            draft.outliners[id].properties.scenario ===
+                            scenario.id
+                        ) {
+                            delete draft.outliners[id];
+                        }
+                    }
+                });
+            }
+        });
+
+        const analysis = scenario.change?.analysis;
+        if (analysis) {
+            addComparator({
+                baseline: 'baseline',
+                scenarios: [scenario.id],
+                analysis: analysis,
+            });
+        }
+    }, [queryScenario, scenario.id, scenario.change?.analysis, addComparator]);
+
     const isDefiningChange = useMemo(() => {
         return scenario.id !== 'baseline' && !queryScenario?.isSuccess;
-    }, [scenario.id, scenario.node, queryScenario?.isSuccess]);
+    }, [scenario.id, queryScenario?.isSuccess]);
 
     const _removeTransientStacks = useCallback(() => {
         setApp((draft) => {
@@ -303,7 +340,7 @@ export const ScenarioProvider = ({
                 outliner.data?.proto.layers?.map((l) => ({
                     layer: l,
                     histogram: outliner.histogram,
-                    show: outliner.active,
+                    show: outliner.active ?? outliner.properties.comparison,
                 })) || []
             );
         });
@@ -339,14 +376,20 @@ export const ScenarioProvider = ({
                               ...basemapStyle.sources.diagonal,
                               tiles: [
                                   // so we can set a new basemap for this scenario
-                                  `${window.location.origin}${b6Path}tiles/base/{z}/{x}/{y}.mvt`,
+                                  `${
+                                      window.location.origin
+                                  }${b6Path}tiles/base/{z}/{x}/{y}.mvt${
+                                      scenario.featureId
+                                          ? `?r=collection/${scenario.featureId.namespace}/${scenario.featureId.value}`
+                                          : ''
+                                  }`,
                               ],
                           },
                       },
                   }
                 : basemapStyle
         ) as StyleSpecification;
-    }, [tab]);
+    }, [tab, scenario.featureId]);
 
     const value = useMemo(() => {
         return {
@@ -367,6 +410,7 @@ export const ScenarioProvider = ({
             setChangeFunction,
             setChangeAnalysis,
             queryScenario,
+            runScenario,
         };
     }, [
         scenario,
@@ -386,6 +430,7 @@ export const ScenarioProvider = ({
         setChangeFunction,
         setChangeAnalysis,
         queryScenario,
+        runScenario,
     ]);
 
     return (

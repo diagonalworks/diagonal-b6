@@ -17,10 +17,9 @@ export const StackAdapter = () => {
     } = useAppContext();
     const { outliner } = useOutlinerContext();
     const {
-        scenario: { change },
+        scenario: { change, worldCreated },
         addFeatureToChange,
         removeFeatureFromChange,
-        queryScenario,
     } = useScenarioContext();
     const [open, setOpen] = useState(outliner.properties.docked ? false : true);
 
@@ -64,9 +63,7 @@ export const StackAdapter = () => {
     const isInChange = change?.features?.find((f) => isEqual(f, featureNode));
     const outlierFeatureId = outliner.data.proto.stack?.id;
     const showChangeElements =
-        outlierFeatureId &&
-        !queryScenario?.isSuccess &&
-        outliner.properties.changeable;
+        outlierFeatureId && !worldCreated && outliner.properties.changeable;
 
     const labelledIcon =
         outliner.data.proto.stack?.substacks?.[1]?.lines?.flatMap((l) =>
