@@ -481,3 +481,103 @@ func histogramSwatchWithID(c *api.Context, collection b6.Collection[any, any], i
 	}
 	return &ingest.AddFeatures{histogram, expression}, nil
 }
+
+type joinMissingCollection struct {
+	base   b6.UntypedCollection
+	joined b6.UntypedCollection
+	bi     b6.Iterator[any, any]
+	ji     b6.Iterator[any, any]
+	bok    bool
+	jok    bool
+}
+
+func (j *joinMissingCollection) Begin() b6.Iterator[any, any] {
+	return &joinMissingCollection{
+		base:   j.base,
+		joined: j.joined,
+	}
+}
+
+func (j *joinMissingCollection) Next() (bool, error) {
+	// If we've started, advance the iterator with the
+	// lesser of the two keys, and then advance the joined iterator
+	// if the key's equal
+	var err error
+	if j.bi == nil {
+		j.bi = j.base.BeginUntyped()
+		j.ji = j.joined.BeginUntyped()
+		if j.bok, err = j.bi.Next(); err == nil {
+			j.jok, err = j.ji.Next()
+		}
+	} else {
+		if j.bok && j.jok {
+			var less bool
+			less, err = b6.Less(j.ji.Key(), j.bi.Key())
+			if err == nil {
+				if less {
+					j.jok, err = j.ji.Next()
+				} else {
+					j.bok, err = j.bi.Next()
+				}
+			}
+		} else if j.bok {
+			j.bok, err = j.bi.Next()
+		} else if j.jok {
+			j.jok, err = j.ji.Next()
+		}
+	}
+
+	for j.bok && j.jok && err == nil {
+		var equal bool
+		equal, err = b6.Equal(j.ji.Key(), j.bi.Key())
+		if equal && err == nil {
+			j.jok, err = j.ji.Next()
+		} else {
+			break
+		}
+	}
+
+	return j.bok || j.jok, err
+}
+
+func (j *joinMissingCollection) Key() interface{} {
+	return j.iterator().Key()
+}
+
+func (j *joinMissingCollection) Value() interface{} {
+	return j.iterator().Value()
+}
+
+func (j *joinMissingCollection) KeyExpression() b6.Expression {
+	return j.iterator().KeyExpression()
+}
+
+func (j *joinMissingCollection) ValueExpression() b6.Expression {
+	return j.iterator().ValueExpression()
+}
+
+func (j *joinMissingCollection) Count() (int, bool) {
+	return 0, false
+}
+
+func (j *joinMissingCollection) iterator() b6.Iterator[any, any] {
+	if j.bok && j.jok {
+		less, _ := b6.Less(j.ji.Key(), j.bi.Key())
+		if less {
+			return j.ji
+		} else {
+			return j.bi
+		}
+	} else if j.jok {
+		return j.ji
+	} else if j.bok {
+		return j.bi
+	}
+	return nil
+}
+
+func joinMissing(_ *api.Context, base b6.Collection[any, any], joined b6.Collection[any, any]) (b6.Collection[any, any], error) {
+	return b6.Collection[any, any]{
+		AnyCollection: &joinMissingCollection{base: base, joined: joined},
+	}, nil
+}

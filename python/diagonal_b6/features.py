@@ -28,7 +28,7 @@ class FeatureID(expression.Literal):
 
     def is_path(self):
         return self.type == FEATURE_TYPE_PATH
-    
+
     def is_area(self):
         return self.type == FEATURE_TYPE_AREA
 
@@ -65,6 +65,10 @@ class FeatureID(expression.Literal):
         query.spatial.area.id.namespace = self.namespace
         query.spatial.area.id.value = self.value
 
+    @classmethod
+    def _collection(cls):
+        return expression.FeatureIDCollectionResult
+
 class Feature(expression.Node):
 
     def __init__(self):
@@ -75,7 +79,7 @@ class Feature(expression.Node):
 
     def is_path(self):
         return self.id.is_path()
-    
+
     def is_area(self):
         return self.id.is_area()
 
@@ -173,7 +177,7 @@ class RelationMember:
 
     def is_path(self):
         return self.id.is_path()
-    
+
     def is_area(self):
         return self.id.is_area()
 
