@@ -8,6 +8,7 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	"diagonal.works/b6/ingest"
+	"diagonal.works/b6/test/camden"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -323,6 +324,54 @@ func TestListFeature(t *testing.T) {
 	expected := map[string]int{
 		"epc:habitablerooms": 1,
 		"epc:bedrooms":       2,
+	}
+	if diff := cmp.Diff(expected, filled); diff != "" {
+		t.Errorf("Found diff (-want, +got):\n%s", diff)
+	}
+}
+
+func TestJoinMissing(t *testing.T) {
+	base := b6.ArrayCollection[int, b6.FeatureID]{
+		Keys: []int{
+			1,
+			3,
+		},
+		Values: []b6.FeatureID{
+			camden.DishoomID,
+			camden.VermuteriaID,
+		},
+	}
+	join := b6.ArrayCollection[int, b6.FeatureID]{
+		Keys: []int{
+			0,
+			1,
+			2,
+			4,
+		},
+		Values: []b6.FeatureID{
+			camden.StableStreetBridgeNorthEndID,
+			camden.SomersTownBridgeEastGateID,
+			camden.StableStreetBridgeSouthEndID,
+			camden.GranarySquareBikeParkingID,
+		},
+	}
+
+	joined, err := joinMissing(nil, b6.AdaptCollection[any, any](base.Collection()), b6.AdaptCollection[any, any](join.Collection()))
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", joined)
+	}
+
+	filled := make([]b6.FeatureID, 0)
+	if err := api.FillSliceFromValues(joined, &filled); err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+
+	expected := []b6.FeatureID{
+		camden.StableStreetBridgeNorthEndID,
+		camden.DishoomID,
+		camden.StableStreetBridgeSouthEndID,
+		camden.VermuteriaID,
+		camden.GranarySquareBikeParkingID,
 	}
 	if diff := cmp.Diff(expected, filled); diff != "" {
 		t.Errorf("Found diff (-want, +got):\n%s", diff)

@@ -31,6 +31,8 @@ func NewFeatureIDFromProto(p *pb.FeatureIDProto) FeatureID {
 
 func NewFeatureTypeFromProto(t pb.FeatureType) FeatureType {
 	switch t {
+	case pb.FeatureType_FeatureTypeInvalid:
+		return FeatureTypeInvalid
 	case pb.FeatureType_FeatureTypePoint:
 		return FeatureTypePoint
 	case pb.FeatureType_FeatureTypePath:

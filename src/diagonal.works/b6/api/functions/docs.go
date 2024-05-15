@@ -84,6 +84,7 @@ var functionDocs = map[string]Doc{
 	"intersecting": Doc{Doc: "Return a query that will match features that intersect the given geometry.\n", ArgNames: []string{"geometry"}},
 	"intersecting-cap": Doc{Doc: "Return a query that will match features that intersect a spherical cap centred on the given point, with the given radius in meters.\n", ArgNames: []string{"center","radius"}},
 	"join": Doc{Doc: "Return a path formed from the points of the two given paths, in the order they occur in those paths.\n", ArgNames: []string{"pathA","pathB"}},
+	"join-missing": Doc{Doc: "", ArgNames: []string{"base","joined"}},
 	"keyed": Doc{Doc: "Return a query that will match features tagged with the given key independent of value.\n", ArgNames: []string{"key"}},
 	"length": Doc{Doc: "Return the length of the given path in meters.\n", ArgNames: []string{"path"}},
 	"list-feature": Doc{Doc: "", ArgNames: []string{"id"}},
