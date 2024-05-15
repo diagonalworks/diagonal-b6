@@ -17,7 +17,7 @@ export const StackAdapter = () => {
     } = useAppContext();
     const { outliner } = useOutlinerContext();
     const {
-        scenario: { change, worldCreated },
+        scenario: { worldCreated, change },
         addFeatureToChange,
         removeFeatureFromChange,
     } = useScenarioContext();
@@ -61,9 +61,8 @@ export const StackAdapter = () => {
     const featureId = outliner.data?.proto?.stack?.id;
 
     const isInChange = change?.features?.find((f) => isEqual(f.id, featureId));
-    const outlierFeatureId = outliner.data.proto.stack?.id;
     const showChangeElements =
-        outlierFeatureId && !worldCreated && outliner.properties.changeable;
+        featureId && !worldCreated && outliner.properties.changeable;
 
     const labelledIcon =
         outliner.data.proto.stack?.substacks?.[1]?.lines?.flatMap((l) =>
@@ -76,21 +75,19 @@ export const StackAdapter = () => {
                 <div className="flex justify-start">
                     <button
                         onClick={() => {
-                            const node = outliner.data?.proto.node;
                             const expression =
                                 outliner.request?.expression ?? '';
-                            if (!node) return;
 
                             if (isInChange) {
                                 removeFeatureFromChange({
                                     expression,
-                                    id: outlierFeatureId,
+                                    id: featureId,
                                     label: labelledIcon,
                                 });
                             }
                             addFeatureToChange({
                                 expression,
-                                id: outlierFeatureId,
+                                id: featureId,
                                 label: labelledIcon,
                             });
                         }}

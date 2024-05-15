@@ -92,6 +92,7 @@ export const ComparatorProvider = ({
                 data: {
                     geoJSON: [],
                     proto: {
+                        layers: analysis ? analysis.proto.layers : [],
                         stack: {
                             substacks: [
                                 {
