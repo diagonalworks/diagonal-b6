@@ -38,18 +38,18 @@ export const SubstackAdapter = ({
                     | 'histogram',
                 bars: contentLines.flatMap((l) => l.histogramBar ?? []),
                 swatches: contentLines.flatMap((l) => l.swatch ?? []),
-                origin: {
-                    bars: origin
-                        ? origin.lines
-                              ?.slice(header ? 1 : 0)
-                              ?.flatMap((l) => l.histogramBar ?? [])
-                        : [],
-                    swatches: origin
-                        ? origin.lines
-                              ?.slice(header ? 1 : 0)
-                              ?.flatMap((l) => l.swatch ?? [])
-                        : [],
-                },
+                origin: origin
+                    ? {
+                          bars:
+                              origin.lines
+                                  ?.slice(header ? 1 : 0)
+                                  ?.flatMap((l) => l.histogramBar ?? []) ?? [],
+                          swatches:
+                              origin.lines
+                                  ?.slice(header ? 1 : 0)
+                                  ?.flatMap((l) => l.swatch ?? []) ?? [],
+                      }
+                    : undefined,
             };
         }
         return null;

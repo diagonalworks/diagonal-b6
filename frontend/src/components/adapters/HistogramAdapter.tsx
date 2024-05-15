@@ -20,6 +20,7 @@ const defaultColorRange = [
 ];
 
 type HistogramData = {
+    total: number;
     index: number;
     label: string;
     count: number;
@@ -51,10 +52,13 @@ export const HistogramAdaptor = ({
                 () =>
                     bars?.flatMap((bar, i) => {
                         return {
+                            total: bar.total ?? 0,
                             index: bar.index ?? 0,
                             label: bar.range?.value ?? '',
                             count: bar.value ?? 0,
-                            origin: origin?.bars?.[i]?.value ?? null,
+                            origin: origin
+                                ? origin?.bars?.[i]?.value ?? 0
+                                : null,
                         };
                     }) ?? []
             )
@@ -68,6 +72,7 @@ export const HistogramAdaptor = ({
                             /* Swatches do not have a count. Should be null but setting it to 0 
                             for now to avoid type errors. */
                             count: 0,
+                            total: 0,
                             origin: null,
                         };
                     }) ?? []
@@ -101,6 +106,8 @@ export const HistogramAdaptor = ({
         return data.find((d) => d.index.toString() === selected);
     }, [outliner.histogram?.selected, data]);
 
+    console.log('data', data);
+
     return (
         <Histogram
             type={type}
@@ -109,6 +116,7 @@ export const HistogramAdaptor = ({
             bucket={(d) => d.index.toString()}
             value={(d) => d.count}
             origin={(d) => d.origin}
+            total={(d) => d.total}
             color={(d) => (scale ? scale(`${d.index}`) : '#fff')}
             onSelect={handleSelect}
             selected={selected}

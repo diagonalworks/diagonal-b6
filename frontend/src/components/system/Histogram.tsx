@@ -29,6 +29,7 @@ export function Histogram<T>({
     color,
     label,
     origin,
+    total,
     selected,
     onSelect,
     selectable = false,
@@ -46,6 +47,7 @@ export function Histogram<T>({
     label?: (d: T) => string;
     /** The accessor function for the origin. */
     origin?: (d: T) => number | null;
+    total: (d: T) => number | null;
     selectable?: boolean;
     /** Optional controlled state for the value of the selected bucket. */
     selected?: T | null;
@@ -62,13 +64,13 @@ export function Histogram<T>({
 
     const xScale = useMemo(() => {
         const domain = data
-            .filter((d) => !isNull(value(d)))
-            .map(value) as number[];
+            .filter((d) => !isNull(total(d)))
+            .map(total) as number[];
         return scaleLinear({
             domain: [0, Math.max(...domain)],
             range: [0, dimensions.boundedWidth],
         });
-    }, [data, dimensions.boundedWidth, value]);
+    }, [data, dimensions.boundedWidth, total]);
 
     const selectedBucket = selectable ? selected ?? internalSelected : null;
 
@@ -157,8 +159,15 @@ function HistogramBar<T>({
     const originValue = origin ? origin(d) : null;
     const originBarLength = originValue ? xScale(originValue) : 0;
     const isDecreasing = originValue && lineValue && lineValue < originValue;
-
-    const textX = isDecreasing ? originBarLength + barLength : barLength;
+    console.log({
+        d,
+        originValue,
+        lineValue,
+        isDecreasing,
+        originBarLength,
+        barLength,
+    });
+    const textX = isDecreasing ? originBarLength : barLength;
 
     return (
         <Line>
@@ -192,26 +201,30 @@ function HistogramBar<T>({
                             height={dimensions.height}
                             className=" overflow-visible"
                         >
-                            <motion.rect
-                                animate={{
-                                    width:
-                                        isDecreasing || !originValue
-                                            ? barLength
-                                            : originBarLength,
-                                }}
-                                x={dimensions.marginLeft}
-                                y={dimensions.marginTop}
-                                height={BAR_HEIGHT}
-                                //fill={color(d)}
-                                rx={1}
-                                className="stroke-graphite-80 fill-graphite-80"
-                                strokeWidth={0.7}
-                            />
-                            {originValue ? (
+                            {originValue !== 0 && (
+                                <motion.rect
+                                    animate={{
+                                        width:
+                                            isDecreasing || !originValue
+                                                ? barLength
+                                                : originBarLength,
+                                    }}
+                                    x={dimensions.marginLeft}
+                                    y={dimensions.marginTop}
+                                    height={BAR_HEIGHT}
+                                    //fill={color(d)}
+                                    rx={1}
+                                    className={twMerge(
+                                        'stroke-graphite-80 fill-graphite-80'
+                                    )}
+                                    strokeWidth={0.7}
+                                />
+                            )}
+                            {!isNull(originValue) ? (
                                 <motion.rect
                                     animate={{
                                         width: isDecreasing
-                                            ? originBarLength
+                                            ? originBarLength - barLength
                                             : barLength - originBarLength,
                                     }}
                                     x={
@@ -258,9 +271,13 @@ function HistogramBar<T>({
                                                 .width ?? 0) + 2
                                         }
                                     >
-                                        {`(${isDecreasing ? '' : '+'}${
-                                            lineValue - originValue
-                                        })`}
+                                        {`(${
+                                            isDecreasing
+                                                ? ''
+                                                : lineValue === originValue
+                                                ? ''
+                                                : '+'
+                                        }${lineValue - originValue})`}
                                     </Text>
                                 )}
                             </motion.g>
