@@ -348,11 +348,21 @@ export const ScenarioProvider = ({
 
     const getVisibleMarkers = useCallback(
         (map: MapRef) => {
+            console.log({ cenas: Object.values(scenarioOutliners) });
             const features = Object.values(scenarioOutliners)
+                .filter(
+                    (outliner) =>
+                        outliner.active || outliner.properties.transient
+                )
                 .flatMap((outliner) => outliner.data?.geoJSON || [])
+                .flatMap((f: $FixMe) => {
+                    if (f.type === 'FeatureCollection') return f.features;
+                    if (f.type === 'Feature') return [f];
+                    return [];
+                })
                 .flat()
                 .filter((f: $FixMe) => {
-                    f.geometry.type === 'Point' &&
+                    f.geometry?.type === 'Point' &&
                         map
                             ?.getBounds()
                             ?.contains(
@@ -360,6 +370,7 @@ export const ScenarioProvider = ({
                             );
                     return true;
                 });
+            console.log({ features });
             return features;
         },
         [scenarioOutliners]

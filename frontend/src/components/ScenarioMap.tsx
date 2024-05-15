@@ -169,7 +169,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
         if (!map) return null;
         const markers = getVisibleMarkers(map);
         return markers.map((marker, i) => {
-            if (marker.geometry.type !== 'Point') return null;
+            if (marker.geometry?.type !== 'Point') return null;
 
             const icon = match(marker.properties?.['-b6-icon'])
                 .with('dot', () => {

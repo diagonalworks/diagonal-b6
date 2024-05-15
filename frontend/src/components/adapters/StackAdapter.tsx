@@ -58,9 +58,9 @@ export const StackAdapter = () => {
     const originOtherSubstacks =
         originOutliner?.data?.proto.stack?.substacks?.slice(1);
 
-    const featureNode = outliner.data?.proto?.node;
+    const featureId = outliner.data?.proto?.stack?.id;
 
-    const isInChange = change?.features?.find((f) => isEqual(f, featureNode));
+    const isInChange = change?.features?.find((f) => isEqual(f.id, featureId));
     const outlierFeatureId = outliner.data.proto.stack?.id;
     const showChangeElements =
         outlierFeatureId && !worldCreated && outliner.properties.changeable;

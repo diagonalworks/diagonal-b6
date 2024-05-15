@@ -106,8 +106,6 @@ export const HistogramAdaptor = ({
         return data.find((d) => d.index.toString() === selected);
     }, [outliner.histogram?.selected, data]);
 
-    console.log('data', data);
-
     return (
         <Histogram
             type={type}

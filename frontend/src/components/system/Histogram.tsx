@@ -159,14 +159,7 @@ function HistogramBar<T>({
     const originValue = origin ? origin(d) : null;
     const originBarLength = originValue ? xScale(originValue) : 0;
     const isDecreasing = originValue && lineValue && lineValue < originValue;
-    console.log({
-        d,
-        originValue,
-        lineValue,
-        isDecreasing,
-        originBarLength,
-        barLength,
-    });
+
     const textX = isDecreasing ? originBarLength : barLength;
 
     return (
