@@ -6,12 +6,14 @@ export type LatLng = {
     lngE7: number;
 };
 
+export type Docked = {
+    geoJSON: FeatureCollection[];
+    proto: UIResponseProto;
+};
+
 export type StartupResponse = {
     version?: string;
-    docked?: {
-        geoJSON: FeatureCollection[];
-        proto: UIResponseProto;
-    }[];
+    docked?: Docked[];
     openDockIndex?: number;
     mapCenter?: LatLng;
     mapZoom?: number;
