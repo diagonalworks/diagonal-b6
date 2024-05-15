@@ -546,3 +546,30 @@ func fillResponseFromDestinations(response *UIResponseJSON, destinations map[b6.
 		response.AddGeoJSON(g)
 	}
 }
+
+func SortableKeyForAtom(a *pb.AtomProto) string {
+	switch a := a.Atom.(type) {
+	case *pb.AtomProto_Value:
+		return "0 " + sortableKeyForString(a.Value)
+	case *pb.AtomProto_LabelledIcon:
+		return "0 " + sortableKeyForString(a.LabelledIcon.Label) + sortableKeyForString(a.LabelledIcon.Icon)
+	case *pb.AtomProto_Download:
+		return "0 " + sortableKeyForString(a.Download)
+	case *pb.AtomProto_Chip:
+		if len(a.Chip.Labels) > 0 {
+			return "1 " + sortableKeyForString(a.Chip.Labels[0])
+		}
+	case *pb.AtomProto_Conditional:
+		if len(a.Conditional.Atoms) > 0 {
+			return SortableKeyForAtom(a.Conditional.Atoms[0])
+		}
+	}
+	return "2"
+}
+
+func sortableKeyForString(s string) string {
+	if i, err := strconv.Atoi(s); err == nil {
+		return fmt.Sprintf("%010d", i)
+	}
+	return s
+}

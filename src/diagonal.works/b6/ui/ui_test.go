@@ -18,6 +18,7 @@ import (
 	"diagonal.works/b6/test/camden"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestStateFilledFromStartupQuery(t *testing.T) {
@@ -269,7 +270,137 @@ func TestCompareScenarios(t *testing.T) {
 		}
 	}
 
-	if different != 1 {
-		t.Errorf("Expected one different bar, found %d", different)
+	if different != 3 {
+		t.Errorf("Expected three different bars, found %d", different)
+	}
+}
+
+func TestEqualiseBars(t *testing.T) {
+	hs := []*pb.ComparisonHistogramProto{
+		{
+			Bars: []*pb.HistogramBarLineProto{
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "0",
+						},
+					},
+					Index: 0,
+					Value: 40,
+					Total: 42,
+				},
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "1",
+						},
+					},
+					Index: 1,
+					Value: 2,
+					Total: 42,
+				},
+			},
+		},
+		{
+			Bars: []*pb.HistogramBarLineProto{
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "1",
+						},
+					},
+					Index: 0,
+					Value: 30,
+					Total: 36,
+				},
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "2",
+						},
+					},
+					Index: 1,
+					Value: 6,
+					Total: 36,
+				},
+			},
+		},
+	}
+
+	equaliseBars(hs)
+
+	expected := []*pb.ComparisonHistogramProto{
+		{
+			Bars: []*pb.HistogramBarLineProto{
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "0",
+						},
+					},
+					Index: 0,
+					Value: 40,
+					Total: 42,
+				},
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "1",
+						},
+					},
+					Index: 1,
+					Value: 2,
+					Total: 42,
+				},
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "2",
+						},
+					},
+					Index: 2,
+					Value: 0,
+					Total: 42,
+				},
+			},
+		},
+		{
+			Bars: []*pb.HistogramBarLineProto{
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "0",
+						},
+					},
+					Index: 0,
+					Value: 0,
+					Total: 36,
+				},
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "1",
+						},
+					},
+					Index: 1,
+					Value: 30,
+					Total: 36,
+				},
+				{
+					Range: &pb.AtomProto{
+						Atom: &pb.AtomProto_Value{
+							Value: "2",
+						},
+					},
+					Index: 2,
+					Value: 6,
+					Total: 36,
+				},
+			},
+		},
+	}
+
+	if diff := cmp.Diff(expected, hs, protocmp.Transform()); diff != "" {
+		t.Errorf("Expected no difference, found: %s", diff)
 	}
 }

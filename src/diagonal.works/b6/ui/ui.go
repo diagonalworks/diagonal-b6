@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -329,7 +330,7 @@ func FillStackRequest(request *pb.UIRequestProto, w http.ResponseWriter, r *http
 		}
 		if err != nil {
 			log.Println(err.Error())
-			log.Printf("Bad request body")
+			log.Println("Bad request body")
 			http.Error(w, "Bad request body", http.StatusBadRequest)
 			return false
 		}
@@ -864,6 +865,11 @@ func (c *CompareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	allHistograms := make([]*pb.ComparisonHistogramProto, 1, 1+len(request.Scenarios))
+	allHistograms[0] = response.Baseline
+	allHistograms = append(allHistograms, response.Scenarios...)
+	equaliseBars(allHistograms)
+
 	SendJSON(WrapProtoForJSON(&response), w, r)
 }
 
@@ -880,4 +886,43 @@ func newComparisonHistogram(c b6.CollectionFeature, w b6.World) *pb.ComparisonHi
 		}
 	}
 	return &comparison
+}
+
+func equaliseBars(histograms []*pb.ComparisonHistogramProto) {
+	byKey := make(map[string]*pb.AtomProto)
+	for _, h := range histograms {
+		for _, bar := range h.Bars {
+			byKey[SortableKeyForAtom(bar.Range)] = bar.Range
+		}
+	}
+	keys := make([]string, 0, len(byKey))
+	for key := range byKey {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, h := range histograms {
+		existing := make(map[string]*pb.HistogramBarLineProto)
+		for _, bar := range h.Bars {
+			existing[SortableKeyForAtom(bar.Range)] = bar
+		}
+		total := 0
+		equalised := make([]*pb.HistogramBarLineProto, 0, len(keys))
+		for _, key := range keys {
+			if bar, ok := existing[key]; ok {
+				total = int(bar.Total)
+				equalised = append(equalised, bar)
+			} else {
+				added := &pb.HistogramBarLineProto{
+					Range: byKey[key],
+					Value: 0,
+				}
+				equalised = append(equalised, added)
+			}
+		}
+		for i, bar := range equalised {
+			bar.Index = int32(i)
+			bar.Total = int32(total)
+		}
+		h.Bars = equalised
+	}
 }
