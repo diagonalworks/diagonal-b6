@@ -28,6 +28,7 @@ export const LineAdapter = ({
     const handleLineClick = () => {
         if (!clickable) return;
         createOutlinerInScenario({
+            active: true,
             id: JSON.stringify(clickable),
             properties: {
                 coordinates: { x: 4, y: 240 },

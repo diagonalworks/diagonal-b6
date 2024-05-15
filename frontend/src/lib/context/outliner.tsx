@@ -6,7 +6,7 @@ import { Chip, StackResponse } from '@/types/stack';
 import { $FixMe } from '@/utils/defs';
 import { useQuery } from '@tanstack/react-query';
 import { ScaleOrdinal } from 'd3-scale';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { isUndefined } from 'lodash';
 import { MapGeoJSONFeature } from 'maplibre-gl';
 import {
@@ -98,7 +98,7 @@ export const OutlinerProvider = ({
         closeOutliner,
         app: { scenarios },
     } = useAppContext();
-    const viewState = useAtomValue(viewAtom);
+    const [viewState, setViewState] = useAtom(viewAtom);
     const { data } = useAtomValue(startupQueryAtom);
     const { [outliner.properties?.scenario || 'baseline']: map } = useMap();
 
@@ -112,7 +112,7 @@ export const OutlinerProvider = ({
 
     const [choiceChips, setChoiceChips] = useImmer<Record<number, Chip>>({});
 
-    const query = useQuery({
+    const query = useQuery<StackResponse, Error>({
         queryKey: [
             'outliner',
             'stack',
@@ -120,6 +120,7 @@ export const OutlinerProvider = ({
             request?.eventType,
             request?.locked,
             JSON.stringify(scenario?.featureId),
+            JSON.stringify(request?.node),
         ],
         queryFn: () => {
             if (!request) return Promise.reject('No request');
@@ -164,6 +165,23 @@ export const OutlinerProvider = ({
             });
         });
     }, [outliner.data?.proto.stack?.substacks]);
+
+    useEffect(() => {
+        const lat = query.data?.proto.mapCenter?.latE7;
+        const lng = query.data?.proto.mapCenter?.lngE7;
+        if (lat && lng) {
+            const mapContainsLocation = map
+                ?.getBounds()
+                .contains([lng / 1e7, lat / 1e7]);
+            if (!mapContainsLocation) {
+                setViewState({
+                    ...viewState,
+                    latitude: lat / 1e7,
+                    longitude: lng / 1e7,
+                });
+            }
+        }
+    }, [query.data, setViewState]);
 
     const setChoiceChipValue = useCallback(
         (index: number, value: number) => {
