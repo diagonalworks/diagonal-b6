@@ -454,7 +454,11 @@ class Stack {
 
     basemapTilesChanged() {
         for (const i in this.layers) {
-            this.layers[i].getSource().refresh();
+            if (this.layers[i].get('path')) {
+                // Only refresh vector tile layers, otherwise this causes the
+                // underlying geojson to be forgotten.
+                this.layers[i].getSource().refresh();
+            }
             this.layers[i].getSource().changed();
         }
     }
