@@ -1,9 +1,9 @@
 import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
 import {
-    EvaluateRequestProto,
     EvaluateResponseProto,
     FeatureIDProto,
+    FeatureType,
 } from '@/types/generated/api';
 import { $FixMe } from '@/utils/defs';
 import { useQuery } from '@tanstack/react-query';
@@ -97,7 +97,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                             {
                                 literal: {
                                     featureIDValue: {
-                                        type: 'FeatureTypeCollection',
+                                        type: 'FeatureTypeCollection' as unknown as FeatureType,
                                         namespace:
                                             'diagonal.works/skyline-demo-05-2024',
                                         value: 1,
@@ -107,7 +107,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                         ],
                     },
                 },
-            } as unknown as EvaluateRequestProto);
+            });
         },
     });
 

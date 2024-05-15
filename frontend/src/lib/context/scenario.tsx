@@ -4,7 +4,6 @@ import {
     createContext,
     useCallback,
     useContext,
-    useEffect,
     useMemo,
 } from 'react';
 
@@ -12,14 +11,20 @@ import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
 import { ChangeFeature, ChangeFunction, Scenario } from '@/atoms/app';
-import { EvaluateResponseProto, NodeProto } from '@/types/generated/api';
+import { startupQueryAtom } from '@/atoms/startup';
+import {
+    EvaluateResponseProto,
+    FeatureType,
+    NodeProto,
+} from '@/types/generated/api';
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
 import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
+import { useAtomValue } from 'jotai';
 import { pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
-import { b6Path } from '../b6';
+import { b6, b6Path } from '../b6';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
 
@@ -45,7 +50,6 @@ const ScenarioContext = createContext<{
     setChangeFunction: (changeFunction: ChangeFunction) => void;
     setChangeAnalysis: (analysis: NodeProto) => void;
     queryScenario?: UseQueryResult<EvaluateResponseProto>;
-    setSubmitted: (submitted: boolean) => void;
 }>({
     tab: 'left',
     scenario: {} as Scenario,
@@ -63,7 +67,6 @@ const ScenarioContext = createContext<{
     removeFeatureFromChange: () => {},
     setChangeFunction: () => {},
     setChangeAnalysis: () => {},
-    setSubmitted: () => {},
 });
 
 /**
@@ -86,23 +89,24 @@ export const ScenarioProvider = ({
         createOutliner,
         setApp,
     } = useAppContext();
-    //const startupQuery = useAtomValue(startupQueryAtom);
-
-    const setSubmitted = useCallback(
-        (submitted: boolean) => {
-            setApp((draft) => {
-                draft.scenarios[scenario.id].submitted = submitted;
-            });
-        },
-        [scenario.id, setApp]
-    );
+    const startupQuery = useAtomValue(startupQueryAtom);
 
     const queryScenario = useQuery<EvaluateResponseProto, Error>({
         enabled: false,
         queryKey: ['scenario', scenario.id, JSON.stringify(scenario.change)],
         queryFn: async () => {
-            return Promise.reject('not implemented');
-            /* return b6.evaluate({
+            if (!scenario.change?.changeFunction?.id) {
+                return Promise.reject('no change function defined');
+            }
+
+            if (
+                !scenario.change.features ||
+                scenario.change.features.length === 0
+            ) {
+                return Promise.reject('no features defined');
+            }
+
+            return b6.evaluate({
                 root: startupQuery.data?.root,
                 request: {
                     call: {
@@ -113,7 +117,7 @@ export const ScenarioProvider = ({
                             {
                                 literal: {
                                     featureIDValue: {
-                                        type: 'FeatureTypeCollection',
+                                        type: 'FeatureTypeCollection' as unknown as FeatureType,
                                         namespace: `${
                                             startupQuery.data?.root
                                                 ?.namespace ?? 'diagonal.works'
@@ -132,24 +136,44 @@ export const ScenarioProvider = ({
                                             args: [
                                                 {
                                                     literal: {
-                                                        featureIDValue: {
-                                                            type: 'FeatureTypeExpression',
-                                                            namespace:
-                                                                'diagonal.works/skyline-demo-05-2024',
-                                                            value: 5,
-                                                        },
+                                                        featureIDValue:
+                                                            scenario.change
+                                                                .changeFunction
+                                                                .id,
                                                     },
                                                 },
                                             ],
                                         },
                                     },
-                                    args: [],
+                                    args: [
+                                        {
+                                            literal: {
+                                                collectionValue: {
+                                                    keys: scenario.change.features.map(
+                                                        (_, i) => {
+                                                            return {
+                                                                intValue: i,
+                                                            };
+                                                        }
+                                                    ),
+                                                    values: scenario.change.features.map(
+                                                        (f) => {
+                                                            return {
+                                                                featureIDValue:
+                                                                    f.id,
+                                                            };
+                                                        }
+                                                    ),
+                                                },
+                                            },
+                                        },
+                                    ],
                                 },
                             },
                         ],
                     },
                 },
-            } as unknown as EvaluateRequestProto); */
+            });
         },
     });
 
@@ -209,17 +233,9 @@ export const ScenarioProvider = ({
         [scenario.id, setApp]
     );
 
-    useEffect(() => {
-        //console.log(queryScenario);
-        return;
-        /* setApp((draft) => {
-            draft.scenarios[scenario.id].node = queryScenario.data?.result
-        }); */
-    }, [queryScenario]);
-
     const isDefiningChange = useMemo(() => {
-        return scenario.id !== 'baseline' && !scenario.worldCreated;
-    }, [scenario.id, scenario.node]);
+        return scenario.id !== 'baseline' && !queryScenario?.isSuccess;
+    }, [scenario.id, scenario.node, queryScenario?.isSuccess]);
 
     const _removeTransientStacks = useCallback(() => {
         setApp((draft) => {
@@ -351,7 +367,6 @@ export const ScenarioProvider = ({
             setChangeFunction,
             setChangeAnalysis,
             queryScenario,
-            setSubmitted,
         };
     }, [
         scenario,
@@ -371,7 +386,6 @@ export const ScenarioProvider = ({
         setChangeFunction,
         setChangeAnalysis,
         queryScenario,
-        setSubmitted,
     ]);
 
     return (

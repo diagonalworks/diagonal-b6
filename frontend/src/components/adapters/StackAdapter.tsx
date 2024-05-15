@@ -17,9 +17,10 @@ export const StackAdapter = () => {
     } = useAppContext();
     const { outliner } = useOutlinerContext();
     const {
-        scenario: { change, submitted },
+        scenario: { change },
         addFeatureToChange,
         removeFeatureFromChange,
+        queryScenario,
     } = useScenarioContext();
     const [open, setOpen] = useState(outliner.properties.docked ? false : true);
 
@@ -61,7 +62,11 @@ export const StackAdapter = () => {
     const featureNode = outliner.data?.proto?.node;
 
     const isInChange = change?.features?.find((f) => isEqual(f, featureNode));
-    const showChangeElements = !submitted && outliner.properties.changeable;
+    const outlierFeatureId = outliner.data.proto.stack?.id;
+    const showChangeElements =
+        outlierFeatureId &&
+        !queryScenario?.isSuccess &&
+        outliner.properties.changeable;
 
     const labelledIcon =
         outliner.data.proto.stack?.substacks?.[1]?.lines?.flatMap((l) =>
@@ -82,13 +87,13 @@ export const StackAdapter = () => {
                             if (isInChange) {
                                 removeFeatureFromChange({
                                     expression,
-                                    node,
+                                    id: outlierFeatureId,
                                     label: labelledIcon,
                                 });
                             }
                             addFeatureToChange({
                                 expression,
-                                node,
+                                id: outlierFeatureId,
                                 label: labelledIcon,
                             });
                         }}

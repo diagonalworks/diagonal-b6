@@ -7,7 +7,7 @@ import { atomWithImmer } from 'jotai-immer';
 import { atomWithStorage } from 'jotai/utils';
 
 export type ChangeFeature = {
-    node: NodeProto;
+    id: FeatureIDProto;
     label?: LabelledIconProto;
     expression: string;
 };
@@ -30,9 +30,7 @@ export type ScenarioSpec = {
 
 export type Scenario = ScenarioSpec & {
     node?: FeatureIDProto;
-    worldCreated?: boolean;
     change?: Change;
-    submitted?: boolean;
 };
 
 export type Scenarios = Record<string, Scenario>;
