@@ -3,9 +3,7 @@ package ui
 import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
-	"diagonal.works/b6/geojson"
 	pb "diagonal.works/b6/proto"
-	"diagonal.works/b6/renderer"
 )
 
 func addLabel(response *UIResponseJSON, f b6.Feature) {
@@ -35,12 +33,6 @@ func fillResponseFromHistogramFeature(response *UIResponseJSON, c b6.CollectionF
 	labels := api.HistogramBucketLabels(c, len(counts))
 	if err != nil {
 		return err
-	}
-
-	if len(labels) != len(counts) {
-		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, c, w)
-		highlightInResponse(p, c.FeatureID())
-		return nil
 	}
 
 	addLabel(response, c)
@@ -99,22 +91,6 @@ func fillResponseFromHistogramFeatures(response *UIResponseJSON, c b6.Collection
 		}
 		values[i.Value()] = struct{}{}
 	}
-
-	g := geojson.NewFeatureCollection()
-	for v := range values {
-		if f := w.FindFeatureByID(v); f != nil {
-			if p, ok := f.(b6.PhysicalFeature); ok {
-				if centroid, ok := b6.Centroid(p); ok {
-					gf := geojson.NewFeatureFromS2Point(centroid)
-					icon, _ := renderer.IconForFeature(f)
-					gf.Properties["-b6-icon"] = icon
-					g.AddFeature(gf)
-				}
-			}
-		}
-	}
-	if len(g.Features) > 0 {
-		response.AddGeoJSON(g)
-	}
+	fillResponseFromDestinations(response, values, w)
 	return nil
 }

@@ -8,7 +8,9 @@ import (
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
+	"diagonal.works/b6/geojson"
 	pb "diagonal.works/b6/proto"
+	"diagonal.works/b6/renderer"
 	"github.com/golang/geo/s2"
 )
 
@@ -388,13 +390,23 @@ func fillSubstackFromError(substack *pb.SubstackProto, err error) {
 	})
 }
 
-func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.World) []*pb.SubstackProto {
+func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.SubstackProto, f b6.Feature, w b6.World) []*pb.SubstackProto {
 	substack := &pb.SubstackProto{}
 	substack.Lines = append(substack.Lines, ValueLineFromValue(f, w))
-	if len(f.AllTags()) > 0 {
-		substack.Lines = append(substack.Lines, lineFromTags(f))
-	}
 	substacks = append(substacks, substack)
+	substacks = fillSubstacksFromHistogramReferences(response, substacks, f, w)
+
+	if area, ok := f.(b6.AreaFeature); ok {
+		if b := f.Get("#building"); b.IsValid() {
+			substacks = fillSubstacksFromContainedAmenities(substacks, area, w)
+		}
+	}
+
+	if len(f.AllTags()) > 0 {
+		substack := &pb.SubstackProto{}
+		substack.Lines = append(substack.Lines, lineFromTags(f))
+		substacks = append(substacks, substack)
+	}
 
 	if point, ok := f.(b6.PhysicalFeature); ok && point.GeometryType() == b6.GeometryTypePoint {
 		paths := b6.AllFeatures(w.FindReferences(point.FeatureID(), b6.FeatureTypePath))
@@ -451,4 +463,86 @@ func fillSubstacksFromFeature(substacks []*pb.SubstackProto, f b6.Feature, w b6.
 		substacks = append(substacks, substack)
 	}
 	return substacks
+}
+
+func fillSubstacksFromContainedAmenities(substacks []*pb.SubstackProto, f b6.AreaFeature, w b6.World) []*pb.SubstackProto {
+	q := b6.Intersection{
+		b6.Union{
+			b6.Keyed{Key: "#amenity"},
+			b6.Keyed{Key: "#leisure"},
+			b6.Keyed{Key: "#shop"},
+		},
+		b6.IntersectsFeature{
+			ID: f.FeatureID(),
+		},
+	}
+
+	substack := &pb.SubstackProto{
+		Collapsable: true,
+		Lines:       []*pb.LineProto{nil}, // Reserved for header
+	}
+	i := w.FindFeatures(q)
+	for i.Next() {
+		if i.FeatureID() != f.FeatureID() {
+			substack.Lines = append(substack.Lines, ValueLineFromValue(i.Feature(), w))
+		}
+	}
+	if len(substack.Lines) > 1 {
+		substack.Lines[0] = leftRightValueLineFromValues("Within building", len(substack.Lines)-1, w)
+		substacks = append(substacks, substack)
+	}
+	return substacks
+}
+
+func fillSubstacksFromHistogramReferences(response *UIResponseJSON, substacks []*pb.SubstackProto, f b6.Feature, w b6.World) []*pb.SubstackProto {
+	i := w.FindReferences(f.FeatureID(), b6.FeatureTypeCollection)
+	destinations := make(map[b6.FeatureID]struct{})
+	for i.Next() {
+		c := i.Feature().(b6.CollectionFeature)
+		if t := c.Get("b6"); t.IsValid() && t.Value.String() == "histogram" {
+			if label := c.Get("b6:label"); label.IsValid() {
+				substack := &pb.SubstackProto{Collapsable: true}
+				if b6.CanAdaptCollection[b6.FeatureID, int](c) {
+					if value, ok := c.FindValue(f.FeatureID()); ok {
+						line := leftRightValueLineFromValues(label.Value.String(), value, w)
+						substack.Lines = append(substack.Lines, line)
+					}
+				} else if b6.CanAdaptCollection[b6.FeatureID, b6.FeatureID](c) {
+					values := c.FindValues(f.FeatureID(), []any{})
+					count := 0
+					substack.Lines = []*pb.LineProto{nil}
+					for _, v := range values {
+						if v.(b6.FeatureID).IsValid() {
+							destinations[v.(b6.FeatureID)] = struct{}{}
+							count++
+							substack.Lines = append(substack.Lines, ValueLineFromValue(v, w))
+						}
+					}
+					substack.Lines[0] = leftRightValueLineFromValues(label.Value.String(), count, w)
+				}
+				substacks = append(substacks, substack)
+			}
+		}
+	}
+	fillResponseFromDestinations(response, destinations, w)
+	return substacks
+}
+
+func fillResponseFromDestinations(response *UIResponseJSON, destinations map[b6.FeatureID]struct{}, w b6.World) {
+	g := geojson.NewFeatureCollection()
+	for d := range destinations {
+		if f := w.FindFeatureByID(d); f != nil {
+			if p, ok := f.(b6.PhysicalFeature); ok {
+				if centroid, ok := b6.Centroid(p); ok {
+					gf := geojson.NewFeatureFromS2Point(centroid)
+					icon, _ := renderer.IconForFeature(f)
+					gf.Properties["-b6-icon"] = icon
+					g.AddFeature(gf)
+				}
+			}
+		}
+	}
+	if len(g.Features) > 0 {
+		response.AddGeoJSON(g)
+	}
 }
