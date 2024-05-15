@@ -131,8 +131,12 @@ export const OutlinerProvider = ({
                 node: request?.node,
                 root: scenario?.featureId,
                 logMapCenter: {
-                    latE7: Math.round(viewState.latitude * 1e7),
-                    lngE7: Math.round(viewState.longitude * 1e7),
+                    latE7:
+                        viewState.latitude &&
+                        Math.round(viewState.latitude * 1e7),
+                    lngE7:
+                        viewState.longitude &&
+                        Math.round(viewState.longitude * 1e7),
                 },
                 logMapZoom: 0,
                 session: data?.session || 0,
@@ -183,19 +187,6 @@ export const OutlinerProvider = ({
             }
         }
     }, [query.data, setViewState]);
-
-    useEffect(() => {
-        // Set the map center at startup
-        const lat = data?.mapCenter?.latE7;
-        const lng = data?.mapCenter?.lngE7;
-        if (lat && lng) {
-            setViewState({
-                ...viewState,
-                latitude: lat / 1e7,
-                longitude: lng / 1e7,
-            });
-        }
-    }, [data, setViewState])
 
     const setChoiceChipValue = useCallback(
         (index: number, value: number) => {

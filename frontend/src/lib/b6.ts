@@ -32,6 +32,7 @@ const stack = async (request: UIRequestProto & { logEvent: Event }) => {
 
 const startup = async (urlParams: {
     z: string;
+    ll?: string;
     r: string;
 }): Promise<StartupResponse> => {
     return fetch(`${b6Path}startup?` + new URLSearchParams(urlParams)).then(

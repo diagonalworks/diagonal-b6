@@ -1,4 +1,5 @@
 import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
+import { viewAtom } from '@/atoms/location';
 import { startupQueryAtom } from '@/atoms/startup';
 import {
     EvaluateResponseProto,
@@ -85,6 +86,21 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }: PropsWithChildren) => {
     const [app, setApp] = useAtom(appAtom);
     const startupQuery = useAtomValue(startupQueryAtom);
+    const [viewState, setViewState] = useAtom(viewAtom);
+
+    useEffect(() => {
+        // Set the map center at startup
+        const lat = startupQuery.data?.mapCenter?.latE7;
+        const lon = startupQuery.data?.mapCenter?.lngE7;
+        if (lat && lon) {
+            setViewState({
+                ...viewState,
+                latitude: lat / 1e7,
+                longitude: lon / 1e7,
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [startupQuery.data?.mapCenter, setViewState]);
 
     const changesQuery = useQuery<EvaluateResponseProto, Error>({
         queryKey: [

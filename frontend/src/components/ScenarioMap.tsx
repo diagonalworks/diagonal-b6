@@ -1,5 +1,5 @@
 import * as circleIcons from '@/assets/icons/circle';
-import { viewAtom } from '@/atoms/location';
+import { INITIAL_CENTER, viewAtom } from '@/atoms/location';
 import { colorToRgbArray } from '@/lib/colors';
 import { getFeaturePath } from '@/lib/map';
 import { MVTLayer } from '@deck.gl/geo-layers/typed';
@@ -281,7 +281,11 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
         <MapLibre
             key={`${id}-${worldCreated ? '-world' : ''}`}
             id={id}
-            {...viewState}
+            {...{
+                ...viewState,
+                latitude: viewState.latitude ?? INITIAL_CENTER.lat,
+                longitude: viewState.longitude ?? INITIAL_CENTER.lng,
+            }}
             onMove={(evt) => {
                 setViewState(evt.viewState);
             }}
