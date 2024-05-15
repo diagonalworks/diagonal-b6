@@ -327,3 +327,47 @@ func TestHistogramWithFeatures(t *testing.T) {
 		t.Errorf("Expected query %q, found %q", expectedQ, q)
 	}
 }
+func TestOriginDestinationHistogram(t *testing.T) {
+	collection := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{
+		Keys: []b6.FeatureID{
+			camden.VermuteriaID,
+			camden.VermuteriaID,
+			camden.DishoomID,
+			camden.StableStreetBridgeNorthEndID,
+			camden.StableStreetBridgeSouthEndID,
+		},
+		Values: []b6.FeatureID{
+			camden.DishoomID,
+			camden.GranarySquareBikeParkingID,
+			camden.VermuteriaID,
+			b6.FeatureIDInvalid,
+			b6.FeatureIDInvalid,
+		},
+	}
+
+	id := b6.CollectionID{Namespace: "diagonal.works/test", Value: 0}
+	histogram, err := api.NewHistogramFromCollection(collection.Collection(), id)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	wrapped := ingest.WrapCollectionFeature(histogram, b6.EmptyWorld{})
+
+	response := NewUIResponseJSON()
+	if err := fillResponseFromHistogramFeature(response, wrapped, b6.EmptyWorld{}); err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	bars := map[int]int{}
+	for _, s := range response.Proto.Stack.Substacks {
+		for _, line := range s.Lines {
+			if bar, ok := line.Line.(*pb.LineProto_HistogramBar); ok {
+				bars[int(bar.HistogramBar.Index)] = int(bar.HistogramBar.Value)
+			}
+		}
+	}
+
+	expected := map[int]int{0: 2, 1: 1, 2: 1}
+	if diff := cmp.Diff(expected, bars); diff != "" {
+		t.Errorf("Unexpected diff: %s", diff)
+	}
+}

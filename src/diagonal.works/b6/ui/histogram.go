@@ -29,18 +29,16 @@ func addLabel(response *UIResponseJSON, f b6.Feature) {
 
 func fillResponseFromHistogramFeature(response *UIResponseJSON, c b6.CollectionFeature, w b6.World) error {
 	p := (*pb.UIResponseProto)(response.Proto)
-	labels := api.HistogramBucketLabels(c)
-	counts := api.HistogramBucketCounts(c)
+	counts, total, err := api.HistogramBucketCounts(c)
+	labels := api.HistogramBucketLabels(c, len(counts))
+	if err != nil {
+		return err
+	}
 
 	if len(labels) != len(counts) {
 		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, c, w)
 		highlightInResponse(p, c.FeatureID())
 		return nil
-	}
-
-	total := 0
-	for _, count := range counts {
-		total += count
 	}
 
 	addLabel(response, c)
