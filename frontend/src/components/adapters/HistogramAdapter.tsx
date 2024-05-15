@@ -48,7 +48,7 @@ export const HistogramAdaptor = ({
                         return {
                             index: bar.index ?? 0,
                             label: bar.range?.value ?? '',
-                            count: bar.value,
+                            count: bar.value ?? 0,
                             origin: origin?.bars?.[i]?.value ?? null,
                         };
                     }) ?? []

@@ -114,13 +114,16 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const changes = useMemo(() => {
         const changes = changesQuery.data?.result?.literal?.collectionValue;
         if (!changes) return [];
-        return changes.values.flatMap((v, i) => {
-            if (!v.featureIDValue || !changes.keys[i].stringValue) return [];
-            return {
-                label: changes.keys[i].stringValue,
-                id: v.featureIDValue,
-            };
-        });
+        return (
+            changes.values?.flatMap((v, i) => {
+                if (!v.featureIDValue || !changes.keys?.[i].stringValue)
+                    return [];
+                return {
+                    label: changes.keys?.[i].stringValue,
+                    id: v.featureIDValue,
+                };
+            }) ?? []
+        );
     }, [changesQuery.data]);
 
     const addComparator = useCallback(
@@ -142,7 +145,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             !c.request
                 ? false
                 : c.request.baseline === (app.tabs.left as $FixMe) &&
-                  c.request.scenarios.includes(app.tabs?.right as $FixMe)
+                  c.request.scenarios?.includes(app.tabs?.right as $FixMe)
         );
     }, [app.comparators, app.tabs]);
 

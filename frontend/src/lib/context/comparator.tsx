@@ -111,7 +111,7 @@ export const ComparatorProvider = ({
     useEffect(() => {
         if (!query.data) return;
 
-        query.data.proto.stack?.substacks[0].lines.forEach((line) => {
+        query.data.proto.stack?.substacks?.[0].lines?.forEach((line) => {
             if (line.comparison) {
                 createOutliner({
                     id: `comparison-baseline`,
@@ -130,7 +130,7 @@ export const ComparatorProvider = ({
                                 substacks: [
                                     {
                                         lines:
-                                            line.comparison.baseline?.bars.map(
+                                            line.comparison.baseline?.bars?.map(
                                                 (b) => {
                                                     return {
                                                         histogramBar: b,
@@ -145,8 +145,8 @@ export const ComparatorProvider = ({
                     },
                 });
 
-                line.comparison?.scenarios.forEach((scenario, i) => {
-                    const scenarioId = comparator.request?.scenarios[i];
+                line.comparison?.scenarios?.forEach((scenario, i) => {
+                    const scenarioId = comparator.request?.scenarios?.[i];
 
                     if (scenarioId) {
                         createOutliner({
@@ -167,7 +167,7 @@ export const ComparatorProvider = ({
                                         substacks: [
                                             {
                                                 lines:
-                                                    scenario.bars.map((b) => {
+                                                    scenario?.bars?.map((b) => {
                                                         return {
                                                             histogramBar: b,
                                                         };
@@ -180,9 +180,9 @@ export const ComparatorProvider = ({
                             },
                         });
                     }
-                });
+                }) ?? [];
             }
-        });
+        }) ?? [];
     }, [query.data]);
 
     const value = {

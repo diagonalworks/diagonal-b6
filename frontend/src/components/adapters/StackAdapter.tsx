@@ -50,21 +50,23 @@ export const StackAdapter = () => {
 
     if (!outliner.data) return null;
 
-    const firstSubstack = outliner.data.proto.stack?.substacks[0];
-    const otherSubstacks = outliner.data.proto.stack?.substacks.slice(1);
+    const firstSubstack = outliner.data.proto.stack?.substacks?.[0];
+    const otherSubstacks = outliner.data.proto.stack?.substacks?.slice(1);
 
-    const originFirstSubstack = originOutliner?.data?.proto.stack?.substacks[0];
+    const originFirstSubstack =
+        originOutliner?.data?.proto.stack?.substacks?.[0];
     const originOtherSubstacks =
-        originOutliner?.data?.proto.stack?.substacks.slice(1);
+        originOutliner?.data?.proto.stack?.substacks?.slice(1);
 
     const featureNode = outliner.data?.proto?.node;
 
     const isInChange = change?.features?.find((f) => isEqual(f, featureNode));
     const showChangeElements = !submitted && outliner.properties.changeable;
 
-    const labelledIcon = outliner.data.proto.stack?.substacks[1]?.lines.flatMap(
-        (l) => findAtoms(l, 'labelledIcon')
-    )?.[0]?.labelledIcon;
+    const labelledIcon =
+        outliner.data.proto.stack?.substacks?.[1]?.lines?.flatMap((l) =>
+            findAtoms(l, 'labelledIcon')
+        )?.[0]?.labelledIcon;
 
     return (
         <>

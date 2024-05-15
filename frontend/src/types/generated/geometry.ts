@@ -4,12 +4,12 @@ import _m0 from "protobufjs/minimal";
 export const protobufPackage = "geometry";
 
 export interface PolylineProto {
-  points: PointProto[];
-  lengthMeters: number;
+  points?: PointProto[] | undefined;
+  lengthMeters?: number | undefined;
 }
 
 export interface MultiPolygonProto {
-  polygons: PolygonProto[];
+  polygons?: PolygonProto[] | undefined;
 }
 
 export interface PolygonProto {
@@ -17,16 +17,16 @@ export interface PolygonProto {
    * All loops are ordered counter-clockwise, and a point is defined to be
    * inside the polygon if it's enclosed by an odd number of loops.
    */
-  loops: LoopProto[];
+  loops?: LoopProto[] | undefined;
 }
 
 export interface LoopProto {
-  points: PointProto[];
+  points?: PointProto[] | undefined;
 }
 
 export interface PointProto {
-  latE7: number;
-  lngE7: number;
+  latE7?: number | undefined;
+  lngE7?: number | undefined;
 }
 
 function createBasePolylineProto(): PolylineProto {
@@ -35,10 +35,12 @@ function createBasePolylineProto(): PolylineProto {
 
 export const PolylineProto = {
   encode(message: PolylineProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.points) {
-      PointProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.points !== undefined && message.points.length !== 0) {
+      for (const v of message.points) {
+        PointProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
-    if (message.lengthMeters !== 0) {
+    if (message.lengthMeters !== undefined && message.lengthMeters !== 0) {
       writer.uint32(17).double(message.lengthMeters);
     }
     return writer;
@@ -56,7 +58,7 @@ export const PolylineProto = {
             break;
           }
 
-          message.points.push(PointProto.decode(reader, reader.uint32()));
+          message.points!.push(PointProto.decode(reader, reader.uint32()));
           continue;
         case 2:
           if (tag !== 17) {
@@ -86,7 +88,7 @@ export const PolylineProto = {
     if (message.points?.length) {
       obj.points = message.points.map((e) => PointProto.toJSON(e));
     }
-    if (message.lengthMeters !== 0) {
+    if (message.lengthMeters !== undefined && message.lengthMeters !== 0) {
       obj.lengthMeters = message.lengthMeters;
     }
     return obj;
@@ -109,8 +111,10 @@ function createBaseMultiPolygonProto(): MultiPolygonProto {
 
 export const MultiPolygonProto = {
   encode(message: MultiPolygonProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.polygons) {
-      PolygonProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.polygons !== undefined && message.polygons.length !== 0) {
+      for (const v of message.polygons) {
+        PolygonProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -127,7 +131,7 @@ export const MultiPolygonProto = {
             break;
           }
 
-          message.polygons.push(PolygonProto.decode(reader, reader.uint32()));
+          message.polygons!.push(PolygonProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -170,8 +174,10 @@ function createBasePolygonProto(): PolygonProto {
 
 export const PolygonProto = {
   encode(message: PolygonProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.loops) {
-      LoopProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.loops !== undefined && message.loops.length !== 0) {
+      for (const v of message.loops) {
+        LoopProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -188,7 +194,7 @@ export const PolygonProto = {
             break;
           }
 
-          message.loops.push(LoopProto.decode(reader, reader.uint32()));
+          message.loops!.push(LoopProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -229,8 +235,10 @@ function createBaseLoopProto(): LoopProto {
 
 export const LoopProto = {
   encode(message: LoopProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.points) {
-      PointProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.points !== undefined && message.points.length !== 0) {
+      for (const v of message.points) {
+        PointProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -247,7 +255,7 @@ export const LoopProto = {
             break;
           }
 
-          message.points.push(PointProto.decode(reader, reader.uint32()));
+          message.points!.push(PointProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -288,10 +296,10 @@ function createBasePointProto(): PointProto {
 
 export const PointProto = {
   encode(message: PointProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.latE7 !== 0) {
+    if (message.latE7 !== undefined && message.latE7 !== 0) {
       writer.uint32(8).int32(message.latE7);
     }
-    if (message.lngE7 !== 0) {
+    if (message.lngE7 !== undefined && message.lngE7 !== 0) {
       writer.uint32(16).int32(message.lngE7);
     }
     return writer;
@@ -336,10 +344,10 @@ export const PointProto = {
 
   toJSON(message: PointProto): unknown {
     const obj: any = {};
-    if (message.latE7 !== 0) {
+    if (message.latE7 !== undefined && message.latE7 !== 0) {
       obj.latE7 = Math.round(message.latE7);
     }
-    if (message.lngE7 !== 0) {
+    if (message.lngE7 !== undefined && message.lngE7 !== 0) {
       obj.lngE7 = Math.round(message.lngE7);
     }
     return obj;

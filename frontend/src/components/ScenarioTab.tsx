@@ -54,7 +54,7 @@ export const ScenarioTab = ({
     });
 
     const showComparator =
-        activeComparator?.request?.scenarios.includes(id as $FixMe) ||
+        activeComparator?.request?.scenarios?.includes(id as $FixMe) ||
         activeComparator?.request?.baseline === (id as $FixMe);
 
     const Teleporter = useMemo(() => {

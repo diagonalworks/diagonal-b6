@@ -69,60 +69,60 @@ export function featureTypeToJSON(object: FeatureType): string {
 }
 
 export interface TagProto {
-  key: string;
-  value: string;
+  key?: string | undefined;
+  value?: string | undefined;
 }
 
 export interface FeatureIDProto {
-  type: FeatureType;
-  namespace: string;
-  value: number;
+  type?: FeatureType | undefined;
+  namespace?: string | undefined;
+  value?: number | undefined;
 }
 
 export interface PointFeatureProto {
-  id: FeatureIDProto | undefined;
-  tags: TagProto[];
-  point: PointProto | undefined;
+  id?: FeatureIDProto | undefined;
+  tags?: TagProto[] | undefined;
+  point?: PointProto | undefined;
 }
 
 export interface PathFeatureProto {
-  id: FeatureIDProto | undefined;
-  tags: TagProto[];
-  features: PointFeatureProto[];
-  lengthMeters: number;
+  id?: FeatureIDProto | undefined;
+  tags?: TagProto[] | undefined;
+  features?: PointFeatureProto[] | undefined;
+  lengthMeters?: number | undefined;
 }
 
 export interface PathFeaturesProto {
-  paths: PathFeatureProto[];
+  paths?: PathFeatureProto[] | undefined;
 }
 
 export interface AreaFeatureProto {
-  id: FeatureIDProto | undefined;
-  tags: TagProto[];
-  features: PathFeaturesProto[];
+  id?: FeatureIDProto | undefined;
+  tags?: TagProto[] | undefined;
+  features?: PathFeaturesProto[] | undefined;
 }
 
 export interface RelationMemberProto {
-  id: FeatureIDProto | undefined;
-  role: string;
+  id?: FeatureIDProto | undefined;
+  role?: string | undefined;
 }
 
 export interface RelationFeatureProto {
-  id: FeatureIDProto | undefined;
-  tags: TagProto[];
-  members: RelationMemberProto[];
+  id?: FeatureIDProto | undefined;
+  tags?: TagProto[] | undefined;
+  members?: RelationMemberProto[] | undefined;
 }
 
 export interface CollectionFeatureProto {
-  id: FeatureIDProto | undefined;
-  tags: TagProto[];
-  collection: CollectionProto | undefined;
+  id?: FeatureIDProto | undefined;
+  tags?: TagProto[] | undefined;
+  collection?: CollectionProto | undefined;
 }
 
 export interface ExpressionFeatureProto {
-  id: FeatureIDProto | undefined;
-  tags: TagProto[];
-  expression: NodeProto | undefined;
+  id?: FeatureIDProto | undefined;
+  tags?: TagProto[] | undefined;
+  expression?: NodeProto | undefined;
 }
 
 export interface FeatureProto {
@@ -135,22 +135,22 @@ export interface FeatureProto {
 }
 
 export interface CollectionProto {
-  keys: LiteralNodeProto[];
-  values: LiteralNodeProto[];
+  keys?: LiteralNodeProto[] | undefined;
+  values?: LiteralNodeProto[] | undefined;
 }
 
 export interface PairProto {
-  first: LiteralNodeProto | undefined;
-  second: LiteralNodeProto | undefined;
+  first?: LiteralNodeProto | undefined;
+  second?: LiteralNodeProto | undefined;
 }
 
 export interface ModifiedFeaturesProto {
-  ids: FeatureIDProto[];
+  ids?: FeatureIDProto[] | undefined;
 }
 
 export interface AppliedChangeProto {
-  original: FeatureIDProto[];
-  modified: FeatureIDProto[];
+  original?: FeatureIDProto[] | undefined;
+  modified?: FeatureIDProto[] | undefined;
 }
 
 export interface NodeProto {
@@ -158,9 +158,9 @@ export interface NodeProto {
   literal?: LiteralNodeProto | undefined;
   call?: CallNodeProto | undefined;
   lambda?: LambdaNodeProto | undefined;
-  name: string;
-  begin: number;
-  end: number;
+  name?: string | undefined;
+  begin?: number | undefined;
+  end?: number | undefined;
 }
 
 export interface LiteralNodeProto {
@@ -187,32 +187,32 @@ export interface LiteralNodeProto {
 }
 
 export interface CallNodeProto {
-  function: NodeProto | undefined;
-  args: NodeProto[];
-  pipelined: boolean;
+  function?: NodeProto | undefined;
+  args?: NodeProto[] | undefined;
+  pipelined?: boolean | undefined;
 }
 
 export interface LambdaNodeProto {
-  args: string[];
-  node: NodeProto | undefined;
+  args?: string[] | undefined;
+  node?: NodeProto | undefined;
 }
 
 export interface KeyQueryProto {
-  key: string;
+  key?: string | undefined;
 }
 
 export interface KeyValueQueryProto {
-  key: string;
-  value: string;
+  key?: string | undefined;
+  value?: string | undefined;
 }
 
 export interface TypedQueryProto {
-  type: FeatureType;
-  query: QueryProto | undefined;
+  type?: FeatureType | undefined;
+  query?: QueryProto | undefined;
 }
 
 export interface QueriesProto {
-  queries: QueryProto[];
+  queries?: QueryProto[] | undefined;
 }
 
 export interface AllQueryProto {
@@ -222,12 +222,12 @@ export interface EmptyQueryProto {
 }
 
 export interface CapProto {
-  center: PointProto | undefined;
-  radiusMeters: number;
+  center?: PointProto | undefined;
+  radiusMeters?: number | undefined;
 }
 
 export interface S2CellIDsProto {
-  s2CellIDs: number[];
+  s2CellIDs?: number[] | undefined;
 }
 
 export interface QueryProto {
@@ -248,56 +248,56 @@ export interface QueryProto {
 }
 
 export interface StepProto {
-  destination: FeatureIDProto | undefined;
-  via: FeatureIDProto | undefined;
-  cost: number;
+  destination?: FeatureIDProto | undefined;
+  via?: FeatureIDProto | undefined;
+  cost?: number | undefined;
 }
 
 export interface RouteProto {
-  origin: FeatureIDProto | undefined;
-  steps: StepProto[];
+  origin?: FeatureIDProto | undefined;
+  steps?: StepProto[] | undefined;
 }
 
 export interface FindFeatureByIDRequestProto {
-  id: FeatureIDProto | undefined;
+  id?: FeatureIDProto | undefined;
 }
 
 export interface FindFeatureByIDResponseProto {
-  feature: FeatureProto | undefined;
+  feature?: FeatureProto | undefined;
 }
 
 export interface FindFeaturesRequestProto {
-  query: QueryProto | undefined;
+  query?: QueryProto | undefined;
 }
 
 export interface FindFeaturesResponseProto {
-  features: FeatureProto[];
+  features?: FeatureProto[] | undefined;
 }
 
 export interface ModifyTagsRequestProto {
-  id: FeatureIDProto | undefined;
-  tags: TagProto[];
+  id?: FeatureIDProto | undefined;
+  tags?: TagProto[] | undefined;
 }
 
 export interface ModifyTagsBatchRequestProto {
-  requests: ModifyTagsRequestProto[];
+  requests?: ModifyTagsRequestProto[] | undefined;
 }
 
 export interface ModifyTagsBatchResponseProto {
 }
 
 export interface EvaluateRequestProto {
-  request: NodeProto | undefined;
-  version: string;
-  root: FeatureIDProto | undefined;
+  request?: NodeProto | undefined;
+  version?: string | undefined;
+  root?: FeatureIDProto | undefined;
 }
 
 export interface EvaluateResponseProto {
-  result: NodeProto | undefined;
+  result?: NodeProto | undefined;
 }
 
 export interface DeleteWorldRequestProto {
-  id: FeatureIDProto | undefined;
+  id?: FeatureIDProto | undefined;
 }
 
 export interface DeleteWorldResponseProto {
@@ -307,7 +307,7 @@ export interface ListWorldsRequestProto {
 }
 
 export interface ListWorldsResponseProto {
-  ids: FeatureIDProto[];
+  ids?: FeatureIDProto[] | undefined;
 }
 
 function createBaseTagProto(): TagProto {
@@ -316,10 +316,10 @@ function createBaseTagProto(): TagProto {
 
 export const TagProto = {
   encode(message: TagProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.key !== "") {
+    if (message.key !== undefined && message.key !== "") {
       writer.uint32(10).string(message.key);
     }
-    if (message.value !== "") {
+    if (message.value !== undefined && message.value !== "") {
       writer.uint32(18).string(message.value);
     }
     return writer;
@@ -364,10 +364,10 @@ export const TagProto = {
 
   toJSON(message: TagProto): unknown {
     const obj: any = {};
-    if (message.key !== "") {
+    if (message.key !== undefined && message.key !== "") {
       obj.key = message.key;
     }
-    if (message.value !== "") {
+    if (message.value !== undefined && message.value !== "") {
       obj.value = message.value;
     }
     return obj;
@@ -390,13 +390,13 @@ function createBaseFeatureIDProto(): FeatureIDProto {
 
 export const FeatureIDProto = {
   encode(message: FeatureIDProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.type !== 0) {
+    if (message.type !== undefined && message.type !== 0) {
       writer.uint32(8).int32(message.type);
     }
-    if (message.namespace !== "") {
+    if (message.namespace !== undefined && message.namespace !== "") {
       writer.uint32(18).string(message.namespace);
     }
-    if (message.value !== 0) {
+    if (message.value !== undefined && message.value !== 0) {
       writer.uint32(24).uint64(message.value);
     }
     return writer;
@@ -449,13 +449,13 @@ export const FeatureIDProto = {
 
   toJSON(message: FeatureIDProto): unknown {
     const obj: any = {};
-    if (message.type !== 0) {
+    if (message.type !== undefined && message.type !== 0) {
       obj.type = featureTypeToJSON(message.type);
     }
-    if (message.namespace !== "") {
+    if (message.namespace !== undefined && message.namespace !== "") {
       obj.namespace = message.namespace;
     }
-    if (message.value !== 0) {
+    if (message.value !== undefined && message.value !== 0) {
       obj.value = Math.round(message.value);
     }
     return obj;
@@ -482,8 +482,10 @@ export const PointFeatureProto = {
     if (message.id !== undefined) {
       FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.tags) {
-      TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.tags !== undefined && message.tags.length !== 0) {
+      for (const v of message.tags) {
+        TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     if (message.point !== undefined) {
       PointProto.encode(message.point, writer.uint32(26).fork()).ldelim();
@@ -510,7 +512,7 @@ export const PointFeatureProto = {
             break;
           }
 
-          message.tags.push(TagProto.decode(reader, reader.uint32()));
+          message.tags!.push(TagProto.decode(reader, reader.uint32()));
           continue;
         case 3:
           if (tag !== 26) {
@@ -573,13 +575,17 @@ export const PathFeatureProto = {
     if (message.id !== undefined) {
       FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.tags) {
-      TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.tags !== undefined && message.tags.length !== 0) {
+      for (const v of message.tags) {
+        TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
-    for (const v of message.features) {
-      PointFeatureProto.encode(v!, writer.uint32(26).fork()).ldelim();
+    if (message.features !== undefined && message.features.length !== 0) {
+      for (const v of message.features) {
+        PointFeatureProto.encode(v!, writer.uint32(26).fork()).ldelim();
+      }
     }
-    if (message.lengthMeters !== 0) {
+    if (message.lengthMeters !== undefined && message.lengthMeters !== 0) {
       writer.uint32(33).double(message.lengthMeters);
     }
     return writer;
@@ -604,14 +610,14 @@ export const PathFeatureProto = {
             break;
           }
 
-          message.tags.push(TagProto.decode(reader, reader.uint32()));
+          message.tags!.push(TagProto.decode(reader, reader.uint32()));
           continue;
         case 3:
           if (tag !== 26) {
             break;
           }
 
-          message.features.push(PointFeatureProto.decode(reader, reader.uint32()));
+          message.features!.push(PointFeatureProto.decode(reader, reader.uint32()));
           continue;
         case 4:
           if (tag !== 33) {
@@ -651,7 +657,7 @@ export const PathFeatureProto = {
     if (message.features?.length) {
       obj.features = message.features.map((e) => PointFeatureProto.toJSON(e));
     }
-    if (message.lengthMeters !== 0) {
+    if (message.lengthMeters !== undefined && message.lengthMeters !== 0) {
       obj.lengthMeters = message.lengthMeters;
     }
     return obj;
@@ -676,8 +682,10 @@ function createBasePathFeaturesProto(): PathFeaturesProto {
 
 export const PathFeaturesProto = {
   encode(message: PathFeaturesProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.paths) {
-      PathFeatureProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.paths !== undefined && message.paths.length !== 0) {
+      for (const v of message.paths) {
+        PathFeatureProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -694,7 +702,7 @@ export const PathFeaturesProto = {
             break;
           }
 
-          message.paths.push(PathFeatureProto.decode(reader, reader.uint32()));
+          message.paths!.push(PathFeatureProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -738,11 +746,15 @@ export const AreaFeatureProto = {
     if (message.id !== undefined) {
       FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.tags) {
-      TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.tags !== undefined && message.tags.length !== 0) {
+      for (const v of message.tags) {
+        TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
-    for (const v of message.features) {
-      PathFeaturesProto.encode(v!, writer.uint32(26).fork()).ldelim();
+    if (message.features !== undefined && message.features.length !== 0) {
+      for (const v of message.features) {
+        PathFeaturesProto.encode(v!, writer.uint32(26).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -766,14 +778,14 @@ export const AreaFeatureProto = {
             break;
           }
 
-          message.tags.push(TagProto.decode(reader, reader.uint32()));
+          message.tags!.push(TagProto.decode(reader, reader.uint32()));
           continue;
         case 3:
           if (tag !== 26) {
             break;
           }
 
-          message.features.push(PathFeaturesProto.decode(reader, reader.uint32()));
+          message.features!.push(PathFeaturesProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -829,7 +841,7 @@ export const RelationMemberProto = {
     if (message.id !== undefined) {
       FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
     }
-    if (message.role !== "") {
+    if (message.role !== undefined && message.role !== "") {
       writer.uint32(26).string(message.role);
     }
     return writer;
@@ -877,7 +889,7 @@ export const RelationMemberProto = {
     if (message.id !== undefined) {
       obj.id = FeatureIDProto.toJSON(message.id);
     }
-    if (message.role !== "") {
+    if (message.role !== undefined && message.role !== "") {
       obj.role = message.role;
     }
     return obj;
@@ -903,11 +915,15 @@ export const RelationFeatureProto = {
     if (message.id !== undefined) {
       FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.tags) {
-      TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.tags !== undefined && message.tags.length !== 0) {
+      for (const v of message.tags) {
+        TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
-    for (const v of message.members) {
-      RelationMemberProto.encode(v!, writer.uint32(26).fork()).ldelim();
+    if (message.members !== undefined && message.members.length !== 0) {
+      for (const v of message.members) {
+        RelationMemberProto.encode(v!, writer.uint32(26).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -931,14 +947,14 @@ export const RelationFeatureProto = {
             break;
           }
 
-          message.tags.push(TagProto.decode(reader, reader.uint32()));
+          message.tags!.push(TagProto.decode(reader, reader.uint32()));
           continue;
         case 3:
           if (tag !== 26) {
             break;
           }
 
-          message.members.push(RelationMemberProto.decode(reader, reader.uint32()));
+          message.members!.push(RelationMemberProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -994,8 +1010,10 @@ export const CollectionFeatureProto = {
     if (message.id !== undefined) {
       FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.tags) {
-      TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.tags !== undefined && message.tags.length !== 0) {
+      for (const v of message.tags) {
+        TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     if (message.collection !== undefined) {
       CollectionProto.encode(message.collection, writer.uint32(26).fork()).ldelim();
@@ -1022,7 +1040,7 @@ export const CollectionFeatureProto = {
             break;
           }
 
-          message.tags.push(TagProto.decode(reader, reader.uint32()));
+          message.tags!.push(TagProto.decode(reader, reader.uint32()));
           continue;
         case 3:
           if (tag !== 26) {
@@ -1085,8 +1103,10 @@ export const ExpressionFeatureProto = {
     if (message.id !== undefined) {
       FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.tags) {
-      TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.tags !== undefined && message.tags.length !== 0) {
+      for (const v of message.tags) {
+        TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     if (message.expression !== undefined) {
       NodeProto.encode(message.expression, writer.uint32(26).fork()).ldelim();
@@ -1113,7 +1133,7 @@ export const ExpressionFeatureProto = {
             break;
           }
 
-          message.tags.push(TagProto.decode(reader, reader.uint32()));
+          message.tags!.push(TagProto.decode(reader, reader.uint32()));
           continue;
         case 3:
           if (tag !== 26) {
@@ -1326,11 +1346,15 @@ function createBaseCollectionProto(): CollectionProto {
 
 export const CollectionProto = {
   encode(message: CollectionProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.keys) {
-      LiteralNodeProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.keys !== undefined && message.keys.length !== 0) {
+      for (const v of message.keys) {
+        LiteralNodeProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
-    for (const v of message.values) {
-      LiteralNodeProto.encode(v!, writer.uint32(34).fork()).ldelim();
+    if (message.values !== undefined && message.values.length !== 0) {
+      for (const v of message.values) {
+        LiteralNodeProto.encode(v!, writer.uint32(34).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -1347,14 +1371,14 @@ export const CollectionProto = {
             break;
           }
 
-          message.keys.push(LiteralNodeProto.decode(reader, reader.uint32()));
+          message.keys!.push(LiteralNodeProto.decode(reader, reader.uint32()));
           continue;
         case 4:
           if (tag !== 34) {
             break;
           }
 
-          message.values.push(LiteralNodeProto.decode(reader, reader.uint32()));
+          message.values!.push(LiteralNodeProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -1480,8 +1504,10 @@ function createBaseModifiedFeaturesProto(): ModifiedFeaturesProto {
 
 export const ModifiedFeaturesProto = {
   encode(message: ModifiedFeaturesProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.ids) {
-      FeatureIDProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.ids !== undefined && message.ids.length !== 0) {
+      for (const v of message.ids) {
+        FeatureIDProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -1498,7 +1524,7 @@ export const ModifiedFeaturesProto = {
             break;
           }
 
-          message.ids.push(FeatureIDProto.decode(reader, reader.uint32()));
+          message.ids!.push(FeatureIDProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -1537,11 +1563,15 @@ function createBaseAppliedChangeProto(): AppliedChangeProto {
 
 export const AppliedChangeProto = {
   encode(message: AppliedChangeProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.original) {
-      FeatureIDProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.original !== undefined && message.original.length !== 0) {
+      for (const v of message.original) {
+        FeatureIDProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
-    for (const v of message.modified) {
-      FeatureIDProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.modified !== undefined && message.modified.length !== 0) {
+      for (const v of message.modified) {
+        FeatureIDProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -1558,14 +1588,14 @@ export const AppliedChangeProto = {
             break;
           }
 
-          message.original.push(FeatureIDProto.decode(reader, reader.uint32()));
+          message.original!.push(FeatureIDProto.decode(reader, reader.uint32()));
           continue;
         case 2:
           if (tag !== 18) {
             break;
           }
 
-          message.modified.push(FeatureIDProto.decode(reader, reader.uint32()));
+          message.modified!.push(FeatureIDProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -1627,13 +1657,13 @@ export const NodeProto = {
     if (message.lambda !== undefined) {
       LambdaNodeProto.encode(message.lambda, writer.uint32(34).fork()).ldelim();
     }
-    if (message.name !== "") {
+    if (message.name !== undefined && message.name !== "") {
       writer.uint32(42).string(message.name);
     }
-    if (message.begin !== 0) {
+    if (message.begin !== undefined && message.begin !== 0) {
       writer.uint32(48).int32(message.begin);
     }
-    if (message.end !== 0) {
+    if (message.end !== undefined && message.end !== 0) {
       writer.uint32(56).int32(message.end);
     }
     return writer;
@@ -1730,13 +1760,13 @@ export const NodeProto = {
     if (message.lambda !== undefined) {
       obj.lambda = LambdaNodeProto.toJSON(message.lambda);
     }
-    if (message.name !== "") {
+    if (message.name !== undefined && message.name !== "") {
       obj.name = message.name;
     }
-    if (message.begin !== 0) {
+    if (message.begin !== undefined && message.begin !== 0) {
       obj.begin = Math.round(message.begin);
     }
-    if (message.end !== 0) {
+    if (message.end !== undefined && message.end !== 0) {
       obj.end = Math.round(message.end);
     }
     return obj;
@@ -2114,10 +2144,12 @@ export const CallNodeProto = {
     if (message.function !== undefined) {
       NodeProto.encode(message.function, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.args) {
-      NodeProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.args !== undefined && message.args.length !== 0) {
+      for (const v of message.args) {
+        NodeProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
-    if (message.pipelined !== false) {
+    if (message.pipelined !== undefined && message.pipelined !== false) {
       writer.uint32(24).bool(message.pipelined);
     }
     return writer;
@@ -2142,7 +2174,7 @@ export const CallNodeProto = {
             break;
           }
 
-          message.args.push(NodeProto.decode(reader, reader.uint32()));
+          message.args!.push(NodeProto.decode(reader, reader.uint32()));
           continue;
         case 3:
           if (tag !== 24) {
@@ -2176,7 +2208,7 @@ export const CallNodeProto = {
     if (message.args?.length) {
       obj.args = message.args.map((e) => NodeProto.toJSON(e));
     }
-    if (message.pipelined !== false) {
+    if (message.pipelined !== undefined && message.pipelined !== false) {
       obj.pipelined = message.pipelined;
     }
     return obj;
@@ -2202,8 +2234,10 @@ function createBaseLambdaNodeProto(): LambdaNodeProto {
 
 export const LambdaNodeProto = {
   encode(message: LambdaNodeProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.args) {
-      writer.uint32(10).string(v!);
+    if (message.args !== undefined && message.args.length !== 0) {
+      for (const v of message.args) {
+        writer.uint32(10).string(v!);
+      }
     }
     if (message.node !== undefined) {
       NodeProto.encode(message.node, writer.uint32(18).fork()).ldelim();
@@ -2223,7 +2257,7 @@ export const LambdaNodeProto = {
             break;
           }
 
-          message.args.push(reader.string());
+          message.args!.push(reader.string());
           continue;
         case 2:
           if (tag !== 18) {
@@ -2276,7 +2310,7 @@ function createBaseKeyQueryProto(): KeyQueryProto {
 
 export const KeyQueryProto = {
   encode(message: KeyQueryProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.key !== "") {
+    if (message.key !== undefined && message.key !== "") {
       writer.uint32(10).string(message.key);
     }
     return writer;
@@ -2311,7 +2345,7 @@ export const KeyQueryProto = {
 
   toJSON(message: KeyQueryProto): unknown {
     const obj: any = {};
-    if (message.key !== "") {
+    if (message.key !== undefined && message.key !== "") {
       obj.key = message.key;
     }
     return obj;
@@ -2333,10 +2367,10 @@ function createBaseKeyValueQueryProto(): KeyValueQueryProto {
 
 export const KeyValueQueryProto = {
   encode(message: KeyValueQueryProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.key !== "") {
+    if (message.key !== undefined && message.key !== "") {
       writer.uint32(10).string(message.key);
     }
-    if (message.value !== "") {
+    if (message.value !== undefined && message.value !== "") {
       writer.uint32(18).string(message.value);
     }
     return writer;
@@ -2381,10 +2415,10 @@ export const KeyValueQueryProto = {
 
   toJSON(message: KeyValueQueryProto): unknown {
     const obj: any = {};
-    if (message.key !== "") {
+    if (message.key !== undefined && message.key !== "") {
       obj.key = message.key;
     }
-    if (message.value !== "") {
+    if (message.value !== undefined && message.value !== "") {
       obj.value = message.value;
     }
     return obj;
@@ -2407,7 +2441,7 @@ function createBaseTypedQueryProto(): TypedQueryProto {
 
 export const TypedQueryProto = {
   encode(message: TypedQueryProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.type !== 0) {
+    if (message.type !== undefined && message.type !== 0) {
       writer.uint32(8).int32(message.type);
     }
     if (message.query !== undefined) {
@@ -2455,7 +2489,7 @@ export const TypedQueryProto = {
 
   toJSON(message: TypedQueryProto): unknown {
     const obj: any = {};
-    if (message.type !== 0) {
+    if (message.type !== undefined && message.type !== 0) {
       obj.type = featureTypeToJSON(message.type);
     }
     if (message.query !== undefined) {
@@ -2483,8 +2517,10 @@ function createBaseQueriesProto(): QueriesProto {
 
 export const QueriesProto = {
   encode(message: QueriesProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.queries) {
-      QueryProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.queries !== undefined && message.queries.length !== 0) {
+      for (const v of message.queries) {
+        QueryProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -2501,7 +2537,7 @@ export const QueriesProto = {
             break;
           }
 
-          message.queries.push(QueryProto.decode(reader, reader.uint32()));
+          message.queries!.push(QueryProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -2631,7 +2667,7 @@ export const CapProto = {
     if (message.center !== undefined) {
       PointProto.encode(message.center, writer.uint32(10).fork()).ldelim();
     }
-    if (message.radiusMeters !== 0) {
+    if (message.radiusMeters !== undefined && message.radiusMeters !== 0) {
       writer.uint32(17).double(message.radiusMeters);
     }
     return writer;
@@ -2679,7 +2715,7 @@ export const CapProto = {
     if (message.center !== undefined) {
       obj.center = PointProto.toJSON(message.center);
     }
-    if (message.radiusMeters !== 0) {
+    if (message.radiusMeters !== undefined && message.radiusMeters !== 0) {
       obj.radiusMeters = message.radiusMeters;
     }
     return obj;
@@ -2704,11 +2740,13 @@ function createBaseS2CellIDsProto(): S2CellIDsProto {
 
 export const S2CellIDsProto = {
   encode(message: S2CellIDsProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    writer.uint32(10).fork();
-    for (const v of message.s2CellIDs) {
-      writer.uint64(v);
+    if (message.s2CellIDs !== undefined && message.s2CellIDs.length !== 0) {
+      writer.uint32(10).fork();
+      for (const v of message.s2CellIDs) {
+        writer.uint64(v);
+      }
+      writer.ldelim();
     }
-    writer.ldelim();
     return writer;
   },
 
@@ -2721,7 +2759,7 @@ export const S2CellIDsProto = {
       switch (tag >>> 3) {
         case 1:
           if (tag === 8) {
-            message.s2CellIDs.push(longToNumber(reader.uint64() as Long));
+            message.s2CellIDs!.push(longToNumber(reader.uint64() as Long));
 
             continue;
           }
@@ -2729,7 +2767,7 @@ export const S2CellIDsProto = {
           if (tag === 10) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
-              message.s2CellIDs.push(longToNumber(reader.uint64() as Long));
+              message.s2CellIDs!.push(longToNumber(reader.uint64() as Long));
             }
 
             continue;
@@ -3083,7 +3121,7 @@ export const StepProto = {
     if (message.via !== undefined) {
       FeatureIDProto.encode(message.via, writer.uint32(18).fork()).ldelim();
     }
-    if (message.cost !== 0) {
+    if (message.cost !== undefined && message.cost !== 0) {
       writer.uint32(25).double(message.cost);
     }
     return writer;
@@ -3142,7 +3180,7 @@ export const StepProto = {
     if (message.via !== undefined) {
       obj.via = FeatureIDProto.toJSON(message.via);
     }
-    if (message.cost !== 0) {
+    if (message.cost !== undefined && message.cost !== 0) {
       obj.cost = message.cost;
     }
     return obj;
@@ -3173,8 +3211,10 @@ export const RouteProto = {
     if (message.origin !== undefined) {
       FeatureIDProto.encode(message.origin, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.steps) {
-      StepProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.steps !== undefined && message.steps.length !== 0) {
+      for (const v of message.steps) {
+        StepProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -3198,7 +3238,7 @@ export const RouteProto = {
             break;
           }
 
-          message.steps.push(StepProto.decode(reader, reader.uint32()));
+          message.steps!.push(StepProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -3421,8 +3461,10 @@ function createBaseFindFeaturesResponseProto(): FindFeaturesResponseProto {
 
 export const FindFeaturesResponseProto = {
   encode(message: FindFeaturesResponseProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.features) {
-      FeatureProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.features !== undefined && message.features.length !== 0) {
+      for (const v of message.features) {
+        FeatureProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -3439,7 +3481,7 @@ export const FindFeaturesResponseProto = {
             break;
           }
 
-          message.features.push(FeatureProto.decode(reader, reader.uint32()));
+          message.features!.push(FeatureProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -3485,8 +3527,10 @@ export const ModifyTagsRequestProto = {
     if (message.id !== undefined) {
       FeatureIDProto.encode(message.id, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.tags) {
-      TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.tags !== undefined && message.tags.length !== 0) {
+      for (const v of message.tags) {
+        TagProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -3510,7 +3554,7 @@ export const ModifyTagsRequestProto = {
             break;
           }
 
-          message.tags.push(TagProto.decode(reader, reader.uint32()));
+          message.tags!.push(TagProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -3556,8 +3600,10 @@ function createBaseModifyTagsBatchRequestProto(): ModifyTagsBatchRequestProto {
 
 export const ModifyTagsBatchRequestProto = {
   encode(message: ModifyTagsBatchRequestProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.requests) {
-      ModifyTagsRequestProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.requests !== undefined && message.requests.length !== 0) {
+      for (const v of message.requests) {
+        ModifyTagsRequestProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -3574,7 +3620,7 @@ export const ModifyTagsBatchRequestProto = {
             break;
           }
 
-          message.requests.push(ModifyTagsRequestProto.decode(reader, reader.uint32()));
+          message.requests!.push(ModifyTagsRequestProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -3663,7 +3709,7 @@ export const EvaluateRequestProto = {
     if (message.request !== undefined) {
       NodeProto.encode(message.request, writer.uint32(10).fork()).ldelim();
     }
-    if (message.version !== "") {
+    if (message.version !== undefined && message.version !== "") {
       writer.uint32(18).string(message.version);
     }
     if (message.root !== undefined) {
@@ -3722,7 +3768,7 @@ export const EvaluateRequestProto = {
     if (message.request !== undefined) {
       obj.request = NodeProto.toJSON(message.request);
     }
-    if (message.version !== "") {
+    if (message.version !== undefined && message.version !== "") {
       obj.version = message.version;
     }
     if (message.root !== undefined) {
@@ -3955,8 +4001,10 @@ function createBaseListWorldsResponseProto(): ListWorldsResponseProto {
 
 export const ListWorldsResponseProto = {
   encode(message: ListWorldsResponseProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.ids) {
-      FeatureIDProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.ids !== undefined && message.ids.length !== 0) {
+      for (const v of message.ids) {
+        FeatureIDProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -3973,7 +4021,7 @@ export const ListWorldsResponseProto = {
             break;
           }
 
-          message.ids.push(FeatureIDProto.decode(reader, reader.uint32()));
+          message.ids!.push(FeatureIDProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {

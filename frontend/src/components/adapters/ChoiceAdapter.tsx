@@ -1,16 +1,9 @@
 import { useOutlinerContext } from '@/lib/context/outliner';
-import { AtomProto, ChoiceProto } from '@/types/generated/ui';
+import { ChoiceLineProto } from '@/types/generated/ui';
 import { AtomAdapter } from './AtomAdapter';
 import { ChipAdapter } from './ChipAdapter';
 
-export const ChoiceAdapter = ({
-    choice,
-}: {
-    choice: {
-        chips: AtomProto[];
-        label: ChoiceProto['label'];
-    };
-}) => {
+export const ChoiceAdapter = ({ choice }: { choice: ChoiceLineProto }) => {
     const { choiceChips, setChoiceChipValue } = useOutlinerContext();
     return (
         <>

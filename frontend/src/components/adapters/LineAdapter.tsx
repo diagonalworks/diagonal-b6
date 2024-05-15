@@ -64,10 +64,14 @@ export const LineAdapter = ({
                     {line.leftRightValue && (
                         <div className="justify-between flex items-center w-full">
                             <div className="flex items-center gap-2 w-11/12 flex-grow-0">
-                                {line.leftRightValue.left.map(({ atom }, i) => {
-                                    if (!atom) return null;
-                                    return <AtomAdapter key={i} atom={atom} />;
-                                })}
+                                {line.leftRightValue.left?.map(
+                                    ({ atom }, i) => {
+                                        if (!atom) return null;
+                                        return (
+                                            <AtomAdapter key={i} atom={atom} />
+                                        );
+                                    }
+                                )}
                             </div>
                             {line.leftRightValue.right?.atom && (
                                 <div className="flex items-center gap-1">
@@ -100,7 +104,7 @@ export const LineAdapter = ({
 const Tags = ({ tagLine }: { tagLine: TagsLineProto }) => {
     return (
         <div className="tag w-full text-sm ">
-            {tagLine.tags.map((tag, i) => {
+            {tagLine.tags?.map((tag, i) => {
                 return (
                     <div
                         key={i}

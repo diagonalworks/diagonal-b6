@@ -135,13 +135,13 @@ export const OutlinerProvider = ({
     useEffect(() => {
         // Which substack is the choice line in? should substacks have their own context?
         const allLines =
-            outliner.data?.proto.stack?.substacks.flatMap(
+            outliner.data?.proto.stack?.substacks?.flatMap(
                 (substack) => substack.lines
             ) ?? [];
         const choiceLines = allLines.flatMap((line) => line?.choice ?? []);
 
         choiceLines.forEach((line) => {
-            line.chips.forEach((atom) => {
+            line.chips?.forEach((atom) => {
                 if (isUndefined(atom.chip?.index)) {
                     console.warn(`Chip index is undefined`, { line, atom });
                 }
@@ -227,43 +227,53 @@ export const OutlinerProvider = ({
         const highlighted = outliner.data?.proto.highlighted;
         if (!highlighted?.ids) return [];
 
-        return highlighted.namespaces.flatMap((ns, i) => {
-            const nsType = ns.match(/(?<=^\/)[a-z]+(?=\/)/)?.[0];
-            return match(nsType)
-                .with('path', () => {
-                    return highlighted.ids[i].ids.flatMap((id) => {
-                        const queryFeatures = map?.querySourceFeatures(
-                            'diagonal',
-                            {
-                                sourceLayer: 'road',
-                                filter: ['all'],
-                            }
-                        );
+        return (
+            highlighted.namespaces?.flatMap((ns, i) => {
+                const nsType = ns.match(/(?<=^\/)[a-z]+(?=\/)/)?.[0];
+                return match(nsType)
+                    .with('path', () => {
+                        return (
+                            highlighted.ids?.[i]?.ids?.flatMap((id) => {
+                                const queryFeatures = map?.querySourceFeatures(
+                                    'diagonal',
+                                    {
+                                        sourceLayer: 'road',
+                                        filter: ['all'],
+                                    }
+                                );
 
-                        const feature = queryFeatures?.find(
-                            (f) => parseInt(f.properties.id, 16) == id
+                                const feature = queryFeatures?.find(
+                                    (f) => parseInt(f.properties.id, 16) == id
+                                );
+                                return feature
+                                    ? [{ feature, layer: 'road' }]
+                                    : [];
+                            }) ?? []
                         );
-                        return feature ? [{ feature, layer: 'road' }] : [];
-                    });
-                })
-                .with('area', () => {
-                    return highlighted.ids[i].ids.flatMap((id) => {
-                        const queryFeatures = map?.querySourceFeatures(
-                            'diagonal',
-                            {
-                                sourceLayer: 'building',
-                                filter: ['all'],
-                            }
-                        );
+                    })
+                    .with('area', () => {
+                        return (
+                            highlighted.ids?.[i].ids?.flatMap((id) => {
+                                const queryFeatures = map?.querySourceFeatures(
+                                    'diagonal',
+                                    {
+                                        sourceLayer: 'building',
+                                        filter: ['all'],
+                                    }
+                                );
 
-                        const feature = queryFeatures?.find(
-                            (f) => parseInt(f.properties.id, 16) == id
+                                const feature = queryFeatures?.find(
+                                    (f) => parseInt(f.properties.id, 16) == id
+                                );
+                                return feature
+                                    ? [{ feature, layer: 'building' }]
+                                    : [];
+                            }) ?? []
                         );
-                        return feature ? [{ feature, layer: 'building' }] : [];
-                    });
-                })
-                .otherwise(() => []);
-        });
+                    })
+                    .otherwise(() => []);
+            }) ?? []
+        );
     }, [outliner.data?.proto.highlighted]);
 
     useEffect(() => {
