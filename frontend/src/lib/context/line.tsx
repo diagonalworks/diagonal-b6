@@ -35,11 +35,18 @@ export const LineContextProvider = ({
     const chips = useMemo(() => {
         const chipMap: LineStore['chips'] = {};
 
-        findAtoms(line, 'chip').forEach((atom) => {
+        for (const atom of findAtoms(line, 'chip')) {
             if (atom.chip) {
+                if (!atom.chip) {
+                    console.warn(`Chip is undefined`, { line, atom });
+                    continue;
+                }
+
                 if (isUndefined(atom.chip.index)) {
                     console.warn(`Chip index is undefined`, { line, atom });
+                    continue;
                 }
+
                 chipMap[atom.chip.index] = {
                     atom: {
                         labels: atom.chip.labels ?? [],
@@ -49,9 +56,9 @@ export const LineContextProvider = ({
                     value: 0,
                 };
             }
-        });
+        }
 
-        if (line.choice) {
+        if (line.choice && line.choice.chips) {
             line.choice.chips.forEach((atom, i) => {
                 if (isUndefined(atom.chip?.index)) {
                     console.warn(`Chip index is undefined`, { line, atom });

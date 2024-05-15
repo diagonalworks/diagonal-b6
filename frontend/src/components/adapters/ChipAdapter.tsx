@@ -11,10 +11,10 @@ export const ChipAdapter = ({
 }) => {
     const options = useMemo(
         () =>
-            chip.atom.labels.map((label, i) => ({
+            chip.atom.labels?.map((label, i) => ({
                 value: i.toString(),
                 label,
-            })),
+            })) ?? [],
         [chip.atom.labels]
     );
 

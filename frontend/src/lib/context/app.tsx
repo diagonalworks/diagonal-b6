@@ -1,14 +1,14 @@
 import { AppStore, Scenario, appAtom, initialAppStore } from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
 import {
-    EvaluateRequestProto,
     EvaluateResponseProto,
     FeatureIDProto,
+    FeatureType,
 } from '@/types/generated/api';
 import { $FixMe } from '@/utils/defs';
 import { useQuery } from '@tanstack/react-query';
 import { useAtom, useAtomValue } from 'jotai';
-import { uniqueId } from 'lodash';
+import { random, uniqueId } from 'lodash';
 import {
     PropsWithChildren,
     createContext,
@@ -43,7 +43,15 @@ export const AppContext = createContext<{
     addScenario: () => void;
     removeScenario: (id: string) => void;
     setActiveScenario: (id: string) => void;
-    addComparator: (req: Comparator['request']) => void;
+    addComparator: ({
+        baseline,
+        scenarios,
+        analysis,
+    }: {
+        baseline: Comparator['baseline'];
+        scenarios: Comparator['scenarios'];
+        analysis?: Comparator['analysis'];
+    }) => void;
     activeComparator?: Comparator;
     changes: Array<{ label?: string; id: FeatureIDProto }>;
 }>({
@@ -97,7 +105,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                             {
                                 literal: {
                                     featureIDValue: {
-                                        type: 'FeatureTypeCollection',
+                                        type: 'FeatureTypeCollection' as unknown as FeatureType,
                                         namespace:
                                             'diagonal.works/skyline-demo-05-2024',
                                         value: 1,
@@ -107,42 +115,62 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                         ],
                     },
                 },
-            } as unknown as EvaluateRequestProto);
+            });
         },
     });
 
     const changes = useMemo(() => {
         const changes = changesQuery.data?.result?.literal?.collectionValue;
         if (!changes) return [];
-        return changes.values.flatMap((v, i) => {
-            if (!v.featureIDValue || !changes.keys[i].stringValue) return [];
-            return {
-                label: changes.keys[i].stringValue,
-                id: v.featureIDValue,
-            };
-        });
+        return (
+            changes.values?.flatMap((v, i) => {
+                if (!v.featureIDValue || !changes.keys?.[i].stringValue)
+                    return [];
+                return {
+                    label: changes.keys?.[i].stringValue,
+                    id: v.featureIDValue,
+                };
+            }) ?? []
+        );
     }, [changesQuery.data]);
 
     const addComparator = useCallback(
-        (request: Comparator['request']) => {
-            if (!request) return;
+        ({
+            baseline,
+            scenarios,
+            analysis,
+        }: {
+            baseline: Comparator['baseline'];
+            scenarios: Comparator['scenarios'];
+            analysis?: Comparator['analysis'];
+        }) => {
             const id = uniqueId('comparator-');
-            setApp((draft) => {
-                draft.comparators[id] = {
-                    id,
-                    request,
-                };
-            });
+            const alreadyExists = Object.values(app.comparators).find(
+                (c) =>
+                    c.baseline === baseline &&
+                    c.scenarios?.length === scenarios?.length &&
+                    c.scenarios?.every((s) => scenarios?.includes(s))
+            );
+            if (!alreadyExists) {
+                setApp((draft) => {
+                    draft.comparators[id] = {
+                        id,
+                        baseline,
+                        scenarios,
+                        analysis,
+                    };
+                });
+            }
         },
         [setApp]
     );
 
     const activeComparator = useMemo(() => {
-        return Object.values(app.comparators).find((c) =>
-            !c.request
-                ? false
-                : c.request.baseline === (app.tabs.left as $FixMe) &&
-                  c.request.scenarios.includes(app.tabs?.right as $FixMe)
+        return Object.values(app.comparators).find(
+            (c) =>
+                c.baseline === app.tabs.left &&
+                app.tabs.right &&
+                c.scenarios?.includes(app.tabs.right)
         );
     }, [app.comparators, app.tabs]);
 
@@ -221,7 +249,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     }, [app.scenarios]);
 
     const addScenario = useCallback(() => {
-        const id = uniqueId();
+        const id = uniqueId(random(0, 1000).toString());
         setApp((draft) => {
             draft.scenarios[id] = {
                 id: id,

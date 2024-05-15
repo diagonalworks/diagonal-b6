@@ -13,6 +13,7 @@ export const LabelledIconAdapter = ({
         .with('area', () => <FrameIcon />)
         .with('point', () => <DotIcon />)
         .otherwise(() => {
+            if (!labelledIcon.icon) return <SquareIcon />;
             const iconComponentName = `${labelledIcon.icon
                 .charAt(0)
                 .toUpperCase()}${labelledIcon.icon.slice(1)}`;

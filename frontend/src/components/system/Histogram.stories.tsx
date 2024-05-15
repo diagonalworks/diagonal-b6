@@ -5,13 +5,13 @@ import { interpolateRgbBasis } from 'd3-interpolate';
 import { Histogram as HistogramComponent } from './Histogram';
 type Story = StoryObj<typeof HistogramComponent>;
 
-const dummyData: { bucket: string; value: number }[] = [
-    { bucket: '0', value: 10 },
-    { bucket: '1', value: 50 },
-    { bucket: '2', value: 30 },
-    { bucket: '3', value: 20 },
-    { bucket: '4', value: 10 },
-    { bucket: '5', value: 8 },
+const dummyData: { bucket: string; value: number; total: number }[] = [
+    { bucket: '0', value: 10, total: 128 },
+    { bucket: '1', value: 50, total: 128 },
+    { bucket: '2', value: 30, total: 128 },
+    { bucket: '3', value: 20, total: 128 },
+    { bucket: '4', value: 10, total: 128 },
+    { bucket: '5', value: 8, total: 128 },
 ];
 
 const colorInterpolator = interpolateRgbBasis([
@@ -31,6 +31,7 @@ export const Default: Story = {
                 data={dummyData}
                 bucket={(d) => d.bucket}
                 value={(d) => d.value}
+                total={(d) => d.total}
                 color={(d) => histogramColorScale(d.bucket)}
                 label={(d) =>
                     d.bucket === '0'
@@ -49,6 +50,7 @@ export const Selectable: Story = {
                 data={dummyData}
                 bucket={(d) => d.bucket}
                 value={(d) => d.value}
+                total={(d) => d.total}
                 color={(d) => histogramColorScale(d.bucket)}
                 label={(d) =>
                     d.bucket === '0'

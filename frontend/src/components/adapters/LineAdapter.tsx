@@ -28,9 +28,10 @@ export const LineAdapter = ({
     const handleLineClick = () => {
         if (!clickable) return;
         createOutlinerInScenario({
+            active: true,
             id: JSON.stringify(clickable),
             properties: {
-                coordinates: { x: 10, y: 60 },
+                coordinates: { x: 4, y: 240 },
                 scenario: outliner.properties.scenario,
                 transient: outliner.properties.transient,
                 docked: outliner.properties.docked,
@@ -64,13 +65,17 @@ export const LineAdapter = ({
                     {line.leftRightValue && (
                         <div className="justify-between flex items-center w-full">
                             <div className="flex items-center gap-2 w-11/12 flex-grow-0">
-                                {line.leftRightValue.left.map(({ atom }, i) => {
-                                    if (!atom) return null;
-                                    return <AtomAdapter key={i} atom={atom} />;
-                                })}
+                                {line.leftRightValue.left?.map(
+                                    ({ atom }, i) => {
+                                        if (!atom) return null;
+                                        return (
+                                            <AtomAdapter key={i} atom={atom} />
+                                        );
+                                    }
+                                )}
                             </div>
                             {line.leftRightValue.right?.atom && (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 text-ultramarine-50">
                                     <AtomAdapter
                                         atom={line.leftRightValue.right.atom}
                                     />
@@ -100,7 +105,7 @@ export const LineAdapter = ({
 const Tags = ({ tagLine }: { tagLine: TagsLineProto }) => {
     return (
         <div className="tag w-full text-sm ">
-            {tagLine.tags.map((tag, i) => {
+            {tagLine.tags?.map((tag, i) => {
                 return (
                     <div
                         key={i}

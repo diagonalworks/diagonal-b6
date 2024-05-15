@@ -17,7 +17,7 @@ export const StackAdapter = () => {
     } = useAppContext();
     const { outliner } = useOutlinerContext();
     const {
-        scenario: { change, submitted },
+        scenario: { change, worldCreated },
         addFeatureToChange,
         removeFeatureFromChange,
     } = useScenarioContext();
@@ -50,21 +50,25 @@ export const StackAdapter = () => {
 
     if (!outliner.data) return null;
 
-    const firstSubstack = outliner.data.proto.stack?.substacks[0];
-    const otherSubstacks = outliner.data.proto.stack?.substacks.slice(1);
+    const firstSubstack = outliner.data.proto.stack?.substacks?.[0];
+    const otherSubstacks = outliner.data.proto.stack?.substacks?.slice(1);
 
-    const originFirstSubstack = originOutliner?.data?.proto.stack?.substacks[0];
+    const originFirstSubstack =
+        originOutliner?.data?.proto.stack?.substacks?.[0];
     const originOtherSubstacks =
-        originOutliner?.data?.proto.stack?.substacks.slice(1);
+        originOutliner?.data?.proto.stack?.substacks?.slice(1);
 
-    const featureNode = outliner.data?.proto?.node;
+    const featureId = outliner.data?.proto?.stack?.id;
 
-    const isInChange = change?.features?.find((f) => isEqual(f, featureNode));
-    const showChangeElements = !submitted && outliner.properties.changeable;
+    const isInChange = change?.features?.find((f) => isEqual(f.id, featureId));
+    const outlierFeatureId = outliner.data.proto.stack?.id;
+    const showChangeElements =
+        outlierFeatureId && !worldCreated && outliner.properties.changeable;
 
-    const labelledIcon = outliner.data.proto.stack?.substacks[1]?.lines.flatMap(
-        (l) => findAtoms(l, 'labelledIcon')
-    )?.[0]?.labelledIcon;
+    const labelledIcon =
+        outliner.data.proto.stack?.substacks?.[1]?.lines?.flatMap((l) =>
+            findAtoms(l, 'labelledIcon')
+        )?.[0]?.labelledIcon;
 
     return (
         <>
@@ -80,13 +84,13 @@ export const StackAdapter = () => {
                             if (isInChange) {
                                 removeFeatureFromChange({
                                     expression,
-                                    node,
+                                    id: outlierFeatureId,
                                     label: labelledIcon,
                                 });
                             }
                             addFeatureToChange({
                                 expression,
-                                node,
+                                id: outlierFeatureId,
                                 label: labelledIcon,
                             });
                         }}

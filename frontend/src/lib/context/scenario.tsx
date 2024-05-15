@@ -12,14 +12,20 @@ import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
 import { ChangeFeature, ChangeFunction, Scenario } from '@/atoms/app';
-import { EvaluateResponseProto, NodeProto } from '@/types/generated/api';
+import { startupQueryAtom } from '@/atoms/startup';
+import {
+    EvaluateResponseProto,
+    FeatureIDProto,
+    FeatureType,
+} from '@/types/generated/api';
 import { MapLayerProto } from '@/types/generated/ui';
 import { $FixMe } from '@/utils/defs';
 import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
+import { useAtomValue } from 'jotai';
 import { pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
-import { b6Path } from '../b6';
+import { b6, b6Path } from '../b6';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
 
@@ -43,9 +49,9 @@ const ScenarioContext = createContext<{
     addFeatureToChange: (feature: ChangeFeature) => void;
     removeFeatureFromChange: (feature: ChangeFeature) => void;
     setChangeFunction: (changeFunction: ChangeFunction) => void;
-    setChangeAnalysis: (analysis: NodeProto) => void;
+    setChangeAnalysis: (analysis: FeatureIDProto) => void;
     queryScenario?: UseQueryResult<EvaluateResponseProto>;
-    setSubmitted: (submitted: boolean) => void;
+    runScenario: () => void;
 }>({
     tab: 'left',
     scenario: {} as Scenario,
@@ -63,7 +69,7 @@ const ScenarioContext = createContext<{
     removeFeatureFromChange: () => {},
     setChangeFunction: () => {},
     setChangeAnalysis: () => {},
-    setSubmitted: () => {},
+    runScenario: () => {},
 });
 
 /**
@@ -84,25 +90,39 @@ export const ScenarioProvider = ({
     const {
         app: { outliners },
         createOutliner,
+        addComparator,
         setApp,
     } = useAppContext();
-    //const startupQuery = useAtomValue(startupQueryAtom);
+    const startupQuery = useAtomValue(startupQueryAtom);
 
-    const setSubmitted = useCallback(
-        (submitted: boolean) => {
-            setApp((draft) => {
-                draft.scenarios[scenario.id].submitted = submitted;
-            });
-        },
-        [scenario.id, setApp]
-    );
+    useEffect(() => {
+        setApp((draft) => {
+            draft.scenarios[scenario.id].featureId = {
+                type: 'FeatureTypeCollection' as unknown as FeatureType,
+                namespace: `${
+                    startupQuery.data?.root?.namespace ?? 'diagonal.works'
+                }/scenario`,
+                value: +scenario.id,
+            };
+        });
+    }, [startupQuery.data?.root?.namespace, scenario.id]);
 
     const queryScenario = useQuery<EvaluateResponseProto, Error>({
         enabled: false,
         queryKey: ['scenario', scenario.id, JSON.stringify(scenario.change)],
         queryFn: async () => {
-            return Promise.reject('not implemented');
-            /* return b6.evaluate({
+            if (!scenario.change?.changeFunction?.id) {
+                return Promise.reject('no change function defined');
+            }
+
+            if (
+                !scenario.change.features ||
+                scenario.change.features.length === 0
+            ) {
+                return Promise.reject('no features defined');
+            }
+
+            return b6.evaluate({
                 root: startupQuery.data?.root,
                 request: {
                     call: {
@@ -112,14 +132,7 @@ export const ScenarioProvider = ({
                         args: [
                             {
                                 literal: {
-                                    featureIDValue: {
-                                        type: 'FeatureTypeCollection',
-                                        namespace: `${
-                                            startupQuery.data?.root
-                                                ?.namespace ?? 'diagonal.works'
-                                        }/scenario`,
-                                        value: +scenario.id,
-                                    },
+                                    featureIDValue: scenario.featureId,
                                 },
                             },
                             {
@@ -132,24 +145,44 @@ export const ScenarioProvider = ({
                                             args: [
                                                 {
                                                     literal: {
-                                                        featureIDValue: {
-                                                            type: 'FeatureTypeExpression',
-                                                            namespace:
-                                                                'diagonal.works/skyline-demo-05-2024',
-                                                            value: 5,
-                                                        },
+                                                        featureIDValue:
+                                                            scenario.change
+                                                                .changeFunction
+                                                                .id,
                                                     },
                                                 },
                                             ],
                                         },
                                     },
-                                    args: [],
+                                    args: [
+                                        {
+                                            literal: {
+                                                collectionValue: {
+                                                    keys: scenario.change.features.map(
+                                                        (_, i) => {
+                                                            return {
+                                                                intValue: i,
+                                                            };
+                                                        }
+                                                    ),
+                                                    values: scenario.change.features.map(
+                                                        (f) => {
+                                                            return {
+                                                                featureIDValue:
+                                                                    f.id,
+                                                            };
+                                                        }
+                                                    ),
+                                                },
+                                            },
+                                        },
+                                    ],
                                 },
                             },
                         ],
                     },
                 },
-            } as unknown as EvaluateRequestProto); */
+            });
         },
     });
 
@@ -198,7 +231,7 @@ export const ScenarioProvider = ({
     );
 
     const setChangeAnalysis = useCallback(
-        (analysis: NodeProto) => {
+        (analysis: FeatureIDProto) => {
             setApp((draft) => {
                 draft.scenarios[scenario.id].change = {
                     ...draft.scenarios[scenario.id].change,
@@ -209,17 +242,37 @@ export const ScenarioProvider = ({
         [scenario.id, setApp]
     );
 
-    useEffect(() => {
-        //console.log(queryScenario);
-        return;
-        /* setApp((draft) => {
-            draft.scenarios[scenario.id].node = queryScenario.data?.result
-        }); */
-    }, [queryScenario]);
+    const runScenario = useCallback(() => {
+        queryScenario.refetch().then((res) => {
+            if (res.isSuccess) {
+                setApp((draft) => {
+                    draft.scenarios[scenario.id].worldCreated = true;
+
+                    for (const id in draft.outliners) {
+                        if (
+                            draft.outliners[id].properties.scenario ===
+                            scenario.id
+                        ) {
+                            delete draft.outliners[id];
+                        }
+                    }
+                });
+            }
+        });
+
+        const analysis = scenario.change?.analysis;
+        if (analysis) {
+            addComparator({
+                baseline: 'baseline',
+                scenarios: [scenario.id],
+                analysis: analysis,
+            });
+        }
+    }, [queryScenario, scenario.id, scenario.change?.analysis, addComparator]);
 
     const isDefiningChange = useMemo(() => {
-        return scenario.id !== 'baseline' && !scenario.worldCreated;
-    }, [scenario.id, scenario.node]);
+        return scenario.id !== 'baseline' && !queryScenario?.isSuccess;
+    }, [scenario.id, queryScenario?.isSuccess]);
 
     const _removeTransientStacks = useCallback(() => {
         setApp((draft) => {
@@ -287,7 +340,7 @@ export const ScenarioProvider = ({
                 outliner.data?.proto.layers?.map((l) => ({
                     layer: l,
                     histogram: outliner.histogram,
-                    show: outliner.active,
+                    show: outliner.active ?? outliner.properties.comparison,
                 })) || []
             );
         });
@@ -296,10 +349,19 @@ export const ScenarioProvider = ({
     const getVisibleMarkers = useCallback(
         (map: MapRef) => {
             const features = Object.values(scenarioOutliners)
+                .filter(
+                    (outliner) =>
+                        outliner.active || outliner.properties.transient
+                )
                 .flatMap((outliner) => outliner.data?.geoJSON || [])
+                .flatMap((f: $FixMe) => {
+                    if (f.type === 'FeatureCollection') return f.features;
+                    if (f.type === 'Feature') return [f];
+                    return [];
+                })
                 .flat()
                 .filter((f: $FixMe) => {
-                    f.geometry.type === 'Point' &&
+                    f.geometry?.type === 'Point' &&
                         map
                             ?.getBounds()
                             ?.contains(
@@ -323,14 +385,20 @@ export const ScenarioProvider = ({
                               ...basemapStyle.sources.diagonal,
                               tiles: [
                                   // so we can set a new basemap for this scenario
-                                  `${window.location.origin}${b6Path}tiles/base/{z}/{x}/{y}.mvt`,
+                                  `${
+                                      window.location.origin
+                                  }${b6Path}tiles/base/{z}/{x}/{y}.mvt${
+                                      scenario.featureId
+                                          ? `?r=collection/${scenario.featureId.namespace}/${scenario.featureId.value}`
+                                          : ''
+                                  }`,
                               ],
                           },
                       },
                   }
                 : basemapStyle
         ) as StyleSpecification;
-    }, [tab]);
+    }, [tab, scenario.featureId]);
 
     const value = useMemo(() => {
         return {
@@ -351,7 +419,7 @@ export const ScenarioProvider = ({
             setChangeFunction,
             setChangeAnalysis,
             queryScenario,
-            setSubmitted,
+            runScenario,
         };
     }, [
         scenario,
@@ -371,7 +439,7 @@ export const ScenarioProvider = ({
         setChangeFunction,
         setChangeAnalysis,
         queryScenario,
-        setSubmitted,
+        runScenario,
     ]);
 
     return (

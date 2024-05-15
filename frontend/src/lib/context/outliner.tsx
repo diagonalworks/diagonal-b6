@@ -6,7 +6,7 @@ import { Chip, StackResponse } from '@/types/stack';
 import { $FixMe } from '@/utils/defs';
 import { useQuery } from '@tanstack/react-query';
 import { ScaleOrdinal } from 'd3-scale';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { isUndefined } from 'lodash';
 import { MapGeoJSONFeature } from 'maplibre-gl';
 import {
@@ -93,10 +93,18 @@ export const OutlinerProvider = ({
     outliner: OutlinerStore;
 }) => {
     const { request } = outliner;
-    const { setApp, closeOutliner } = useAppContext();
-    const viewState = useAtomValue(viewAtom);
+    const {
+        setApp,
+        closeOutliner,
+        app: { scenarios },
+    } = useAppContext();
+    const [viewState, setViewState] = useAtom(viewAtom);
     const { data } = useAtomValue(startupQueryAtom);
     const { [outliner.properties?.scenario || 'baseline']: map } = useMap();
+
+    const scenario = useMemo(() => {
+        return scenarios[outliner.properties?.scenario || 'baseline'];
+    }, [outliner.properties?.scenario, scenarios]);
 
     const close = useCallback(() => {
         closeOutliner(outliner.id);
@@ -104,13 +112,14 @@ export const OutlinerProvider = ({
 
     const [choiceChips, setChoiceChips] = useImmer<Record<number, Chip>>({});
 
-    const query = useQuery({
+    const query = useQuery<StackResponse, Error>({
         queryKey: [
             'outliner',
             'stack',
             request?.expression,
             request?.eventType,
             request?.locked,
+            JSON.stringify(scenario?.featureId),
             JSON.stringify(request?.node),
         ],
         queryFn: () => {
@@ -120,7 +129,7 @@ export const OutlinerProvider = ({
                 logEvent: request.eventType,
                 locked: request.locked,
                 node: request?.node,
-                root: request?.root,
+                root: scenario?.featureId,
                 logMapCenter: {
                     latE7: Math.round(viewState.latitude * 1e7),
                     lngE7: Math.round(viewState.longitude * 1e7),
@@ -135,13 +144,13 @@ export const OutlinerProvider = ({
     useEffect(() => {
         // Which substack is the choice line in? should substacks have their own context?
         const allLines =
-            outliner.data?.proto.stack?.substacks.flatMap(
+            outliner.data?.proto.stack?.substacks?.flatMap(
                 (substack) => substack.lines
             ) ?? [];
         const choiceLines = allLines.flatMap((line) => line?.choice ?? []);
 
         choiceLines.forEach((line) => {
-            line.chips.forEach((atom) => {
+            line.chips?.forEach((atom) => {
                 if (isUndefined(atom.chip?.index)) {
                     console.warn(`Chip index is undefined`, { line, atom });
                 }
@@ -156,6 +165,23 @@ export const OutlinerProvider = ({
             });
         });
     }, [outliner.data?.proto.stack?.substacks]);
+
+    useEffect(() => {
+        const lat = query.data?.proto.mapCenter?.latE7;
+        const lng = query.data?.proto.mapCenter?.lngE7;
+        if (lat && lng) {
+            const mapContainsLocation = map
+                ?.getBounds()
+                .contains([lng / 1e7, lat / 1e7]);
+            if (!mapContainsLocation) {
+                setViewState({
+                    ...viewState,
+                    latitude: lat / 1e7,
+                    longitude: lng / 1e7,
+                });
+            }
+        }
+    }, [query.data, setViewState]);
 
     const setChoiceChipValue = useCallback(
         (index: number, value: number) => {
@@ -227,50 +253,61 @@ export const OutlinerProvider = ({
         const highlighted = outliner.data?.proto.highlighted;
         if (!highlighted?.ids) return [];
 
-        return highlighted.namespaces.flatMap((ns, i) => {
-            const nsType = ns.match(/(?<=^\/)[a-z]+(?=\/)/)?.[0];
-            return match(nsType)
-                .with('path', () => {
-                    return highlighted.ids[i].ids.flatMap((id) => {
-                        const queryFeatures = map?.querySourceFeatures(
-                            'diagonal',
-                            {
-                                sourceLayer: 'road',
-                                filter: ['all'],
-                            }
-                        );
+        return (
+            highlighted.namespaces?.flatMap((ns, i) => {
+                const nsType = ns.match(/(?<=^\/)[a-z]+(?=\/)/)?.[0];
+                return match(nsType)
+                    .with('path', () => {
+                        return (
+                            highlighted.ids?.[i]?.ids?.flatMap((id) => {
+                                const queryFeatures = map?.querySourceFeatures(
+                                    'diagonal',
+                                    {
+                                        sourceLayer: 'road',
+                                        filter: ['all'],
+                                    }
+                                );
 
-                        const feature = queryFeatures?.find(
-                            (f) => parseInt(f.properties.id, 16) == id
+                                const feature = queryFeatures?.find(
+                                    (f) => parseInt(f.properties.id, 16) == id
+                                );
+                                return feature
+                                    ? [{ feature, layer: 'road' }]
+                                    : [];
+                            }) ?? []
                         );
-                        return feature ? [{ feature, layer: 'road' }] : [];
-                    });
-                })
-                .with('area', () => {
-                    return highlighted.ids[i].ids.flatMap((id) => {
-                        const queryFeatures = map?.querySourceFeatures(
-                            'diagonal',
-                            {
-                                sourceLayer: 'building',
-                                filter: ['all'],
-                            }
-                        );
+                    })
+                    .with('area', () => {
+                        return (
+                            highlighted.ids?.[i].ids?.flatMap((id) => {
+                                const queryFeatures = map?.querySourceFeatures(
+                                    'diagonal',
+                                    {
+                                        sourceLayer: 'building',
+                                        filter: ['all'],
+                                    }
+                                );
 
-                        const feature = queryFeatures?.find(
-                            (f) => parseInt(f.properties.id, 16) == id
+                                const feature = queryFeatures?.find(
+                                    (f) => parseInt(f.properties.id, 16) == id
+                                );
+                                return feature
+                                    ? [{ feature, layer: 'building' }]
+                                    : [];
+                            }) ?? []
                         );
-                        return feature ? [{ feature, layer: 'building' }] : [];
-                    });
-                })
-                .otherwise(() => []);
-        });
+                    })
+                    .otherwise(() => []);
+            }) ?? []
+        );
     }, [outliner.data?.proto.highlighted]);
 
     useEffect(() => {
+        if (!map) return;
         highlightedFeatures.forEach((f) => {
-            if (!f) return;
+            if (!f || !map) return;
             const { feature, layer } = f;
-            map?.setFeatureState(
+            map.setFeatureState(
                 {
                     source: 'diagonal',
                     sourceLayer: layer,
@@ -282,22 +319,26 @@ export const OutlinerProvider = ({
             );
         });
         return () => {
-            highlightedFeatures.forEach((f) => {
-                if (!f) return;
-                const { feature, layer } = f;
-                map?.setFeatureState(
-                    {
-                        source: 'diagonal',
-                        sourceLayer: layer,
-                        id: feature.id,
-                    },
-                    {
-                        highlighted: false,
-                    }
-                );
-            });
+            try {
+                highlightedFeatures.forEach((f) => {
+                    if (!f || !map) return;
+                    const { feature, layer } = f;
+                    map.setFeatureState(
+                        {
+                            source: 'diagonal',
+                            sourceLayer: layer,
+                            id: feature.id,
+                        },
+                        {
+                            highlighted: false,
+                        }
+                    );
+                });
+            } catch (e) {
+                console.error(e);
+            }
         };
-    }, [outliner.data?.proto.highlighted]);
+    }, [outliner.data?.proto.highlighted, map]);
 
     return (
         <OutlinerContext.Provider

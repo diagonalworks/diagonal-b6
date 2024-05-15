@@ -7,7 +7,22 @@
 .loader {
     width: 12px;
     height: 12px;
-    border: 2px solid theme('colors.ultramarine.50');
+    border-color: theme('colors.ultramarine.50');
+    border-width: 2px;
+    border-style: solid;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+.loader-scenario {
+    width: 12px;
+    height: 12px;
+    border-color: theme('colors.rose.50');
+    border-width: 2px;
+    border-style: solid;
     border-bottom-color: transparent;
     border-radius: 50%;
     display: inline-block;

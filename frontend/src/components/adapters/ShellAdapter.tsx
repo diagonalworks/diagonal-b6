@@ -23,11 +23,13 @@ export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
 
     const functions = useMemo(() => {
         if (!shell) return [];
-        return shell.functions.map((func) => {
-            return {
-                id: func,
-            };
-        });
+        return (
+            shell.functions?.map((func) => {
+                return {
+                    id: func,
+                };
+            }) ?? []
+        );
     }, [shell?.functions]);
 
     return <Shell functions={functions} onSubmit={handleSubmit} />;

@@ -46,48 +46,49 @@ export function mapLayerPositionToJSON(object: MapLayerPosition): string {
 }
 
 export interface UIRequestProto {
-  node: NodeProto | undefined;
-  expression: string;
-  root: FeatureIDProto | undefined;
-  locked: boolean;
-  logEvent: string;
-  logMapCenter: PointProto | undefined;
-  logMapZoom: number;
-  session: number;
+  node?: NodeProto | undefined;
+  expression?: string | undefined;
+  root?: FeatureIDProto | undefined;
+  locked?: boolean | undefined;
+  logEvent?: string | undefined;
+  logMapCenter?: PointProto | undefined;
+  logMapZoom?: number | undefined;
+  session?: number | undefined;
 }
 
 export interface UIResponseProto {
-  stack: StackProto | undefined;
-  node: NodeProto | undefined;
-  expression: string;
-  highlighted:
+  stack?: StackProto | undefined;
+  node?: NodeProto | undefined;
+  expression?: string | undefined;
+  highlighted?:
     | FeatureIDsProto
     | undefined;
   /** References geojson array in response */
-  geoJSON: GeoJSONProto[];
-  layers: MapLayerProto[];
-  mapCenter: PointProto | undefined;
-  locked: boolean;
-  chipValues: number[];
-  logDetail: string;
-  tilesChanged: boolean;
+  geoJSON?: GeoJSONProto[] | undefined;
+  layers?: MapLayerProto[] | undefined;
+  mapCenter?: PointProto | undefined;
+  locked?: boolean | undefined;
+  chipValues?: number[] | undefined;
+  logDetail?: string | undefined;
+  tilesChanged?: boolean | undefined;
 }
 
 export interface MapLayerProto {
-  path: string;
-  q: string;
-  v: string;
-  before: MapLayerPosition;
-  condition: ConditionProto | undefined;
+  path?: string | undefined;
+  q?: string | undefined;
+  v?: string | undefined;
+  before?: MapLayerPosition | undefined;
+  condition?: ConditionProto | undefined;
 }
 
 export interface StackProto {
-  substacks: SubstackProto[];
+  substacks?: SubstackProto[] | undefined;
+  id?: FeatureIDProto | undefined;
 }
 
 export interface SubstackProto {
-  lines: LineProto[];
-  collapsable: boolean;
+  lines?: LineProto[] | undefined;
+  collapsable?: boolean | undefined;
 }
 
 export interface LineProto {
@@ -106,84 +107,84 @@ export interface LineProto {
 }
 
 export interface ValueLineProto {
-  atom: AtomProto | undefined;
-  clickExpression: NodeProto | undefined;
+  atom?: AtomProto | undefined;
+  clickExpression?: NodeProto | undefined;
 }
 
 export interface LeftRightValueLineProto {
-  left: ClickableAtomProto[];
-  right: ClickableAtomProto | undefined;
+  left?: ClickableAtomProto[] | undefined;
+  right?: ClickableAtomProto | undefined;
 }
 
 export interface ClickableAtomProto {
-  atom: AtomProto | undefined;
-  clickExpression: NodeProto | undefined;
+  atom?: AtomProto | undefined;
+  clickExpression?: NodeProto | undefined;
 }
 
 export interface ExpressionLineProto {
-  expression: string;
+  expression?: string | undefined;
 }
 
 export interface TagsLineProto {
-  tags: TagAtomProto[];
+  tags?: TagAtomProto[] | undefined;
 }
 
 export interface TagAtomProto {
-  prefix: string;
-  key: string;
-  value: string;
-  clickExpression: NodeProto | undefined;
+  prefix?: string | undefined;
+  key?: string | undefined;
+  value?: string | undefined;
+  clickExpression?: NodeProto | undefined;
 }
 
 export interface HistogramBarLineProto {
-  range: AtomProto | undefined;
-  value: number;
-  total: number;
-  index: number;
+  range?: AtomProto | undefined;
+  value?: number | undefined;
+  total?: number | undefined;
+  index?: number | undefined;
 }
 
 export interface SwatchLineProto {
-  label: AtomProto | undefined;
-  index: number;
+  label?: AtomProto | undefined;
+  index?: number | undefined;
 }
 
 export interface ShellLineProto {
-  functions: string[];
+  functions?: string[] | undefined;
 }
 
 export interface ChoiceLineProto {
-  label: AtomProto | undefined;
-  chips: AtomProto[];
+  label?: AtomProto | undefined;
+  chips?: AtomProto[] | undefined;
 }
 
 export interface ChoiceProto {
-  chipValues: number[];
-  label: AtomProto | undefined;
+  chipValues?: number[] | undefined;
+  label?: AtomProto | undefined;
 }
 
 export interface HeaderLineProto {
-  title: AtomProto | undefined;
-  close: boolean;
-  share: boolean;
+  title?: AtomProto | undefined;
+  close?: boolean | undefined;
+  share?: boolean | undefined;
 }
 
 export interface ErrorLineProto {
-  error: string;
+  error?: string | undefined;
 }
 
 export interface ActionLineProto {
-  atom: AtomProto | undefined;
-  clickExpression: NodeProto | undefined;
-  inContext: boolean;
+  atom?: AtomProto | undefined;
+  clickExpression?: NodeProto | undefined;
+  inContext?: boolean | undefined;
 }
 
 export interface ComparisonHistogramProto {
-  bars: HistogramBarLineProto[];
+  bars?: HistogramBarLineProto[] | undefined;
 }
 
 export interface ComparisonLineProto {
-  baseline: ComparisonHistogramProto | undefined;
-  scenarios: ComparisonHistogramProto[];
+  baseline?: ComparisonHistogramProto | undefined;
+  scenarios?: ComparisonHistogramProto[] | undefined;
 }
 
 export interface AtomProto {
@@ -195,13 +196,13 @@ export interface AtomProto {
 }
 
 export interface LabelledIconProto {
-  icon: string;
-  label: string;
+  icon?: string | undefined;
+  label?: string | undefined;
 }
 
 export interface ChipProto {
-  index: number;
-  labels: string[];
+  index?: number | undefined;
+  labels?: string[] | undefined;
 }
 
 export interface ConditionProto {
@@ -209,40 +210,40 @@ export interface ConditionProto {
    * The value of the chips specified in indices need to match
    * the respective value for the element to be rendered.
    */
-  indices: number[];
-  values: number[];
+  indices?: number[] | undefined;
+  values?: number[] | undefined;
 }
 
 export interface ConditionalProto {
-  conditions: ConditionProto[];
-  atoms: AtomProto[];
+  conditions?: ConditionProto[] | undefined;
+  atoms?: AtomProto[] | undefined;
 }
 
 export interface GeoJSONProto {
-  condition: ConditionProto | undefined;
-  index: number;
+  condition?: ConditionProto | undefined;
+  index?: number | undefined;
 }
 
 export interface FeatureIDsProto {
-  namespaces: string[];
-  ids: IDsProto[];
+  namespaces?: string[] | undefined;
+  ids?: IDsProto[] | undefined;
 }
 
 export interface IDsProto {
-  ids: number[];
+  ids?: number[] | undefined;
 }
 
 export interface ComparisonRequestProto {
   /** The ID of the analysis to run in different worlds */
-  analysis:
+  analysis?:
     | FeatureIDProto
     | undefined;
   /** The ID of the baseline world in which to run the analysis */
-  baseline:
+  baseline?:
     | FeatureIDProto
     | undefined;
   /** The IDs of the scenario worlds in which to run the analysis */
-  scenarios: FeatureIDProto[];
+  scenarios?: FeatureIDProto[] | undefined;
 }
 
 function createBaseUIRequestProto(): UIRequestProto {
@@ -263,25 +264,25 @@ export const UIRequestProto = {
     if (message.node !== undefined) {
       NodeProto.encode(message.node, writer.uint32(10).fork()).ldelim();
     }
-    if (message.expression !== "") {
+    if (message.expression !== undefined && message.expression !== "") {
       writer.uint32(18).string(message.expression);
     }
     if (message.root !== undefined) {
       FeatureIDProto.encode(message.root, writer.uint32(26).fork()).ldelim();
     }
-    if (message.locked !== false) {
+    if (message.locked !== undefined && message.locked !== false) {
       writer.uint32(32).bool(message.locked);
     }
-    if (message.logEvent !== "") {
+    if (message.logEvent !== undefined && message.logEvent !== "") {
       writer.uint32(42).string(message.logEvent);
     }
     if (message.logMapCenter !== undefined) {
       PointProto.encode(message.logMapCenter, writer.uint32(50).fork()).ldelim();
     }
-    if (message.logMapZoom !== 0) {
+    if (message.logMapZoom !== undefined && message.logMapZoom !== 0) {
       writer.uint32(61).float(message.logMapZoom);
     }
-    if (message.session !== 0) {
+    if (message.session !== undefined && message.session !== 0) {
       writer.uint32(64).uint64(message.session);
     }
     return writer;
@@ -377,25 +378,25 @@ export const UIRequestProto = {
     if (message.node !== undefined) {
       obj.node = NodeProto.toJSON(message.node);
     }
-    if (message.expression !== "") {
+    if (message.expression !== undefined && message.expression !== "") {
       obj.expression = message.expression;
     }
     if (message.root !== undefined) {
       obj.root = FeatureIDProto.toJSON(message.root);
     }
-    if (message.locked !== false) {
+    if (message.locked !== undefined && message.locked !== false) {
       obj.locked = message.locked;
     }
-    if (message.logEvent !== "") {
+    if (message.logEvent !== undefined && message.logEvent !== "") {
       obj.logEvent = message.logEvent;
     }
     if (message.logMapCenter !== undefined) {
       obj.logMapCenter = PointProto.toJSON(message.logMapCenter);
     }
-    if (message.logMapZoom !== 0) {
+    if (message.logMapZoom !== undefined && message.logMapZoom !== 0) {
       obj.logMapZoom = message.logMapZoom;
     }
-    if (message.session !== 0) {
+    if (message.session !== undefined && message.session !== 0) {
       obj.session = Math.round(message.session);
     }
     return obj;
@@ -446,33 +447,39 @@ export const UIResponseProto = {
     if (message.node !== undefined) {
       NodeProto.encode(message.node, writer.uint32(18).fork()).ldelim();
     }
-    if (message.expression !== "") {
+    if (message.expression !== undefined && message.expression !== "") {
       writer.uint32(26).string(message.expression);
     }
     if (message.highlighted !== undefined) {
       FeatureIDsProto.encode(message.highlighted, writer.uint32(34).fork()).ldelim();
     }
-    for (const v of message.geoJSON) {
-      GeoJSONProto.encode(v!, writer.uint32(42).fork()).ldelim();
+    if (message.geoJSON !== undefined && message.geoJSON.length !== 0) {
+      for (const v of message.geoJSON) {
+        GeoJSONProto.encode(v!, writer.uint32(42).fork()).ldelim();
+      }
     }
-    for (const v of message.layers) {
-      MapLayerProto.encode(v!, writer.uint32(58).fork()).ldelim();
+    if (message.layers !== undefined && message.layers.length !== 0) {
+      for (const v of message.layers) {
+        MapLayerProto.encode(v!, writer.uint32(58).fork()).ldelim();
+      }
     }
     if (message.mapCenter !== undefined) {
       PointProto.encode(message.mapCenter, writer.uint32(66).fork()).ldelim();
     }
-    if (message.locked !== false) {
+    if (message.locked !== undefined && message.locked !== false) {
       writer.uint32(72).bool(message.locked);
     }
-    writer.uint32(82).fork();
-    for (const v of message.chipValues) {
-      writer.int32(v);
+    if (message.chipValues !== undefined && message.chipValues.length !== 0) {
+      writer.uint32(82).fork();
+      for (const v of message.chipValues) {
+        writer.int32(v);
+      }
+      writer.ldelim();
     }
-    writer.ldelim();
-    if (message.logDetail !== "") {
+    if (message.logDetail !== undefined && message.logDetail !== "") {
       writer.uint32(90).string(message.logDetail);
     }
-    if (message.tilesChanged !== false) {
+    if (message.tilesChanged !== undefined && message.tilesChanged !== false) {
       writer.uint32(96).bool(message.tilesChanged);
     }
     return writer;
@@ -518,14 +525,14 @@ export const UIResponseProto = {
             break;
           }
 
-          message.geoJSON.push(GeoJSONProto.decode(reader, reader.uint32()));
+          message.geoJSON!.push(GeoJSONProto.decode(reader, reader.uint32()));
           continue;
         case 7:
           if (tag !== 58) {
             break;
           }
 
-          message.layers.push(MapLayerProto.decode(reader, reader.uint32()));
+          message.layers!.push(MapLayerProto.decode(reader, reader.uint32()));
           continue;
         case 8:
           if (tag !== 66) {
@@ -543,7 +550,7 @@ export const UIResponseProto = {
           continue;
         case 10:
           if (tag === 80) {
-            message.chipValues.push(reader.int32());
+            message.chipValues!.push(reader.int32());
 
             continue;
           }
@@ -551,7 +558,7 @@ export const UIResponseProto = {
           if (tag === 82) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
-              message.chipValues.push(reader.int32());
+              message.chipValues!.push(reader.int32());
             }
 
             continue;
@@ -609,7 +616,7 @@ export const UIResponseProto = {
     if (message.node !== undefined) {
       obj.node = NodeProto.toJSON(message.node);
     }
-    if (message.expression !== "") {
+    if (message.expression !== undefined && message.expression !== "") {
       obj.expression = message.expression;
     }
     if (message.highlighted !== undefined) {
@@ -624,16 +631,16 @@ export const UIResponseProto = {
     if (message.mapCenter !== undefined) {
       obj.mapCenter = PointProto.toJSON(message.mapCenter);
     }
-    if (message.locked !== false) {
+    if (message.locked !== undefined && message.locked !== false) {
       obj.locked = message.locked;
     }
     if (message.chipValues?.length) {
       obj.chipValues = message.chipValues.map((e) => Math.round(e));
     }
-    if (message.logDetail !== "") {
+    if (message.logDetail !== undefined && message.logDetail !== "") {
       obj.logDetail = message.logDetail;
     }
-    if (message.tilesChanged !== false) {
+    if (message.tilesChanged !== undefined && message.tilesChanged !== false) {
       obj.tilesChanged = message.tilesChanged;
     }
     return obj;
@@ -671,16 +678,16 @@ function createBaseMapLayerProto(): MapLayerProto {
 
 export const MapLayerProto = {
   encode(message: MapLayerProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.path !== "") {
+    if (message.path !== undefined && message.path !== "") {
       writer.uint32(10).string(message.path);
     }
-    if (message.q !== "") {
+    if (message.q !== undefined && message.q !== "") {
       writer.uint32(18).string(message.q);
     }
-    if (message.v !== "") {
+    if (message.v !== undefined && message.v !== "") {
       writer.uint32(26).string(message.v);
     }
-    if (message.before !== 0) {
+    if (message.before !== undefined && message.before !== 0) {
       writer.uint32(32).int32(message.before);
     }
     if (message.condition !== undefined) {
@@ -752,16 +759,16 @@ export const MapLayerProto = {
 
   toJSON(message: MapLayerProto): unknown {
     const obj: any = {};
-    if (message.path !== "") {
+    if (message.path !== undefined && message.path !== "") {
       obj.path = message.path;
     }
-    if (message.q !== "") {
+    if (message.q !== undefined && message.q !== "") {
       obj.q = message.q;
     }
-    if (message.v !== "") {
+    if (message.v !== undefined && message.v !== "") {
       obj.v = message.v;
     }
-    if (message.before !== 0) {
+    if (message.before !== undefined && message.before !== 0) {
       obj.before = mapLayerPositionToJSON(message.before);
     }
     if (message.condition !== undefined) {
@@ -787,13 +794,18 @@ export const MapLayerProto = {
 };
 
 function createBaseStackProto(): StackProto {
-  return { substacks: [] };
+  return { substacks: [], id: undefined };
 }
 
 export const StackProto = {
   encode(message: StackProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.substacks) {
-      SubstackProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.substacks !== undefined && message.substacks.length !== 0) {
+      for (const v of message.substacks) {
+        SubstackProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
+    }
+    if (message.id !== undefined) {
+      FeatureIDProto.encode(message.id, writer.uint32(18).fork()).ldelim();
     }
     return writer;
   },
@@ -810,7 +822,14 @@ export const StackProto = {
             break;
           }
 
-          message.substacks.push(SubstackProto.decode(reader, reader.uint32()));
+          message.substacks!.push(SubstackProto.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag !== 18) {
+            break;
+          }
+
+          message.id = FeatureIDProto.decode(reader, reader.uint32());
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -826,6 +845,7 @@ export const StackProto = {
       substacks: globalThis.Array.isArray(object?.substacks)
         ? object.substacks.map((e: any) => SubstackProto.fromJSON(e))
         : [],
+      id: isSet(object.id) ? FeatureIDProto.fromJSON(object.id) : undefined,
     };
   },
 
@@ -833,6 +853,9 @@ export const StackProto = {
     const obj: any = {};
     if (message.substacks?.length) {
       obj.substacks = message.substacks.map((e) => SubstackProto.toJSON(e));
+    }
+    if (message.id !== undefined) {
+      obj.id = FeatureIDProto.toJSON(message.id);
     }
     return obj;
   },
@@ -843,6 +866,7 @@ export const StackProto = {
   fromPartial<I extends Exact<DeepPartial<StackProto>, I>>(object: I): StackProto {
     const message = createBaseStackProto();
     message.substacks = object.substacks?.map((e) => SubstackProto.fromPartial(e)) || [];
+    message.id = (object.id !== undefined && object.id !== null) ? FeatureIDProto.fromPartial(object.id) : undefined;
     return message;
   },
 };
@@ -853,10 +877,12 @@ function createBaseSubstackProto(): SubstackProto {
 
 export const SubstackProto = {
   encode(message: SubstackProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.lines) {
-      LineProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.lines !== undefined && message.lines.length !== 0) {
+      for (const v of message.lines) {
+        LineProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
-    if (message.collapsable !== false) {
+    if (message.collapsable !== undefined && message.collapsable !== false) {
       writer.uint32(16).bool(message.collapsable);
     }
     return writer;
@@ -874,7 +900,7 @@ export const SubstackProto = {
             break;
           }
 
-          message.lines.push(LineProto.decode(reader, reader.uint32()));
+          message.lines!.push(LineProto.decode(reader, reader.uint32()));
           continue;
         case 2:
           if (tag !== 16) {
@@ -904,7 +930,7 @@ export const SubstackProto = {
     if (message.lines?.length) {
       obj.lines = message.lines.map((e) => LineProto.toJSON(e));
     }
-    if (message.collapsable !== false) {
+    if (message.collapsable !== undefined && message.collapsable !== false) {
       obj.collapsable = message.collapsable;
     }
     return obj;
@@ -1266,8 +1292,10 @@ function createBaseLeftRightValueLineProto(): LeftRightValueLineProto {
 
 export const LeftRightValueLineProto = {
   encode(message: LeftRightValueLineProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.left) {
-      ClickableAtomProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.left !== undefined && message.left.length !== 0) {
+      for (const v of message.left) {
+        ClickableAtomProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     if (message.right !== undefined) {
       ClickableAtomProto.encode(message.right, writer.uint32(18).fork()).ldelim();
@@ -1287,7 +1315,7 @@ export const LeftRightValueLineProto = {
             break;
           }
 
-          message.left.push(ClickableAtomProto.decode(reader, reader.uint32()));
+          message.left!.push(ClickableAtomProto.decode(reader, reader.uint32()));
           continue;
         case 2:
           if (tag !== 18) {
@@ -1418,7 +1446,7 @@ function createBaseExpressionLineProto(): ExpressionLineProto {
 
 export const ExpressionLineProto = {
   encode(message: ExpressionLineProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.expression !== "") {
+    if (message.expression !== undefined && message.expression !== "") {
       writer.uint32(10).string(message.expression);
     }
     return writer;
@@ -1453,7 +1481,7 @@ export const ExpressionLineProto = {
 
   toJSON(message: ExpressionLineProto): unknown {
     const obj: any = {};
-    if (message.expression !== "") {
+    if (message.expression !== undefined && message.expression !== "") {
       obj.expression = message.expression;
     }
     return obj;
@@ -1475,8 +1503,10 @@ function createBaseTagsLineProto(): TagsLineProto {
 
 export const TagsLineProto = {
   encode(message: TagsLineProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.tags) {
-      TagAtomProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.tags !== undefined && message.tags.length !== 0) {
+      for (const v of message.tags) {
+        TagAtomProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -1493,7 +1523,7 @@ export const TagsLineProto = {
             break;
           }
 
-          message.tags.push(TagAtomProto.decode(reader, reader.uint32()));
+          message.tags!.push(TagAtomProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -1534,13 +1564,13 @@ function createBaseTagAtomProto(): TagAtomProto {
 
 export const TagAtomProto = {
   encode(message: TagAtomProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.prefix !== "") {
+    if (message.prefix !== undefined && message.prefix !== "") {
       writer.uint32(10).string(message.prefix);
     }
-    if (message.key !== "") {
+    if (message.key !== undefined && message.key !== "") {
       writer.uint32(18).string(message.key);
     }
-    if (message.value !== "") {
+    if (message.value !== undefined && message.value !== "") {
       writer.uint32(26).string(message.value);
     }
     if (message.clickExpression !== undefined) {
@@ -1604,13 +1634,13 @@ export const TagAtomProto = {
 
   toJSON(message: TagAtomProto): unknown {
     const obj: any = {};
-    if (message.prefix !== "") {
+    if (message.prefix !== undefined && message.prefix !== "") {
       obj.prefix = message.prefix;
     }
-    if (message.key !== "") {
+    if (message.key !== undefined && message.key !== "") {
       obj.key = message.key;
     }
-    if (message.value !== "") {
+    if (message.value !== undefined && message.value !== "") {
       obj.value = message.value;
     }
     if (message.clickExpression !== undefined) {
@@ -1643,13 +1673,13 @@ export const HistogramBarLineProto = {
     if (message.range !== undefined) {
       AtomProto.encode(message.range, writer.uint32(10).fork()).ldelim();
     }
-    if (message.value !== 0) {
+    if (message.value !== undefined && message.value !== 0) {
       writer.uint32(16).int32(message.value);
     }
-    if (message.total !== 0) {
+    if (message.total !== undefined && message.total !== 0) {
       writer.uint32(24).int32(message.total);
     }
-    if (message.index !== 0) {
+    if (message.index !== undefined && message.index !== 0) {
       writer.uint32(32).int32(message.index);
     }
     return writer;
@@ -1713,13 +1743,13 @@ export const HistogramBarLineProto = {
     if (message.range !== undefined) {
       obj.range = AtomProto.toJSON(message.range);
     }
-    if (message.value !== 0) {
+    if (message.value !== undefined && message.value !== 0) {
       obj.value = Math.round(message.value);
     }
-    if (message.total !== 0) {
+    if (message.total !== undefined && message.total !== 0) {
       obj.total = Math.round(message.total);
     }
-    if (message.index !== 0) {
+    if (message.index !== undefined && message.index !== 0) {
       obj.index = Math.round(message.index);
     }
     return obj;
@@ -1749,7 +1779,7 @@ export const SwatchLineProto = {
     if (message.label !== undefined) {
       AtomProto.encode(message.label, writer.uint32(10).fork()).ldelim();
     }
-    if (message.index !== 0) {
+    if (message.index !== undefined && message.index !== 0) {
       writer.uint32(16).int32(message.index);
     }
     return writer;
@@ -1797,7 +1827,7 @@ export const SwatchLineProto = {
     if (message.label !== undefined) {
       obj.label = AtomProto.toJSON(message.label);
     }
-    if (message.index !== 0) {
+    if (message.index !== undefined && message.index !== 0) {
       obj.index = Math.round(message.index);
     }
     return obj;
@@ -1822,8 +1852,10 @@ function createBaseShellLineProto(): ShellLineProto {
 
 export const ShellLineProto = {
   encode(message: ShellLineProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.functions) {
-      writer.uint32(10).string(v!);
+    if (message.functions !== undefined && message.functions.length !== 0) {
+      for (const v of message.functions) {
+        writer.uint32(10).string(v!);
+      }
     }
     return writer;
   },
@@ -1840,7 +1872,7 @@ export const ShellLineProto = {
             break;
           }
 
-          message.functions.push(reader.string());
+          message.functions!.push(reader.string());
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -1886,8 +1918,10 @@ export const ChoiceLineProto = {
     if (message.label !== undefined) {
       AtomProto.encode(message.label, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.chips) {
-      AtomProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.chips !== undefined && message.chips.length !== 0) {
+      for (const v of message.chips) {
+        AtomProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -1911,7 +1945,7 @@ export const ChoiceLineProto = {
             break;
           }
 
-          message.chips.push(AtomProto.decode(reader, reader.uint32()));
+          message.chips!.push(AtomProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -1959,11 +1993,13 @@ function createBaseChoiceProto(): ChoiceProto {
 
 export const ChoiceProto = {
   encode(message: ChoiceProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    writer.uint32(10).fork();
-    for (const v of message.chipValues) {
-      writer.int32(v);
+    if (message.chipValues !== undefined && message.chipValues.length !== 0) {
+      writer.uint32(10).fork();
+      for (const v of message.chipValues) {
+        writer.int32(v);
+      }
+      writer.ldelim();
     }
-    writer.ldelim();
     if (message.label !== undefined) {
       AtomProto.encode(message.label, writer.uint32(18).fork()).ldelim();
     }
@@ -1979,7 +2015,7 @@ export const ChoiceProto = {
       switch (tag >>> 3) {
         case 1:
           if (tag === 8) {
-            message.chipValues.push(reader.int32());
+            message.chipValues!.push(reader.int32());
 
             continue;
           }
@@ -1987,7 +2023,7 @@ export const ChoiceProto = {
           if (tag === 10) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
-              message.chipValues.push(reader.int32());
+              message.chipValues!.push(reader.int32());
             }
 
             continue;
@@ -2052,10 +2088,10 @@ export const HeaderLineProto = {
     if (message.title !== undefined) {
       AtomProto.encode(message.title, writer.uint32(10).fork()).ldelim();
     }
-    if (message.close !== false) {
+    if (message.close !== undefined && message.close !== false) {
       writer.uint32(16).bool(message.close);
     }
-    if (message.share !== false) {
+    if (message.share !== undefined && message.share !== false) {
       writer.uint32(24).bool(message.share);
     }
     return writer;
@@ -2111,10 +2147,10 @@ export const HeaderLineProto = {
     if (message.title !== undefined) {
       obj.title = AtomProto.toJSON(message.title);
     }
-    if (message.close !== false) {
+    if (message.close !== undefined && message.close !== false) {
       obj.close = message.close;
     }
-    if (message.share !== false) {
+    if (message.share !== undefined && message.share !== false) {
       obj.share = message.share;
     }
     return obj;
@@ -2140,7 +2176,7 @@ function createBaseErrorLineProto(): ErrorLineProto {
 
 export const ErrorLineProto = {
   encode(message: ErrorLineProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.error !== "") {
+    if (message.error !== undefined && message.error !== "") {
       writer.uint32(10).string(message.error);
     }
     return writer;
@@ -2175,7 +2211,7 @@ export const ErrorLineProto = {
 
   toJSON(message: ErrorLineProto): unknown {
     const obj: any = {};
-    if (message.error !== "") {
+    if (message.error !== undefined && message.error !== "") {
       obj.error = message.error;
     }
     return obj;
@@ -2203,7 +2239,7 @@ export const ActionLineProto = {
     if (message.clickExpression !== undefined) {
       NodeProto.encode(message.clickExpression, writer.uint32(18).fork()).ldelim();
     }
-    if (message.inContext !== false) {
+    if (message.inContext !== undefined && message.inContext !== false) {
       writer.uint32(24).bool(message.inContext);
     }
     return writer;
@@ -2262,7 +2298,7 @@ export const ActionLineProto = {
     if (message.clickExpression !== undefined) {
       obj.clickExpression = NodeProto.toJSON(message.clickExpression);
     }
-    if (message.inContext !== false) {
+    if (message.inContext !== undefined && message.inContext !== false) {
       obj.inContext = message.inContext;
     }
     return obj;
@@ -2288,8 +2324,10 @@ function createBaseComparisonHistogramProto(): ComparisonHistogramProto {
 
 export const ComparisonHistogramProto = {
   encode(message: ComparisonHistogramProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.bars) {
-      HistogramBarLineProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.bars !== undefined && message.bars.length !== 0) {
+      for (const v of message.bars) {
+        HistogramBarLineProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -2306,7 +2344,7 @@ export const ComparisonHistogramProto = {
             break;
           }
 
-          message.bars.push(HistogramBarLineProto.decode(reader, reader.uint32()));
+          message.bars!.push(HistogramBarLineProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -2352,8 +2390,10 @@ export const ComparisonLineProto = {
     if (message.baseline !== undefined) {
       ComparisonHistogramProto.encode(message.baseline, writer.uint32(10).fork()).ldelim();
     }
-    for (const v of message.scenarios) {
-      ComparisonHistogramProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.scenarios !== undefined && message.scenarios.length !== 0) {
+      for (const v of message.scenarios) {
+        ComparisonHistogramProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -2377,7 +2417,7 @@ export const ComparisonLineProto = {
             break;
           }
 
-          message.scenarios.push(ComparisonHistogramProto.decode(reader, reader.uint32()));
+          message.scenarios!.push(ComparisonHistogramProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -2550,10 +2590,10 @@ function createBaseLabelledIconProto(): LabelledIconProto {
 
 export const LabelledIconProto = {
   encode(message: LabelledIconProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.icon !== "") {
+    if (message.icon !== undefined && message.icon !== "") {
       writer.uint32(10).string(message.icon);
     }
-    if (message.label !== "") {
+    if (message.label !== undefined && message.label !== "") {
       writer.uint32(18).string(message.label);
     }
     return writer;
@@ -2598,10 +2638,10 @@ export const LabelledIconProto = {
 
   toJSON(message: LabelledIconProto): unknown {
     const obj: any = {};
-    if (message.icon !== "") {
+    if (message.icon !== undefined && message.icon !== "") {
       obj.icon = message.icon;
     }
-    if (message.label !== "") {
+    if (message.label !== undefined && message.label !== "") {
       obj.label = message.label;
     }
     return obj;
@@ -2624,11 +2664,13 @@ function createBaseChipProto(): ChipProto {
 
 export const ChipProto = {
   encode(message: ChipProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.index !== 0) {
+    if (message.index !== undefined && message.index !== 0) {
       writer.uint32(8).int32(message.index);
     }
-    for (const v of message.labels) {
-      writer.uint32(18).string(v!);
+    if (message.labels !== undefined && message.labels.length !== 0) {
+      for (const v of message.labels) {
+        writer.uint32(18).string(v!);
+      }
     }
     return writer;
   },
@@ -2652,7 +2694,7 @@ export const ChipProto = {
             break;
           }
 
-          message.labels.push(reader.string());
+          message.labels!.push(reader.string());
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -2672,7 +2714,7 @@ export const ChipProto = {
 
   toJSON(message: ChipProto): unknown {
     const obj: any = {};
-    if (message.index !== 0) {
+    if (message.index !== undefined && message.index !== 0) {
       obj.index = Math.round(message.index);
     }
     if (message.labels?.length) {
@@ -2698,16 +2740,20 @@ function createBaseConditionProto(): ConditionProto {
 
 export const ConditionProto = {
   encode(message: ConditionProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    writer.uint32(10).fork();
-    for (const v of message.indices) {
-      writer.int32(v);
+    if (message.indices !== undefined && message.indices.length !== 0) {
+      writer.uint32(10).fork();
+      for (const v of message.indices) {
+        writer.int32(v);
+      }
+      writer.ldelim();
     }
-    writer.ldelim();
-    writer.uint32(18).fork();
-    for (const v of message.values) {
-      writer.int32(v);
+    if (message.values !== undefined && message.values.length !== 0) {
+      writer.uint32(18).fork();
+      for (const v of message.values) {
+        writer.int32(v);
+      }
+      writer.ldelim();
     }
-    writer.ldelim();
     return writer;
   },
 
@@ -2720,7 +2766,7 @@ export const ConditionProto = {
       switch (tag >>> 3) {
         case 1:
           if (tag === 8) {
-            message.indices.push(reader.int32());
+            message.indices!.push(reader.int32());
 
             continue;
           }
@@ -2728,7 +2774,7 @@ export const ConditionProto = {
           if (tag === 10) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
-              message.indices.push(reader.int32());
+              message.indices!.push(reader.int32());
             }
 
             continue;
@@ -2737,7 +2783,7 @@ export const ConditionProto = {
           break;
         case 2:
           if (tag === 16) {
-            message.values.push(reader.int32());
+            message.values!.push(reader.int32());
 
             continue;
           }
@@ -2745,7 +2791,7 @@ export const ConditionProto = {
           if (tag === 18) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
-              message.values.push(reader.int32());
+              message.values!.push(reader.int32());
             }
 
             continue;
@@ -2796,11 +2842,15 @@ function createBaseConditionalProto(): ConditionalProto {
 
 export const ConditionalProto = {
   encode(message: ConditionalProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.conditions) {
-      ConditionProto.encode(v!, writer.uint32(10).fork()).ldelim();
+    if (message.conditions !== undefined && message.conditions.length !== 0) {
+      for (const v of message.conditions) {
+        ConditionProto.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
     }
-    for (const v of message.atoms) {
-      AtomProto.encode(v!, writer.uint32(18).fork()).ldelim();
+    if (message.atoms !== undefined && message.atoms.length !== 0) {
+      for (const v of message.atoms) {
+        AtomProto.encode(v!, writer.uint32(18).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -2817,14 +2867,14 @@ export const ConditionalProto = {
             break;
           }
 
-          message.conditions.push(ConditionProto.decode(reader, reader.uint32()));
+          message.conditions!.push(ConditionProto.decode(reader, reader.uint32()));
           continue;
         case 2:
           if (tag !== 18) {
             break;
           }
 
-          message.atoms.push(AtomProto.decode(reader, reader.uint32()));
+          message.atoms!.push(AtomProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -2875,7 +2925,7 @@ export const GeoJSONProto = {
     if (message.condition !== undefined) {
       ConditionProto.encode(message.condition, writer.uint32(10).fork()).ldelim();
     }
-    if (message.index !== 0) {
+    if (message.index !== undefined && message.index !== 0) {
       writer.uint32(16).int32(message.index);
     }
     return writer;
@@ -2923,7 +2973,7 @@ export const GeoJSONProto = {
     if (message.condition !== undefined) {
       obj.condition = ConditionProto.toJSON(message.condition);
     }
-    if (message.index !== 0) {
+    if (message.index !== undefined && message.index !== 0) {
       obj.index = Math.round(message.index);
     }
     return obj;
@@ -2948,11 +2998,15 @@ function createBaseFeatureIDsProto(): FeatureIDsProto {
 
 export const FeatureIDsProto = {
   encode(message: FeatureIDsProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.namespaces) {
-      writer.uint32(26).string(v!);
+    if (message.namespaces !== undefined && message.namespaces.length !== 0) {
+      for (const v of message.namespaces) {
+        writer.uint32(26).string(v!);
+      }
     }
-    for (const v of message.ids) {
-      IDsProto.encode(v!, writer.uint32(34).fork()).ldelim();
+    if (message.ids !== undefined && message.ids.length !== 0) {
+      for (const v of message.ids) {
+        IDsProto.encode(v!, writer.uint32(34).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -2969,14 +3023,14 @@ export const FeatureIDsProto = {
             break;
           }
 
-          message.namespaces.push(reader.string());
+          message.namespaces!.push(reader.string());
           continue;
         case 4:
           if (tag !== 34) {
             break;
           }
 
-          message.ids.push(IDsProto.decode(reader, reader.uint32()));
+          message.ids!.push(IDsProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -3024,11 +3078,13 @@ function createBaseIDsProto(): IDsProto {
 
 export const IDsProto = {
   encode(message: IDsProto, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    writer.uint32(10).fork();
-    for (const v of message.ids) {
-      writer.uint64(v);
+    if (message.ids !== undefined && message.ids.length !== 0) {
+      writer.uint32(10).fork();
+      for (const v of message.ids) {
+        writer.uint64(v);
+      }
+      writer.ldelim();
     }
-    writer.ldelim();
     return writer;
   },
 
@@ -3041,7 +3097,7 @@ export const IDsProto = {
       switch (tag >>> 3) {
         case 1:
           if (tag === 8) {
-            message.ids.push(longToNumber(reader.uint64() as Long));
+            message.ids!.push(longToNumber(reader.uint64() as Long));
 
             continue;
           }
@@ -3049,7 +3105,7 @@ export const IDsProto = {
           if (tag === 10) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
-              message.ids.push(longToNumber(reader.uint64() as Long));
+              message.ids!.push(longToNumber(reader.uint64() as Long));
             }
 
             continue;
@@ -3099,8 +3155,10 @@ export const ComparisonRequestProto = {
     if (message.baseline !== undefined) {
       FeatureIDProto.encode(message.baseline, writer.uint32(18).fork()).ldelim();
     }
-    for (const v of message.scenarios) {
-      FeatureIDProto.encode(v!, writer.uint32(26).fork()).ldelim();
+    if (message.scenarios !== undefined && message.scenarios.length !== 0) {
+      for (const v of message.scenarios) {
+        FeatureIDProto.encode(v!, writer.uint32(26).fork()).ldelim();
+      }
     }
     return writer;
   },
@@ -3131,7 +3189,7 @@ export const ComparisonRequestProto = {
             break;
           }
 
-          message.scenarios.push(FeatureIDProto.decode(reader, reader.uint32()));
+          message.scenarios!.push(FeatureIDProto.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {

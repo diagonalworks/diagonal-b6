@@ -1,6 +1,7 @@
 import { Line } from '@/components/system/Line';
 import { useLineContext } from '@/lib/context/line';
 import { AtomProto } from '@/types/generated/ui';
+import { isUndefined } from 'lodash';
 import { ChipAdapter } from './ChipAdapter';
 import { ConditionalAdapter } from './ConditionalAdapter';
 import { LabelledIconAdapter } from './LabelledIconAdapter';
@@ -17,13 +18,18 @@ export const AtomAdapter = ({ atom }: { atom: AtomProto }) => {
     }
 
     if (atom.chip) {
-        const lineChip = line.state.chips[atom.chip.index];
+        const chipIndex = atom.chip.index;
+        if (isUndefined(chipIndex)) {
+            console.warn(`Chip index is undefined`, { line, atom });
+            return null;
+        }
+        const lineChip = line.state.chips[chipIndex];
         if (lineChip) {
             return (
                 <ChipAdapter
                     chip={lineChip}
                     onChange={(value: number) =>
-                        line.setChipValue(lineChip.atom.index, value)
+                        line.setChipValue(lineChip.atom.index ?? 0, value)
                     }
                 />
             );
