@@ -558,6 +558,30 @@ func (c *CollectionFeature) FindValue(key any) (any, bool) {
 	return nil, false
 }
 
+func (c *CollectionFeature) FindValues(key any, values []any) []any {
+	if c.sorted {
+		i := sort.Search(len(c.Keys), func(i int) bool {
+			greater, _ := b6.Less(c.Keys[i], key)
+			return !greater
+		})
+		for i < len(c.Keys) {
+			if equal, _ := b6.Equal(c.Keys[i], key); equal {
+				values = append(values, c.Values[i])
+			} else {
+				break
+			}
+			i++
+		}
+	} else {
+		for i := range c.Keys {
+			if equal, _ := b6.Equal(c.Keys[i], key); equal {
+				values = append(values, c.Values[i])
+			}
+		}
+	}
+	return values
+}
+
 func (c *CollectionFeature) Sort() {
 	sort.Sort(byCollectionFeatureKey(*c))
 	c.sorted = true

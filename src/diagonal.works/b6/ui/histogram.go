@@ -29,18 +29,10 @@ func addLabel(response *UIResponseJSON, f b6.Feature) {
 
 func fillResponseFromHistogramFeature(response *UIResponseJSON, c b6.CollectionFeature, w b6.World) error {
 	p := (*pb.UIResponseProto)(response.Proto)
-	labels := api.HistogramBucketLabels(c)
-	counts := api.HistogramBucketCounts(c)
-
-	if len(labels) != len(counts) {
-		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, c, w)
-		highlightInResponse(p, c.FeatureID())
-		return nil
-	}
-
-	total := 0
-	for _, count := range counts {
-		total += count
+	counts, total, err := api.HistogramBucketCounts(c)
+	labels := api.HistogramBucketLabels(c, len(counts))
+	if err != nil {
+		return err
 	}
 
 	addLabel(response, c)
@@ -78,5 +70,27 @@ func fillResponseFromHistogramFeature(response *UIResponseJSON, c b6.CollectionF
 		Q:      c.FeatureID().String(),
 		Before: pb.MapLayerPosition_MapLayerPositionEnd,
 	})
+
+	if b6.CanAdaptCollection[any, b6.FeatureID](c) {
+		ids := b6.AdaptCollection[any, b6.FeatureID](c)
+		err = fillResponseFromHistogramFeatures(response, ids, w)
+	}
+
+	return err
+}
+
+func fillResponseFromHistogramFeatures(response *UIResponseJSON, c b6.Collection[any, b6.FeatureID], w b6.World) error {
+	i := c.Begin()
+	values := make(map[b6.FeatureID]struct{})
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return err
+		} else if !ok {
+			break
+		}
+		values[i.Value()] = struct{}{}
+	}
+	fillResponseFromDestinations(response, values, w)
 	return nil
 }

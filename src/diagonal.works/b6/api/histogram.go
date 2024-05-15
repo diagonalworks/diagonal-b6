@@ -10,7 +10,22 @@ import (
 	"diagonal.works/b6/ingest"
 )
 
+const HistogramOriginDestinationKey = "b6:origin_destination"
+
 func NewHistogramFromCollection(c b6.UntypedCollection, id b6.CollectionID) (*ingest.CollectionFeature, error) {
+	var h *ingest.CollectionFeature
+	var err error
+	if isOriginDestinationCollection(c) {
+		h, err = newOriginDestinationHistogram(c)
+	} else {
+		h, err = newBucketedHistogram(c)
+	}
+	h.CollectionID = id
+	h.Tags = append(h.Tags, b6.Tag{Key: "b6", Value: b6.String("histogram")})
+	return h, err
+}
+
+func newBucketedHistogram(c b6.UntypedCollection) (*ingest.CollectionFeature, error) {
 	kvs, err := countValues(c)
 	if err != nil {
 		return nil, err
@@ -21,14 +36,9 @@ func NewHistogramFromCollection(c b6.UntypedCollection, id b6.CollectionID) (*in
 		return nil, err
 	}
 
-	tags := []b6.Tag{{Key: "b6", Value: b6.String("histogram")}}
+	histogram := ingest.CollectionFeature{}
 	for i, bucket := range buckets {
-		tags = append(tags, b6.Tag{Key: fmt.Sprintf("bucket:%d", i), Value: b6.String(bucket.label)})
-	}
-
-	histogram := ingest.CollectionFeature{
-		Tags:         tags,
-		CollectionID: id,
+		histogram.Tags = append(histogram.Tags, b6.Tag{Key: fmt.Sprintf("bucket:%d", i), Value: b6.String(bucket.label)})
 	}
 
 	i := c.BeginUntyped()
@@ -48,27 +58,76 @@ func NewHistogramFromCollection(c b6.UntypedCollection, id b6.CollectionID) (*in
 	return &histogram, nil
 }
 
-func HistogramBucketLabels(c b6.CollectionFeature) []string {
-	i := 0
-	labels := make([]string, 0)
+func newOriginDestinationHistogram(c b6.UntypedCollection) (*ingest.CollectionFeature, error) {
+	histogram := ingest.CollectionFeature{
+		Tags: []b6.Tag{{Key: HistogramOriginDestinationKey, Value: b6.String("yes")}},
+	}
+	i := c.BeginUntyped()
 	for {
-		if label := c.Get(fmt.Sprintf("bucket:%d", i)); label.IsValid() {
-			labels = append(labels, label.Value.String())
-		} else {
+		ok, err := i.Next()
+		if err != nil {
+			return nil, err
+		} else if !ok {
 			break
 		}
-		i++
+		k, kok := i.Key().(b6.FeatureID)
+		v, vok := i.Value().(b6.FeatureID)
+		if !kok || !vok {
+			return nil, fmt.Errorf("expected all keys and values to be FeatureID")
+		}
+		histogram.Keys = append(histogram.Keys, k)
+		histogram.Values = append(histogram.Values, v)
+	}
+
+	// TODO: expose whether the sorted flag on all collections, not just
+	// collection features
+	histogram.Sort()
+	return &histogram, nil
+}
+
+func isOriginDestinationCollection(c b6.UntypedCollection) bool {
+	// TODO: Add methods to collection to recover the key and
+	// value types, so it'll work with empty collections, once
+	// we've written code to identify the return type of functions
+	// given their args (for, eg, map collections)
+	i := c.BeginUntyped()
+	ok, err := i.Next()
+	if !ok || err != nil {
+		return false
+	}
+	_, kok := i.Key().(b6.FeatureID)
+	_, vok := i.Value().(b6.FeatureID)
+	return kok && vok
+}
+
+func HistogramBucketLabels(c b6.CollectionFeature, n int) []string {
+	labels := make([]string, n)
+	for i := range labels {
+		if label := c.Get(fmt.Sprintf("bucket:%d", i)); label.IsValid() {
+			labels[i] = label.Value.String()
+		} else {
+			labels[i] = strconv.Itoa(i)
+		}
 	}
 	return labels
 }
 
-// TODO: Turn this into a HistogramFeature struct?
+func HistogramBucketCounts(c b6.CollectionFeature) ([]int, int, error) {
+	if od := c.Get(HistogramOriginDestinationKey); od.IsValid() {
+		return bucketCountsFromOriginDestinationHistogram(c)
+	} else {
+		return bucketCountsFromBucketedHistogram(c)
+	}
+}
 
-func HistogramBucketCounts(c b6.CollectionFeature) []int {
+func bucketCountsFromBucketedHistogram(c b6.CollectionFeature) ([]int, int, error) {
 	counts := make([]int, 0)
+	total := 0
 	i := b6.AdaptCollection[any, int](c).Begin()
+	var err error
 	for {
-		ok, err := i.Next()
+		var ok bool
+		ok, err = i.Next()
 		if err != nil || !ok {
 			break
 		}
@@ -76,8 +135,46 @@ func HistogramBucketCounts(c b6.CollectionFeature) []int {
 			counts = append(counts, 0)
 		}
 		counts[i.Value()]++
+		total++
 	}
-	return counts
+	return counts, total, err
+}
+
+func bucketCountsFromOriginDestinationHistogram(c b6.CollectionFeature) ([]int, int, error) {
+	i := b6.AdaptCollection[b6.FeatureID, b6.FeatureID](c).Begin()
+	id := b6.FeatureIDInvalid
+	count := 0
+	total := 0
+	buckets := make([]int, 0)
+	for {
+		ok, err := i.Next()
+		if err != nil {
+			return buckets, 0, err
+		} else if !ok {
+			break
+		}
+		if i.Key() != id {
+			if id != b6.FeatureIDInvalid {
+				for len(buckets) <= count {
+					buckets = append(buckets, 0)
+				}
+				buckets[count]++
+			}
+			id = i.Key()
+			total++
+			count = 0
+		}
+		if i.Value() != b6.FeatureIDInvalid {
+			count++
+		}
+	}
+	if id != b6.FeatureIDInvalid {
+		for len(buckets) <= count {
+			buckets = append(buckets, 0)
+		}
+		buckets[count]++
+	}
+	return buckets, total, nil
 }
 
 type bound struct {
@@ -145,7 +242,7 @@ func (b buckets) bucket(v interface{}) (int, error) {
 	return -1, nil // Allowing data not to be bucketed.
 }
 
-const maxBuckets = 6
+const MaxHistogramBuckets = 6
 
 func categorical(kvs []*kv) (buckets, error) {
 	sort.Slice(kvs, func(i, j int) bool {
@@ -154,12 +251,12 @@ func categorical(kvs []*kv) (buckets, error) {
 
 	var b buckets
 	for i, kv := range kvs {
-		if i == maxBuckets {
+		if i == MaxHistogramBuckets {
 			break
 		}
 
 		key := kv.key
-		if i == maxBuckets-1 && len(kvs) > maxBuckets {
+		if i == MaxHistogramBuckets-1 && len(kvs) > MaxHistogramBuckets {
 			key = "other"
 		}
 
@@ -180,14 +277,14 @@ func uniform(kvs []*kv) (buckets, error) {
 	})
 
 	var b buckets
-	if (len(kvs)) <= maxBuckets {
+	if (len(kvs)) <= MaxHistogramBuckets {
 		for _, kv := range kvs {
 			key := kv.key
 			b = append(b, bound{lower: kv.key, label: fmt.Sprint(kv.key), within: func(v interface{}) (bool, error) { return v == key, nil }})
 		}
 	} else {
 		for len(kvs) > 0 {
-			bucket_size := len(kvs) / (maxBuckets - len(b))
+			bucket_size := len(kvs) / (MaxHistogramBuckets - len(b))
 			if len(kvs) > bucket_size {
 				b = append(b, xBound(kvs[0].key, kvs[bucket_size].key))
 				kvs = kvs[bucket_size:]

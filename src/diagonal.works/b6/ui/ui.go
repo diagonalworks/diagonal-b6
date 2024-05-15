@@ -573,7 +573,7 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 				return fillResponseFromHistogramFeature(response, c, w)
 			}
 		}
-		p.Stack.Substacks = fillSubstacksFromFeature(p.Stack.Substacks, r, w)
+		p.Stack.Substacks = fillSubstacksFromFeature(response, p.Stack.Substacks, r, w)
 		highlightInResponse(p, r.FeatureID())
 	case b6.FeatureID:
 		if f := w.FindFeatureByID(r); f != nil {
