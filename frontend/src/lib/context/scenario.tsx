@@ -23,11 +23,17 @@ import { $FixMe } from '@/utils/defs';
 import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
 import { useAtomValue } from 'jotai';
-import { pickBy } from 'lodash';
+import { isEqual, pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
 import { b6, b6Path } from '../b6';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
+
+export type QueryLayer = {
+    layer: MapLayerProto;
+    histogram: OutlinerStore['histogram'];
+    show?: boolean;
+};
 
 const ScenarioContext = createContext<{
     scenario: Scenario;
@@ -38,13 +44,10 @@ const ScenarioContext = createContext<{
     draggableOutliners: OutlinerStore[];
     dockedOutliners: OutlinerStore[];
     comparisonOutliners: OutlinerStore[];
+    highlightedFeatures: FeatureIDProto[];
     getVisibleMarkers: (map: MapRef) => $FixMe[];
     geoJSON: GeoJsonObject[];
-    queryLayers: Array<{
-        layer: MapLayerProto;
-        histogram: OutlinerStore['histogram'];
-        show?: boolean;
-    }>;
+    queryLayers: QueryLayer[];
     isDefiningChange?: boolean;
     addFeatureToChange: (feature: ChangeFeature) => void;
     removeFeatureFromChange: (feature: ChangeFeature) => void;
@@ -63,6 +66,7 @@ const ScenarioContext = createContext<{
     getVisibleMarkers: () => [],
     queryLayers: [],
     geoJSON: [],
+    highlightedFeatures: [],
     isDefiningChange: false,
     createOutlinerInScenario: () => {},
     addFeatureToChange: () => {},
@@ -205,13 +209,13 @@ export const ScenarioProvider = ({
     const removeFeatureFromChange = useCallback(
         (feature: ChangeFeature) => {
             setApp((draft) => {
-                if (!draft.scenarios[scenario.id].change?.features) return;
+                const features =
+                    draft.scenarios[scenario.id].change?.features?.filter(
+                        (f) => !isEqual(f.id, feature.id)
+                    ) || [];
                 draft.scenarios[scenario.id].change = {
                     ...draft.scenarios[scenario.id].change,
-                    features:
-                        draft.scenarios[scenario.id].change?.features?.filter(
-                            (f) => f.expression !== feature.expression
-                        ) || [],
+                    features,
                 };
             });
         },
@@ -336,14 +340,37 @@ export const ScenarioProvider = ({
 
     const queryLayers = useMemo(() => {
         return Object.values(scenarioOutliners).flatMap((outliner) => {
-            return (
-                outliner.data?.proto.layers?.map((l) => ({
-                    layer: l,
-                    histogram: outliner.histogram,
-                    show: outliner.active ?? outliner.properties.comparison,
-                })) || []
-            );
+            return (outliner.data?.proto.layers?.map((l) => ({
+                layer: l,
+                histogram: outliner.histogram,
+                show: outliner.active || outliner.properties.comparison,
+            })) || []) as QueryLayer[];
         });
+    }, [scenarioOutliners]);
+
+    const highlightedFeatures = useMemo(() => {
+        const featureIds = Object.values(scenarioOutliners)
+            .filter(
+                (outliner) => outliner.active || outliner.properties.transient
+            )
+            .flatMap((outliner) => outliner.data?.proto.highlighted || []);
+
+        return (
+            featureIds.flatMap((f) => {
+                return (
+                    f.ids?.flatMap((id, i) => {
+                        return (
+                            id.ids?.map((id) => {
+                                return {
+                                    namespace: f.namespaces?.[i],
+                                    value: id,
+                                } as FeatureIDProto;
+                            }) || []
+                        );
+                    }) || []
+                );
+            }) || []
+        );
     }, [scenarioOutliners]);
 
     const getVisibleMarkers = useCallback(
@@ -420,6 +447,7 @@ export const ScenarioProvider = ({
             setChangeAnalysis,
             queryScenario,
             runScenario,
+            highlightedFeatures,
         };
     }, [
         scenario,
@@ -440,6 +468,7 @@ export const ScenarioProvider = ({
         setChangeAnalysis,
         queryScenario,
         runScenario,
+        highlightedFeatures,
     ]);
 
     return (
