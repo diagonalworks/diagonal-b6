@@ -272,6 +272,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
 
     return (
         <MapLibre
+            key={id}
             id={id}
             {...viewState}
             onMove={(evt) => {

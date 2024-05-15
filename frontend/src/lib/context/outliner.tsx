@@ -277,10 +277,11 @@ export const OutlinerProvider = ({
     }, [outliner.data?.proto.highlighted]);
 
     useEffect(() => {
+        if (!map) return;
         highlightedFeatures.forEach((f) => {
-            if (!f) return;
+            if (!f || !map) return;
             const { feature, layer } = f;
-            map?.setFeatureState(
+            map.setFeatureState(
                 {
                     source: 'diagonal',
                     sourceLayer: layer,
@@ -292,22 +293,26 @@ export const OutlinerProvider = ({
             );
         });
         return () => {
-            highlightedFeatures.forEach((f) => {
-                if (!f) return;
-                const { feature, layer } = f;
-                map?.setFeatureState(
-                    {
-                        source: 'diagonal',
-                        sourceLayer: layer,
-                        id: feature.id,
-                    },
-                    {
-                        highlighted: false,
-                    }
-                );
-            });
+            try {
+                highlightedFeatures.forEach((f) => {
+                    if (!f || !map) return;
+                    const { feature, layer } = f;
+                    map.setFeatureState(
+                        {
+                            source: 'diagonal',
+                            sourceLayer: layer,
+                            id: feature.id,
+                        },
+                        {
+                            highlighted: false,
+                        }
+                    );
+                });
+            } catch (e) {
+                console.error(e);
+            }
         };
-    }, [outliner.data?.proto.highlighted]);
+    }, [outliner.data?.proto.highlighted, map]);
 
     return (
         <OutlinerContext.Provider
