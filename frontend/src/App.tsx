@@ -90,7 +90,7 @@ const Workspace = () => {
                 )}
             </div>
             {activeComparator && (
-                <div className="absolute top-[60vh] left-1/2 -translate-x-1/2 bg-white">
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 translate bg-white">
                     <ComparatorProvider comparator={activeComparator}>
                         <Comparator />
                     </ComparatorProvider>
