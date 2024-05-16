@@ -4,6 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+    @apply antialiased;
+}
+
 .loader {
     width: 12px;
     height: 12px;
