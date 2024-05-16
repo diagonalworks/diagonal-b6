@@ -2,7 +2,7 @@ import { useChartDimensions } from '@/lib/useChartDimensions';
 import { scaleLinear } from '@visx/scale';
 import { ScaleLinear } from 'd3-scale';
 import { motion } from 'framer-motion';
-import { isNull } from 'lodash';
+import { isNil, isNull } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from './Line';
@@ -195,9 +195,9 @@ function HistogramBar<T>({
                                 {label ? label(d) : bucket(d)}
                             </span>
                         </div>
-                        {lineValue !== 0 && (
+                        {!isNil(lineValue) && (
                             <div className="text-xs text-graphite-70">
-                                {diff !== 0 && (
+                                {diff !== 0 && !isNull(originValue) && (
                                     <span
                                         className={twMerge(
                                             'mr-1',
@@ -209,12 +209,12 @@ function HistogramBar<T>({
                                         {`${isDecreasing ? '' : '+'}${diff}`}
                                     </span>
                                 )}
-                                {lineValue !== 0 && <span>{lineValue}</span>}
+                                {<span>{lineValue}</span>}
                             </div>
                         )}
                     </div>
                     {/* current hack to not show 0 bucket */}
-                    {lineValue && lineValue > 0 && type === 'histogram' ? (
+                    {!isNil(lineValue) && type === 'histogram' ? (
                         <svg
                             width={dimensions.width}
                             height={dimensions.height}
@@ -222,9 +222,7 @@ function HistogramBar<T>({
                         >
                             {
                                 <motion.rect
-                                    animate={{
-                                        width: xScale.range()[1],
-                                    }}
+                                    width={xScale.range()[1]}
                                     x={dimensions.marginLeft}
                                     y={dimensions.marginTop}
                                     height={BAR_HEIGHT}
@@ -279,7 +277,7 @@ function HistogramBar<T>({
                             ) : null}
                         </svg>
                     ) : (
-                        <></>
+                        <svg height={dimensions.height}></svg>
                     )}
                 </div>
             </Wrapper>
