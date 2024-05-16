@@ -8,11 +8,15 @@ export const startupQueryAtom = atomWithQuery((get) => {
     const viewState = get(viewAtom);
     return {
         queryKey: ['startup', collection],
-        queryFn: () =>
-            b6.startup({
+        queryFn: () => {
+            const { latitude, longitude } = viewState;
+            const ll =
+                latitude && longitude ? `${latitude},${longitude}` : undefined;
+            return b6.startup({
                 z: viewState.zoom.toString(),
-                ll: `${viewState.latitude},${viewState.longitude}`,
+                ...(ll ? { ll } : {}),
                 r: collection,
-            }),
+            });
+        },
     };
 });

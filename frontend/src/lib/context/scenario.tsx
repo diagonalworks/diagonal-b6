@@ -423,7 +423,24 @@ export const ScenarioProvider = ({
                           },
                       },
                   }
-                : basemapStyle
+                : {
+                      ...basemapStyle,
+                      sources: {
+                          ...basemapStyle.sources,
+                          diagonal: {
+                              ...basemapStyle.sources.diagonal,
+                              tiles: [
+                                `${
+                                    window.location.origin
+                                }${b6Path}tiles/base/{z}/{x}/{y}.mvt${
+                                    scenario.featureId
+                                        ? `?r=collection/${scenario.featureId.namespace}/${scenario.featureId.value}`
+                                        : ''
+                                }`,
+                              ],
+                          }
+                      }
+                  }
         ) as StyleSpecification;
     }, [tab, scenario.featureId]);
 

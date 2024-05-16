@@ -5,7 +5,7 @@ import { ViewState } from 'react-map-gl';
 
 const INITIAL_COORDINATES = { latE7: 515361156, lngE7: -1255161 };
 const INITIAL_ZOOM = 16;
-const INITIAL_CENTER = {
+export const INITIAL_CENTER = {
     lat: INITIAL_COORDINATES.latE7 / 1e7,
     lng: INITIAL_COORDINATES.lngE7 / 1e7,
 };
@@ -16,8 +16,8 @@ const initialViewParamsFromUrl = () => {
     const zoom = params.get('z');
 
     const initialViewState = {
-        latitude: mapCenter ? parseFloat(mapCenter[0]) : INITIAL_CENTER.lat,
-        longitude: mapCenter ? parseFloat(mapCenter[1]) : INITIAL_CENTER.lng,
+        latitude: mapCenter && parseFloat(mapCenter[0]),
+        longitude: mapCenter && parseFloat(mapCenter[1]),
         zoom: zoom ? parseInt(zoom) : INITIAL_ZOOM,
     };
 
@@ -35,7 +35,10 @@ export const zoomStorageAtom = atomWithStorage<number>(
     }
 );
 
-export const centerStorageAtom = atomWithStorage<{ lat: number; lng: number }>(
+export const centerStorageAtom = atomWithStorage<{
+    lat?: number;
+    lng?: number;
+}>(
     'll',
     INITIAL_CENTER,
     urlSearchParamsStorage({
@@ -44,8 +47,8 @@ export const centerStorageAtom = atomWithStorage<{ lat: number; lng: number }>(
         deserialize: (value) => {
             if (!value)
                 return {
-                    lat: INITIAL_COORDINATES.latE7 / 1e7,
-                    lng: INITIAL_COORDINATES.lngE7 / 1e7,
+                    lat: latitude && latitude / 1e7,
+                    lng: longitude && longitude / 1e7,
                 };
             const [lat, lng] = value.split(',').map(Number);
             return { lat, lng };
@@ -56,8 +59,14 @@ export const centerStorageAtom = atomWithStorage<{ lat: number; lng: number }>(
     }
 );
 
-const debouncedCenter = atomWithDebounce(INITIAL_CENTER, 200);
-const debouncedZoom = atomWithDebounce(INITIAL_ZOOM, 200);
+const debouncedCenter = atomWithDebounce(
+    {
+        lat: latitude,
+        lng: longitude,
+    },
+    200
+);
+const debouncedZoom = atomWithDebounce(zoom, 200);
 
 const centerAtom = atom({
     lat: latitude,

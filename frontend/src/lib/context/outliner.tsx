@@ -131,8 +131,12 @@ export const OutlinerProvider = ({
                 node: request?.node,
                 root: scenario?.featureId,
                 logMapCenter: {
-                    latE7: Math.round(viewState.latitude * 1e7),
-                    lngE7: Math.round(viewState.longitude * 1e7),
+                    latE7:
+                        viewState.latitude &&
+                        Math.round(viewState.latitude * 1e7),
+                    lngE7:
+                        viewState.longitude &&
+                        Math.round(viewState.longitude * 1e7),
                 },
                 logMapZoom: 0,
                 session: data?.session || 0,
@@ -167,6 +171,7 @@ export const OutlinerProvider = ({
     }, [outliner.data?.proto.stack?.substacks]);
 
     useEffect(() => {
+        // Set the map center from newly opened outliners
         const lat = query.data?.proto.mapCenter?.latE7;
         const lng = query.data?.proto.mapCenter?.lngE7;
         if (lat && lng) {
