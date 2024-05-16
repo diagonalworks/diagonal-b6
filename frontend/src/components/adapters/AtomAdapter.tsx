@@ -10,7 +10,20 @@ export const AtomAdapter = ({ atom }: { atom: AtomProto }) => {
     const line = useLineContext();
 
     if (atom.value) {
-        return <Line.Value className="text-sm">{atom.value}</Line.Value>;
+        let value = atom.value;
+        const toBold = atom.value.match(/_((?:[a-zA-Z]|\d)*)_/);
+        if (toBold?.[0]) {
+            value = value.replaceAll(toBold[0], `<b>${toBold[1]}</b>`);
+        }
+        return (
+            <Line.Value className="text-sm">
+                <div
+                    dangerouslySetInnerHTML={{
+                        __html: value,
+                    }}
+                />
+            </Line.Value>
+        );
     }
 
     if (atom.labelledIcon) {
