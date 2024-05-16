@@ -8,9 +8,10 @@ import { match } from 'ts-pattern';
 import { Histogram } from '../system/Histogram';
 
 const colorInterpolator = interpolateRgbBasis([
-    colors.green[20],
-    colors.cyan[50],
-    colors.violet[80],
+    colors.graphite[40],
+    colors.violet[60],
+    colors.red[60],
+    colors.red[70],
 ]);
 
 // default color range uses the colorInterpolator to define a 6 color range
