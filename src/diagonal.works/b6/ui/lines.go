@@ -218,8 +218,7 @@ func fillSubstackFromCollection(substack *pb.SubstackProto, c b6.UntypedCollecti
 	return nil
 }
 
-func lineFromTags(f b6.Feature) *pb.LineProto {
-	tags := f.AllTags()
+func lineFromTags(tags []b6.Tag, f b6.Feature) *pb.LineProto {
 	tl := &pb.TagsLineProto{
 		Tags: make([]*pb.TagAtomProto, len(tags)),
 	}
@@ -402,9 +401,10 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 		}
 	}
 
-	if len(f.AllTags()) > 0 {
-		substack := &pb.SubstackProto{}
-		substack.Lines = append(substack.Lines, lineFromTags(f))
+	if tags := f.AllTags(); len(tags) > 0 {
+		substack := &pb.SubstackProto{Collapsable: true}
+		line := leftRightValueLineFromValues("Tags", len(tags), w)
+		substack.Lines = append(substack.Lines, line, lineFromTags(tags, f))
 		substacks = append(substacks, substack)
 	}
 
