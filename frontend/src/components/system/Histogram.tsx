@@ -1,6 +1,5 @@
 import { useChartDimensions } from '@/lib/useChartDimensions';
 import { scaleLinear } from '@visx/scale';
-import { Text } from '@visx/text';
 import { ScaleLinear } from 'd3-scale';
 import { motion } from 'framer-motion';
 import { isNull } from 'lodash';
@@ -10,7 +9,7 @@ import { Line } from './Line';
 
 const BAR_MARGIN = {
     marginTop: 1, // 1px to make space for the border
-    marginRight: 64,
+    marginRight: 20,
     marginBottom: 1,
     marginLeft: 1,
 };
@@ -32,6 +31,7 @@ export function Histogram<T>({
     total,
     selected,
     onSelect,
+    chartLabel,
     selectable = false,
     type = 'histogram',
 }: {
@@ -54,6 +54,7 @@ export function Histogram<T>({
     /** Optional change handler for the value of the selected bucket. */
     onSelect?: (d: T | null) => void;
     /** The type of histogram to display. */
+    chartLabel?: string;
     type?: 'swatch' | 'histogram';
 }) {
     const [internalSelected, setInternalSelected] = useState<T | null>(null);
@@ -62,15 +63,20 @@ export function Histogram<T>({
         height: BAR_HEIGHT + BAR_MARGIN.marginTop + BAR_MARGIN.marginBottom,
     });
 
+    const maxValue = useMemo(() => {
+        if (total) {
+            return Math.max(...data.flatMap((d) => total(d) ?? []));
+        } else {
+            return Math.max(...data.flatMap((d) => value(d) ?? []));
+        }
+    }, [data, total, value]);
+
     const xScale = useMemo(() => {
-        const domain = data
-            .filter((d) => !isNull(total(d)))
-            .map(total) as number[];
         return scaleLinear({
-            domain: [0, Math.max(...domain)],
+            domain: [0, maxValue],
             range: [0, dimensions.boundedWidth],
         });
-    }, [data, dimensions.boundedWidth, total]);
+    }, [dimensions.boundedWidth, maxValue]);
 
     const selectedBucket = selectable ? selected ?? internalSelected : null;
 
@@ -91,6 +97,10 @@ export function Histogram<T>({
             className="flex flex-col [&_.line]:border-t-0  last:[&_.line]:border-b-0"
             ref={ref}
         >
+            <Line className=" justify-between text-graphite-70 ">
+                <div>{chartLabel}</div>
+                <div>buildings</div>
+            </Line>
             {data.map((d, i) => {
                 return (
                     <HistogramBar
@@ -148,8 +158,6 @@ function HistogramBar<T>({
         height: BAR_HEIGHT + BAR_MARGIN.marginTop + BAR_MARGIN.marginBottom,
     });
 
-    const labelRef = React.useRef<SVGSVGElement>(null);
-
     const Wrapper = selectable ? Line.Button : React.Fragment;
 
     const isSelected = selectedBucket && bucket(d) === bucket(selectedBucket);
@@ -159,8 +167,7 @@ function HistogramBar<T>({
     const originValue = origin ? origin(d) : null;
     const originBarLength = originValue ? xScale(originValue) : 0;
     const isDecreasing = originValue && lineValue && lineValue < originValue;
-
-    const textX = isDecreasing ? originBarLength : barLength;
+    const diff = lineValue ? lineValue - (originValue ?? 0) : 0;
 
     return (
         <Line>
@@ -176,16 +183,35 @@ function HistogramBar<T>({
                         selectedBucket && !isSelected && 'opacity-50'
                     )}
                 >
-                    <div className="flex gap-1 mb-1">
-                        <div
-                            className="w-4 h-4 rounded border border-graphite-80"
-                            style={{
-                                backgroundColor: color(d),
-                            }}
-                        />
-                        <span className="text-xs text-graphite-100">
-                            {label ? label(d) : bucket(d)}
-                        </span>
+                    <div className="flex justify-between">
+                        <div className="flex gap-1 mb-1">
+                            <div
+                                className="w-4 h-4 rounded border border-graphite-80"
+                                style={{
+                                    backgroundColor: color(d),
+                                }}
+                            />
+                            <span className="text-xs text-graphite-100">
+                                {label ? label(d) : bucket(d)}
+                            </span>
+                        </div>
+                        {lineValue !== 0 && (
+                            <div className="text-xs text-graphite-70">
+                                {diff !== 0 && (
+                                    <span
+                                        className={twMerge(
+                                            'mr-1',
+                                            isDecreasing
+                                                ? 'text-ultramarine-50'
+                                                : 'text-ultramarine-70'
+                                        )}
+                                    >
+                                        {`${isDecreasing ? '' : '+'}${diff}`}
+                                    </span>
+                                )}
+                                {lineValue !== 0 && <span>{lineValue}</span>}
+                            </div>
+                        )}
                     </div>
                     {/* current hack to not show 0 bucket */}
                     {lineValue && lineValue > 0 && type === 'histogram' ? (
@@ -194,6 +220,21 @@ function HistogramBar<T>({
                             height={dimensions.height}
                             className=" overflow-visible"
                         >
+                            {
+                                <motion.rect
+                                    animate={{
+                                        width: xScale.range()[1],
+                                    }}
+                                    x={dimensions.marginLeft}
+                                    y={dimensions.marginTop}
+                                    height={BAR_HEIGHT}
+                                    rx={1}
+                                    className={twMerge(
+                                        'stroke-graphite-20 fill-graphite-20'
+                                    )}
+                                    strokeWidth={0.7}
+                                />
+                            }
                             {originValue !== 0 && (
                                 <motion.rect
                                     animate={{
@@ -230,50 +271,12 @@ function HistogramBar<T>({
                                     rx={1}
                                     className={twMerge(
                                         isDecreasing
-                                            ? 'fill-rose-40 stroke-rose-40'
-                                            : 'fill-rose-60 stroke-rose-60'
+                                            ? 'fill-ultramarine-40 stroke-ultramarine-40'
+                                            : 'fill-ultramarine-60 stroke-ultramarine-60'
                                     )}
                                     strokeWidth={0.7}
                                 />
                             ) : null}
-                            <motion.g
-                                animate={{
-                                    translateX: textX + 5,
-                                    translateY: BAR_HEIGHT / 2,
-                                }}
-                            >
-                                <Text
-                                    innerRef={labelRef}
-                                    className="  fill-graphite-50"
-                                    verticalAnchor="middle"
-                                    fontSize={10}
-                                >
-                                    {lineValue}
-                                </Text>
-                                {originValue && (
-                                    <Text
-                                        className={twMerge(
-                                            isDecreasing
-                                                ? 'fill-rose-40'
-                                                : 'fill-rose-60'
-                                        )}
-                                        verticalAnchor="middle"
-                                        fontSize={10}
-                                        dx={
-                                            (labelRef.current?.getBBox()
-                                                .width ?? 0) + 2
-                                        }
-                                    >
-                                        {`(${
-                                            isDecreasing
-                                                ? ''
-                                                : lineValue === originValue
-                                                ? ''
-                                                : '+'
-                                        }${lineValue - originValue})`}
-                                    </Text>
-                                )}
-                            </motion.g>
                         </svg>
                     ) : (
                         <></>

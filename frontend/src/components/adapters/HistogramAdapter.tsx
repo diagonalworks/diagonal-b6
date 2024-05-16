@@ -33,6 +33,7 @@ export const HistogramAdaptor = ({
     bars,
     swatches,
     origin,
+    chartLabel,
 }: {
     type: 'swatch' | 'histogram';
     bars?: HistogramBarLineProto[];
@@ -41,6 +42,7 @@ export const HistogramAdaptor = ({
         bars?: HistogramBarLineProto[];
         swatches?: SwatchLineProto[];
     };
+    chartLabel?: string;
 }) => {
     const { outliner, setHistogramColorScale, setHistogramBucket } =
         useOutlinerContext();
@@ -119,6 +121,7 @@ export const HistogramAdaptor = ({
             color={(d) => (scale ? scale(`${d.index}`) : '#fff')}
             onSelect={handleSelect}
             selected={selected}
+            chartLabel={chartLabel}
             selectable
         />
     );

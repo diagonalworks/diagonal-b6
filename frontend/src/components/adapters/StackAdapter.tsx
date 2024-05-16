@@ -1,14 +1,21 @@
+import { startupQueryAtom } from '@/atoms/startup';
 import { findAtoms } from '@/lib/atoms';
 import { useAppContext } from '@/lib/context/app';
 import { useOutlinerContext } from '@/lib/context/outliner';
 import { useScenarioContext } from '@/lib/context/scenario';
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
+import { useAtomValue } from 'jotai';
 import { isEqual } from 'lodash';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { Line } from '../system/Line';
 import { Stack } from '../system/Stack';
 import { SubstackAdapter } from './SubstackAdapter';
+
+const getFirstWord = (s?: string) => {
+    if (!s) return '';
+    return s.match(/^\s*(\w+)/)?.[0]?.toLocaleLowerCase();
+};
 
 export const StackAdapter = () => {
     const {
@@ -22,6 +29,20 @@ export const StackAdapter = () => {
         removeFeatureFromChange,
     } = useScenarioContext();
     const [open, setOpen] = useState(outliner.properties.docked ? false : true);
+    const startupQuery = useAtomValue(startupQueryAtom);
+    const { activeComparator } = useAppContext();
+
+    /** hack to get the analysis title for the histograms @TODO: get rid of this. */
+    const analysis = useMemo(() => {
+        return startupQuery.data?.docked?.find((d) => {
+            return isEqual(d.proto.stack?.id, activeComparator?.analysis);
+        });
+    }, [startupQuery.data?.docked, activeComparator?.analysis]);
+
+    let analysisTitle = analysis?.proto.stack?.substacks?.[0]?.lines?.map((l) =>
+        getFirstWord(l.header?.title?.value)
+    )[0];
+    // hack stop
 
     const handleOpenChange = (open: boolean) => {
         setActiveOutliner(outliner.id, open);
@@ -68,6 +89,13 @@ export const StackAdapter = () => {
         outliner.data.proto.stack?.substacks?.[1]?.lines?.flatMap((l) =>
             findAtoms(l, 'labelledIcon')
         )?.[0]?.labelledIcon;
+
+    // hack to get the analysis title for the histograms @TODO: get rid of this.
+    const headerTitleString = firstSubstack?.lines?.[0].header?.title?.value;
+    analysisTitle = headerTitleString
+        ? getFirstWord(headerTitleString)
+        : analysisTitle;
+    // hack stop
 
     return (
         <>
@@ -126,6 +154,7 @@ export const StackAdapter = () => {
                                 collapsible={firstSubstack.collapsable}
                                 close={!outliner.properties.docked}
                                 origin={originFirstSubstack}
+                                analysisTitle={analysisTitle}
                             />
                         </Stack.Trigger>
                     )}
@@ -138,6 +167,7 @@ export const StackAdapter = () => {
                                         substack={substack}
                                         collapsible={substack.collapsable}
                                         origin={originOtherSubstacks?.[i]}
+                                        analysisTitle={analysisTitle}
                                     />
                                 );
                             })}
