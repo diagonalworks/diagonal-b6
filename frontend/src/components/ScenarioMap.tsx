@@ -41,6 +41,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
         queryLayers,
         geoJSON,
         scenario: { id, featureId, worldCreated },
+        highlightedFeatures,
         mapStyle,
         tab,
     } = useScenarioContext();
@@ -135,6 +136,15 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                     return 0;
                 },
                 getLineColor: (f: Feature) => {
+                    const isHighlighted = highlightedFeatures?.find(
+                        (hf) =>
+                            hf.value &&
+                            hf.value.toString() ===
+                                parseInt(f.properties.id, 16).toString()
+                    );
+                    if (isHighlighted) {
+                        return [0, 0, 0, 255];
+                    }
                     if (f.properties?.layerName === ql.layer.path) {
                         const c = histogram?.colorScale?.(f.properties?.bucket);
                         if (!c) {
@@ -157,13 +167,21 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                     return [0, 0, 0, 0];
                 },
                 updateTriggers: {
-                    getLineColor: [histogram.colorScale, histogram.selected],
-                    getFillColor: [histogram.colorScale, histogram.selected],
+                    getLineColor: [
+                        histogram.colorScale,
+                        histogram.selected,
+                        highlightedFeatures,
+                    ],
+                    getFillColor: [
+                        histogram.colorScale,
+                        histogram.selected,
+                        highlightedFeatures,
+                    ],
                     getLineWidth: [histogram.selected],
                 },
             });
         });
-    }, [queryLayers]);
+    }, [queryLayers, highlightedFeatures]);
 
     const Markers = useMemo(() => {
         if (!map) return null;
