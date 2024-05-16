@@ -11,7 +11,12 @@ import {
 import basemapStyleRose from '@/components/diagonal-map-style-rose.json';
 import basemapStyle from '@/components/diagonal-map-style.json';
 
-import { ChangeFeature, ChangeFunction, Scenario } from '@/atoms/app';
+import {
+    ChangeFeature,
+    ChangeFunction,
+    Scenario,
+    collectionAtom,
+} from '@/atoms/app';
 import { startupQueryAtom } from '@/atoms/startup';
 import {
     EvaluateResponseProto,
@@ -26,6 +31,7 @@ import { useAtomValue } from 'jotai';
 import { isEqual, pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
 import { b6, b6Path } from '../b6';
+import { changeMapStyleSource } from '../map';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
 
@@ -98,18 +104,29 @@ export const ScenarioProvider = ({
         setApp,
     } = useAppContext();
     const startupQuery = useAtomValue(startupQueryAtom);
+    const collection = useAtomValue(collectionAtom);
 
     useEffect(() => {
+        const featId = {
+            type: 'FeatureTypeCollection' as unknown as FeatureType,
+            namespace: startupQuery.data?.root?.namespace ?? 'diagonal.works',
+            value: 0,
+        };
+
+        if (scenario.id === 'baseline') {
+            const baselineValue = collection.match(/(?<=\/)\d*$/)?.[0];
+            featId.value = +(baselineValue || 0);
+        } else {
+            featId.namespace = `${
+                startupQuery.data?.root?.namespace ?? 'diagonal.works'
+            }/scenario`;
+            featId.value = +scenario.id;
+        }
+
         setApp((draft) => {
-            draft.scenarios[scenario.id].featureId = {
-                type: 'FeatureTypeCollection' as unknown as FeatureType,
-                namespace: `${
-                    startupQuery.data?.root?.namespace ?? 'diagonal.works'
-                }/scenario`,
-                value: +scenario.id,
-            };
+            draft.scenarios[scenario.id].featureId = featId;
         });
-    }, [startupQuery.data?.root?.namespace, scenario.id]);
+    }, [collection, startupQuery.data?.root?.namespace, scenario.id]);
 
     const queryScenario = useQuery<EvaluateResponseProto, Error>({
         enabled: false,
@@ -402,45 +419,17 @@ export const ScenarioProvider = ({
     );
 
     const mapStyle = useMemo(() => {
-        return (
-            tab === 'right'
-                ? {
-                      ...basemapStyleRose,
-                      sources: {
-                          ...basemapStyle.sources,
-                          diagonal: {
-                              ...basemapStyle.sources.diagonal,
-                              tiles: [
-                                  // so we can set a new basemap for this scenario
-                                  `${
-                                      window.location.origin
-                                  }${b6Path}tiles/base/{z}/{x}/{y}.mvt${
-                                      scenario.featureId
-                                          ? `?r=collection/${scenario.featureId.namespace}/${scenario.featureId.value}`
-                                          : ''
-                                  }`,
-                              ],
-                          },
-                      },
-                  }
-                : {
-                      ...basemapStyle,
-                      sources: {
-                          ...basemapStyle.sources,
-                          diagonal: {
-                              ...basemapStyle.sources.diagonal,
-                              tiles: [
-                                `${
-                                    window.location.origin
-                                }${b6Path}tiles/base/{z}/{x}/{y}.mvt${
-                                    scenario.featureId
-                                        ? `?r=collection/${scenario.featureId.namespace}/${scenario.featureId.value}`
-                                        : ''
-                                }`,
-                              ],
-                          }
-                      }
-                  }
+        const tileSource = `${
+            window.location.origin
+        }${b6Path}tiles/base/{z}/{x}/{y}.mvt${
+            scenario.featureId
+                ? `?r=collection/${scenario.featureId.namespace}/${scenario.featureId.value}`
+                : ''
+        }`;
+        const map = tab === 'right' ? basemapStyleRose : basemapStyle;
+        return changeMapStyleSource(
+            map as StyleSpecification,
+            tileSource
         ) as StyleSpecification;
     }, [tab, scenario.featureId]);
 

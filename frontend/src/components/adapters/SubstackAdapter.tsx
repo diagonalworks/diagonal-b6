@@ -10,11 +10,13 @@ export const SubstackAdapter = ({
     collapsible = false,
     close,
     origin,
+    analysisTitle,
 }: {
     substack: SubstackProto;
     collapsible?: boolean;
     close?: boolean;
     origin?: SubstackProto;
+    analysisTitle?: string; // @TODO: remove this, it's a hack to get the analysis title
 }) => {
     const [open, setOpen] = useState(collapsible ? false : true);
 
@@ -39,6 +41,7 @@ export const SubstackAdapter = ({
                     | 'histogram',
                 bars: contentLines.flatMap((l) => l.histogramBar ?? []),
                 swatches: contentLines.flatMap((l) => l.swatch ?? []),
+                chartLabel: analysisTitle,
                 origin: origin
                     ? {
                           bars:
