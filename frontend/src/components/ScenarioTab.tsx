@@ -357,15 +357,28 @@ const ChangeCombo = () => {
                         >
                             <Select.Viewport>
                                 {analysisOptions.map(
-                                    (analysis: $FixMe, i: number) => (
-                                        <Select.Item
-                                            key={i}
-                                            value={analysis.id.value?.toString()}
-                                            className=" cursor-pointer data-[state=checked]:bg-rose-10  data-[highlighted]:bg-rose-10 text-sm py-3 px-2 border-x border-b border-graphite-20 first:border-t items-center focus:outline-none "
-                                        >
-                                            {analysis?.label?.title?.value}
-                                        </Select.Item>
-                                    )
+                                    (analysis: $FixMe, i: number) => {
+                                        // @TODO: temporary hack to remove bold formatting markers in for the select options. This bold formatting should be handled further up.
+                                        const label =
+                                            analysis.label?.title?.value;
+                                        const boldWorld =
+                                            label.match(/_((?:[a-zA-Z]|\d)*)_/);
+                                        const labelNoBoldMarkers =
+                                            label.replaceAll(
+                                                boldWorld[0],
+                                                boldWorld[1]
+                                            );
+
+                                        return (
+                                            <Select.Item
+                                                key={i}
+                                                value={analysis.id.value?.toString()}
+                                                className=" cursor-pointer data-[state=checked]:bg-rose-10  data-[highlighted]:bg-rose-10 text-sm py-3 px-2 border-x border-b border-graphite-20 first:border-t items-center focus:outline-none "
+                                            >
+                                                {labelNoBoldMarkers}
+                                            </Select.Item>
+                                        );
+                                    }
                                 )}
                             </Select.Viewport>
                         </Select.Content>
