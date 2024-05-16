@@ -1,5 +1,5 @@
 import { Feature, GeoJsonProperties, Geometry } from 'geojson';
-import { MapGeoJSONFeature } from 'maplibre-gl';
+import { MapGeoJSONFeature, StyleSpecification } from 'maplibre-gl';
 import { match } from 'ts-pattern';
 
 export const isSamePositionPoints = (
@@ -38,4 +38,20 @@ export const getRoadWidth = (type: string) => {
         .with('unclassified', 'residential', 'service', () => 1)
         .with('cycleway', 'footway', 'path', () => 0.8)
         .otherwise(() => 1);
+};
+
+export const changeMapStyleSource = (
+    mapStyle: StyleSpecification,
+    source: string
+) => {
+    return {
+        ...mapStyle,
+        sources: {
+            ...mapStyle.sources,
+            diagonal: {
+                ...mapStyle.sources.diagonal,
+                tiles: [source],
+            },
+        },
+    };
 };
