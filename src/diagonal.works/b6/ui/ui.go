@@ -431,6 +431,7 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 				if docked := w.FindFeatureByID(i.Value()); docked != nil {
 					uiResponse := NewUIResponseJSON()
 					if err := ui.Render(uiResponse, docked, request.Root, true, ui); err == nil {
+						stripShellLinesFromResponse(uiResponse)
 						response.Docked = append(response.Docked, uiResponse)
 					} else {
 						return fmt.Errorf("%s: %w", i.Value(), err)
@@ -947,4 +948,22 @@ func equaliseBars(histograms []*pb.ComparisonHistogramProto) {
 		}
 		h.Bars = equalised
 	}
+}
+
+func stripShellLinesFromResponse(response *UIResponseJSON) {
+	p := (*pb.UIResponseProto)(response.Proto)
+	stripped := make([]*pb.SubstackProto, 0, len(p.Stack.Substacks))
+	for _, s := range p.Stack.Substacks {
+		lines := make([]*pb.LineProto, 0, len(s.Lines))
+		for _, l := range s.Lines {
+			if _, ok := l.Line.(*pb.LineProto_Shell); !ok {
+				lines = append(lines, l)
+			}
+		}
+		if len(lines) > 0 {
+			s.Lines = lines
+			stripped = append(stripped, s)
+		}
+	}
+	p.Stack.Substacks = stripped
 }
