@@ -101,3 +101,18 @@ func TestDivide(t *testing.T) {
 		}
 	}
 }
+
+func TestSum(t *testing.T) {
+	collection := b6.ArrayCollection[string, int]{
+		Keys:   []string{"one", "two"},
+		Values: []int{1, 2},
+	}
+
+	s, err := sum(&api.Context{}, collection.Collection().Values())
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+	if s != 3 {
+		t.Fatalf("Expected 3, found %d", s)
+	}
+}

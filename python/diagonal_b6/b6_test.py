@@ -174,6 +174,9 @@ class B6Test(unittest.TestCase):
         self.assertEqual(self.connection(b6.find(b6.typed("path", b6.keyed("#highway"))).count()), HIGHWAYS_IN_GRANARY_SQUARE)
         self.assertEqual(self.connection(b6.find_areas(b6.keyed("#building")).count()), BUILDINGS_IN_GRANARY_SQUARE)
 
+    def test_sum(self):
+        self.assertEqual(self.connection(b6.sum(b6.collection(b6.pair("one", 1), b6.pair("two", 2)))), 3)
+
     def test_divide_count_features(self):
         self.assertAlmostEqual(self.connection(b6.find(b6.tagged("#amenity", "bicycle_parking")).count().divide(10.0)), BIKE_PARKING_IN_GRANARY_SQUARE / 10.0)
 
