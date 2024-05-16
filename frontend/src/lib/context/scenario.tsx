@@ -426,16 +426,10 @@ export const ScenarioProvider = ({
                 ? `?r=collection/${scenario.featureId.namespace}/${scenario.featureId.value}`
                 : ''
         }`;
-        return (
-            tab === 'right'
-                ? changeMapStyleSource(
-                      basemapStyleRose as StyleSpecification,
-                      tileSource
-                  )
-                : changeMapStyleSource(
-                      basemapStyle as StyleSpecification,
-                      tileSource
-                  )
+        const map = tab === 'right' ? basemapStyleRose : basemapStyle;
+        return changeMapStyleSource(
+            map as StyleSpecification,
+            tileSource
         ) as StyleSpecification;
     }, [tab, scenario.featureId]);
 
