@@ -297,6 +297,7 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
 
     return (
         <MapLibre
+            antialias={true}
             key={`${id}-${worldCreated ? '-world' : ''}`}
             id={id}
             {...{
