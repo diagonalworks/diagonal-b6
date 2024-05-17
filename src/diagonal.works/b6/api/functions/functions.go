@@ -106,6 +106,7 @@ var functions = api.FunctionSymbols{
 	"percentiles":     percentiles,
 	"count":           count,
 	"count-valid-ids": countValidIDs,
+	"sum":             sum,
 	// graph
 	"reachable-area":         reachableArea,
 	"reachable":              reachable,

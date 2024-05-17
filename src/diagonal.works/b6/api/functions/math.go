@@ -121,7 +121,7 @@ func count(context *api.Context, collection b6.Collection[any, any]) (int, error
 	return b6.Count(collection)
 }
 
-// Return the number of valid feature IDs in the given collection
+// Return the number of valid feature IDs in the given collection.
 func countValidIDs(context *api.Context, collection b6.Collection[any, b6.Identifiable]) (int, error) {
 	count := 0
 	i := collection.Begin()
@@ -137,4 +137,22 @@ func countValidIDs(context *api.Context, collection b6.Collection[any, b6.Identi
 		}
 	}
 	return count, err
+}
+
+// Return the sum of all values in a given collection.
+func sum(context *api.Context, collection b6.Collection[any, int]) (int, error) {
+	sum := 0
+	i := collection.Begin()
+	var err error
+	for {
+		var ok bool
+		ok, err = i.Next()
+		if !ok || err != nil {
+			break
+		}
+
+		sum += i.Value()
+	}
+
+	return sum, err
 }
