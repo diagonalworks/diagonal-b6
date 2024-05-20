@@ -474,7 +474,7 @@ func histogramSwatchWithID(c *api.Context, collection b6.Collection[any, any], i
 	if err != nil {
 		return nil, err
 	}
-	histogram.AddTag(b6.Tag{Key: "b6:histogram", Value: b6.String("swatch")})
+	histogram.AddTag(b6.Tag{Key: "b6:histogram", Value: b6.StringExpression("swatch")})
 	expression := &ingest.ExpressionFeature{
 		ExpressionID: b6.MakeExpressionID(id.Namespace, id.Value),
 		Expression:   c.VM.Expression(),

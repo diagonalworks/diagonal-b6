@@ -26,11 +26,11 @@ func TestTagToAndFromStringHappyPath(t *testing.T) {
 		tag Tag
 		s   string
 	}{
-		{Tag{Key: "#amenity", Value: String("restaurant")}, "#amenity=restaurant"},
-		{Tag{Key: "note", Value: String("Only on match days")}, `note="Only on match days"`},
-		{Tag{Key: "note", Value: String("Value with a \" in the middle")}, `note="Value with a \" in the middle"`},
-		{Tag{Key: "note", Value: String("Value with a \\ in the middle")}, `note="Value with a \\ in the middle"`},
-		{Tag{Key: `Key with = in middle`, Value: String("Value with a \\ in the middle")}, `"Key with = in middle"="Value with a \\ in the middle"`},
+		{Tag{Key: "#amenity", Value: StringExpression("restaurant")}, "#amenity=restaurant"},
+		{Tag{Key: "note", Value: StringExpression("Only on match days")}, `note="Only on match days"`},
+		{Tag{Key: "note", Value: StringExpression("Value with a \" in the middle")}, `note="Value with a \" in the middle"`},
+		{Tag{Key: "note", Value: StringExpression("Value with a \\ in the middle")}, `note="Value with a \\ in the middle"`},
+		{Tag{Key: `Key with = in middle`, Value: StringExpression("Value with a \\ in the middle")}, `"Key with = in middle"="Value with a \\ in the middle"`},
 	}
 	for _, c := range cases {
 		if s := c.tag.String(); s != c.s {
@@ -52,9 +52,9 @@ func TestTagToAndFromStringBrokenStrings(t *testing.T) {
 		s   string
 		tag Tag
 	}{
-		{`#amenity="restaurant"nonsense`, Tag{Key: "#amenity", Value: String("restaurant")}},
-		{`#amenity    ="restaurant"nonsense`, Tag{Key: "#amenity", Value: String("restaurant")}},
-		{`#amenity restaurant`, Tag{Key: "#amenityrestaurant", Value: String("")}},
+		{`#amenity="restaurant"nonsense`, Tag{Key: "#amenity", Value: StringExpression("restaurant")}},
+		{`#amenity    ="restaurant"nonsense`, Tag{Key: "#amenity", Value: StringExpression("restaurant")}},
+		{`#amenity restaurant`, Tag{Key: "#amenityrestaurant", Value: StringExpression("")}},
 	}
 	for _, c := range cases {
 		var tag Tag
