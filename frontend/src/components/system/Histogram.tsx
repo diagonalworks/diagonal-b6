@@ -94,7 +94,7 @@ export function Histogram<T>({
 
     return (
         <div
-            className="flex flex-col [&_.line]:border-t-0  last:[&_.line]:border-b-0"
+            className="flex flex-col [&_.line]:border-t-0 w-fit last:[&_.line]:border-b-0"
             ref={ref}
         >
             <Line className=" justify-between text-graphite-70 ">

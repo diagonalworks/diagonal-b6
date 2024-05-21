@@ -27,7 +27,7 @@ const Root = React.forwardRef<
                 {...omit(props, 'collapsible')}
                 ref={forwardedRef}
                 className={twMerge(
-                    'border box-border border-graphite-30',
+                    'border w-fit box-border border-graphite-30',
                     props.open &&
                         props.collapsible &&
                         'border border-graphite-50 transition-colors w-fit  ',
