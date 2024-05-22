@@ -95,11 +95,11 @@ func (r *QueryRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 			if v, err := fv(&context, f); err == nil {
 				switch v := v.(type) {
 				case int:
-					tags = append(tags, b6.Tag{Key: "v", Value: b6.String(fmt.Sprintf("%d", v))})
+					tags = append(tags, b6.Tag{Key: "v", Value: b6.StringExpression(fmt.Sprintf("%d", v))})
 				case string:
-					tags = append(tags, b6.Tag{Key: "v", Value: b6.String(v)})
+					tags = append(tags, b6.Tag{Key: "v", Value: b6.StringExpression(v)})
 				case fmt.Stringer:
-					tags = append(tags, b6.Tag{Key: "v", Value: b6.String(v.String())})
+					tags = append(tags, b6.Tag{Key: "v", Value: b6.StringExpression(v.String())})
 				}
 				rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{Label: true, Icon: true})
 			} else {

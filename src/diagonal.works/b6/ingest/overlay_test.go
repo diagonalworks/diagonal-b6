@@ -97,12 +97,12 @@ func TestOverlayWorldReplacesPathsFromOneIndexWithAnother(t *testing.T) {
 	}
 	overlay := NewOverlayWorld(worlds[1], worlds[0])
 
-	paths := b6.AllFeatures(overlay.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#highway", Value: b6.String("path")}}))
+	paths := b6.AllFeatures(overlay.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#highway", Value: b6.StringExpression("path")}}))
 	if len(paths) > 0 {
 		t.Errorf("Expected to find 0 paths, found %d", len(paths))
 	}
 
-	paths = b6.AllFeatures(overlay.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#highway", Value: b6.String("cycleway")}}))
+	paths = b6.AllFeatures(overlay.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#highway", Value: b6.StringExpression("cycleway")}}))
 	if len(paths) == 1 {
 		expectedValue := "cycleway"
 		if highway := paths[0].Get("#highway"); highway.Value.String() != expectedValue {

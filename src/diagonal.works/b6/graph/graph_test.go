@@ -424,8 +424,8 @@ func TestElevationWeights(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
 
 	camdenWithHill := ingest.NewMutableTagsOverlayWorld(camden)
-	camdenWithHill.AddTag(ingest.FromOSMNodeID(4931754283).FeatureID(), b6.Tag{Key: "ele", Value: b6.String("100")})
-	camdenWithHill.AddTag(ingest.FromOSMNodeID(6773349520).FeatureID(), b6.Tag{Key: "ele", Value: b6.String("200")})
+	camdenWithHill.AddTag(ingest.FromOSMNodeID(4931754283).FeatureID(), b6.Tag{Key: "ele", Value: b6.StringExpression("100")})
+	camdenWithHill.AddTag(ingest.FromOSMNodeID(6773349520).FeatureID(), b6.Tag{Key: "ele", Value: b6.StringExpression("200")})
 
 	path := ComputeShortestPath(
 		ingest.FromOSMNodeID(33000703),

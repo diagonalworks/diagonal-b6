@@ -16,15 +16,6 @@ import (
 )
 
 // TODO(mari): harmonise Value and Literal in expression.go
-type ValueType int
-
-const (
-	ValueTypeString ValueType = iota
-	ValueTypeLatLng
-	ValueTypeValues
-	ValueTypeFeatureID
-)
-
 type Value interface {
 	String() string
 	ValueType() ValueType
@@ -33,7 +24,7 @@ type Value interface {
 func ValueFromString(s string, t ValueType) Value {
 	switch t {
 	case ValueTypeString:
-		return String(s)
+		return StringExpression(s)
 	case ValueTypeLatLng:
 		if ll, err := LatLngFromString(s); err == nil {
 			return LatLng(ll)
@@ -47,16 +38,6 @@ func ValueFromString(s string, t ValueType) Value {
 	}
 
 	panic("not implemented")
-}
-
-type String string
-
-func (s String) String() string {
-	return string(s)
-}
-
-func (s String) ValueType() ValueType {
-	return ValueTypeString
 }
 
 type LatLng s2.LatLng
@@ -92,7 +73,7 @@ func TryValueFromString(s string) Value {
 	} else if id := FeatureIDFromString(s); id.IsValid() {
 		return id
 	} else {
-		return String(s)
+		return StringExpression(s)
 	}
 }
 
@@ -140,13 +121,13 @@ func (t *Tag) FromString(s string, typ ValueType) {
 	t.Value = ValueFromString(value, typ)
 }
 
-func (t Tag) Equal(other Tag) bool {
+func (t Tag) Equal(other Tag) bool { // TODO(mari): reuse expression equal
 	if t.Key != other.Key {
 		return false
 	}
 	switch v := t.Value.(type) {
-	case String:
-		if o, ok := other.Value.(String); ok {
+	case StringExpression:
+		if o, ok := other.Value.(StringExpression); ok {
 			return string(v) == string(o)
 		}
 	case LatLng:
@@ -165,7 +146,7 @@ type tagYAML struct {
 }
 
 func (t Tag) MarshalYAML() (interface{}, error) {
-	if s, ok := t.Value.(String); ok {
+	if s, ok := t.Value.(StringExpression); ok {
 		return escapeTagPart(t.Key) + "=" + escapeTagPart(s.String()), nil
 	} else if t.Value == nil {
 		return escapeTagPart(t.Key) + "=\"\"", nil
@@ -272,7 +253,7 @@ func consumeTagPart(s string) (string, string) {
 }
 
 func InvalidTag() Tag {
-	return Tag{Value: String("")}
+	return Tag{Value: StringExpression("")}
 }
 
 type Taggable interface {
@@ -312,7 +293,7 @@ func (t Tags) TagOrFallback(key string, fallback string) Tag {
 	if value := t.Get(key); value.IsValid() {
 		return value
 	}
-	return Tag{Key: key, Value: String(fallback)}
+	return Tag{Key: key, Value: StringExpression(fallback)}
 }
 
 func (t *Tags) SetTags(tags []Tag) {
@@ -334,7 +315,7 @@ func (t *Tags) ModifyOrAddTag(tag Tag) (bool, Value) {
 		}
 	}
 	t.AddTag(tag)
-	return false, String("")
+	return false, StringExpression("")
 }
 
 func (t *Tags) ModifyOrAddTagAt(tag Tag, index int) (bool, Value) {
@@ -346,7 +327,7 @@ func (t *Tags) ModifyOrAddTagAt(tag Tag, index int) (bool, Value) {
 		}
 	}
 	t.AddTag(Tag{tag.Key, Set(make([]Value, 0), tag.Value, index)})
-	return false, String("")
+	return false, StringExpression("")
 }
 
 func (t *Tags) RemoveTag(key string) {
