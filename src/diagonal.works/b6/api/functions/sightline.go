@@ -820,13 +820,13 @@ func pointApproach(entrance b6.Feature, area geometry.MultiPolygon, w b6.World) 
 	return s2.Point{}, false
 }
 
-func possibleEntraces(area b6.AreaFeature) []b6.Feature {
+func possibleEntraces(c *api.Context, area b6.AreaFeature) []b6.Feature {
 	all := make([]b6.Feature, 0)
 	entrances := make([]b6.Feature, 0)
 	for i := 0; i < area.Len(); i++ {
 		boundary := area.Feature(i)[0]
-		for j := 0; j < boundary.GeometryLen(); j++ {
-			if point := boundary.Feature(j); point != nil {
+		for _, r := range boundary.References() {
+			if point := c.World.FindFeatureByID(r.Source()); point != nil {
 				all = append(all, point)
 				if entrance := point.Get("entrance"); entrance.IsValid() {
 					entrances = append(entrances, point)
@@ -844,7 +844,7 @@ func possibleEntraces(area b6.AreaFeature) []b6.Feature {
 func entranceApproach(c *api.Context, area b6.AreaFeature) (b6.Geometry, error) {
 	if area != nil && area.Len() > 0 {
 		m := area.MultiPolygon()
-		for _, entrance := range possibleEntraces(area) {
+		for _, entrance := range possibleEntraces(c, area) {
 			if approach, ok := pointApproach(entrance, m, c.World); ok {
 				return b6.GeometryFromPoint(approach), nil
 			}

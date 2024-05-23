@@ -259,15 +259,6 @@ var functionAdaptors = []interface{}{
 			}
 		}
 	},
-	func(c api.Callable) func(*api.Context, b6.NestedPhysicalFeature) (bool, error) {
-		return func(context *api.Context, f b6.NestedPhysicalFeature) (bool, error) {
-			if result, err := api.Call1(context, f, c); result != nil {
-				return b6.IsTrue(result), err
-			} else {
-				return false, err
-			}
-		}
-	},
 	func(c api.Callable) func(*api.Context, b6.AreaFeature) (bool, error) {
 		return func(context *api.Context, f b6.AreaFeature) (bool, error) {
 			if result, err := api.Call1(context, f, c); result != nil {
@@ -342,7 +333,6 @@ var collectionAdaptors = []interface{}{
 	b6.AdaptCollection[any, b6.Geometry],
 	b6.AdaptCollection[any, b6.Identifiable],
 	b6.AdaptCollection[any, b6.PhysicalFeature],
-	b6.AdaptCollection[any, b6.NestedPhysicalFeature],
 	b6.AdaptCollection[any, b6.Tag],
 	b6.AdaptCollection[any, b6.UntypedCollection],
 	b6.AdaptCollection[any, ingest.Change],
@@ -355,7 +345,6 @@ var collectionAdaptors = []interface{}{
 	b6.AdaptCollection[b6.FeatureID, b6.Identifiable],
 	b6.AdaptCollection[b6.FeatureID, b6.Geometry],
 	b6.AdaptCollection[b6.FeatureID, b6.PhysicalFeature],
-	b6.AdaptCollection[b6.FeatureID, b6.NestedPhysicalFeature],
 	b6.AdaptCollection[b6.FeatureID, b6.Tag],
 	b6.AdaptCollection[b6.FeatureID, string],
 	b6.AdaptCollection[b6.Identifiable, string],
@@ -363,7 +352,6 @@ var collectionAdaptors = []interface{}{
 	b6.AdaptCollection[int, b6.AreaFeature],
 	b6.AdaptCollection[int, b6.Geometry],
 	b6.AdaptCollection[int, b6.PhysicalFeature],
-	b6.AdaptCollection[int, b6.NestedPhysicalFeature],
 }
 
 var defaultAdaptors api.Adaptors

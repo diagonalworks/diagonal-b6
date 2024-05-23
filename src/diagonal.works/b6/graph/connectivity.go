@@ -552,8 +552,8 @@ func closestCandidate(point s2.Point, candidates []candidate) *Projection {
 
 func isAreaConnected(area b6.AreaFeature, i int, network PathIDSet, w b6.World) ConnectResult {
 	if paths := area.Feature(i); paths != nil {
-		for j := 0; j < paths[0].GeometryLen(); j++ {
-			if point := paths[0].Feature(j); point != nil {
+		for _, r := range paths[0].References() {
+			if point := w.FindFeatureByID(r.Source()); point != nil {
 				if IsPointConnected(point.FeatureID(), network, w) {
 					return ConnectResultAlreadyConnected
 				}
@@ -574,10 +574,11 @@ func ConnectArea(area b6.AreaFeature, network PathIDSet, threshold s1.Angle, w b
 		}
 		boundary := area.Feature(i)[0]
 		entrances := make([]b6.PhysicalFeature, 0)
-		for j := 0; j < boundary.GeometryLen(); j++ {
-			point := boundary.Feature(j)
-			if entrance := point.Get("entrance"); entrance.IsValid() {
-				entrances = append(entrances, point)
+		for _, r := range boundary.References() {
+			if point, ok := w.FindFeatureByID(r.Source()).(b6.PhysicalFeature); ok && point != nil {
+				if entrance := point.Get("entrance"); entrance.IsValid() {
+					entrances = append(entrances, point)
+				}
 			}
 		}
 		cap := area.Polygon(i).CapBound().Expanded(threshold)

@@ -102,11 +102,11 @@ func (a areaFeature) MultiPolygon() geometry.MultiPolygon {
 	return m
 }
 
-func (a areaFeature) Feature(i int) []b6.NestedPhysicalFeature {
+func (a areaFeature) Feature(i int) []b6.PhysicalFeature {
 	if ids, ok := a.PathIDs(i); ok {
-		paths := make([]b6.NestedPhysicalFeature, 0, len(ids))
+		paths := make([]b6.PhysicalFeature, 0, len(ids))
 		for _, id := range ids {
-			if path := a.features.FindFeatureByID(id).(b6.NestedPhysicalFeature); path != nil {
+			if path := a.features.FindFeatureByID(id).(b6.PhysicalFeature); path != nil {
 				paths = append(paths, path)
 			}
 		}
