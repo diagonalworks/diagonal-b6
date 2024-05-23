@@ -88,7 +88,7 @@ func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines
 	for i := range ps {
 		ps[i] = &ingest.GenericFeature{}
 		ps[i].SetFeatureID(b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespaceGBUPRN})
-		ps[i].AddTag(b6.Tag{Key: "#place", Value: b6.StringExpression("uprn")})
+		ps[i].AddTag(b6.Tag{Key: "#place", Value: b6.String("uprn")})
 	}
 
 	uprns := 0
@@ -123,7 +123,7 @@ func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines
 		}
 
 		ps[slot].RemoveAllTags()
-		ps[slot].AddTag(b6.Tag{Key: "#place", Value: b6.StringExpression("uprn")})
+		ps[slot].AddTag(b6.Tag{Key: "#place", Value: b6.String("uprn")})
 		ps[slot].ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(lat, lng))})
 		s.JoinTags.AddTags(row[columns[0]], ps[slot])
 		if len(ps[slot].AllTags()) > 1 {
@@ -182,7 +182,7 @@ func (s *ClusterSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx c
 		}
 		features := make([]ingest.Feature, goroutines*2)
 		for i := range features {
-			features[i] = &ingest.GenericFeature{Tags: []b6.Tag{{Key: "#place", Value: b6.StringExpression("uprn_cluster")}, {Key: "uprn_cluster:size", Value: b6.StringExpression("0")}}}
+			features[i] = &ingest.GenericFeature{Tags: []b6.Tag{{Key: "#place", Value: b6.String("uprn_cluster")}, {Key: "uprn_cluster:size", Value: b6.String("0")}}}
 		}
 		parallelised, wait := ingest.ParalleliseEmit(emit, goroutines, ctx)
 		clusters := 0
@@ -190,7 +190,7 @@ func (s *ClusterSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx c
 			slot := clusters % len(features)
 			clusters++
 			features[slot].SetFeatureID(b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespaceDiagonalUPRNCluster, Value: uint64(c)})
-			features[slot].ModifyOrAddTag(b6.Tag{Key: "uprn_cluster:size", Value: b6.StringExpression(strconv.Itoa(int(count)))})
+			features[slot].ModifyOrAddTag(b6.Tag{Key: "uprn_cluster:size", Value: b6.String(strconv.Itoa(int(count)))})
 			features[slot].ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(c.LatLng())})
 			if err := parallelised(features[slot], slot%goroutines); err != nil {
 				wait()

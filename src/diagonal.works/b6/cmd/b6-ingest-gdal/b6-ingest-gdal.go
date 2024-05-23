@@ -105,7 +105,7 @@ func main() {
 	for _, tag := range strings.Split(*addTagsFlag, ",") {
 		parts := strings.Split(tag, "=")
 		if len(parts) == 2 {
-			addTags = append(addTags, b6.Tag{Key: parts[0], Value: b6.StringExpression(parts[1])})
+			addTags = append(addTags, b6.Tag{Key: parts[0], Value: b6.String(parts[1])})
 		}
 	}
 

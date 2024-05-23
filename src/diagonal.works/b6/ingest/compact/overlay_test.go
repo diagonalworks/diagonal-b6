@@ -27,7 +27,7 @@ func TestOverlayPathOnExistingWorld(t *testing.T) {
 
 	path := &ingest.GenericFeature{}
 	path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespaceDiagonalAccessPoints, 42})
-	path.AddTag(b6.Tag{Key: "#highway", Value: b6.StringExpression("cycleway")})
+	path.AddTag(b6.Tag{Key: "#highway", Value: b6.String("cycleway")})
 	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{ingest.FromOSMNodeID(camden.LightermanEntranceNode), ingest.FromOSMNodeID(camden.StableStreetBridgeNorthEndNode)})})
 
 	w, err := NewWorldFromData(index)

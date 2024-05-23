@@ -424,7 +424,7 @@ func DecodeValue(buffer []byte) (uint64, int) {
 func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value {
 	switch v := v.(type) {
 	case *Int:
-		return b6.StringExpression(s.Lookup(int(*v)))
+		return b6.String(s.Lookup(int(*v)))
 	case *LatLng:
 		return b6.LatLng(v.ToS2LatLng())
 	case *LatLngs:
@@ -461,7 +461,7 @@ func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value 
 
 func toCompactValue(v b6.Value, s *encoding.StringTableBuilder, nt *NamespaceTable, e GeometryEncoding) Value {
 	switch v := v.(type) {
-	case b6.StringExpression:
+	case b6.String:
 		r := Int(s.Lookup(v.String()))
 		return &r
 	case b6.LatLng:

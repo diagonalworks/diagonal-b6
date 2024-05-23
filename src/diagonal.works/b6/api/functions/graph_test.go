@@ -18,7 +18,7 @@ func TestAccessibility(t *testing.T) {
 		return
 	}
 
-	options := []b6.Tag{{Key: "mode", Value: b6.StringExpression("walk")}}
+	options := []b6.Tag{{Key: "mode", Value: b6.String("walk")}}
 	od, err := accessibilityForGranarySquare(options, w)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestAccessibilityFlipped(t *testing.T) {
 		return
 	}
 
-	options := []b6.Tag{{Key: "flip", Value: b6.StringExpression("yes")}, {Key: "mode", Value: b6.StringExpression("walk")}}
+	options := []b6.Tag{{Key: "flip", Value: b6.String("yes")}, {Key: "mode", Value: b6.String("walk")}}
 	od, err := accessibilityForGranarySquare(options, w)
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +90,7 @@ func TestWeightsFromOptions(t *testing.T) {
 		return
 	}
 
-	options := []b6.Tag{{Key: "mode", Value: b6.StringExpression("transit")}, {Key: "walking speed", Value: b6.StringExpression("7.6")}}
+	options := []b6.Tag{{Key: "mode", Value: b6.String("transit")}, {Key: "walking speed", Value: b6.String("7.6")}}
 	weights, err := WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection())
 	if err != nil {
 		t.Errorf("cannot convert collection to tags")
@@ -101,7 +101,7 @@ func TestWeightsFromOptions(t *testing.T) {
 		t.Errorf("unexpected weights")
 	}
 
-	options = []b6.Tag{{Key: "mode", Value: b6.StringExpression("transit")}, {Key: "elevation", Value: b6.StringExpression("true")}, {Key: "downhill", Value: b6.StringExpression("hard")}}
+	options = []b6.Tag{{Key: "mode", Value: b6.String("transit")}, {Key: "elevation", Value: b6.String("true")}, {Key: "downhill", Value: b6.String("hard")}}
 	weights, err = WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection())
 	if err != nil {
 		t.Errorf("cannot convert collection to tags")

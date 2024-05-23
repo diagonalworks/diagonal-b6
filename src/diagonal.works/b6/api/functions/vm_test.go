@@ -105,7 +105,7 @@ func TestMapItems(t *testing.T) {
 	if len(filled) < 2 {
 		t.Errorf("Expected at least two values, found %d", len(filled))
 	}
-	if count, ok := filled[b6.Tag{Key: "#amenity", Value: b6.StringExpression("cafe")}]; !ok || count != 1 {
+	if count, ok := filled[b6.Tag{Key: "#amenity", Value: b6.String("cafe")}]; !ok || count != 1 {
 		t.Errorf("Expected a count of 1 for amenity tag, found %+v", filled)
 	}
 }
@@ -338,8 +338,8 @@ func TestMapLiteralCollection(t *testing.T) {
 		t.Fatalf("Expected no error, found %q", err)
 	}
 	expected := map[b6.Tag]int{
-		{Key: "highway", Value: b6.StringExpression("motorway")}: 3,
-		{Key: "highway", Value: b6.StringExpression("primary")}:  7,
+		{Key: "highway", Value: b6.String("motorway")}: 3,
+		{Key: "highway", Value: b6.String("primary")}:  7,
 	}
 	if diff := cmp.Diff(expected, collection); diff != "" {
 		t.Errorf("Found diff (-want, +got):\n%s", diff)

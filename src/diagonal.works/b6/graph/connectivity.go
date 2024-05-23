@@ -386,7 +386,7 @@ func (c *Connections) EachInsertedPoint(f func(id b6.FeatureID, ll s2.LatLng) er
 func (c *Connections) EachAddedPath(emit ingest.Emit) error {
 	last := [2]b6.FeatureID{b6.FeatureIDInvalid, b6.FeatureIDInvalid}
 	path := ingest.GenericFeature{}
-	path.AddTag(b6.Tag{Key: "diagonal", Value: b6.StringExpression("connection")})
+	path.AddTag(b6.Tag{Key: "diagonal", Value: b6.String("connection")})
 	for _, a := range c.additions {
 		if a != last {
 			last = a

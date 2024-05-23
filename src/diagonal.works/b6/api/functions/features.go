@@ -114,7 +114,7 @@ func findAreasContainingPoints(context *api.Context, points b6.Collection[any, b
 
 // Return a tag with the given key and value.
 func tag(context *api.Context, key string, value string) (b6.Tag, error) {
-	return b6.Tag{Key: key, Value: b6.StringExpression(value)}, nil
+	return b6.Tag{Key: key, Value: b6.String(value)}, nil
 }
 
 // Return the value of the given tag as a string.

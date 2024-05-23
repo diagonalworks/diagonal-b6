@@ -10,22 +10,22 @@ import (
 func TestMatches(t *testing.T) {
 	id := b6.FeatureID{b6.FeatureTypePoint, "diagonal.works/test", 0}
 	f := &GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5366567, -0.1263944))}}}
-	f.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Vermuteria")})
-	f.AddTag(b6.Tag{Key: "#amenity", Value: b6.StringExpression("cafe")})
+	f.AddTag(b6.Tag{Key: "name", Value: b6.String("Vermuteria")})
+	f.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("cafe")})
 
 	cases := []struct {
 		q        b6.Query
 		expected bool
 	}{
 		{b6.Keyed{Key: "#amenity"}, true},
-		{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("cafe")}, true},
-		{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}, false},
-		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("cafe")}}, true},
-		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}}, false},
-		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("cafe")}}, true},
-		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}}, false},
-		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("cafe")}, b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}}, true},
-		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("cafe")}, b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}}, false},
+		{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}, true},
+		{b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}, false},
+		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}}, true},
+		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}}, false},
+		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}}, true},
+		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}}, false},
+		{b6.Union{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}}, true},
+		{b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.String("cafe")}, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}}, false},
 	}
 
 	for _, c := range cases {
