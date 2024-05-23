@@ -19,9 +19,9 @@ func TestHistogramWithBucketedFeature(t *testing.T) {
 	worldID := b6.CollectionID{Namespace: "diagonal.works/test/world", Value: 0}
 	histogramID := b6.CollectionID{Namespace: "diagonal.works/test/histogram", Value: 0}
 
-	c := b6.ArrayCollection[b6.FeatureID, b6.StringExpression]{
+	c := b6.ArrayCollection[b6.FeatureID, b6.String]{
 		Keys:   []b6.FeatureID{camden.LightermanID.FeatureID()},
-		Values: []b6.StringExpression{"pub"},
+		Values: []b6.String{"pub"},
 	}
 	histogram, err := api.NewHistogramFromCollection(c.Collection(), histogramID)
 	if err != nil {

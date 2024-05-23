@@ -104,7 +104,7 @@ func (a *AddFeatures) fillFromFeature(f *geojson.Feature, id uint64) {
 		*a = append(*a, feature)
 
 		for key, value := range f.Properties {
-			feature.AddTag(b6.Tag{Key: key, Value: b6.StringExpression(value)})
+			feature.AddTag(b6.Tag{Key: key, Value: b6.String(value)})
 		}
 	}
 }

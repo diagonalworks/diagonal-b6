@@ -76,7 +76,7 @@ func (r *HistogramRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) 
 					break
 				}
 			}
-			tags = append(tags, b6.Tag{Key: "bucket", Value: b6.StringExpression(strconv.Itoa(value))})
+			tags = append(tags, b6.Tag{Key: "bucket", Value: b6.String(strconv.Itoa(value))})
 			rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{Label: true})
 		}
 	}

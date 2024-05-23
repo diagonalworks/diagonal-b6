@@ -122,8 +122,8 @@ func valuesEqual(a Value, b Value) bool {
 		return false
 	}
 	switch aa := a.(type) {
-	case StringExpression:
-		return aa == b.(StringExpression)
+	case String:
+		return aa == b.(String)
 	case LatLng:
 		return aa == b.(LatLng)
 	case FeatureID:
