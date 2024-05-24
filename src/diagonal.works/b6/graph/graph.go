@@ -351,8 +351,8 @@ func NewShortestPathSearchFromBuilding(area b6.AreaFeature, weights Weights, w b
 	s := newShortestPathSearch()
 	for i := 0; i < area.Len(); i++ {
 		for _, path := range area.Feature(i) {
-			for j := 0; j < path.GeometryLen(); j++ {
-				if point := path.Feature(j); point != nil {
+			for _, r := range path.References() {
+				if point := w.FindFeatureByID(r.Source()); point != nil {
 					if isConnected(point.FeatureID(), weights, w) {
 						r := &reachable{point: point.FeatureID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
 						s.queue = append(s.queue, r)

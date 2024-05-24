@@ -203,12 +203,12 @@ func (b *BasemapRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) {
 	layers := NewLayers()
 	fs := make([]*Feature, 0, 2)
 	for _, feature := range features {
-		fs = b.renderFeature(feature, layers, fs[0:0])
+		fs = b.renderFeature(args.R, feature, layers, fs[0:0])
 	}
 	return &Tile{Layers: (*layers)[0:]}, nil
 }
 
-func (b *BasemapRenderer) findFeatures(root b6.FeatureID, tile b6.Tile) []b6.Feature {
+func (b *BasemapRenderer) findFeatures(root b6.FeatureID, tile b6.Tile) []b6.Feature { // TODO: rename root to smth more sensible / like world
 	bounds := tile.RectBound()
 	regionQuery := b6.MightIntersect{Region: bounds}
 	q := b6.Intersection{b.RenderRules.ToQuery(tile.Z), regionQuery}
@@ -217,12 +217,12 @@ func (b *BasemapRenderer) findFeatures(root b6.FeatureID, tile b6.Tile) []b6.Fea
 	return features
 }
 
-func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs []*Feature) []*Feature {
+func (b *BasemapRenderer) renderFeature(root b6.FeatureID, f b6.Feature, layers *BasemapLayers, fs []*Feature) []*Feature {
 	var tags [1]b6.Tag
 	for _, rule := range b.RenderRules {
 		if v, ok := rule.Matches(f); ok {
 			tags[0] = b6.Tag{Key: rule.Tag.Key[1:], Value: v}
-			fs = FillFeaturesFromFeature(f, tags[0:], fs, &rule)
+			fs = FillFeaturesFromFeature(f, tags[0:], fs, &rule, b.Worlds.FindOrCreateWorld(root))
 			layers[rule.Layer].AddFeatures(fs)
 			break
 		}
@@ -230,7 +230,7 @@ func (b *BasemapRenderer) renderFeature(f b6.Feature, layers *BasemapLayers, fs 
 	return fs
 }
 
-func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature, rule *RenderRule) []*Feature {
+func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature, rule *RenderRule, w ingest.MutableWorld) []*Feature {
 	if f, ok := f.(b6.PhysicalFeature); ok {
 		switch f.GeometryType() {
 		case b6.GeometryTypePoint:
@@ -238,7 +238,7 @@ func FillFeaturesFromFeature(f b6.Feature, tags []b6.Tag, tfs []*Feature, rule *
 		case b6.GeometryTypePath:
 			tfs = fillFeaturesFromPath(f, tags, tfs, rule)
 		case b6.GeometryTypeArea:
-			tfs = fillFeaturesFromArea(f.(b6.AreaFeature), tags, tfs, rule)
+			tfs = fillFeaturesFromArea(f.(b6.AreaFeature), tags, tfs, rule, w)
 		}
 	}
 	return tfs
@@ -265,7 +265,7 @@ func fillFeaturesFromPath(path b6.PhysicalFeature, tags []b6.Tag, fs []*Feature,
 	return append(fs, f)
 }
 
-func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule) []*Feature {
+func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature, rule *RenderRule, w ingest.MutableWorld) []*Feature {
 	if highway := area.Get("#highway"); highway.IsValid() {
 		if a := area.Get("area"); !a.IsValid() || a.Value.String() == "no" {
 			for i := 0; i < area.Len(); i++ {
@@ -290,7 +290,7 @@ func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature, rul
 		fs = append(fs, f)
 	}
 	if rule.Icon {
-		if point, ok := findIconPoint(area); ok {
+		if point, ok := findIconPoint(area, w); ok {
 			f := NewFeature(NewPoint(point))
 			f.ID = api.TileFeatureID(area.FeatureID())
 			fillTagsFromIcon(f, area, rule)
@@ -302,12 +302,12 @@ func fillFeaturesFromArea(area b6.AreaFeature, tags []b6.Tag, fs []*Feature, rul
 	return fs
 }
 
-func findIconPoint(area b6.AreaFeature) (s2.Point, bool) {
+func findIconPoint(area b6.AreaFeature, w ingest.MutableWorld) (s2.Point, bool) {
 	for i := 0; i < area.Len(); i++ {
 		paths := area.Feature(i)
 		for _, path := range paths {
-			for j := 0; j < path.GeometryLen(); j++ {
-				if point := path.Feature(j); point != nil {
+			for j, r := range path.References() {
+				if point := w.FindFeatureByID(r.Source()); point != nil {
 					if entrance := point.Get("entrance"); entrance.IsValid() {
 						return path.PointAt(j), true
 					}

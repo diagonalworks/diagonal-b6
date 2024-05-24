@@ -380,26 +380,6 @@ func (m *modifiedPhysicalFeature) Get(key string) b6.Tag {
 	return modifyTag(m.PhysicalFeature, key, m.tags[m.FeatureID()])
 }
 
-type modifiedNestedPhysicalFeature struct {
-	b6.NestedPhysicalFeature
-	tags ModifiedTags
-}
-
-func (m *modifiedNestedPhysicalFeature) AllTags() b6.Tags {
-	return modifyTags(m.NestedPhysicalFeature, m.tags[m.FeatureID()])
-}
-
-func (m *modifiedNestedPhysicalFeature) Get(key string) b6.Tag {
-	return modifyTag(m.NestedPhysicalFeature, key, m.tags[m.FeatureID()])
-}
-
-func (m *modifiedNestedPhysicalFeature) Feature(i int) b6.PhysicalFeature {
-	if f := m.NestedPhysicalFeature.Feature(i); f != nil {
-		return &modifiedPhysicalFeature{f, m.tags}
-	}
-	return nil
-}
-
 type modifiedTagsArea struct {
 	b6.AreaFeature
 	tags ModifiedTags
@@ -413,11 +393,11 @@ func (m *modifiedTagsArea) Get(key string) b6.Tag {
 	return modifyTag(m.AreaFeature, key, m.tags[m.AreaFeature.FeatureID()])
 }
 
-func (m *modifiedTagsArea) Feature(i int) []b6.NestedPhysicalFeature {
+func (m *modifiedTagsArea) Feature(i int) []b6.PhysicalFeature {
 	if f := m.AreaFeature.Feature(i); f != nil {
-		wrapped := make([]b6.NestedPhysicalFeature, len(f))
+		wrapped := make([]b6.PhysicalFeature, len(f))
 		for j, p := range f {
-			wrapped[j] = &modifiedNestedPhysicalFeature{p, m.tags}
+			wrapped[j] = &modifiedPhysicalFeature{p, m.tags}
 		}
 		return wrapped
 	}
@@ -506,8 +486,6 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 		return m.WrapCollectionFeature(f)
 	case b6.ExpressionFeature:
 		return m.WrapExpressionFeature(f)
-	case b6.NestedPhysicalFeature:
-		return m.WrapNestedPhysicalFeature(f)
 	case b6.PhysicalFeature:
 		return m.WrapPhysicalFeature(f)
 	}
@@ -516,10 +494,6 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 
 func (m ModifiedTags) WrapPhysicalFeature(f b6.PhysicalFeature) b6.PhysicalFeature {
 	return &modifiedPhysicalFeature{PhysicalFeature: f, tags: m}
-}
-
-func (m ModifiedTags) WrapNestedPhysicalFeature(f b6.NestedPhysicalFeature) b6.NestedPhysicalFeature {
-	return &modifiedNestedPhysicalFeature{NestedPhysicalFeature: f, tags: m}
 }
 
 func (m ModifiedTags) WrapAreaFeature(f b6.AreaFeature) b6.AreaFeature {

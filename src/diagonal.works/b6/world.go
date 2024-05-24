@@ -1117,17 +1117,12 @@ type PhysicalFeature interface {
 	Geometry
 }
 
-type NestedPhysicalFeature interface { // TODO(mari): rethink this
-	PhysicalFeature
-	Feature(i int) PhysicalFeature
-}
-
-type wrappedFeature struct {
+type wrappedPhysicalFeature struct {
 	PhysicalFeature
 	FeaturesByID
 }
 
-func (p wrappedFeature) Feature(i int) PhysicalFeature {
+func (p wrappedPhysicalFeature) Feature(i int) PhysicalFeature {
 	if id := p.Reference(i).Source(); id.IsValid() {
 		if point := p.FindFeatureByID(id); point != nil {
 			return point.(PhysicalFeature)
@@ -1137,7 +1132,7 @@ func (p wrappedFeature) Feature(i int) PhysicalFeature {
 	return nil
 }
 
-func (p wrappedFeature) PointAt(i int) s2.Point {
+func (p wrappedPhysicalFeature) PointAt(i int) s2.Point {
 	if point := p.PhysicalFeature.PointAt(i); point.Norm() != 0 {
 		return point
 	}
@@ -1152,7 +1147,7 @@ func (p wrappedFeature) PointAt(i int) s2.Point {
 	panic(fmt.Sprintf("No point with ID %s", id))
 }
 
-func (p wrappedFeature) Polyline() *s2.Polyline {
+func (p wrappedPhysicalFeature) Polyline() *s2.Polyline {
 	points := make([]s2.Point, 0, p.GeometryLen())
 	for i := 0; i < p.GeometryLen(); i++ {
 		points = append(points, p.PointAt(i))
@@ -1160,8 +1155,8 @@ func (p wrappedFeature) Polyline() *s2.Polyline {
 	return (*s2.Polyline)(&points)
 }
 
-func WrapPhysicalFeature(f PhysicalFeature, features FeaturesByID) NestedPhysicalFeature {
-	return wrappedFeature{f, features}
+func WrapPhysicalFeature(f PhysicalFeature, features FeaturesByID) PhysicalFeature {
+	return wrappedPhysicalFeature{f, features}
 }
 
 func (t Tags) ClosedPath() bool {
@@ -1285,7 +1280,7 @@ type AreaFeature interface {
 	Feature
 	Area
 	AreaID() AreaID
-	Feature(i int) []NestedPhysicalFeature
+	Feature(i int) []PhysicalFeature
 }
 
 type RelationMember struct {

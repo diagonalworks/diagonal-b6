@@ -363,16 +363,18 @@ func pointFeatures(context *api.Context, f b6.Feature) (b6.Collection[b6.Feature
 		case b6.GeometryTypePoint:
 			points = append(points, f)
 		case b6.GeometryTypePath:
-			for i := 0; i < f.GeometryLen(); i++ {
-				if p := f.(b6.NestedPhysicalFeature).Feature(i); p != nil {
+			for _, r := range f.References() {
+				p := context.World.FindFeatureByID(r.Source())
+				if p, ok := p.(b6.PhysicalFeature); ok && p.GeometryType() == b6.GeometryTypePoint {
 					points = append(points, p)
 				}
 			}
-		case b6.GeometryTypeArea:
+		case b6.GeometryTypeArea: // TODO(mari): collapse path / area logic when refactoring areas, we should just get point references via reference map b/c of recursion
 			for i := 0; i < f.(b6.AreaFeature).Len(); i++ {
 				for _, path := range f.(b6.AreaFeature).Feature(i) {
-					for j := 0; j < path.GeometryLen(); j++ {
-						if p := path.Feature(j); p != nil {
+					for _, r := range path.References() {
+						p := context.World.FindFeatureByID(r.Source())
+						if p, ok := p.(b6.PhysicalFeature); ok && p.GeometryType() == b6.GeometryTypePoint {
 							points = append(points, p)
 						}
 					}

@@ -98,8 +98,8 @@ func ValidateGranarySquareSeemsReasonable(buildWorld BuildOSMWorld, t *testing.T
 					if paths[0].GeometryLen() != expectedPoints {
 						t.Errorf("Expected %d nodes for The Granary, found %d", expectedPoints, paths[0].GeometryLen())
 					}
-					for i := 0; i < paths[0].GeometryLen(); i++ {
-						if paths[0].Feature(i) == nil {
+					for i, r := range paths[0].References() {
+						if w.FindFeatureByID(r.Source()) == nil {
 							t.Errorf("Expected a PointFeature at index %d, found nil", i)
 						}
 					}

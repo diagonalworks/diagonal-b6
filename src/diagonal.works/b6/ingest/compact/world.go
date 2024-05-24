@@ -126,7 +126,7 @@ func (f *FeaturesByID) findWithoutCache(id b6.FeatureID) b6.Feature {
 					return p
 				}
 			case b6.FeatureTypePath:
-				if p := f.newNestedPhysicalFeature(fb, id.Value); p != nil {
+				if p := f.newWrappedPhysicalFeature(fb, id.Value); p != nil {
 					return p
 				}
 			case b6.FeatureTypeArea:
@@ -244,7 +244,7 @@ func (f *FeaturesByID) newPhysicalFeatureFromTagged(fb *featureBlock, id b6.Feat
 	return nil
 }
 
-type marshalledNestedPhysicalFeature struct {
+type wrappedMarshalledPhysicalFeature struct {
 	marshalledPhysicalFeature
 	byID *FeaturesByID
 
@@ -252,7 +252,7 @@ type marshalledNestedPhysicalFeature struct {
 	polyline s2.Polyline // TODO(mari): avoid caching
 }
 
-func (m *marshalledNestedPhysicalFeature) PointAt(i int) s2.Point {
+func (m *wrappedMarshalledPhysicalFeature) PointAt(i int) s2.Point {
 	if id := m.Reference(i).Source(); id.IsValid() {
 		var err error
 		ll, err := m.byID.FindLocationByID(id)
@@ -265,7 +265,7 @@ func (m *marshalledNestedPhysicalFeature) PointAt(i int) s2.Point {
 	}
 }
 
-func (m *marshalledNestedPhysicalFeature) Polyline() *s2.Polyline {
+func (m *wrappedMarshalledPhysicalFeature) Polyline() *s2.Polyline {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if m.polyline == nil {
@@ -277,7 +277,7 @@ func (m *marshalledNestedPhysicalFeature) Polyline() *s2.Polyline {
 	return &m.polyline
 }
 
-func (m *marshalledNestedPhysicalFeature) Feature(i int) b6.PhysicalFeature {
+func (m *wrappedMarshalledPhysicalFeature) Feature(i int) b6.PhysicalFeature {
 	id := m.Reference(i).Source()
 	if p, ok := m.byID.FindFeatureByID(id).(b6.PhysicalFeature); ok {
 		return p
@@ -285,16 +285,16 @@ func (m *marshalledNestedPhysicalFeature) Feature(i int) b6.PhysicalFeature {
 	panic("not a physical feature")
 }
 
-func (f *FeaturesByID) newNestedPhysicalFeature(fb *featureBlock, id uint64) b6.NestedPhysicalFeature {
+func (f *FeaturesByID) newWrappedPhysicalFeature(fb *featureBlock, id uint64) b6.PhysicalFeature {
 	b := fb.Map.FindFirstWithTag(id, encoding.NoTag)
 	if b != nil {
-		return f.newNestedPhysicalFeatureFromBuffer(fb, id, b)
+		return f.newWrappedPhysicalFeatureFromBuffer(fb, id, b)
 	}
 	return nil
 }
 
-func (f *FeaturesByID) newNestedPhysicalFeatureFromBuffer(fb *featureBlock, id uint64, buffer []byte) b6.NestedPhysicalFeature {
-	return &marshalledNestedPhysicalFeature{
+func (f *FeaturesByID) newWrappedPhysicalFeatureFromBuffer(fb *featureBlock, id uint64, buffer []byte) b6.PhysicalFeature {
+	return &wrappedMarshalledPhysicalFeature{
 		marshalledPhysicalFeature: marshalledPhysicalFeature{
 			ID:             b6.FeatureID{b6.FeatureTypePath, fb.NamespaceTable.Decode(fb.Namespaces[b6.FeatureTypePath]), id},
 			MarshalledTags: MarshalledTags{buffer, fb.Strings, fb.NamespaceTable, CombineTypeAndNamespace(b6.FeatureTypePoint, fb.NamespaceTable.Encode(b6.NamespaceOSMNode))},
@@ -368,21 +368,21 @@ func (m *marshalledArea) MultiPolygon() geometry.MultiPolygon {
 	return mp
 }
 
-func (m *marshalledArea) Feature(i int) []b6.NestedPhysicalFeature {
+func (m *marshalledArea) Feature(i int) []b6.PhysicalFeature {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return m.featureWithLock(i)
 }
 
-func (m *marshalledArea) featureWithLock(i int) []b6.NestedPhysicalFeature {
+func (m *marshalledArea) featureWithLock(i int) []b6.PhysicalFeature {
 	m.fillGeometry()
-	var paths []b6.NestedPhysicalFeature
+	var paths []b6.PhysicalFeature
 	if ids, ok := m.geometry.PathIDs(i); ok {
-		paths = make([]b6.NestedPhysicalFeature, len(ids))
+		paths = make([]b6.PhysicalFeature, len(ids))
 		for i := range ids {
 			typ, ns := ids[i].TypeAndNamespace.Split()
 			id := b6.FeatureID{typ, m.fb.NamespaceTable.Decode(ns), ids[i].Value}
-			if path := m.byID.FindFeatureByID(id).(b6.NestedPhysicalFeature); path != nil {
+			if path := m.byID.FindFeatureByID(id).(b6.PhysicalFeature); path != nil {
 				paths[i] = path
 			} else {
 				panic(fmt.Sprintf("Missing path %s for %s", id, m.id))
@@ -542,7 +542,7 @@ func (f *FeaturesByID) EachFeature(each func(f b6.Feature, goroutine int) error,
 	if !options.SkipPaths {
 		for _, fb := range f.features[b6.FeatureTypePath] {
 			emit := func(id uint64, tagged []encoding.Tagged, g int) error {
-				return each(f.newNestedPhysicalFeatureFromBuffer(fb, id, tagged[0].Data), g)
+				return each(f.newWrappedPhysicalFeatureFromBuffer(fb, id, tagged[0].Data), g)
 			}
 			if err := fb.Map.EachItem(emit, goroutines); err != nil {
 				return err
@@ -713,7 +713,7 @@ func (f *FeaturesByID) fillPathSegments(point b6.FeatureID, path b6.FeatureID, s
 			previous := 0
 			var position int
 			next := p.PathLen(fb.Strings) - 1
-			var pf b6.NestedPhysicalFeature
+			var pf b6.PhysicalFeature
 			for i := 0; i < p.PathLen(fb.Strings); i++ {
 				if id, ok := p.Reference(i, fb.Strings); ok {
 					if pf == nil {

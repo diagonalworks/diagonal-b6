@@ -324,8 +324,8 @@ func TestShortestPathFromConnectedBuildingWithNoEntrance(t *testing.T) {
 	entrances := 0
 	for i := 0; i < lighterman.Len(); i++ {
 		for _, path := range lighterman.Feature(i) {
-			for j := 0; j < path.GeometryLen(); j++ {
-				if path.Feature(j).Get("entrance").IsValid() {
+			for _, r := range path.References() {
+				if w.FindFeatureByID(r.Source()).Get("entrance").IsValid() {
 					entrances++
 				}
 			}
@@ -357,8 +357,8 @@ func TestShortestPathFromBuildingWithMoreThanOneEntrance(t *testing.T) {
 	entrances := 0
 	for i := 0; i < stPancras.Len(); i++ {
 		for _, path := range stPancras.Feature(i) {
-			for j := 0; j < path.GeometryLen(); j++ {
-				if path.Feature(j).Get("entrance").IsValid() {
+			for _, r := range path.References() {
+				if camden.FindFeatureByID(r.Source()).Get("entrance").IsValid() {
 					entrances++
 				}
 			}

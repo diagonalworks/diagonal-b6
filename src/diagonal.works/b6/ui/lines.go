@@ -419,13 +419,16 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 		substacks = append(substacks, substack)
 	}
 
-	if path, ok := f.(b6.NestedPhysicalFeature); ok && path.GeometryType() == b6.GeometryTypePath {
+	if path, ok := f.(b6.PhysicalFeature); ok && path.GeometryType() == b6.GeometryTypePath {
 		substack := &pb.SubstackProto{Collapsable: true}
 		line := leftRightValueLineFromValues("Points", path.GeometryLen(), w)
 		substack.Lines = append(substack.Lines, line)
 		for i := 0; i < path.GeometryLen(); i++ {
-			if point := path.Feature(i); point != nil {
-				substack.Lines = append(substack.Lines, ValueLineFromValue(point, w))
+			if r := path.Reference(i); r.Source().IsValid() {
+				point := w.FindFeatureByID(r.Source())
+				if point, ok := point.(b6.PhysicalFeature); ok && point.GeometryType() == b6.GeometryTypePoint {
+					substack.Lines = append(substack.Lines, ValueLineFromValue(point, w))
+				}
 			} else {
 				substack.Lines = append(substack.Lines, ValueLineFromValue(path.PointAt(i), w))
 			}
