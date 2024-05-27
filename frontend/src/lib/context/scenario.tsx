@@ -28,7 +28,7 @@ import { $FixMe } from '@/utils/defs';
 import { UseQueryResult, useQuery } from '@tanstack/react-query';
 import { GeoJsonObject } from 'geojson';
 import { useAtomValue } from 'jotai';
-import { isEqual, pickBy } from 'lodash';
+import { isEqual, isUndefined, pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
 import { b6, b6Path } from '../b6';
 import { changeMapStyleSource } from '../map';
@@ -338,12 +338,11 @@ export const ScenarioProvider = ({
     }, [scenarioOutliners]);
 
     const comparisonOutliners = useMemo(() => {
-        console.log({ scenarioOutliners });
         return Object.values(scenarioOutliners).filter(
             (outliner) =>
                 outliner.properties.comparison === activeComparator?.id
         );
-    }, [scenarioOutliners]);
+    }, [scenarioOutliners, activeComparator?.id]);
 
     const draggableOutliners = useMemo(() => {
         return Object.values(scenarioOutliners).filter(
@@ -359,14 +358,19 @@ export const ScenarioProvider = ({
     }, [scenarioOutliners]);
 
     const queryLayers = useMemo(() => {
+        const activeLayer = Object.values(scenarioOutliners).find(
+            (outliner) => outliner.active
+        );
         return Object.values(scenarioOutliners).flatMap((outliner) => {
             return (outliner.data?.proto.layers?.map((l) => ({
                 layer: l,
                 histogram: outliner.histogram,
-                show: outliner.active || outliner.properties.comparison,
+                show: !isUndefined(activeLayer)
+                    ? outliner.active
+                    : outliner.properties.comparison === activeComparator?.id,
             })) || []) as QueryLayer[];
         });
-    }, [scenarioOutliners]);
+    }, [scenarioOutliners, activeComparator?.id]);
 
     const highlightedFeatures = useMemo(() => {
         const featureIds = Object.values(scenarioOutliners)
