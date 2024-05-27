@@ -193,7 +193,6 @@ const TabButton = ({
     );
 
     const handleClick = () => {
-        console.log('click');
         setActiveScenario(scenario.id);
     };
 

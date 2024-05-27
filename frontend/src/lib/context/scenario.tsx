@@ -367,10 +367,11 @@ export const ScenarioProvider = ({
                 histogram: outliner.histogram,
                 show: !isUndefined(activeLayer)
                     ? outliner.active
-                    : outliner.properties.comparison === activeComparator?.id,
+                    : activeComparator &&
+                      outliner.properties.comparison === activeComparator.id,
             })) || []) as QueryLayer[];
         });
-    }, [scenarioOutliners, activeComparator?.id]);
+    }, [scenarioOutliners, activeComparator]);
 
     const highlightedFeatures = useMemo(() => {
         const featureIds = Object.values(scenarioOutliners)
