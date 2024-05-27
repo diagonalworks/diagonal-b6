@@ -32,7 +32,7 @@ export type OutlinerSpec = {
         coordinates: { x: number; y: number };
         scenario?: string;
         changeable?: boolean;
-        comparison?: boolean;
+        comparison?: string;
         origin?: string;
     };
     request?: {

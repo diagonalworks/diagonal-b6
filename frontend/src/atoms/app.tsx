@@ -32,6 +32,7 @@ export type Scenario = ScenarioSpec & {
     change?: Change;
     featureId?: FeatureIDProto;
     worldCreated?: boolean;
+    tabIndex: number;
 };
 
 export type Scenarios = Record<string, Scenario>;
@@ -60,6 +61,7 @@ export const initialAppStore: AppStore = {
     comparators: {},
     scenarios: {
         baseline: {
+            tabIndex: 0,
             id: 'baseline',
             name: 'Baseline',
         },

@@ -52,6 +52,8 @@ export const ScenarioTab = ({
     const [showWorldShell, setShowWorldShell] = useState(false);
     const { comparisonOutliners } = useScenarioContext();
 
+    console.log({ comparisonOutliners });
+
     useHotkeys('shift+meta+b, `', () => {
         setShowWorldShell((prev) => !prev);
     });

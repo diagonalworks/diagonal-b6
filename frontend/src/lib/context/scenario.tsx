@@ -102,6 +102,7 @@ export const ScenarioProvider = ({
         createOutliner,
         addComparator,
         setApp,
+        activeComparator,
     } = useAppContext();
     const startupQuery = useAtomValue(startupQueryAtom);
     const collection = useAtomValue(collectionAtom);
@@ -337,8 +338,10 @@ export const ScenarioProvider = ({
     }, [scenarioOutliners]);
 
     const comparisonOutliners = useMemo(() => {
+        console.log({ scenarioOutliners });
         return Object.values(scenarioOutliners).filter(
-            (outliner) => outliner.properties.comparison
+            (outliner) =>
+                outliner.properties.comparison === activeComparator?.id
         );
     }, [scenarioOutliners]);
 
