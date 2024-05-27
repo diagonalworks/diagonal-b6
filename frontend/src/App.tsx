@@ -193,6 +193,7 @@ const TabButton = ({
     );
 
     const handleClick = () => {
+        console.log('click');
         setActiveScenario(scenario.id);
     };
 
@@ -215,12 +216,16 @@ const TabButton = ({
             onClick={handleClick}
         >
             <ReaderIcon />
-            <input
-                onChange={handleInputChange}
-                disabled={!editable || !active}
-                className="bg-transparent border-none text-sm focus:outline-none focus:text-graphite-80 transition-colors  caret-rose-60 "
-                value={scenario.name}
-            />
+            {editable && active ? (
+                <input
+                    onChange={handleInputChange}
+                    disabled={!editable || !active}
+                    className="bg-transparent border-none text-sm focus:outline-none focus:text-graphite-80 transition-colors  caret-rose-60 "
+                    value={scenario.name}
+                />
+            ) : (
+                <span className=" cursor-pointer">{scenario.name}</span>
+            )}
 
             {scenario.id !== 'baseline' && (
                 <div className="w-4 flex">
