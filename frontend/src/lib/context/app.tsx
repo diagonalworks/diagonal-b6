@@ -261,15 +261,19 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     );
 
     const changedWorldScenarios = useMemo(() => {
-        return Object.values(app.scenarios).filter((o) => o.id !== 'baseline');
+        return Object.values(app.scenarios)
+            .filter((o) => o.id !== 'baseline')
+            .sort((a, b) => a.tabIndex - b.tabIndex);
     }, [app.scenarios]);
 
     const addScenario = useCallback(() => {
         const id = uniqueId(random(0, 1000).toString());
         setApp((draft) => {
+            const tabIndex = Object.keys(draft.scenarios).length;
             draft.scenarios[id] = {
                 id: id,
                 name: 'Untitled Scenario',
+                tabIndex,
             };
             draft.tabs.right = id;
         });

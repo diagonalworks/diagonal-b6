@@ -83,7 +83,7 @@ export const ComparatorProvider = ({
             createOutliner({
                 id: `${comparator.id}-baseline`,
                 properties: {
-                    comparison: true,
+                    comparison: comparator.id,
                     scenario: comparator?.baseline as $FixMe,
                     docked: false,
                     transient: false,
@@ -118,7 +118,7 @@ export const ComparatorProvider = ({
                 createOutliner({
                     id: `${comparator.id}-scenario-${i}`,
                     properties: {
-                        comparison: true,
+                        comparison: comparator.id,
                         origin: `${comparator.id}-baseline`,
                         scenario: scenarioId as $FixMe,
                         docked: false,

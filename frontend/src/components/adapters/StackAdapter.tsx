@@ -46,7 +46,6 @@ export const StackAdapter = () => {
 
     const handleOpenChange = (open: boolean) => {
         setActiveOutliner(outliner.id, open);
-
         setOpen(open);
     };
 
