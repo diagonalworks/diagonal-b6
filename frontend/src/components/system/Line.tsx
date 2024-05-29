@@ -64,7 +64,7 @@ const Root = React.forwardRef<HTMLDivElement, LineProps>(
             <div
                 {...props}
                 className={twMerge(
-                    'line hover:has-[.tag]:bg-white has-[.expression]:bg-graphite-10 has-[.shell]:p-0 p-3 border-b flex items-center gap-1 w-80 min-h-11 box-border border-graphite-30 bg-white hover:bg-graphite-10 focus:bg-graphite-10 cursor-default has-[.line-button]:cursor-pointer has-[.line-button]:p-0',
+                    'line hover:has-[.tag]:bg-white has-[.shell]:p-0 p-3 border-b flex text-left items-center gap-1 w-80 min-h-11 box-border border-graphite-30 bg-white hover:bg-graphite-10 focus:bg-graphite-10 cursor-default has-[.line-button]:cursor-pointer has-[.line-button]:p-0',
                     className
                 )}
                 ref={forwardedRef}

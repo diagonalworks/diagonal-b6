@@ -1,10 +1,10 @@
 import { Line } from '@/components/system/Line';
 import { LineContextProvider } from '@/lib/context/line';
-import { useOutlinerContext } from '@/lib/context/outliner';
-import { useScenarioContext } from '@/lib/context/scenario';
+import { useStackContext } from '@/lib/context/stack';
 import { LineProto, TagsLineProto } from '@/types/generated/ui';
 import { Cross1Icon } from '@radix-ui/react-icons';
 import React from 'react';
+import { twMerge } from 'tailwind-merge';
 import { IconButton } from '../system/IconButton';
 import { TooltipOverflow } from '../system/Tooltip';
 import { AtomAdapter } from './AtomAdapter';
@@ -22,32 +22,22 @@ export const LineAdapter = ({
     const clickable =
         line.value?.clickExpression ?? line.action?.clickExpression;
     const Wrapper = clickable ? Line.Button : React.Fragment;
-    const { outliner, close: closeFn } = useOutlinerContext();
-    const { createOutlinerInScenario } = useScenarioContext();
+    const { close: closeFn, evaluateNode } = useStackContext();
 
     const handleLineClick = () => {
         if (!clickable) return;
-        createOutlinerInScenario({
-            active: true,
-            id: JSON.stringify(clickable),
-            properties: {
-                coordinates: { x: 4, y: 240 },
-                scenario: outliner.properties.scenario,
-                transient: outliner.properties.transient,
-                docked: outliner.properties.docked,
-            },
-            request: {
-                expression: '',
-                locked: true,
-                eventType: 'oc',
-                node: clickable,
-            },
-        });
+        evaluateNode(clickable);
     };
 
     return (
         <LineContextProvider line={line}>
-            <Line className="flex justify-between">
+            <Line
+                className={twMerge(
+                    'flex justify-between',
+                    line.error && 'bg-red-20 text-red-70 hover:bg-red-20',
+                    line.expression && 'bg-graphite-10 '
+                )}
+            >
                 <Wrapper
                     {...(clickable && {
                         onClick: (e) => {
@@ -86,17 +76,30 @@ export const LineAdapter = ({
                     {line.choice && <ChoiceAdapter choice={line.choice} />}
                     {line.shell && <ShellAdapter shell={line.shell} />}
                     {line.expression && (
-                        <span className="expression">
+                        <span className="expression ">
                             {line.expression.expression}
                         </span>
                     )}
+                    {line.error && (
+                        <span className="error">
+                            <span className=" font-medium mr-1">Error:</span>
+                            {line.error.error}
+                        </span>
+                    )}
                     {line.tags && <Tags tagLine={line.tags} />}
+                    {close && (
+                        <IconButton
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                closeFn();
+                            }}
+                            className="close"
+                        >
+                            <Cross1Icon />
+                        </IconButton>
+                    )}
                 </Wrapper>
-                {close && (
-                    <IconButton onClick={closeFn} className="close">
-                        <Cross1Icon />
-                    </IconButton>
-                )}
             </Line>
         </LineContextProvider>
     );

@@ -30,7 +30,7 @@ import { GeoJsonObject } from 'geojson';
 import { useAtomValue } from 'jotai';
 import { isEqual, isUndefined, pickBy } from 'lodash';
 import { MapRef } from 'react-map-gl/maplibre';
-import { b6, b6Path } from '../b6';
+import { b6 } from '../b6';
 import { changeMapStyleSource } from '../map';
 import { useAppContext } from './app';
 import { OutlinerStore } from './outliner';
@@ -429,7 +429,7 @@ export const ScenarioProvider = ({
     const mapStyle = useMemo(() => {
         const tileSource = `${
             window.location.origin
-        }${b6Path}tiles/base/{z}/{x}/{y}.mvt${
+        }/tiles/base/{z}/{x}/{y}.mvt${
             scenario.featureId
                 ? `?r=collection/${scenario.featureId.namespace}/${scenario.featureId.value}`
                 : ''

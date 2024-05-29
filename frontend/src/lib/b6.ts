@@ -5,7 +5,7 @@ import { StartupResponse } from '@/types/startup';
 
 export type b6Route = 'startup' | 'stack';
 
-export const b6Path = `${import.meta.env.VITE_B6_BASE_PATH}`;
+//export const b6Path = `${import.meta.env.VITE_B6_BASE_PATH}`;
 
 const formatResponse = (res: Response) => {
     if (!res.ok) {
@@ -21,7 +21,7 @@ const formatResponse = (res: Response) => {
 };
 
 const stack = async (request: UIRequestProto & { logEvent: Event }) => {
-    return fetch(`${b6Path}stack`, {
+    return fetch(`/stack`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

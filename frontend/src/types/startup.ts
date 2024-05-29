@@ -11,6 +11,12 @@ export type Docked = {
     proto: UIResponseProto;
 };
 
+export type StartupRequest = {
+    z?: string;
+    ll?: string;
+    r?: string;
+};
+
 export type StartupResponse = {
     version?: string;
     docked?: Docked[];

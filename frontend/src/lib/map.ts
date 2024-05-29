@@ -43,7 +43,7 @@ export const getRoadWidth = (type: string) => {
 export const changeMapStyleSource = (
     mapStyle: StyleSpecification,
     source: string
-) => {
+): StyleSpecification => {
     return {
         ...mapStyle,
         sources: {
@@ -53,5 +53,5 @@ export const changeMapStyleSource = (
                 tiles: [source],
             },
         },
-    };
+    } as StyleSpecification;
 };
