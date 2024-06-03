@@ -11,16 +11,17 @@ import { useCallback, useMemo } from 'react';
 import { useMap as useMapLibre } from 'react-map-gl/maplibre';
 
 export const useMap = ({ id }: { id: World['id'] }) => {
-    const world = useWorldStore((state) => state.worlds[id]);
     const { [id]: maplibre } = useMapLibre();
     const outlinerActions = useOutlinersStore((state) => state.actions);
+    const world = useWorldStore((state) => state.worlds[id]);
+    const baseline = useWorldStore((state) => state.worlds.baseline);
 
     const baseRequest: () => Partial<OutlinerSpec['request']> =
         useCallback(() => {
             const mapCenter = maplibre?.getCenter();
             const mapZoom = maplibre?.getZoom();
             return {
-                root: world.featureId,
+                root: world.featureId ?? baseline.featureId,
                 ...(mapCenter && {
                     logMapCenter: {
                         latE7: Math.round(mapCenter.lat * 1e7),
@@ -29,7 +30,7 @@ export const useMap = ({ id }: { id: World['id'] }) => {
                 }),
                 ...(mapZoom && { logMapZoom: mapZoom }),
             };
-        }, [maplibre, world]);
+        }, [maplibre, world, baseline]);
 
     const evaluateLatLng = useCallback(
         ({ e, locked }: { e: MapLayerMouseEvent; locked: boolean }) => {
@@ -46,6 +47,7 @@ export const useMap = ({ id }: { id: World['id'] }) => {
                     docked: false,
                     transient: true,
                     coordinates: e.point,
+                    type: 'core',
                 },
                 request: {
                     ...baseRequest(),
@@ -80,12 +82,36 @@ export const useMap = ({ id }: { id: World['id'] }) => {
                     docked: false,
                     transient: true,
                     coordinates: e.point,
+                    type: 'core',
                 },
                 request: {
                     ...baseRequest(),
                     expression,
                     logEvent: event,
                     locked,
+                },
+            });
+        },
+        [outlinerActions, id, baseRequest]
+    );
+
+    const evaluateExpression = useCallback(
+        (expression: string) => {
+            outlinerActions.add({
+                id: `${id}-${expression}`,
+                world: id,
+                properties: {
+                    active: false,
+                    docked: false,
+                    transient: true,
+                    coordinates: { x: 8, y: 60 },
+                    type: 'core',
+                },
+                request: {
+                    ...baseRequest(),
+                    expression,
+                    locked: false,
+                    logEvent: 'ws',
                 },
             });
         },
@@ -146,8 +172,15 @@ export const useMap = ({ id }: { id: World['id'] }) => {
             evaluateFeature,
             findFeatureInLayer,
             highlightFeature,
+            evaluateExpression,
         }),
-        [highlightFeature, evaluateLatLng, evaluateFeature, findFeatureInLayer]
+        [
+            highlightFeature,
+            evaluateLatLng,
+            evaluateFeature,
+            findFeatureInLayer,
+            evaluateExpression,
+        ]
     );
 
     return [actions];

@@ -1,32 +1,12 @@
 import { Map } from '@/components/Map';
-import { useStartup } from '@/lib/api/startup';
-import { useWorkspaceStore } from '@/stores/workspace';
-import { World as WorldT } from '@/stores/worlds';
-import { FeatureIDProto, FeatureType } from '@/types/generated/api';
-import { useMemo } from 'react';
+import { ChangePanel } from '@/features/scenarios/components/ChangePanel';
+import { World as WorldT, useWorldStore } from '@/stores/worlds';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useMemo, useState } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 import GeoJsonLayer from './GeoJsonLayer';
 import OutlinersLayer from './OutlinersLayer';
-
-const getWorldFeatureId = (
-    worldId: string,
-    namespace?: string,
-    collection?: string
-): FeatureIDProto => {
-    const featureId = {
-        type: 'FeatureTypeCollection' as unknown as FeatureType,
-        namespace: namespace ?? 'diagonal.works',
-        value: 0,
-    };
-
-    if (worldId === 'baseline') {
-        const baselineValue = collection?.match(/(?<=\/)\d*$/)?.[0];
-        featureId.value = parseInt(baselineValue ?? '0');
-    } else {
-        featureId.namespace = `${featureId.namespace}/scenario`;
-        featureId.value = +worldId;
-    }
-    return featureId;
-};
+import { WorldShellAdapter } from './adapters/ShellAdapter';
 
 export default function World({
     id,
@@ -35,23 +15,50 @@ export default function World({
     id: WorldT['id'];
     side: 'left' | 'right';
 }) {
-    const root = useWorkspaceStore((state) => state.root);
-    const startup = useStartup();
+    const [showWorldShell, setShowWorldShell] = useState(false);
+    useHotkeys('shift+meta+b, `', () => {
+        setShowWorldShell((prev) => !prev);
+    });
 
-    const featureId = useMemo(() => {
-        return getWorldFeatureId(id, startup.data?.root?.namespace, root);
-    }, [id, startup.data?.root?.namespace, root]);
+    const world = useWorldStore((state) => state.worlds[id]);
 
     const mapRoot = useMemo(() => {
-        return `collection/${featureId.namespace}/${featureId.value}`;
-    }, [featureId.namespace, featureId.value]);
+        if (!world?.featureId) return '';
+        return `collection/${world.featureId.namespace}/${world.featureId.value}`;
+    }, [world?.featureId]);
+
+    if (!world) return null;
 
     return (
         <div className=" w-full h-full absolute top-0 left-0">
             <Map root={mapRoot} side={side} world={id}>
+                <GlobalShell show={showWorldShell} mapId={id} />
                 <OutlinersLayer world={id} />
                 <GeoJsonLayer world={id} side={side} />
             </Map>
+            <div className="absolute top-0 left-0 ">
+                {id !== 'baseline' && <ChangePanel world={id} id={id} />}
+            </div>
         </div>
     );
 }
+
+const GlobalShell = ({ show, mapId }: { show: boolean; mapId: string }) => {
+    return (
+        <AnimatePresence>
+            {show && (
+                <motion.div
+                    initial={{
+                        translateX: -100,
+                    }}
+                    animate={{
+                        translateX: 0,
+                    }}
+                    className="absolute top-2 left-10 w-[95%] z-20 "
+                >
+                    <WorldShellAdapter mapId={mapId} />
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};

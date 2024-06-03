@@ -1,4 +1,6 @@
+import ComparisonCard from '@/features/scenarios/components/ComparisonCard';
 import { Tabs } from '@/features/scenarios/components/Tabs';
+import { useComparisonsStore } from '@/features/scenarios/stores/comparisons';
 import { useTabsStore } from '@/features/scenarios/stores/tabs';
 import { useStartup } from '@/lib/api/startup';
 import { useViewStore, useViewURLStorage } from '@/stores/view';
@@ -6,7 +8,7 @@ import { useWorkspaceURLStorage } from '@/stores/workspace';
 import { PlusIcon } from '@radix-ui/react-icons';
 import { AnimatePresence } from 'framer-motion';
 import { customAlphabet } from 'nanoid';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { MapProvider } from 'react-map-gl';
 import World from './World';
 
@@ -57,6 +59,33 @@ export default function Workspace() {
         [tabs]
     );
 
+    const comparators = useComparisonsStore((state) => state.comparisons);
+
+    const comparison = useMemo(() => {
+        return Object.values(comparators).find(
+            (comparison) =>
+                comparison.baseline.id === leftTab &&
+                comparison.scenarios.some(
+                    (scenario) => scenario.id === rightTab
+                )
+        );
+    }, [comparators, leftTab, rightTab]);
+
+    const handleAddScenario = useCallback(() => {
+        const id = generateWorldId();
+        tabActions.add({
+            id,
+            side: 'right',
+            index: rightTabs.length,
+            properties: {
+                name: 'Untitled',
+                closable: true,
+                editable: true,
+            },
+        });
+        tabActions.setActive(id, 'right');
+    }, [tabActions, rightTabs.length]);
+
     return (
         <div className="h-screen max-h-screen flex flex-col relative">
             {/* @TODO: extract tabs menu logic to a separate component. */}
@@ -75,18 +104,7 @@ export default function Workspace() {
                     {rightTabs.length === 0 && (
                         <button
                             onClick={() => {
-                                const id = generateWorldId();
-                                tabActions.add({
-                                    id,
-                                    side: 'right',
-                                    index: rightTabs.length,
-                                    properties: {
-                                        name: 'Untitled',
-                                        closable: true,
-                                        editable: true,
-                                    },
-                                });
-                                tabActions.setActive(id, 'right');
+                                handleAddScenario();
                                 tabActions.setSplitScreen(true);
                             }}
                             aria-label="add scenario"
@@ -97,7 +115,7 @@ export default function Workspace() {
                         </button>
                     )}
                 </div>
-                <div className="flex items-end justify-between gap-1">
+                <div className="flex gap-1">
                     {rightTabs.map((tab) => (
                         <Tabs.Button
                             key={tab.id}
@@ -114,6 +132,15 @@ export default function Workspace() {
                             }}
                         />
                     ))}
+                    {rightTabs.length > 0 && (
+                        <button
+                            className="bg-rose-10 hover:bg-rose-20  border border-b border-b-rose-40 border-rose-30 text-rose-70 hover:text-rose-90 px-2 rounded-t"
+                            aria-label="create new scenario"
+                            onClick={handleAddScenario}
+                        >
+                            <PlusIcon />
+                        </button>
+                    )}
                 </div>
             </Tabs.Menu>
             <Tabs.Content>
@@ -138,6 +165,11 @@ export default function Workspace() {
                     )}
                 </AnimatePresence>
             </Tabs.Content>
+            {comparison && (
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 translate bg-white">
+                    <ComparisonCard comparison={comparison} />
+                </div>
+            )}
         </div>
     );
 }

@@ -180,6 +180,11 @@ const Button = ({
                     (tab.side === 'right' ? 'bg-rose-30' : 'bg-graphite-30'),
                 props.className
             )}
+            transition={{
+                type: 'spring',
+                bounce: 0.1,
+                mass: 0.5,
+            }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onClick={handleClick}

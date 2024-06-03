@@ -1,11 +1,8 @@
-import { startupQueryAtom } from '@/atoms/startup';
-import { useAppContext } from '@/lib/context/app';
-import { OutlinerProvider } from '@/lib/context/outliner';
-import { useScenarioContext } from '@/lib/context/scenario';
+import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
+import { LabelledIconAdapter } from '@/components/adapters/LabelledIconAdapter';
+import { Line } from '@/components/system/Line';
 import { highlighted } from '@/lib/text';
-import { FeatureIDProto } from '@/types/generated/api';
-import { HeaderLineProto, LineProto } from '@/types/generated/ui';
-import { Docked } from '@/types/startup';
+import { World, useWorldStore } from '@/stores/worlds';
 import { $FixMe } from '@/utils/defs';
 import { Combobox } from '@headlessui/react';
 import {
@@ -14,135 +11,35 @@ import {
     TriangleRightIcon,
 } from '@radix-ui/react-icons';
 import * as Select from '@radix-ui/react-select';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useAtomValue } from 'jotai';
 import { isEqual } from 'lodash';
 import { QuickScore } from 'quick-score';
-import {
-    HTMLAttributes,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState,
-} from 'react';
-import { useHotkeys } from 'react-hotkeys-hook';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
-import { match } from 'ts-pattern';
-import {
-    LeftComparatorTeleporter,
-    RightComparatorTeleporter,
-} from './Comparator';
-import { OutlinersLayer } from './Outliners';
-import { ScenarioMap } from './ScenarioMap';
-import { HeaderAdapter } from './adapters/HeaderAdapter';
-import { LabelledIconAdapter } from './adapters/LabelledIconAdapter';
-import { WorldShellAdapter } from './adapters/ShellAdapter';
-import { StackAdapter } from './adapters/StackAdapter';
-import { Line } from './system/Line';
+import { useChangeFunctions } from '../api/change-functions';
+import { useScenario } from '../api/run-scenario';
+import useDockedAnalysis from '../hooks/useDockedAnalysis';
+import { Change, useChangesStore } from '../stores/changes';
 
-export const ScenarioTab = ({
+export const ChangePanel = ({
+    world,
     id,
-    tab,
-    ...props
 }: {
-    id: string;
-    tab: 'left' | 'right';
-} & HTMLAttributes<HTMLDivElement>) => {
-    const { activeComparator } = useAppContext();
-    const [showWorldShell, setShowWorldShell] = useState(false);
-    const { comparisonOutliners } = useScenarioContext();
-
-    useHotkeys('shift+meta+b, `', () => {
-        setShowWorldShell((prev) => !prev);
-    });
-
-    const showComparator =
-        activeComparator?.scenarios?.includes(id as $FixMe) ||
-        activeComparator?.baseline === (id as $FixMe);
-
-    const Teleporter = useMemo(() => {
-        return match(tab)
-            .with('left', () => LeftComparatorTeleporter)
-            .with('right', () => RightComparatorTeleporter)
-            .exhaustive();
-    }, [tab]);
-
-    return (
-        <>
-            <div
-                {...props}
-                className={twMerge(
-                    'h-full border border-x-graphite-40 border-t-graphite-40 border-t bg-graphite-30',
-                    tab === 'right' &&
-                        'border-x-rose-40 border-t-rose-40 bg-rose-30',
-                    props.className
-                )}
-            >
-                <div
-                    className={twMerge(
-                        'h-full w-full relative border-2 border-graphite-30 rounded-lg',
-                        tab === 'right' && 'border-rose-30'
-                    )}
-                >
-                    <ScenarioMap>
-                        <GlobalShell show={showWorldShell} mapId={id} />
-                        <OutlinersLayer />
-                    </ScenarioMap>
-
-                    <div className="absolute top-0 left-0 ">
-                        {id !== 'baseline' && <ChangePanel />}
-                    </div>
-                </div>
-            </div>
-            {showComparator && (
-                <Teleporter.Source>
-                    {comparisonOutliners.map((outliner) => (
-                        <OutlinerProvider key={outliner.id} outliner={outliner}>
-                            <StackAdapter />
-                        </OutlinerProvider>
-                    ))}
-                </Teleporter.Source>
-            )}
-        </>
-    );
-};
-
-const GlobalShell = ({ show, mapId }: { show: boolean; mapId: string }) => {
-    return (
-        <AnimatePresence>
-            {show && (
-                <motion.div
-                    initial={{
-                        translateX: -100,
-                    }}
-                    animate={{
-                        translateX: 0,
-                    }}
-                    className="absolute top-2 left-10 w-[95%] z-20 "
-                >
-                    <WorldShellAdapter mapId={mapId} />
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
-};
-
-const ChangePanel = () => {
-    const {
-        removeFeatureFromChange,
-        scenario: { change, worldCreated },
-    } = useScenarioContext();
+    world: World['id'];
+    id: Change['id'];
+}) => {
+    const change = useChangesStore((state) => state.changes[id]);
+    const changeActions = useChangesStore((state) => state.actions);
 
     const [open, setOpen] = useState(true);
 
     useEffect(() => {
-        if (worldCreated) {
+        if (change.created) {
             setOpen(false);
         }
-    }, [worldCreated]);
+    }, [change.created]);
 
     useEffect(() => {
-        if (!change?.features) {
+        if (!change?.spec.features) {
             setOpen(true);
         }
     }, [change]);
@@ -150,7 +47,7 @@ const ChangePanel = () => {
     return (
         <div className="border  bg-rose-30 p-0.5  border-rose-40  shadow-lg">
             <div className="bg-rose-30 flex flex-col gap-2">
-                {worldCreated && (
+                {change.created && (
                     <div>
                         <button
                             className="px-2 text-sm flex gap-1 items-center py-1  rounded hover:underline  text-rose-80 focus-within:outline-none"
@@ -169,12 +66,13 @@ const ChangePanel = () => {
                 {open && (
                     <div>
                         <div className="flex flex-col gap-2">
-                            {change?.features && change.features.length > 0 ? (
-                                change.features.map((feature, i) => (
+                            {change?.spec.features &&
+                            change.spec.features.length > 0 ? (
+                                change.spec.features.map((feature, i) => (
                                     <Line
                                         className={twMerge(
                                             'text-sm py-1 flex gap-2 items-center justify-between',
-                                            worldCreated &&
+                                            change.created &&
                                                 'bg-rose-10 hover:bg-rose-10 italic'
                                         )}
                                         key={i}
@@ -186,11 +84,12 @@ const ChangePanel = () => {
                                         ) : (
                                             <span>{feature.expression}</span>
                                         )}
-                                        {!worldCreated && (
+                                        {!change.created && (
                                             <button
                                                 className="text-xs hover:bg-graphite-20 p-1 hover:text-graphite-100 text-graphite-70 rounded-full w-5 h-5 flex items-center justify-center"
                                                 onClick={() =>
-                                                    removeFeatureFromChange(
+                                                    changeActions.removeFeature(
+                                                        id,
                                                         feature
                                                     )
                                                 }
@@ -206,9 +105,10 @@ const ChangePanel = () => {
                                 </div>
                             )}
                         </div>
-                        {change?.features && change.features.length > 0 && (
-                            <ChangeCombo />
-                        )}
+                        {change.spec.features &&
+                            change.spec.features.length > 0 && (
+                                <ChangeCombo worldId={world} id={id} />
+                            )}
                     </div>
                 )}
             </div>
@@ -216,26 +116,31 @@ const ChangePanel = () => {
     );
 };
 
-type AnalysisOption = {
-    id: FeatureIDProto;
-    label?: HeaderLineProto;
-};
-const ChangeCombo = () => {
-    const { changes } = useAppContext();
-    const {
-        scenario: { change, worldCreated },
-        setChangeAnalysis,
-        setChangeFunction,
-        queryScenario,
-        runScenario,
-    } = useScenarioContext();
-    const startupQuery = useAtomValue(startupQueryAtom);
+const ChangeCombo = ({
+    worldId,
+    id,
+}: {
+    worldId: World['id'];
+    id: Change['id'];
+}) => {
+    const change = useChangesStore((state) => state.changes[id]);
+    const world = useWorldStore((state) => state.worlds[worldId]);
+    const changeActions = useChangesStore((state) => state.actions);
+
+    const baseline = useWorldStore((state) => state.worlds.baseline);
+    const changeFunctions = useChangeFunctions({
+        origin: baseline,
+    });
+
+    const queryScenario = useScenario(baseline, world, change.spec);
+
+    const analysisOptions = useDockedAnalysis();
 
     const [search, setSearch] = useState('');
 
     const matcher = useMemo(() => {
-        return new QuickScore(changes, ['label']);
-    }, [changes]);
+        return new QuickScore(changeFunctions, ['label']);
+    }, [changeFunctions]);
 
     const functionResults = useMemo(() => {
         if (!search) return [];
@@ -244,50 +149,34 @@ const ChangeCombo = () => {
 
     const handleClick = useCallback(() => {
         if (!change) return;
-        runScenario();
+        queryScenario.refetch();
     }, [change, queryScenario]);
-
-    const analysisOptions = useMemo(() => {
-        const dockedAnalysis = startupQuery.data?.docked;
-        return (
-            dockedAnalysis?.flatMap((analysis: Docked) => {
-                const label = analysis.proto.stack?.substacks?.[0].lines?.map(
-                    (l: LineProto) => l.header
-                )[0];
-
-                return {
-                    id: analysis.proto.stack?.id,
-                    label,
-                } as AnalysisOption;
-            }) ?? []
-        );
-    }, [startupQuery.data?.docked]);
 
     const selectedAnalysis = useMemo(() => {
         return analysisOptions.find((analysis) =>
-            isEqual(change?.analysis, analysis.id)
+            isEqual(change?.spec.analysis, analysis.id)
         );
-    }, [change?.analysis, analysisOptions]);
+    }, [change.spec.analysis, analysisOptions]);
 
     return (
         <div className="flex flex-col gap-2 ">
             <div>
                 <span className="ml-2 text-xs text-rose-90">Change</span>
                 <Combobox
-                    disabled={worldCreated}
-                    value={change?.changeFunction?.label}
+                    disabled={change.created}
+                    value={change?.spec.changeFunction?.label}
                     onChange={(v) => {
                         const option = functionResults.find(
                             (f) => f.item.label === v
                         );
                         if (!option) return;
-                        setChangeFunction(option.item);
+                        changeActions.setFunction(id, option.item);
                     }}
                 >
                     <div
                         className={twMerge(
                             'w-full text-sm flex gap-2 bg-white focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40 hover:bg-rose-10 py-2.5 px-2',
-                            worldCreated && 'italic bg-rose-10'
+                            change.created && 'italic bg-rose-10'
                         )}
                     >
                         <span className={twMerge('text-rose-80')}> b6</span>
@@ -297,7 +186,7 @@ const ChangeCombo = () => {
                             placeholder="define the change"
                             className={twMerge(
                                 'relative flex-grow bg-transparent text-graphite-70 focus:outline-none w-full',
-                                worldCreated && 'italic text-graphite-100'
+                                change.created && 'italic text-graphite-100'
                             )}
                         />
                     </div>
@@ -317,20 +206,20 @@ const ChangeCombo = () => {
                     </Combobox.Options>
                 </Combobox>
             </div>
-            {change?.changeFunction && (
+            {change?.spec.changeFunction && (
                 <div>
                     <span className="ml-2 text-xs text-rose-90">Analysis</span>
 
                     <Select.Root
-                        disabled={worldCreated}
-                        value={change.analysis?.value?.toString()}
+                        disabled={change.created}
+                        value={change.spec.analysis?.value?.toString()}
                         onValueChange={(v) => {
                             const option = analysisOptions.find(
                                 (analysis) =>
                                     analysis.id.value?.toString() === v
                             );
                             if (!option?.id) return;
-                            setChangeAnalysis(option?.id);
+                            changeActions.setAnalysis(id, option.id);
                         }}
                     >
                         <Select.Trigger className=" bg-white text-graphite-70 h-10 py-2 px-2 text-sm inline-flex items-center justify-between w-full focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40 data-[disabled]:bg-rose-10 data-[disabled]:italic">
@@ -341,7 +230,7 @@ const ChangeCombo = () => {
                                     />
                                 )}
                             </Select.Value>
-                            {!worldCreated && (
+                            {!change.created && (
                                 <Select.Icon>
                                     <ChevronDownIcon />
                                 </Select.Icon>
@@ -361,6 +250,7 @@ const ChangeCombo = () => {
                                         // @TODO: temporary hack to remove bold formatting markers in for the select options. This bold formatting should be handled further up.
                                         const label =
                                             analysis.label?.title?.value;
+                                        if (!label) return null;
                                         const boldWorld =
                                             label.match(/_((?:[a-zA-Z]|\d)*)_/);
                                         const labelNoBoldMarkers =
@@ -385,7 +275,7 @@ const ChangeCombo = () => {
                     </Select.Root>
                 </div>
             )}
-            {change?.changeFunction && !worldCreated && (
+            {change?.spec.changeFunction && !change.created && (
                 <button
                     disabled={queryScenario?.isFetching}
                     className="w-full  text-sm flex gap-1 items-center py-2 justify-center rounded hover:bg-rose-10 bg-rose-20  text-rose-80 focus-within:outline-none focus-within:ring-2 focus-within:ring-rose-60/40  "

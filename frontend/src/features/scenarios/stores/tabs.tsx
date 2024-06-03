@@ -2,6 +2,7 @@ import { ImmerStateCreator } from '@/lib/zustand';
 import { useWorldStore } from '@/stores/worlds';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { useChangesStore } from './changes';
 
 export interface Tab {
     id: string;
@@ -29,7 +30,8 @@ interface TabsStore {
 }
 
 export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
-    set
+    set,
+    get
 ) => ({
     tabs: [
         {
@@ -55,7 +57,20 @@ export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
                     state.rightTab = tab.id;
                 }
                 // create a new world for the tab
-                useWorldStore.getState().actions.createWorld({ id: tab.id });
+                useWorldStore.getState().actions.createWorld({
+                    id: tab.id,
+                    featureId:
+                        useWorldStore.getState().worlds.baseline.featureId,
+                });
+                useChangesStore.getState().actions.add({
+                    id: tab.id,
+                    origin: get().leftTab,
+                    target: tab.id,
+                    created: false,
+                    spec: {
+                        features: [],
+                    },
+                });
             });
         },
         remove: (tabId) => {

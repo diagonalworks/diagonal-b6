@@ -1,24 +1,15 @@
 import { Shell } from '@/components/system/Shell';
-import { useOutlinerContext } from '@/lib/context/outliner';
-import { useScenarioContext } from '@/lib/context/scenario';
+import { useMap } from '@/hooks/useMap';
+import { useStackContext } from '@/lib/context/stack';
 
 import { ShellLineProto } from '@/types/generated/ui';
 import { useMemo } from 'react';
-import { Point } from 'react-map-gl/maplibre';
 
 export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
-    const { outliner, setRequest } = useOutlinerContext();
+    const { evaluateExpressionInOutliner } = useStackContext();
 
     const handleSubmit = (e: string) => {
-        if (!outliner.data?.proto) return;
-        const { node, locked } = outliner.data.proto;
-        setRequest({
-            ...outliner.request,
-            node,
-            locked: locked ?? false,
-            expression: e,
-            eventType: 'os',
-        });
+        evaluateExpressionInOutliner(e);
     };
 
     const functions = useMemo(() => {
@@ -36,23 +27,10 @@ export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
 };
 
 export const WorldShellAdapter = ({ mapId }: { mapId: string }) => {
-    const { createOutlinerInScenario } = useScenarioContext();
+    const [{ evaluateExpression }] = useMap({ id: mapId });
 
     const handleSubmit = (e: string) => {
-        createOutlinerInScenario({
-            id: `stack_shell_${e}`,
-            properties: {
-                scenario: mapId,
-                docked: false,
-                transient: true,
-                coordinates: { x: 8, y: 60 } as Point,
-            },
-            request: {
-                expression: e,
-                locked: false,
-                eventType: 'ws',
-            },
-        });
+        evaluateExpression(e);
     };
 
     return <Shell functions={[]} onSubmit={handleSubmit} />;

@@ -1,3 +1,4 @@
+import { useStackContext } from '@/lib/context/stack';
 import { SubstackProto } from '@/types/generated/ui';
 import { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
@@ -9,17 +10,15 @@ export const SubstackAdapter = ({
     substack,
     collapsible = false,
     close,
-    origin,
     analysisTitle,
 }: {
     substack: SubstackProto;
     collapsible?: boolean;
     close?: boolean;
-    origin?: SubstackProto;
     analysisTitle?: string; // @TODO: remove this, it's a hack to get the analysis title
 }) => {
     const [open, setOpen] = useState(collapsible ? false : true);
-
+    const { origin } = useStackContext();
     const header = useMemo(() => {
         return substack.lines?.[0].header;
     }, [substack.lines]);
@@ -35,6 +34,8 @@ export const SubstackAdapter = ({
 
     const histogramProps = useMemo(() => {
         if (isHistogram) {
+            // @TODO: find more robust way to access origin histogram
+            const originHistogram = origin?.data?.proto.stack?.substacks?.[0];
             return {
                 type: (contentLines[0].swatch ? 'swatch' : 'histogram') as
                     | 'swatch'
@@ -42,14 +43,14 @@ export const SubstackAdapter = ({
                 bars: contentLines.flatMap((l) => l.histogramBar ?? []),
                 swatches: contentLines.flatMap((l) => l.swatch ?? []),
                 chartLabel: analysisTitle,
-                origin: origin
+                origin: originHistogram
                     ? {
                           bars:
-                              origin.lines
+                              originHistogram.lines
                                   ?.slice(header ? 1 : 0)
                                   ?.flatMap((l) => l.histogramBar ?? []) ?? [],
                           swatches:
-                              origin.lines
+                              originHistogram.lines
                                   ?.slice(header ? 1 : 0)
                                   ?.flatMap((l) => l.swatch ?? []) ?? [],
                       }

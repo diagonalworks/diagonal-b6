@@ -13,29 +13,50 @@ import { useStack } from '../api/stack';
 
 type StoreContext = {
     data?: { proto: UIResponseProto };
+    outliner?: OutlinerSpec;
+    origin?: OutlinerSpec;
     close: () => void;
     evaluateNode: (node: NodeProto) => void;
+    evaluateExpressionInOutliner: (expression: string) => void;
 };
 
 const StackContext = createContext<StoreContext>({
     close: () => {},
     evaluateNode: () => {},
+    evaluateExpressionInOutliner: () => {},
 });
 
 export const StackContextProvider = ({
     children,
     outliner,
-}: { outliner: OutlinerSpec } & PropsWithChildren) => {
+    origin,
+}: { outliner: OutlinerSpec; origin?: OutlinerSpec } & PropsWithChildren) => {
     const actions = useOutlinersStore((state) => state.actions);
 
-    const data = useStack(outliner.request);
+    const data = useStack(outliner.world, outliner.request, outliner.data);
 
     const close = useCallback(() => {
         actions.remove(outliner.id);
     }, [actions, outliner.id]);
 
+    const evaluateExpressionInOutliner = useCallback(
+        (expression: string) => {
+            const event: Event = 'os';
+
+            actions.setRequest(outliner.id, {
+                ...outliner.request,
+                node: data.data?.proto.node,
+                expression,
+                locked: false,
+                logEvent: event,
+            });
+        },
+        [actions, outliner.id, outliner.request, data.data?.proto.node]
+    );
+
     const evaluateNode = useCallback(
         (node: NodeProto) => {
+            if (!outliner.request) return;
             const event: Event = 'oc';
 
             actions.add({
@@ -45,6 +66,7 @@ export const StackContextProvider = ({
                     active: true,
                     transient: false,
                     docked: false,
+                    type: 'core',
                 },
                 request: {
                     root: outliner.request.root,
@@ -57,23 +79,26 @@ export const StackContextProvider = ({
                 },
             });
         },
-        [
-            actions,
-            outliner.id,
-            outliner.request.root,
-            outliner.request.logMapCenter,
-            outliner.request.logMapZoom,
-            outliner.world,
-        ]
+        [actions, outliner.id, outliner.request, outliner.world]
     );
 
     const value = useMemo(() => {
         return {
             data: data.data,
+            outliner,
+            origin,
             close,
             evaluateNode,
+            evaluateExpressionInOutliner,
         };
-    }, [data.data, close, evaluateNode]);
+    }, [
+        data.data,
+        outliner,
+        origin,
+        close,
+        evaluateNode,
+        evaluateExpressionInOutliner,
+    ]);
 
     return (
         <StackContext.Provider value={value}>{children}</StackContext.Provider>

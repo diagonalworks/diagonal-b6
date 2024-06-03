@@ -47,7 +47,9 @@ function OutlinersLayer({ world }: { world: World['id'] }) {
             if (outliner.properties.docked) {
                 dockedOutliners.push(outliner);
             } else {
-                draggableOutliners.push(outliner);
+                if (outliner.properties.type === 'core') {
+                    draggableOutliners.push(outliner);
+                }
             }
         });
 
@@ -128,11 +130,16 @@ const DraggableOutliner = ({ outliner }: { outliner: OutlinerSpec }) => {
             ref={setNodeRef}
             style={{
                 ...style,
-                ...(outliner.properties.coordinates && {
-                    top: outliner.properties.coordinates.y + 4,
-                    left: outliner.properties.coordinates.x + 4,
-                    position: 'absolute',
-                }),
+                ...(outliner.properties.coordinates
+                    ? {
+                          top: outliner.properties.coordinates.y + 4,
+                          left: outliner.properties.coordinates.x + 4,
+                      }
+                    : {
+                          top: 280,
+                          left: 8,
+                      }),
+                position: 'absolute',
             }}
             className={twMerge(
                 outliner.properties.active &&

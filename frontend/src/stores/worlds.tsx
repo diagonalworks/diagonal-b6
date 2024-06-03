@@ -1,3 +1,4 @@
+import { getWorldFeatureId } from '@/lib/world';
 import { ImmerStateCreator } from '@/lib/zustand';
 import { FeatureIDProto } from '@/types/generated/api';
 import { create } from 'zustand';
@@ -5,7 +6,7 @@ import { immer } from 'zustand/middleware/immer';
 
 export interface World {
     id: string;
-    featureId?: FeatureIDProto;
+    featureId: FeatureIDProto;
 }
 
 export interface WorldsStore {
@@ -13,6 +14,7 @@ export interface WorldsStore {
     actions: {
         createWorld: (world: World) => void;
         removeWorld: (worldId: string) => void;
+        setFeatureId: (worldId: string, featureId: FeatureIDProto) => void;
     };
 }
 
@@ -22,6 +24,7 @@ export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
     worlds: {
         baseline: {
             id: 'baseline',
+            featureId: getWorldFeatureId('baseline'),
         },
     },
     actions: {
@@ -33,6 +36,11 @@ export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
         removeWorld: (worldId) => {
             set((state) => {
                 delete state.worlds[worldId];
+            });
+        },
+        setFeatureId: (worldId, featureId) => {
+            set((state) => {
+                state.worlds[worldId].featureId = featureId;
             });
         },
     },

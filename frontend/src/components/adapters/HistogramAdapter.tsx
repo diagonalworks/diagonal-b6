@@ -1,4 +1,6 @@
-import { useOutlinerContext } from '@/lib/context/outliner';
+import { useStackContext } from '@/lib/context/stack';
+import { useMapStore } from '@/stores/map';
+import { useWorldStore } from '@/stores/worlds';
 import colors from '@/tokens/colors.json';
 import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
 import { scaleOrdinal } from '@visx/scale';
@@ -44,9 +46,42 @@ export const HistogramAdaptor = ({
     };
     chartLabel?: string;
 }) => {
-    const { outliner, setHistogramColorScale, setHistogramBucket } =
-        useOutlinerContext();
-    const scale = outliner.histogram?.colorScale;
+    const { outliner, data: outlinerData } = useStackContext();
+    const world = useWorldStore((state) =>
+        outliner ? state.worlds[outliner.world] : state.worlds.baseline
+    );
+    const mapActions = useMapStore((state) => state.actions);
+    const histogram = useMapStore((state) =>
+        outliner ? state.layers.histogram[outliner.id] : null
+    );
+    const scale = histogram?.spec.colorScale;
+
+    useEffect(() => {
+        const histogramLayer = outlinerData?.proto.layers?.find(
+            (l) => l.path === 'histogram'
+        );
+
+        if (!histogram && outliner && histogramLayer) {
+            mapActions.setHistogramLayer(outliner.id, {
+                world: outliner.world,
+                spec: {
+                    tiles: `/tiles/${histogramLayer.path}/{z}/{x}/{y}.mvt?q=${histogramLayer.q}&r=collection/${world.featureId.namespace}/${world.featureId.value}`,
+                    show:
+                        outliner.properties.active ||
+                        outliner.properties.transient,
+                    selected: undefined,
+                },
+            });
+        }
+    }, [outlinerData, outliner, mapActions]);
+
+    useEffect(() => {
+        return () => {
+            if (outliner) {
+                mapActions.removeHistogramLayer(outliner.id);
+            }
+        };
+    }, []);
 
     const data = useMemo(() => {
         return match(type)
@@ -84,6 +119,7 @@ export const HistogramAdaptor = ({
     }, [type, bars, swatches]);
 
     useEffect(() => {
+        if (!outliner) return;
         const scale = scaleOrdinal({
             domain: data.map((d) => `${d.index}`),
             range:
@@ -96,18 +132,22 @@ export const HistogramAdaptor = ({
                           ),
                       ],
         });
-        setHistogramColorScale(scale);
-    }, [data]);
+        mapActions.setHistogramScale(outliner.id, scale);
+    }, [data, outliner, mapActions]);
 
-    const handleSelect = useCallback((d: HistogramData | null) => {
-        setHistogramBucket(d?.index.toString());
-    }, []);
+    const handleSelect = useCallback(
+        (d: HistogramData | null) => {
+            if (!outliner) return;
+            mapActions.setHistogramBucket(outliner.id, d?.index.toString());
+        },
+        [mapActions, outliner]
+    );
 
     const selected = useMemo(() => {
-        const selected = outliner?.histogram?.selected;
+        const selected = histogram?.spec.selected;
         if (!selected) return null;
         return data.find((d) => d.index.toString() === selected);
-    }, [outliner.histogram?.selected, data]);
+    }, [histogram?.spec, data]);
 
     return (
         <Histogram

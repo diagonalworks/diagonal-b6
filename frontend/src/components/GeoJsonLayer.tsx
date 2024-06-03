@@ -59,18 +59,23 @@ function GeoJsonLayer({
     side: 'left' | 'right';
 }) {
     const { [world]: map } = useMapLibre();
-    const outliners = useOutlinersStore((state) => state.outliners);
+    const outliners = useOutlinersStore((state) =>
+        state.actions.getByWorld(world)
+    );
 
     const activeOutliners = useMemo(() => {
         return Object.values(outliners).filter(
             (outliner) =>
-                (outliner.world === world && outliner.properties.active) ||
-                outliner.properties.transient
+                outliner.world === world &&
+                (outliner.properties.active || outliner.properties.transient)
         );
-    }, [outliners]);
+    }, [outliners, world]);
 
     const queries = useStacks(
-        activeOutliners.map((outliner) => outliner.request)
+        activeOutliners.map((outliner) => ({
+            request: outliner?.request,
+            fallback: outliner.data,
+        }))
     );
 
     const features = useMemo(() => {

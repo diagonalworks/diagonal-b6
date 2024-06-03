@@ -1,5 +1,6 @@
 import { ImmerStateCreator } from '@/lib/zustand';
 import { UIRequestProto } from '@/types/generated/ui';
+import { StackResponse } from '@/types/stack';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { World } from './worlds';
@@ -11,12 +12,14 @@ export interface OutlinerSpec {
         active: boolean;
         docked: boolean;
         transient: boolean;
+        type: 'core' | 'comparison';
         coordinates?: {
             x: number;
             y: number;
         };
     };
-    request: UIRequestProto;
+    request?: UIRequestProto;
+    data?: StackResponse;
 }
 
 interface OutlinersStore {
@@ -27,6 +30,7 @@ interface OutlinersStore {
         move: (id: string, dx: number, dy: number) => void;
         setActive: (id: string, active: boolean) => void;
         setDocked: (id: string, docked: boolean) => void;
+        setRequest: (id: string, request: UIRequestProto) => void;
         setTransient: (id: string, transient: boolean) => void;
         getByWorld: (world: World['id']) => OutlinerSpec[];
         getById: (id: string) => OutlinerSpec;
@@ -42,7 +46,10 @@ export const createOutlinersStore: ImmerStateCreator<
         add: (spec) => {
             set((state) => {
                 for (const id in state.outliners) {
-                    if (state.outliners[id].properties.transient) {
+                    if (
+                        state.outliners[id].properties.transient &&
+                        state.outliners[id].world === spec.world
+                    ) {
                         delete state.outliners[id];
                     }
                 }
@@ -86,6 +93,11 @@ export const createOutlinersStore: ImmerStateCreator<
         },
         getById: (id) => {
             return get().outliners[id];
+        },
+        setRequest: (id, request) => {
+            set((state) => {
+                state.outliners[id].request = request;
+            });
         },
     },
 });

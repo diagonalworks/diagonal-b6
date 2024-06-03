@@ -1,5 +1,10 @@
+import {
+    MapboxOverlay as DeckOverlay,
+    MapboxOverlayProps,
+} from '@deck.gl/mapbox';
 import { Feature, GeoJsonProperties, Geometry } from 'geojson';
 import { MapGeoJSONFeature, StyleSpecification } from 'maplibre-gl';
+import { useControl } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
 
 export const isSamePositionPoints = (
@@ -55,3 +60,9 @@ export const changeMapStyleSource = (
         },
     } as StyleSpecification;
 };
+
+export function DeckGLOverlay(props: MapboxOverlayProps) {
+    const overlay = useControl(() => new DeckOverlay(props));
+    overlay.setProps(props);
+    return null;
+}

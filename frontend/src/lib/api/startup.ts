@@ -1,10 +1,11 @@
 import { useOutlinersStore } from '@/stores/outliners';
 import { useViewStore } from '@/stores/view';
 import { useWorkspaceStore } from '@/stores/workspace';
-import { Event } from '@/types/events';
+import { useWorldStore } from '@/stores/worlds';
 import { StartupRequest, StartupResponse } from '@/types/startup';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
+import { getWorldFeatureId } from '../world';
 import { b6 } from './client';
 
 const getStartup = (request: StartupRequest): Promise<StartupResponse> => {
@@ -17,6 +18,8 @@ export const useStartup = () => {
     const root = useWorkspaceStore((state) => state?.root);
     const view = useViewStore((state) => state.initialView);
     const actions = useOutlinersStore((state) => state.actions);
+
+    const { setFeatureId } = useWorldStore((state) => state.actions);
 
     const request = useMemo(() => {
         return {
@@ -34,10 +37,12 @@ export const useStartup = () => {
 
     useEffect(() => {
         if (query.data) {
-            const event: Event = 's';
+            setFeatureId(
+                'baseline',
+                getWorldFeatureId('baseline', query.data.root?.namespace, root)
+            );
 
             query.data.docked?.forEach((d, i) => {
-                const id = d.proto.stack?.id;
                 actions.add({
                     id: `docked-${i}`,
                     world: 'baseline',
@@ -45,33 +50,13 @@ export const useStartup = () => {
                         active: false,
                         docked: true,
                         transient: false,
+                        type: 'core',
                     },
-                    /*  For consistency across how we handle data in outliners, we define the
-                    request for the docked outliner instead of using the data directly.
-                    */
-                    request: {
-                        root: query.data.root,
-                        node: {
-                            call: {
-                                function: {
-                                    symbol: 'find-collection',
-                                },
-                                args: [
-                                    {
-                                        literal: {
-                                            featureIDValue: id,
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                        logEvent: event,
-                        locked: true,
-                    },
+                    data: d,
                 });
             });
         }
-    }, [query.data, actions]);
+    }, [query.data, actions, root]);
 
     return query;
 };

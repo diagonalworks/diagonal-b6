@@ -1,21 +1,55 @@
+import { OutlinerChangeWrapper } from '@/features/scenarios/components/OutlinerChangeWrapper';
 import { useHighlight } from '@/hooks/useHighlight';
 import { useStack } from '@/lib/api/stack';
 import { StackContextProvider } from '@/lib/context/stack';
+import { useMapStore } from '@/stores/map';
 import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ConditionalWrap } from './ConditionalWrap';
 import { SubstackAdapter } from './adapters/SubstackAdapter';
 import { Line } from './system/Line';
 import { Stack } from './system/Stack';
 
-function Outliner({ outliner }: { outliner: OutlinerSpec }) {
+function Outliner({
+    outliner,
+    origin,
+}: {
+    outliner: OutlinerSpec;
+    origin?: OutlinerSpec;
+}) {
     const outlinerActions = useOutlinersStore((state) => state.actions);
-    const stackData = useStack(outliner.request);
+    const stackData = useStack(outliner.world, outliner.request, outliner.data);
     const [open, setOpen] = useState(outliner.properties.docked ? false : true);
-
+    const mapActions = useMapStore((state) => state.actions);
     useHighlight({
         world: outliner.world,
         features: stackData.data?.proto.highlighted,
     });
+
+    useEffect(() => {
+        if (
+            (outliner.properties.active || outliner.properties.transient) &&
+            stackData.data?.geoJSON
+        ) {
+            mapActions.setGeoJsonLayer(outliner.id, {
+                world: outliner.world,
+                features: stackData.data.geoJSON,
+            });
+        }
+    }, [
+        outliner.id,
+        outliner.world,
+        outliner.properties.active,
+        outliner.properties.transient,
+        stackData.data?.geoJSON,
+        mapActions,
+    ]);
+
+    useEffect(() => {
+        return () => {
+            mapActions.removeGeoJsonLayer(outliner.id);
+        };
+    }, []);
 
     const handleOpenChange = useCallback(
         (open: boolean) => {
@@ -26,7 +60,7 @@ function Outliner({ outliner }: { outliner: OutlinerSpec }) {
     );
 
     if (stackData.isLoading) {
-        return <LoadingStack expression={outliner.request.expression || ''} />;
+        return <LoadingStack expression={outliner.request?.expression || ''} />;
     }
 
     if (!stackData.data) return null;
@@ -37,35 +71,51 @@ function Outliner({ outliner }: { outliner: OutlinerSpec }) {
     const otherSubstacks = substacks?.slice(1);
 
     return (
-        <StackContextProvider outliner={outliner}>
-            <Stack
-                collapsible={outliner.properties.docked}
-                open={open}
-                onOpenChange={handleOpenChange}
+        <StackContextProvider outliner={outliner} origin={origin}>
+            <ConditionalWrap
+                condition={
+                    outliner.world !== 'baseline' &&
+                    outliner.properties.type !== 'comparison'
+                }
+                wrap={(children) => (
+                    <OutlinerChangeWrapper
+                        id={outliner.world}
+                        outliner={outliner}
+                        stack={stackData.data?.proto.stack}
+                    >
+                        {children}
+                    </OutlinerChangeWrapper>
+                )}
             >
-                {firstSubstack && (
-                    <Stack.Trigger>
-                        <SubstackAdapter
-                            substack={firstSubstack}
-                            collapsible={firstSubstack.collapsable}
-                            close={!outliner.properties.docked}
-                        />
-                    </Stack.Trigger>
-                )}
-                {otherSubstacks && (
-                    <Stack.Content>
-                        {otherSubstacks.map((substack, i) => {
-                            return (
-                                <SubstackAdapter
-                                    key={i}
-                                    substack={substack}
-                                    collapsible={substack.collapsable}
-                                />
-                            );
-                        })}
-                    </Stack.Content>
-                )}
-            </Stack>
+                <Stack
+                    collapsible={outliner.properties.docked}
+                    open={open}
+                    onOpenChange={handleOpenChange}
+                >
+                    {firstSubstack && (
+                        <Stack.Trigger>
+                            <SubstackAdapter
+                                substack={firstSubstack}
+                                collapsible={firstSubstack.collapsable}
+                                close={!outliner.properties.docked}
+                            />
+                        </Stack.Trigger>
+                    )}
+                    {otherSubstacks && (
+                        <Stack.Content>
+                            {otherSubstacks.map((substack, i) => {
+                                return (
+                                    <SubstackAdapter
+                                        key={i}
+                                        substack={substack}
+                                        collapsible={substack.collapsable}
+                                    />
+                                );
+                            })}
+                        </Stack.Content>
+                    )}
+                </Stack>
+            </ConditionalWrap>
         </StackContextProvider>
     );
 }

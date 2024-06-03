@@ -8,7 +8,6 @@ import { twMerge } from 'tailwind-merge';
 import { IconButton } from '../system/IconButton';
 import { TooltipOverflow } from '../system/Tooltip';
 import { AtomAdapter } from './AtomAdapter';
-import { ChoiceAdapter } from './ChoiceAdapter';
 import { HeaderAdapter } from './HeaderAdapter';
 import { ShellAdapter } from './ShellAdapter';
 
@@ -73,7 +72,6 @@ export const LineAdapter = ({
                             )}
                         </div>
                     )}
-                    {line.choice && <ChoiceAdapter choice={line.choice} />}
                     {line.shell && <ShellAdapter shell={line.shell} />}
                     {line.expression && (
                         <span className="expression ">
