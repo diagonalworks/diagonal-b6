@@ -1,8 +1,11 @@
-import colors from '@/tokens/colors.json';
 import type { Meta, StoryObj } from '@storybook/react';
 import { scaleOrdinal } from '@visx/scale';
 import { interpolateRgbBasis } from 'd3-interpolate';
+
+import colors from '@/tokens/colors.json';
+
 import { Histogram as HistogramComponent } from './Histogram';
+
 type Story = StoryObj<typeof HistogramComponent>;
 
 const dummyData: { bucket: string; value: number; total: number }[] = [

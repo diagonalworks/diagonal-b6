@@ -1,6 +1,10 @@
 import Outliner from '@/components/Outliner';
 import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
 
+/**
+ * Componenet to display the comparison outliner.
+ * Wraps the Outliner component to provide the origin outliner for comparison.
+ */
 export default function ComparisonStack({
     id,
     origin,

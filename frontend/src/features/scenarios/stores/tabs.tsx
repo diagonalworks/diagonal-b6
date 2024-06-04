@@ -1,7 +1,9 @@
-import { ImmerStateCreator } from '@/lib/zustand';
-import { useWorldStore } from '@/stores/worlds';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+
+import { ImmerStateCreator } from '@/lib/zustand';
+import { useWorldStore } from '@/stores/worlds';
+
 import { useChangesStore } from './changes';
 
 export interface Tab {
@@ -16,15 +18,46 @@ export interface Tab {
 }
 
 interface TabsStore {
+    /* List of tabs */
     tabs: Tab[];
+    /* The id of the active tab on the left side */
     leftTab: Tab['id'];
+    /* The id of the active tab on the right side */
     rightTab?: Tab['id'];
+    /* Whether the screen is split */
     splitScreen: boolean;
     actions: {
+        /**
+         * Add a tab to the store
+         * @param tab - The tab to add
+         * @returns void
+         */
         add: (tab: Tab) => void;
+        /**
+         * Remove a tab from the store
+         * @param tabId - The id of the tab to remove
+         * @returns void
+         */
         remove: (tabId: Tab['id']) => void;
+        /**
+         * Rename a tab
+         * @param tabId - The id of the tab to rename
+         * @param name - The new name for the tab
+         * @returns void
+         */
         rename: (tabId: Tab['id'], name: string) => void;
+        /**
+         * Set a tab as active
+         * @param tabId - The id of the tab to set as active
+         * @param side - The side on which to set the tab as active
+         * @returns void
+         * */
         setActive: (tabId: Tab['id'], side: Tab['side']) => void;
+        /**
+         * Set whether the screen is split
+         * @param splitScreen - Whether the screen is split
+         * @returns void
+         */
         setSplitScreen: (splitScreen: boolean) => void;
     };
 }
@@ -112,4 +145,9 @@ export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
     },
 });
 
+/**
+ * The hook to use the tabs store. This is used to access and modify the tabs win the workspace.
+ * This is a zustand store that uses immer for immutability.
+ * @returns The tabs store
+ */
 export const useTabsStore = create(immer(createTabsStore));

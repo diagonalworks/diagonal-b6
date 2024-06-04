@@ -1,9 +1,10 @@
-import { getNodeText } from '@/lib/text';
-import useOverflow from '@/lib/useOverflow';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { AnimatePresence, MotionProps, motion } from 'framer-motion';
 import React, { useImperativeHandle } from 'react';
+
+import useOverflow from '@/hooks/useOverflow';
+import { getNodeText } from '@/utils/text';
 
 /**
  * Wrapping component that will display a tooltip if the content is overflowing.

@@ -1,5 +1,14 @@
 import { FeatureIDProto, FeatureType } from '@/types/generated/api';
 
+/**
+ * Get the feature ID for a world.
+ * @param worldId The string ID of the world.
+ * @param namespace The namespace of the feature ID.
+ * @param collection The collection of the feature ID.
+ * @returns The feature ID.
+ * @example
+ * getWorldFeatureId('baseline', 'diagonal.works', 'skyline-demo-05-2024') // { type: 'FeatureTypeCollection', namespace: 'diagonal.works', value: 1 }
+ */
 export const getWorldFeatureId = (
     worldId: string,
     namespace?: string,

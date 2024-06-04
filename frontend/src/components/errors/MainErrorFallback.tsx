@@ -1,8 +1,9 @@
-import { Button } from '@/components/system/Button';
 import * as Collapsible from '@radix-ui/react-collapsible';
 import { TriangleDownIcon, TriangleUpIcon } from '@radix-ui/react-icons';
 import { useState } from 'react';
 import { ErrorBoundaryPropsWithComponent } from 'react-error-boundary';
+
+import { Button } from '@/components/system/Button';
 
 export const MainErrorFallback: ErrorBoundaryPropsWithComponent['FallbackComponent'] =
     ({ error, resetErrorBoundary }) => {

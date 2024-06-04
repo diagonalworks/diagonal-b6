@@ -1,8 +1,9 @@
+import { DotIcon, FrameIcon, SquareIcon } from '@radix-ui/react-icons';
+import { match } from 'ts-pattern';
+
 import * as circleIcons from '@/assets/icons/circle';
 import { LabelledIcon } from '@/components/system/LabelledIcon';
 import { LabelledIconProto } from '@/types/generated/ui';
-import { DotIcon, FrameIcon, SquareIcon } from '@radix-ui/react-icons';
-import { match } from 'ts-pattern';
 
 export const LabelledIconAdapter = ({
     labelledIcon,

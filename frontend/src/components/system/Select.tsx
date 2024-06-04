@@ -2,7 +2,8 @@ import { CheckIcon, ChevronDownIcon } from '@radix-ui/react-icons';
 import * as RadixSelect from '@radix-ui/react-select';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
-import { TooltipOverflow } from './Tooltip';
+
+import { TooltipOverflow } from '@/components/system/Tooltip';
 
 /**
  * The button that triggers the select options to be shown, also displays the current selected value.

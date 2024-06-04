@@ -1,10 +1,12 @@
-import { useChartDimensions } from '@/lib/useChartDimensions';
 import { scaleLinear } from '@visx/scale';
 import { ScaleLinear } from 'd3-scale';
 import { motion } from 'framer-motion';
 import { isNil, isNull } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
+
+import { useChartDimensions } from '@/hooks/useChartDimensions';
+
 import { Line } from './Line';
 
 const BAR_MARGIN = {
@@ -244,7 +246,6 @@ function HistogramBar<T>({
                                     x={dimensions.marginLeft}
                                     y={dimensions.marginTop}
                                     height={BAR_HEIGHT}
-                                    //fill={color(d)}
                                     rx={1}
                                     className={twMerge(
                                         'stroke-graphite-80 fill-graphite-80'

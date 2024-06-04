@@ -1,6 +1,3 @@
-import { popOpen } from '@/lib/animations';
-import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
-import { World } from '@/stores/worlds';
 import {
     DndContext,
     MouseSensor,
@@ -18,6 +15,11 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { PropsWithChildren, useMemo } from 'react';
 import { twMerge } from 'tailwind-merge';
+
+import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
+import { World } from '@/stores/worlds';
+import { popOpen } from '@/utils/animations';
+
 import Outliner from './Outliner';
 
 const useOutlinerSensors = () => {
@@ -31,6 +33,10 @@ const useOutlinerSensors = () => {
     return useSensors(pointerSensor, mouseSensor, touchSensor);
 };
 
+/**
+ * The layer that renders the outliners in a world.
+ * @param world - The id of the world to render outliners for
+ */
 function OutlinersLayer({ world }: { world: World['id'] }) {
     const outliners = useOutlinersStore((state) =>
         state.actions.getByWorld(world)

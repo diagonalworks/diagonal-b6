@@ -1,6 +1,8 @@
 import { FeatureCollection } from 'geojson';
+
 import { FeatureIDProto } from './generated/api';
 import { UIResponseProto } from './generated/ui';
+
 export type LatLng = {
     latE7: number;
     lngE7: number;

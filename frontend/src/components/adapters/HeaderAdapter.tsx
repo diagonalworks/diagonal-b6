@@ -1,8 +1,9 @@
+import { useState } from 'react';
+
+import { AtomAdapter } from '@/components/adapters/AtomAdapter';
 import { Header } from '@/components/system/Header';
 import { useStackContext } from '@/lib/context/stack';
 import { HeaderLineProto } from '@/types/generated/ui';
-import { useState } from 'react';
-import { AtomAdapter } from './AtomAdapter';
 
 export const HeaderAdapter = ({ header }: { header: HeaderLineProto }) => {
     const [sharePopoverOpen, setSharePopoverOpen] = useState(false);

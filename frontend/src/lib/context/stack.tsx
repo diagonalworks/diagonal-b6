@@ -1,7 +1,3 @@
-import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
-import { Event } from '@/types/events';
-import { NodeProto } from '@/types/generated/api';
-import { UIResponseProto } from '@/types/generated/ui';
 import {
     PropsWithChildren,
     createContext,
@@ -9,17 +5,46 @@ import {
     useContext,
     useMemo,
 } from 'react';
-import { useStack } from '../api/stack';
+
+import { useStack } from '@/api/stack';
+import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
+import { Event } from '@/types/events';
+import { NodeProto } from '@/types/generated/api';
+import { UIResponseProto } from '@/types/generated/ui';
 
 type StoreContext = {
+    /* The outliner data */
     data?: { proto: UIResponseProto };
+    /* The outliner specification */
     outliner?: OutlinerSpec;
+    /**
+     * The origin outliner specification, with which the current outliner is compared.
+     * This property only exists if the stack corresponds to a comparison outliner.
+     */
     origin?: OutlinerSpec;
+    /**
+     * Close the outliner, this will remove it from the outliners store.
+     * @returns void
+     */
     close: () => void;
+    /**
+     * Evaluate a node in a new outliner.
+     * @param node - The node to evaluate
+     * @returns void
+     */
     evaluateNode: (node: NodeProto) => void;
+    /**
+     * Evaluate an expression in the outliner.
+     * @param expression - The expression to evaluate
+     * @returns void
+     */
     evaluateExpressionInOutliner: (expression: string) => void;
 };
 
+/**
+ * Context for the stack.
+ * This is used to provide the outliner data to the stack children, and for easy access to functions that manipulate the stack.
+ */
 const StackContext = createContext<StoreContext>({
     close: () => {},
     evaluateNode: () => {},
@@ -105,6 +130,10 @@ export const StackContextProvider = ({
     );
 };
 
+/**
+ * The hook to use the stack context, which provides the outliner data and functions to manipulate the stack.
+ * @returns The stack context
+ */
 export const useStackContext = () => {
     return useContext(StackContext);
 };

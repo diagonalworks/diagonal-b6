@@ -1,12 +1,14 @@
-import {
-    MapboxOverlay as DeckOverlay,
-    MapboxOverlayProps,
-} from '@deck.gl/mapbox';
 import { Feature, GeoJsonProperties, Geometry } from 'geojson';
 import { MapGeoJSONFeature, StyleSpecification } from 'maplibre-gl';
-import { useControl } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
 
+/**
+ * Check if two features are the same point, with a given precision.
+ * @param f1 First feature
+ * @param f2 Second feature
+ * @param precision Precision to compare coordinates
+ * @returns Boolean if the features are the same point
+ */
 export const isSamePositionPoints = (
     f1: Feature<Geometry, GeoJsonProperties>,
     f2: Feature<Geometry, GeoJsonProperties>,
@@ -22,6 +24,11 @@ export const isSamePositionPoints = (
     );
 };
 
+/**
+ * Get the b6 feature path from a MapGeoJSONFeature.
+ * @param feature MapGeoJSONFeature
+ * @returns Feature path
+ */
 export const getFeaturePath = (feature: MapGeoJSONFeature) => {
     const { ns, id } = feature.properties;
     const type = match(feature.geometry.type)
@@ -35,6 +42,11 @@ export const getFeaturePath = (feature: MapGeoJSONFeature) => {
     }
 };
 
+/**
+ * Get the road width based on the road type.
+ * @param type Road type
+ * @returns Road width
+ */
 export const getRoadWidth = (type: string) => {
     return match(type)
         .with('motorway', 'trunk', () => 1.5)
@@ -45,6 +57,12 @@ export const getRoadWidth = (type: string) => {
         .otherwise(() => 1);
 };
 
+/**
+ * Returns a copy of the map style with the tiles property for the diagonal source changed.
+ * @param mapStyle Original diagonal map style,
+ * @param source New source URL for the diagonal tiles
+ * @returns Updated map style
+ */
 export const changeMapStyleSource = (
     mapStyle: StyleSpecification,
     source: string
@@ -61,8 +79,13 @@ export const changeMapStyleSource = (
     } as StyleSpecification;
 };
 
-export function DeckGLOverlay(props: MapboxOverlayProps) {
-    const overlay = useControl(() => new DeckOverlay(props));
-    overlay.setProps(props);
-    return null;
-}
+/**
+ * Get the tile source URL for the diagonal map.
+ * @param root Optional root parameter for the tile source
+ * @returns Tile source URL
+ */
+export const getTileSource = (root?: string) => {
+    return `${window.location.origin}/tiles/base/{z}/{x}/{y}.mvt${
+        root ? `?r=${root}` : ''
+    }`;
+};

@@ -2,6 +2,8 @@ import React from 'react';
 
 /**
  * Capitalizes the first letter of each word in a string.
+ * @param str The string to capitalize.
+ * @returns The capitalized string.
  */
 export const toTitleCase = (str: string) => {
     return str.replace(/\w\S*/g, function (txt) {
@@ -11,6 +13,8 @@ export const toTitleCase = (str: string) => {
 
 /**
  * Returns the text content of a React node.
+ * @param node The React node.
+ * @returns The text content.
  */
 export const getNodeText = (node: React.ReactNode): string => {
     if (node == null) return '';
@@ -38,6 +42,9 @@ export const getNodeText = (node: React.ReactNode): string => {
 
 /**
  * Returns the word at a given position in a string.
+ * @param str The string.
+ * @param pos The position.
+ * @returns The word at the position.
  */
 export const getWordAt = (str: string, pos: number) => {
     const left = str.slice(0, pos).search(/\S+$/);
@@ -50,6 +57,11 @@ export const getWordAt = (str: string, pos: number) => {
 
 /**
  * Highlights the matches in a string.
+ * @param string The string to highlight.
+ * @param matches The matches to highlight.
+ * @returns The highlighted string.
+ * @example
+ * highlighted('hello world', [[0, 5]]) = <span><strong>hello</strong> world</span>
  */
 export function highlighted(string: string, matches: [number, number][]) {
     const substrings = [];

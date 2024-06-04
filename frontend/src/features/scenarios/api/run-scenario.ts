@@ -1,8 +1,10 @@
-import { getEvaluate } from '@/lib/api/evaluate';
-import { getWorldFeatureId } from '@/lib/world';
-import { World, useWorldStore } from '@/stores/worlds';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
+
+import { getEvaluate } from '@/api/evaluate';
+import { World, useWorldStore } from '@/stores/worlds';
+import { getWorldFeatureId } from '@/utils/world';
+
 import { useChangesStore } from '../stores/changes';
 import { useComparisonsStore } from '../stores/comparisons';
 import { ChangeSpec } from '../types/change';

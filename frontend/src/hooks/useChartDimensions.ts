@@ -43,6 +43,11 @@ const combineChartDimensions = (
     };
 };
 
+/**
+ * Hook for using responsive chart dimensions.
+ * @param passedSettings The settings (size, margins, ...) for the chart dimensions.
+ * @returns A ref to the chart container and the chart dimensions.
+ */
 export const useChartDimensions = (
     passedSettings: Partial<ChartDimensions>
 ): [

@@ -1,12 +1,22 @@
-import { findAtoms } from '@/lib/atoms';
-import { OutlinerSpec } from '@/stores/outliners';
-import { StackProto } from '@/types/generated/ui';
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { isEqual } from 'lodash';
 import { PropsWithChildren } from 'react';
 import { twMerge } from 'tailwind-merge';
+
+import { OutlinerSpec } from '@/stores/outliners';
+import { StackProto } from '@/types/generated/ui';
+import { findAtoms } from '@/utils/atoms';
+
 import { Change, useChangesStore } from '../stores/changes';
 
+/**
+ * A wrapper to be used around outliner elements that allows the user to add or remove the element from a change.
+ * @param id - The id of the change
+ * @param outliner - The outliner specification
+ * @param stack - The stack proto response for the outliner
+ * @param children - The children to wrap
+ * @returns The wrapped children
+ */
 export const OutlinerChangeWrapper = ({
     id,
     outliner,

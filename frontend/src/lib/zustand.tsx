@@ -1,8 +1,11 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { type ReactNode, createContext, useContext, useState } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import { StateCreator } from 'zustand';
 import 'zustand/middleware/immer';
 
+/**
+ * Type of a function that creates a Zustand store.
+ */
 export type ImmerStateCreator<C, T> = StateCreator<
     C,
     [['zustand/immer', never], never],

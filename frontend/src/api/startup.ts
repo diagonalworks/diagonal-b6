@@ -1,11 +1,13 @@
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
+
 import { useOutlinersStore } from '@/stores/outliners';
 import { useViewStore } from '@/stores/view';
 import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorldStore } from '@/stores/worlds';
 import { StartupRequest, StartupResponse } from '@/types/startup';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
-import { getWorldFeatureId } from '../world';
+import { getWorldFeatureId } from '@/utils/world';
+
 import { b6 } from './client';
 
 const getStartup = (request: StartupRequest): Promise<StartupResponse> => {

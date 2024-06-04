@@ -1,9 +1,10 @@
-import { $IntentionalAny } from '@/utils/defs';
 import { isNil } from 'lodash';
 import { useEffect } from 'react';
 import { StoreApi, UseBoundStore, useStore } from 'zustand';
 
-export const encodeStateToUrl = <T,>(
+import { $IntentionalAny } from '@/utils/defs';
+
+export const encodeStateToUrl = <T>(
     state: Partial<T>,
     encode: (state: Partial<T>) => Record<string, string>
 ) => {
@@ -15,7 +16,7 @@ export const encodeStateToUrl = <T,>(
     return params.toString();
 };
 
-export const decodeUrlToState = <T,>(
+export const decodeUrlToState = <T>(
     search: string,
     decode: (params: Record<string, string>) => (state: T) => T
 ) => {
@@ -35,7 +36,15 @@ const debounce = <T extends (...args: $IntentionalAny[]) => $IntentionalAny>(
     };
 };
 
-export const usePersistURL = <T,>(
+/**
+ * Hook for persisting the state of a Zustand store in the URL.
+ *
+ * @param store - The Zustand store to persist.
+ * @param encode - A function to encode the state to a URL query string.
+ * @param decode - A function to decode the URL query string to a state.
+ * @param debounceWait - The debounce time for updating the URL.
+ */
+export const usePersistURL = <T>(
     store: StoreApi<T> | UseBoundStore<StoreApi<T>>,
     encode: (state: Partial<T>) => Record<string, string>,
     decode: (

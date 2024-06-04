@@ -1,6 +1,7 @@
 import { Slot } from '@radix-ui/react-slot';
 import * as React from 'react';
 import { twMerge } from 'tailwind-merge';
+
 import { Spinner } from './Spinner';
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {

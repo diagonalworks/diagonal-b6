@@ -1,15 +1,17 @@
-import ComparisonCard from '@/features/scenarios/components/ComparisonCard';
-import { Tabs } from '@/features/scenarios/components/Tabs';
-import { useComparisonsStore } from '@/features/scenarios/stores/comparisons';
-import { useTabsStore } from '@/features/scenarios/stores/tabs';
-import { useStartup } from '@/lib/api/startup';
-import { useViewStore, useViewURLStorage } from '@/stores/view';
-import { useWorkspaceURLStorage } from '@/stores/workspace';
 import { PlusIcon } from '@radix-ui/react-icons';
 import { AnimatePresence } from 'framer-motion';
 import { customAlphabet } from 'nanoid';
 import { useCallback, useEffect, useMemo } from 'react';
 import { MapProvider } from 'react-map-gl';
+
+import { useStartup } from '@/api/startup';
+import ComparisonCard from '@/features/scenarios/components/ComparisonCard';
+import { Tabs } from '@/features/scenarios/components/Tabs';
+import { useComparisonsStore } from '@/features/scenarios/stores/comparisons';
+import { useTabsStore } from '@/features/scenarios/stores/tabs';
+import { useViewStore, useViewURLStorage } from '@/stores/view';
+import { useWorkspaceURLStorage } from '@/stores/workspace';
+
 import World from './World';
 
 const generateWorldId = () => {
@@ -17,6 +19,9 @@ const generateWorldId = () => {
     return nanoid();
 };
 
+/**
+ * The workspace on which worlds are rendered. It contains the tabs and the map.
+ */
 export default function Workspace() {
     useWorkspaceURLStorage();
     useViewURLStorage();

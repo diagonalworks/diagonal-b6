@@ -1,10 +1,18 @@
-import { World } from '@/stores/worlds';
-import { FeatureIDsProto } from '@/types/generated/ui';
 import { useEffect, useMemo } from 'react';
 import { useMap as useMapLibre } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
+
+import { World } from '@/stores/worlds';
+import { FeatureIDsProto } from '@/types/generated/ui';
+
 import { useMap } from './useMap';
 
+/**
+ * Highlight features on the map
+ * @param world - The world the features are in
+ * @param features - The features to highlight
+ * @returns The features that are highlighted
+ */
 export const useHighlight = ({
     world,
     features,

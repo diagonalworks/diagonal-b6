@@ -1,13 +1,20 @@
-import { Map } from '@/components/Map';
-import { ChangePanel } from '@/features/scenarios/components/ChangePanel';
-import { World as WorldT, useWorldStore } from '@/stores/worlds';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
+
+import { Map } from '@/components/Map';
+import { ChangePanel } from '@/features/scenarios/components/ChangePanel';
+import { World as WorldT, useWorldStore } from '@/stores/worlds';
+
 import GeoJsonLayer from './GeoJsonLayer';
 import OutlinersLayer from './OutlinersLayer';
 import { WorldShellAdapter } from './adapters/ShellAdapter';
 
+/**
+ * A world, renders the respective map and the associated outliners.
+ * @param id - The id of the world
+ * @param side - The tab side on which the world is rendered
+ */
 export default function World({
     id,
     side,

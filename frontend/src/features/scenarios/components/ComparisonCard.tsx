@@ -1,17 +1,26 @@
+import { useEffect } from 'react';
+
+import { useStack } from '@/api/stack';
 import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
 import { Line } from '@/components/system/Line';
-import { useStack } from '@/lib/api/stack';
 import { useOutlinersStore } from '@/stores/outliners';
-import { useEffect } from 'react';
+
 import { useComparison } from '../api/comparison';
 import { Comparison } from '../stores/comparisons';
 import ComparisonStack from './ComparisonStack';
 
+/**
+ * This component is used to display a comparison card with the analysis data for the baseline and scenario.
+ * @param comparison - The comparison to display
+ */
 export default function ComparisonCard({
     comparison,
 }: {
     comparison: Comparison;
 }) {
+    /**
+     * @TODO: This component holds a lot of logic that should probably be moved to a hook.
+     */
     const query = useComparison(comparison);
     const actions = useOutlinersStore((state) => state.actions);
 

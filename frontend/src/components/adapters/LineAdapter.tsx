@@ -1,15 +1,16 @@
-import { Line } from '@/components/system/Line';
-import { LineContextProvider } from '@/lib/context/line';
-import { useStackContext } from '@/lib/context/stack';
-import { LineProto, TagsLineProto } from '@/types/generated/ui';
 import { Cross1Icon } from '@radix-ui/react-icons';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
-import { IconButton } from '../system/IconButton';
-import { TooltipOverflow } from '../system/Tooltip';
-import { AtomAdapter } from './AtomAdapter';
-import { HeaderAdapter } from './HeaderAdapter';
-import { ShellAdapter } from './ShellAdapter';
+
+import { AtomAdapter } from '@/components/adapters/AtomAdapter';
+import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
+import { ShellAdapter } from '@/components/adapters/ShellAdapter';
+import { IconButton } from '@/components/system/IconButton';
+import { Line } from '@/components/system/Line';
+import { TooltipOverflow } from '@/components/system/Tooltip';
+import { LineContextProvider } from '@/lib/context/line';
+import { useStackContext } from '@/lib/context/stack';
+import { LineProto, TagsLineProto } from '@/types/generated/ui';
 
 export const LineAdapter = ({
     line,

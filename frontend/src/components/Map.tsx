@@ -1,11 +1,3 @@
-import basemapStyleRose from '@/assets/map/diagonal-map-style-rose.json';
-import basemapStyle from '@/assets/map/diagonal-map-style.json';
-import { useMap } from '@/hooks/useMap';
-import { colorToRgbArray } from '@/lib/colors';
-import { DeckGLOverlay, changeMapStyleSource } from '@/lib/map';
-import { useMapStore } from '@/stores/map';
-import { useViewStore } from '@/stores/view';
-import { World } from '@/stores/worlds';
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { color } from 'd3-color';
 import { GeoJsonLayer, MVTLayer } from 'deck.gl/typed';
@@ -14,15 +6,19 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { PropsWithChildren, useCallback, useMemo, useState } from 'react';
 import { Map as MapLibre, useMap as useMapLibre } from 'react-map-gl/maplibre';
 import { twMerge } from 'tailwind-merge';
-import { MapControls } from './system/MapControls';
+
+import basemapStyleRose from '@/assets/map/diagonal-map-style-rose.json';
+import basemapStyle from '@/assets/map/diagonal-map-style.json';
+import { DeckGLOverlay } from '@/components/DeckGLOverlay';
+import { MapControls } from '@/components/system/MapControls';
+import { useMap } from '@/hooks/useMap';
+import { useMapStore } from '@/stores/map';
+import { useViewStore } from '@/stores/view';
+import { World } from '@/stores/worlds';
+import { colorToRgbArray } from '@/utils/colors';
+import { changeMapStyleSource, getTileSource } from '@/utils/map';
 
 const INITIAL_CENTER = { lat: 515361156 / 1e7, lng: -1255161 / 1e7 };
-
-const getTileSource = (root?: string) => {
-    return `${window.location.origin}/tiles/base/{z}/{x}/{y}.mvt${
-        root ? `?r=${root}` : ''
-    }`;
-};
 
 export const Map = ({
     children,

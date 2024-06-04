@@ -1,9 +1,3 @@
-import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
-import { LabelledIconAdapter } from '@/components/adapters/LabelledIconAdapter';
-import { Line } from '@/components/system/Line';
-import { highlighted } from '@/lib/text';
-import { World, useWorldStore } from '@/stores/worlds';
-import { $FixMe } from '@/utils/defs';
 import { Combobox } from '@headlessui/react';
 import {
     ChevronDownIcon,
@@ -15,11 +9,24 @@ import { isEqual } from 'lodash';
 import { QuickScore } from 'quick-score';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
+
+import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
+import { LabelledIconAdapter } from '@/components/adapters/LabelledIconAdapter';
+import { Line } from '@/components/system/Line';
+import { World, useWorldStore } from '@/stores/worlds';
+import { $FixMe } from '@/utils/defs';
+import { highlighted } from '@/utils/text';
+
 import { useChangeFunctions } from '../api/change-functions';
 import { useScenario } from '../api/run-scenario';
 import useDockedAnalysis from '../hooks/useDockedAnalysis';
 import { Change, useChangesStore } from '../stores/changes';
 
+/**
+ * The panel to display and set the change to the world that defines a scenario.
+ * @param world - The world the change is applied to
+ * @param id - The id of the change
+ */
 export const ChangePanel = ({
     world,
     id,
@@ -164,7 +171,7 @@ const ChangeCombo = ({
                 <span className="ml-2 text-xs text-rose-90">Change</span>
                 <Combobox
                     disabled={change.created}
-                    value={change?.spec.changeFunction?.label}
+                    value={change?.spec.changeFunction?.label ?? ''}
                     onChange={(v) => {
                         const option = functionResults.find(
                             (f) => f.item.label === v

@@ -1,3 +1,7 @@
+/**
+ * Variants for the pop open animation.
+ * Opacity and scale are animated from 0 to 1.
+ */
 export const popOpen = {
     hidden: {
         opacity: 0,

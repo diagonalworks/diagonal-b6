@@ -1,8 +1,9 @@
-import { useStartup } from '@/lib/api/startup';
+import { useMemo } from 'react';
+
+import { useStartup } from '@/api/startup';
 import { FeatureIDProto } from '@/types/generated/api';
 import { HeaderLineProto, LineProto } from '@/types/generated/ui';
 import { Docked } from '@/types/startup';
-import { useMemo } from 'react';
 
 type Analysis = {
     id: FeatureIDProto;
@@ -10,6 +11,10 @@ type Analysis = {
     data: Docked;
 };
 
+/**
+ * Get the docked analysis from the startup data.
+ * @returns The docked analysis
+ */
 export default function useDockedAnalysis() {
     const startup = useStartup();
     const docked = startup.data?.docked;

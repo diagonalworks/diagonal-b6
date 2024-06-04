@@ -1,13 +1,14 @@
+import { scaleOrdinal } from '@visx/scale';
+import { interpolateRgbBasis } from 'd3-interpolate';
+import { useCallback, useEffect, useMemo } from 'react';
+import { match } from 'ts-pattern';
+
+import { Histogram } from '@/components/system/Histogram';
 import { useStackContext } from '@/lib/context/stack';
 import { useMapStore } from '@/stores/map';
 import { useWorldStore } from '@/stores/worlds';
 import colors from '@/tokens/colors.json';
 import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
-import { scaleOrdinal } from '@visx/scale';
-import { interpolateRgbBasis } from 'd3-interpolate';
-import { useCallback, useEffect, useMemo } from 'react';
-import { match } from 'ts-pattern';
-import { Histogram } from '../system/Histogram';
 
 const colorInterpolator = interpolateRgbBasis([
     colors.graphite[40],

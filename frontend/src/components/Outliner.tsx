@@ -1,10 +1,12 @@
+import React, { useCallback, useEffect, useState } from 'react';
+
+import { useStack } from '@/api/stack';
 import { OutlinerChangeWrapper } from '@/features/scenarios/components/OutlinerChangeWrapper';
 import { useHighlight } from '@/hooks/useHighlight';
-import { useStack } from '@/lib/api/stack';
 import { StackContextProvider } from '@/lib/context/stack';
 import { useMapStore } from '@/stores/map';
 import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
-import React, { useCallback, useEffect, useState } from 'react';
+
 import { ConditionalWrap } from './ConditionalWrap';
 import { SubstackAdapter } from './adapters/SubstackAdapter';
 import { Line } from './system/Line';

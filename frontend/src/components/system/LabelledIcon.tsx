@@ -1,5 +1,6 @@
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
+
 import { TooltipOverflow } from './Tooltip';
 
 export interface LabelledIconProps

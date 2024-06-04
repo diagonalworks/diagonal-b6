@@ -1,9 +1,11 @@
-import { b6 } from '@/lib/api/client';
+import { useQuery } from '@tanstack/react-query';
+
+import { b6 } from '@/api/client';
 import {
     ComparisonLineProto,
     ComparisonRequestProto,
 } from '@/types/generated/ui';
-import { useQuery } from '@tanstack/react-query';
+
 import { Comparison } from '../stores/comparisons';
 
 const getComparison = (

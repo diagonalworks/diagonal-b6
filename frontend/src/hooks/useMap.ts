@@ -1,7 +1,3 @@
-import { getFeaturePath } from '@/lib/map';
-import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
-import { World, useWorldStore } from '@/stores/worlds';
-import { Event } from '@/types/events';
 import {
     FilterSpecification,
     MapGeoJSONFeature,
@@ -10,6 +6,17 @@ import {
 import { useCallback, useMemo } from 'react';
 import { useMap as useMapLibre } from 'react-map-gl/maplibre';
 
+import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
+import { World, useWorldStore } from '@/stores/worlds';
+import { Event } from '@/types/events';
+import { getFeaturePath } from '@/utils/map';
+
+/**
+ * Hook for interacting with the rendered map. This hook provides functions for evaluating
+ * expressions and features on the map.
+ * @param id - The id of the world the map is in
+ * @returns The actions for interacting with the map
+ */
 export const useMap = ({ id }: { id: World['id'] }) => {
     const { [id]: maplibre } = useMapLibre();
     const outlinerActions = useOutlinersStore((state) => state.actions);

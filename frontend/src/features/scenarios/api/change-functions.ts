@@ -1,7 +1,8 @@
-import { useEvaluate } from '@/lib/api/evaluate';
+import { useMemo } from 'react';
+
+import { useEvaluate } from '@/api/evaluate';
 import { World } from '@/stores/worlds';
 import { FeatureType } from '@/types/generated/api';
-import { useMemo } from 'react';
 
 export const useChangeFunctions = ({ origin }: { origin: World }) => {
     const query = useEvaluate({

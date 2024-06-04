@@ -1,9 +1,10 @@
-import { MainErrorFallback } from '@/components/errors/MainErrorFallback';
-import { Spinner } from '@/components/system/Spinner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import React, { PropsWithChildren } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
+
+import { MainErrorFallback } from '@/components/errors/MainErrorFallback';
+import { Spinner } from '@/components/system/Spinner';
 
 const queryClient = new QueryClient({
     defaultOptions: {

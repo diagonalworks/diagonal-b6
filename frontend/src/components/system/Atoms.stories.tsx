@@ -1,6 +1,8 @@
-import { Shop } from '@/assets/icons/circle';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
+
+import { Shop } from '@/assets/icons/circle';
+
 import { Header as HeaderComponent } from './Header';
 import { LabelledIcon as LabelledIconComponent } from './LabelledIcon';
 import { Line as LineComponent } from './Line';
