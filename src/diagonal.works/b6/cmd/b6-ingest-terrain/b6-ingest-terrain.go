@@ -224,6 +224,8 @@ func main() {
 	inputFlag := flag.String("input", "", "Input directory with OS terrain data")
 	outputFlag := flag.String("output", "", "Output directory with OS terrain data")
 	worldFlag := flag.String("world", "", "World to annotate with inclines")
+	memory := flag.Bool("memory", true, "Use memory for intermediate data")
+	scratch := flag.String("scratch", ".", "Directory for temporary files")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	flag.Parse()
 	elevations, err := readElevations(*inputFlag, *coresFlag)
@@ -236,14 +238,26 @@ func main() {
 		log.Fatal(err)
 	}
 
+	points := compact.OutputTypeMemory
+	if !*memory {
+		points = compact.OutputTypeDisk
+	}
 	options := compact.Options{
 		OutputFilename:          *outputFlag,
 		Goroutines:              *coresFlag,
-		ScratchDirectory:        "",
-		PointsScratchOutputType: compact.OutputTypeMemory,
+		ScratchDirectory:        *scratch,
+		PointsScratchOutputType: points,
 	}
-	source := elevationSource{World: w, Elevations: elevations}
-	if compact.Build(&source, &options); err != nil {
+	var finish func() error
+	finish, err = compact.MaybeWriteToCloud(&options)
+	if err == nil {
+		source := elevationSource{World: w, Elevations: elevations}
+		err = compact.Build(&source, &options)
+		if err == nil {
+			err = finish()
+		}
+	}
+	if err != nil {
 		log.Fatal(err)
 	}
 }
