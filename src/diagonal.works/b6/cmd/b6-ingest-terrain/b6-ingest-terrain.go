@@ -30,6 +30,9 @@ import (
 
 	"github.com/golang/geo/s2"
 	"github.com/lukeroth/gdal"
+
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/gcs"
+	_ "github.com/apache/beam/sdks/go/pkg/beam/io/filesystem/local"
 )
 
 func transform(x int, y int, t [6]float64) (float64, float64) {
