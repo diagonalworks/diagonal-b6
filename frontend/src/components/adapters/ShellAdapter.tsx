@@ -42,6 +42,7 @@ export const WorldShellAdapter = ({ mapId }: { mapId: string }) => {
         createOutlinerInScenario({
             id: `stack_shell_${e}`,
             properties: {
+                show: true,
                 scenario: mapId,
                 docked: false,
                 transient: true,

@@ -9,12 +9,14 @@ export const SubstackAdapter = ({
     substack,
     collapsible = false,
     close,
+    show,
     origin,
     analysisTitle,
 }: {
     substack: SubstackProto;
     collapsible?: boolean;
     close?: boolean;
+    show?: boolean;
     origin?: SubstackProto;
     analysisTitle?: string; // @TODO: remove this, it's a hack to get the analysis title
 }) => {
@@ -72,6 +74,10 @@ export const SubstackAdapter = ({
                 >
                     <LineAdapter
                         line={substack.lines[0]}
+                        actions={{
+                            close: false,
+                            show: false,
+                        }}
                         //changeable={changeable}
                     />
                 </Stack.Trigger>
@@ -84,7 +90,10 @@ export const SubstackAdapter = ({
                             <LineAdapter
                                 key={i}
                                 line={l}
-                                close={close && i === 0}
+                                actions={{
+                                    close: !!close && i === 0,
+                                    show: !!show && i === 0,
+                                }}
                             />
                         );
                     })}

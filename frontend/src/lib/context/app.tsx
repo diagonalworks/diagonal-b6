@@ -44,6 +44,7 @@ export const AppContext = createContext<{
     addScenario: () => void;
     removeScenario: (id: string) => void;
     setActiveScenario: (id: string) => void;
+    setVisibleOutliner: (id: string, value: boolean) => void;
     addComparator: ({
         baseline,
         scenarios,
@@ -60,6 +61,7 @@ export const AppContext = createContext<{
     setApp: () => {},
     setFixedOutliner: () => {},
     setActiveOutliner: () => {},
+    setVisibleOutliner: () => {},
     createOutliner: () => {},
     moveOutliner: () => {},
     closeOutliner: () => {},
@@ -214,6 +216,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
                 draft.outliners[`docked-${i}`] = {
                     id: `docked-${i}`,
                     properties: {
+                        show: false,
                         scenario: 'baseline',
                         docked: true,
                         transient: false,
@@ -255,6 +258,18 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         ) => {
             setApp((draft) => {
                 draft.outliners[id].active = value;
+            });
+        },
+        [setApp]
+    );
+
+    const setVisibleOutliner = useCallback(
+        (
+            id: keyof AppStore['outliners'],
+            value: AppStore['outliners'][string]['properties']['show']
+        ) => {
+            setApp((draft) => {
+                draft.outliners[id].properties.show = value;
             });
         },
         [setApp]
@@ -305,6 +320,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         app,
         setApp,
         setActiveOutliner,
+        setVisibleOutliner,
         setFixedOutliner,
         moveOutliner,
         closeOutliner,

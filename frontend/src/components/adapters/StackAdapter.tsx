@@ -20,9 +20,8 @@ const getFirstWord = (s?: string) => {
 export const StackAdapter = () => {
     const {
         app: { outliners },
-        setActiveOutliner,
     } = useAppContext();
-    const { outliner } = useOutlinerContext();
+    const { outliner, setVisible } = useOutlinerContext();
     const {
         scenario: { worldCreated, change },
         addFeatureToChange,
@@ -45,7 +44,7 @@ export const StackAdapter = () => {
     // hack stop
 
     const handleOpenChange = (open: boolean) => {
-        setActiveOutliner(outliner.id, open);
+        setVisible(open);
         setOpen(open);
     };
 
@@ -95,6 +94,10 @@ export const StackAdapter = () => {
         ? getFirstWord(headerTitleString)
         : analysisTitle;
     // hack stop
+
+    const queryLayers = outliner.query?.data?.proto.layers;
+    const geoJsons =
+        outliner.query?.data?.geoJSON || outliner.query?.data?.proto.geoJSON;
 
     return (
         <>
@@ -152,6 +155,10 @@ export const StackAdapter = () => {
                                 substack={firstSubstack}
                                 collapsible={firstSubstack.collapsable}
                                 close={!outliner.properties.docked}
+                                show={
+                                    !outliner.properties.docked &&
+                                    (!!queryLayers || !!geoJsons)
+                                }
                                 origin={originFirstSubstack}
                                 analysisTitle={analysisTitle}
                             />
