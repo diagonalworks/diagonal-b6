@@ -322,7 +322,7 @@ func NewShortestPathSearchFromFeature(f b6.Feature, weights Weights, w b6.World)
 	if f, ok := f.(b6.PhysicalFeature); ok {
 		switch f.GeometryType() {
 		case b6.GeometryTypePoint:
-			return NewShortestPathSearchFromPoint(f.FeatureID())
+			return NewShortestPathSearchFromPoint(f.FeatureID(), weights, w)
 		case b6.GeometryTypeArea:
 			return NewShortestPathSearchFromBuilding(f.(b6.AreaFeature), weights, w)
 		}
@@ -330,10 +330,27 @@ func NewShortestPathSearchFromFeature(f b6.Feature, weights Weights, w b6.World)
 	return newShortestPathSearch()
 }
 
-func NewShortestPathSearchFromPoint(from b6.FeatureID) *ShortestPathSearch {
+func NewShortestPathSearchFromPoint(from b6.FeatureID, weights Weights, w b6.World) *ShortestPathSearch {
+	connected := false
+	buildings := make([]b6.Feature, 0)
+	rs := w.FindReferences(from)
+	for rs.Next() {
+		f := w.FindFeatureByID(rs.FeatureID())
+		if p, ok := f.(b6.PhysicalFeature); ok && weights.IsUseable(b6.Segment{Feature: p}) {
+			connected = true
+			break
+		}
+		if building := f.Get("#building"); building.IsValid() {
+			buildings = append(buildings, f)
+		}
+	}
 	s := newShortestPathSearch()
-	s.queue = append(s.queue, &reachable{point: from, visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: 0})
-	s.byPoint[from] = s.queue[0]
+	if connected {
+		s.queue = append(s.queue, &reachable{point: from, visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: 0})
+		s.byPoint[from] = s.queue[0]
+	} else {
+		s.FillOriginsFromBuildings(buildings, weights, w)
+	}
 	return s
 }
 
@@ -347,23 +364,9 @@ func isConnected(p b6.FeatureID, weights Weights, w b6.World) bool {
 	return false
 }
 
-func NewShortestPathSearchFromBuilding(area b6.AreaFeature, weights Weights, w b6.World) *ShortestPathSearch {
+func NewShortestPathSearchFromBuilding(building b6.AreaFeature, weights Weights, w b6.World) *ShortestPathSearch {
 	s := newShortestPathSearch()
-	for i := 0; i < area.Len(); i++ {
-		for _, path := range area.Feature(i) {
-			for _, r := range path.References() {
-				if point := w.FindFeatureByID(r.Source()); point != nil {
-					if isConnected(point.FeatureID(), weights, w) {
-						r := &reachable{point: point.FeatureID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
-						s.queue = append(s.queue, r)
-					}
-				}
-			}
-		}
-	}
-	for _, r := range s.queue {
-		s.byPoint[r.point] = r
-	}
+	s.FillOriginsFromBuildings([]b6.Feature{building}, weights, w)
 	return s
 }
 
@@ -374,6 +377,29 @@ func newShortestPathSearch() *ShortestPathSearch {
 		byArea:     make(map[b6.AreaID]*reachable),
 		pathStates: make(map[b6.SegmentKey]PathState),
 	}
+}
+
+func (s *ShortestPathSearch) FillOriginsFromBuildings(buildings []b6.Feature, weights Weights, w b6.World) {
+	for _, f := range buildings {
+		if area, ok := f.(b6.AreaFeature); ok {
+			for i := 0; i < area.Len(); i++ {
+				for _, path := range area.Feature(i) {
+					for _, r := range path.References() {
+						if point := w.FindFeatureByID(r.Source()); point != nil {
+							if isConnected(point.FeatureID(), weights, w) {
+								r := &reachable{point: point.FeatureID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
+								s.queue = append(s.queue, r)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	for _, r := range s.queue {
+		s.byPoint[r.point] = r
+	}
+
 }
 
 func (s *ShortestPathSearch) Len() int { return len(s.queue) }
@@ -615,13 +641,13 @@ func (s *ShortestPathSearch) PathStates() map[b6.SegmentKey]PathState {
 }
 
 func ComputeShortestPath(from b6.FeatureID, to b6.FeatureID, maxDistance float64, weights Weights, w b6.World) []b6.Segment {
-	s := NewShortestPathSearchFromPoint(from)
+	s := NewShortestPathSearchFromPoint(from, weights, w)
 	s.ExpandSearchTo(to, maxDistance, weights, w)
 	return s.BuildPath(to)
 }
 
 func ComputeAccessibility(from b6.FeatureID, maxDistance float64, weights Weights, w b6.World) (map[b6.FeatureID]float64, map[b6.SegmentKey]int) {
-	s := NewShortestPathSearchFromPoint(from)
+	s := NewShortestPathSearchFromPoint(from, weights, w)
 	s.ExpandSearch(maxDistance, weights, Points, w)
 	// TODO: Rework this API: We shouldn't have to do PointDistances() and the Fill()
 	distances := s.PointDistances()
