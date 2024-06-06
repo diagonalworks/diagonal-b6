@@ -20,9 +20,8 @@ const getFirstWord = (s?: string) => {
 export const StackAdapter = () => {
     const {
         app: { outliners },
-        setActiveOutliner,
     } = useAppContext();
-    const { outliner } = useOutlinerContext();
+    const { outliner, setVisible } = useOutlinerContext();
     const {
         scenario: { worldCreated, change },
         addFeatureToChange,
@@ -45,7 +44,7 @@ export const StackAdapter = () => {
     // hack stop
 
     const handleOpenChange = (open: boolean) => {
-        setActiveOutliner(outliner.id, open);
+        setVisible(open);
         setOpen(open);
     };
 
@@ -57,7 +56,7 @@ export const StackAdapter = () => {
         return (
             <Stack>
                 <Stack.Trigger>
-                    <Line className="flex flex-nowrap ">
+                    <Line className="flex flex-nowrap w-80 ">
                         <div className="loader shrink-0" />
                         <div className="text-graphite-60 italic text-nowrap overflow-hidden overflow-ellipsis">
                             {outliner.request?.expression}
@@ -95,6 +94,10 @@ export const StackAdapter = () => {
         ? getFirstWord(headerTitleString)
         : analysisTitle;
     // hack stop
+
+    const queryLayers = outliner.query?.data?.proto.layers;
+    const geoJsons =
+        outliner.query?.data?.geoJSON || outliner.query?.data?.proto.geoJSON;
 
     return (
         <>
@@ -147,18 +150,22 @@ export const StackAdapter = () => {
                     )}
                 >
                     {firstSubstack && (
-                        <Stack.Trigger>
+                        <Stack.Trigger className="w-full">
                             <SubstackAdapter
                                 substack={firstSubstack}
                                 collapsible={firstSubstack.collapsable}
                                 close={!outliner.properties.docked}
+                                show={
+                                    !outliner.properties.docked &&
+                                    (!!queryLayers || !!geoJsons)
+                                }
                                 origin={originFirstSubstack}
                                 analysisTitle={analysisTitle}
                             />
                         </Stack.Trigger>
                     )}
                     {otherSubstacks && (
-                        <Stack.Content>
+                        <Stack.Content className="w-full">
                             {otherSubstacks.map((substack, i) => {
                                 return (
                                     <SubstackAdapter

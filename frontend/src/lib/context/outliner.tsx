@@ -27,6 +27,7 @@ export type OutlinerSpec = {
     id: string;
     active?: boolean;
     properties: {
+        show: boolean;
         docked: boolean;
         transient: boolean;
         coordinates: { x: number; y: number };
@@ -66,6 +67,7 @@ const OutlinerContext = createContext<{
     choiceChips: Record<number, Chip>;
     setChoiceChipValue: (index: number, value: number) => void;
     close: () => void;
+    setVisible: (show: boolean) => void;
 }>({
     outliner: {} as OutlinerStore,
     setProperty: () => {},
@@ -76,6 +78,7 @@ const OutlinerContext = createContext<{
     choiceChips: {},
     setChoiceChipValue: () => {},
     close: () => {},
+    setVisible: () => {},
 });
 
 /**
@@ -109,6 +112,12 @@ export const OutlinerProvider = ({
     const close = useCallback(() => {
         closeOutliner(outliner.id);
     }, [closeOutliner, outliner.id]);
+
+    const setVisible = (show: boolean) => {
+        setApp((draft) => {
+            draft.outliners[outliner.id].properties.show = show;
+        });
+    };
 
     const [choiceChips, setChoiceChips] = useImmer<Record<number, Chip>>({});
 
@@ -357,6 +366,7 @@ export const OutlinerProvider = ({
                 choiceChips,
                 setChoiceChipValue,
                 close,
+                setVisible,
             }}
         >
             {children}

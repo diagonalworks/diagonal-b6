@@ -242,11 +242,12 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
                 </Marker>
             );
         });
-    }, [map, getVisibleMarkers]);
+    }, [map, getVisibleMarkers, queryLayers]);
 
     const handleMapClick = useCallback(
         (e: MapLayerMouseEvent) => {
             const outlinerProperties = {
+                show: true,
                 scenario: id,
                 docked: false,
                 transient: true,
@@ -324,7 +325,10 @@ export const ScenarioMap = ({ children }: PropsWithChildren) => {
             boxZoom={false} // https://github.com/mapbox/mapbox-gl-js/issues/6971s
         >
             <DeckGLOverlay
-                layers={[queryLayersGL, geoJsonLayerGL]}
+                layers={[
+                    ...(queryLayersGL ? queryLayersGL : []),
+                    geoJsonLayerGL,
+                ]}
                 interleaved
             />
 

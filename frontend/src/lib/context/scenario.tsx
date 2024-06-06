@@ -353,20 +353,21 @@ export const ScenarioProvider = ({
 
     const geoJSON = useMemo(() => {
         return Object.values(scenarioOutliners)
+            .filter((outliner) => outliner.properties.show)
             .flatMap((outliner) => outliner.data?.geoJSON || [])
             .flat();
     }, [scenarioOutliners]);
 
     const queryLayers = useMemo(() => {
         const activeLayer = Object.values(scenarioOutliners).find(
-            (outliner) => outliner.active
+            (outliner) => outliner.properties.show
         );
         return Object.values(scenarioOutliners).flatMap((outliner) => {
             return (outliner.data?.proto.layers?.map((l) => ({
                 layer: l,
                 histogram: outliner.histogram,
                 show: !isUndefined(activeLayer)
-                    ? outliner.active
+                    ? outliner.properties.show
                     : activeComparator &&
                       outliner.properties.comparison === activeComparator.id,
             })) || []) as QueryLayer[];
@@ -402,8 +403,8 @@ export const ScenarioProvider = ({
         (map: MapRef) => {
             const features = Object.values(scenarioOutliners)
                 .filter(
-                    (outliner) =>
-                        outliner.active || outliner.properties.transient
+                    (outliner) => outliner.properties.show
+                    //outliner.active || outliner.properties.transient
                 )
                 .flatMap((outliner) => outliner.data?.geoJSON || [])
                 .flatMap((f: $FixMe) => {
