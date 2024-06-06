@@ -24,13 +24,7 @@ func newShortestPathSearch(origin b6.Feature, options b6.UntypedCollection, dist
 
 	var s *graph.ShortestPathSearch
 	if origin, ok := origin.(b6.PhysicalFeature); ok {
-		switch origin.GeometryType() {
-		case b6.GeometryTypePoint:
-			s = graph.NewShortestPathSearchFromPoint(origin.FeatureID())
-		case b6.GeometryTypeArea:
-			s = graph.NewShortestPathSearchFromBuilding(origin.(b6.AreaFeature), weights, w)
-		}
-
+		s = graph.NewShortestPathSearchFromFeature(origin, weights, w)
 		s.ExpandSearch(distance, weights, features, w)
 		return s, nil
 	}
