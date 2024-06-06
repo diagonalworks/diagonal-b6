@@ -84,9 +84,13 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	}
 
 	if len(staticPaths) > 0 {
-		root.Handle(v1Path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, filepath.Join(staticPaths[0], "index.html"))
-		}))
+		if v1Path == "/" {
+			root.Handle("/", http.FileServer(MergedFilesystem(staticPaths)))
+		} else {
+			root.Handle(v1Path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, filepath.Join(staticPaths[0], "index.html"))
+			}))
+		}
 	}
 
 	root.Handle("/b6.css", http.FileServer(MergedFilesystem(staticPaths)))
