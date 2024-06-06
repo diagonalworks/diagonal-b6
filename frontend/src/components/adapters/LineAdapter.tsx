@@ -101,30 +101,32 @@ export const LineAdapter = ({
                     )}
                     {line.tags && <Tags tagLine={line.tags} />}
                 </Wrapper>
-                <div className="flex gap-1">
-                    {show && (
-                        <Tooltip content={'Toggle visiblity'}>
-                            <IconButton
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    setVisible(!outliner.properties.show);
-                                }}
-                            >
-                                {outliner.properties.show ? (
-                                    <ComponentInstanceIcon />
-                                ) : (
-                                    <ComponentNoneIcon />
-                                )}
+                {(show || close) && (
+                    <div className="flex gap-1">
+                        {show && (
+                            <Tooltip content={'Toggle visiblity'}>
+                                <IconButton
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setVisible(!outliner.properties.show);
+                                    }}
+                                >
+                                    {outliner.properties.show ? (
+                                        <ComponentInstanceIcon />
+                                    ) : (
+                                        <ComponentNoneIcon />
+                                    )}
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                        {close && (
+                            <IconButton onClick={closeFn} className="close">
+                                <Cross1Icon />
                             </IconButton>
-                        </Tooltip>
-                    )}
-                    {close && (
-                        <IconButton onClick={closeFn} className="close">
-                            <Cross1Icon />
-                        </IconButton>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </Line>
         </LineContextProvider>
     );

@@ -64,11 +64,16 @@ export const SubstackAdapter = ({
     if (!substack.lines) return null;
 
     return (
-        <Stack collapsible={collapsible} open={open} onOpenChange={setOpen}>
+        <Stack
+            collapsible={collapsible}
+            open={open}
+            onOpenChange={setOpen}
+            className="w-full"
+        >
             {(header || collapsible) && (
                 <Stack.Trigger
                     className={twMerge(
-                        'border-b border-graphite-30 cursor-pointer',
+                        'w-full border-b border-graphite-30 cursor-pointer',
                         open ? 'border-b-0' : ''
                     )}
                 >
@@ -83,7 +88,10 @@ export const SubstackAdapter = ({
                 </Stack.Trigger>
             )}
 
-            <Stack.Content className="text-sm max-h-80 " header={!!header}>
+            <Stack.Content
+                className="text-sm max-h-80 w-full "
+                header={!!header}
+            >
                 {!isHistogram &&
                     contentLines.map((l, i) => {
                         return (

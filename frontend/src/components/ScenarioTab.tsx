@@ -173,7 +173,7 @@ const ChangePanel = () => {
                                 change.features.map((feature, i) => (
                                     <Line
                                         className={twMerge(
-                                            'text-sm py-1 flex gap-2 items-center justify-between',
+                                            'text-sm py-1  w-80 flex gap-2 items-center justify-between',
                                             worldCreated &&
                                                 'bg-rose-10 hover:bg-rose-10 italic'
                                         )}

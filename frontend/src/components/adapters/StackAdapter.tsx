@@ -56,7 +56,7 @@ export const StackAdapter = () => {
         return (
             <Stack>
                 <Stack.Trigger>
-                    <Line className="flex flex-nowrap ">
+                    <Line className="flex flex-nowrap w-80 ">
                         <div className="loader shrink-0" />
                         <div className="text-graphite-60 italic text-nowrap overflow-hidden overflow-ellipsis">
                             {outliner.request?.expression}
@@ -150,7 +150,7 @@ export const StackAdapter = () => {
                     )}
                 >
                     {firstSubstack && (
-                        <Stack.Trigger>
+                        <Stack.Trigger className="w-full">
                             <SubstackAdapter
                                 substack={firstSubstack}
                                 collapsible={firstSubstack.collapsable}
@@ -165,7 +165,7 @@ export const StackAdapter = () => {
                         </Stack.Trigger>
                     )}
                     {otherSubstacks && (
-                        <Stack.Content>
+                        <Stack.Content className="w-full">
                             {otherSubstacks.map((substack, i) => {
                                 return (
                                     <SubstackAdapter

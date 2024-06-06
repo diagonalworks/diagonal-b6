@@ -56,7 +56,7 @@ export const Line: Story = {
         <div className="flex flex-col gap-8">
             <div>
                 <h3 className="mb-2">Empty Line</h3>
-                <LineComponent>
+                <LineComponent className="w-80">
                     <div className="text-sm text-graphite-40">
                         {'< line contents >'}
                     </div>
@@ -65,7 +65,7 @@ export const Line: Story = {
             <div>
                 <h3 className="mb-2">Lines with Atoms</h3>
                 <div className="flex flex-col gap-2">
-                    <LineComponent>
+                    <LineComponent className="w-80">
                         <LabelledIcon>
                             <LabelledIcon.Icon>
                                 <Shop />
@@ -73,7 +73,7 @@ export const Line: Story = {
                             <LabelledIcon.Label>Collection</LabelledIcon.Label>
                         </LabelledIcon>
                     </LineComponent>
-                    <LineComponent className="justify-between">
+                    <LineComponent className="justify-between w-80">
                         <LabelledIcon>
                             <LabelledIcon.Icon>
                                 <School />
@@ -82,7 +82,7 @@ export const Line: Story = {
                         </LabelledIcon>
                         <LineComponent.Value>3</LineComponent.Value>
                     </LineComponent>
-                    <LineComponent>
+                    <LineComponent className="w-80">
                         <LabelledIcon>
                             <LabelledIcon.Icon>
                                 <Grocery />
@@ -94,7 +94,7 @@ export const Line: Story = {
                             <SelectForStory type="grocery" />
                         </div>
                     </LineComponent>
-                    <LineComponent>
+                    <LineComponent className="w-80">
                         <LabelledIcon>
                             <LabelledIcon.Icon>
                                 <Grocery />
@@ -108,13 +108,13 @@ export const Line: Story = {
                             <SelectForStory type="grocery" />
                         </div>
                     </LineComponent>
-                    <LineComponent>
+                    <LineComponent className="w-80">
                         <Header>
                             <Header.Label>Header</Header.Label>
                             <Header.Actions close share />
                         </Header>
                     </LineComponent>
-                    <LineComponent>
+                    <LineComponent className="w-80">
                         <LineComponent.Button icon={<PlusIcon />}>
                             <LabelledIcon>
                                 <LabelledIcon.Icon>

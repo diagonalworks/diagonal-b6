@@ -27,10 +27,10 @@ const Root = React.forwardRef<
                 {...omit(props, 'collapsible')}
                 ref={forwardedRef}
                 className={twMerge(
-                    'border box-border border-graphite-30',
+                    'border box-border border-graphite-30  w-80',
                     props.open &&
                         props.collapsible &&
-                        'border border-graphite-50 transition-colors w-fit  ',
+                        'border border-graphite-50 transition-colors  ',
                     'stack ',
                     '[&_.line]:border-t-0 [&_.stack]:border-0',
                     className
@@ -60,7 +60,7 @@ const Trigger = React.forwardRef<
             ref={forwardedRef}
             className={twMerge(
                 collapsible &&
-                    'cursor-pointer select-none [&_.line]:data-[state=closed]:border-b-0',
+                    'cursor-pointer overflow-hidden select-none [&_.line]:data-[state=closed]:border-b-0',
                 className
             )}
         >
