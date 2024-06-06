@@ -51,7 +51,7 @@ func main() {
 	base := flag.String("base", "", "World to make connections to")
 	input := flag.String("input", "", "World to make connections from")
 	output := flag.String("output", "", "Output connected world")
-	connect := flag.String("connect", "[#building | #amenity | #landuse=vacant]", "Feature types to connect")
+	connect := flag.String("connect", "[#building | #amenity | #leisure | #shop | #landuse=vacant]", "Feature types to connect")
 	modifyPaths := flag.Bool("modify-paths", true, "Add new connection points to existing paths")
 	networkThreshold := flag.Float64("network-threshold", 500.0, "Distance to travel before a street is considered connected")
 	connectionThreshold := flag.Float64("connection-threshold", 100.0, "Distance away from entrances within which highways are considered")
