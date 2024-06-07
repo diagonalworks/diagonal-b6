@@ -161,7 +161,7 @@ func IsPathUsableByPedestrian(path b6.Feature) bool {
 type ElevationWeights struct {
 	UpHillHard   bool
 	DownHillHard bool
-	w            b6.World
+	W            b6.World
 }
 
 func (ElevationWeights) IsUseable(segment b6.Segment) bool {
@@ -179,8 +179,8 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 	}
 
 	for i := first; i < last; i++ {
-		if start, ok := e.w.FindFeatureByID(segment.Feature.Reference(i).Source()).(b6.PhysicalFeature); start != nil && ok {
-			if stop, ok := e.w.FindFeatureByID(segment.Feature.Reference(i + 1).Source()).(b6.PhysicalFeature); stop != nil && ok {
+		if start, ok := e.W.FindFeatureByID(segment.Feature.Reference(i).Source()).(b6.PhysicalFeature); start != nil && ok {
+			if stop, ok := e.W.FindFeatureByID(segment.Feature.Reference(i + 1).Source()).(b6.PhysicalFeature); stop != nil && ok {
 
 				w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{start.Point(), stop.Point()}).Length())
 

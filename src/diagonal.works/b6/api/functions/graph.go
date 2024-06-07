@@ -17,7 +17,7 @@ import (
 )
 
 func newShortestPathSearch(origin b6.Feature, options b6.UntypedCollection, distance float64, features graph.ShortestPathFeatures, w b6.World) (*graph.ShortestPathSearch, error) {
-	weights, err := WeightsFromOptions(options)
+	weights, err := WeightsFromOptions(options, w)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func accessibleAll(context *api.Context, origins b6.Collection[any, b6.Identifia
 		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
 
-	weights, err := WeightsFromOptions(options)
+	weights, err := WeightsFromOptions(options, context.World)
 	if err != nil {
 		return b6.Collection[b6.FeatureID, b6.FeatureID]{}, err
 	}
@@ -242,7 +242,7 @@ done:
 	}, err
 }
 
-func WeightsFromOptions(options b6.UntypedCollection) (graph.Weights, error) {
+func WeightsFromOptions(options b6.UntypedCollection, w b6.World) (graph.Weights, error) {
 	opts, err := api.CollectionToTags(options)
 	if err != nil {
 		return nil, err
@@ -258,6 +258,7 @@ func WeightsFromOptions(options b6.UntypedCollection) (graph.Weights, error) {
 		if downHill := opts.Get("downhill"); downHill.IsValid() && downHill.Value.String() == "hard" {
 			elevation.DownHillHard = true
 		}
+		elevation.W = w
 		weights = elevation
 	} else {
 		walking := graph.WalkingTimeWeights{
@@ -293,7 +294,7 @@ func accessibleRoutes(context *api.Context, origin b6.Identifiable, destinations
 		return b6.Collection[b6.FeatureID, b6.Route]{}, nil
 	}
 
-	weights, err := WeightsFromOptions(options)
+	weights, err := WeightsFromOptions(options, context.World)
 	if err != nil {
 		return b6.Collection[b6.FeatureID, b6.Route]{}, err
 	}
