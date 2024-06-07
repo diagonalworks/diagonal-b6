@@ -91,7 +91,7 @@ func TestWeightsFromOptions(t *testing.T) {
 	}
 
 	options := []b6.Tag{{Key: "mode", Value: b6.String("transit")}, {Key: "walking speed", Value: b6.String("7.6")}}
-	weights, err := WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection())
+	weights, err := WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection(), w)
 	if err != nil {
 		t.Errorf("cannot convert collection to tags")
 	}
@@ -102,12 +102,12 @@ func TestWeightsFromOptions(t *testing.T) {
 	}
 
 	options = []b6.Tag{{Key: "mode", Value: b6.String("transit")}, {Key: "elevation", Value: b6.String("true")}, {Key: "downhill", Value: b6.String("hard")}}
-	weights, err = WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection())
+	weights, err = WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection(), w)
 	if err != nil {
 		t.Errorf("cannot convert collection to tags")
 	}
 
-	expected = graph.TransitTimeWeights{PeakTraffic: true, Weights: graph.ElevationWeights{DownHillHard: true}}
+	expected = graph.TransitTimeWeights{PeakTraffic: true, Weights: graph.ElevationWeights{DownHillHard: true, W: w}}
 	if weights != expected {
 		t.Errorf("unexpected weights")
 	}
