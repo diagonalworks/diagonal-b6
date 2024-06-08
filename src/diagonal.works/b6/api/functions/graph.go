@@ -168,13 +168,15 @@ func (o *odCollection) Less(i, j int) bool {
 // Walking, with the default speed of 4.5km/h:
 // mode=walk
 // Walking, a speed of 3km/h:
-// mode=walk, walking speed=3.0
+// mode=walk, walk:speed=3.0
 // Transit at peak times:
 // mode=transit
 // Transit at off-peak times:
 // mode=transit, peak=no
 // Walking, accounting for elevation:
-// elevation=true (optional: uphill=hard downhill=hard)
+// elevation=true (optional: elevation:uphill=2.0 elevation:downhill=1.2)
+// Walking, accounting for elevation, adding double the penalty for uphill:
+// elevation=true, elevation:uphill=2.0
 // Walking, with the resulting collection flipped such that keys are
 // destinations and values are origins. Useful for efficiency if you assume
 // symmetry, and the number of destinations is considerably smaller than the
@@ -247,42 +249,61 @@ func WeightsFromOptions(options b6.UntypedCollection, w b6.World) (graph.Weights
 	if err != nil {
 		return nil, err
 	}
+	return WeightsFromTags(opts, w)
+}
 
+func WeightsFromTags(opts b6.Tags, w b6.World) (graph.Weights, error) {
 	var weights graph.Weights
-
-	if opts.Get("elevation").IsValid() {
-		elevation := graph.ElevationWeights{}
-		if upHill := opts.Get("uphill"); upHill.IsValid() && upHill.Value.String() == "hard" {
-			elevation.UpHillHard = true
-		}
-		if downHill := opts.Get("downhill"); downHill.IsValid() && downHill.Value.String() == "hard" {
-			elevation.DownHillHard = true
-		}
-		elevation.W = w
-		weights = elevation
-	} else {
-		walking := graph.WalkingTimeWeights{
-			Speed: graph.WalkingMetersPerSecond,
-		}
-
-		if speed := opts.Get("walking speed"); speed.IsValid() {
-			if f, err := strconv.ParseFloat(speed.Value.String(), 64); err == nil {
-				walking.Speed = f
-			}
-		}
-		weights = walking
-	}
 
 	switch m := opts.Get("mode").Value.String(); m {
 	case "", "walk":
+		walking := graph.WalkingTimeWeights{
+			Speed: graph.WalkingMetersPerSecond,
+		}
+		if speed := opts.Get("walk:speed"); speed.IsValid() {
+			if f, err := strconv.ParseFloat(speed.Value.String(), 64); err == nil {
+				walking.Speed = f
+			} else {
+				return nil, fmt.Errorf("expected a float string for walk:speed, found %q", speed.Value.String())
+			}
+		}
+		weights = walking
+		if opts.Get("elevation").IsValid() {
+			elevation := graph.ElevationWeights{
+				UpHillPenalty:   1.0,
+				DownHillPenalty: 0.0,
+				Weights:         weights,
+			}
+			if upHill := opts.Get("elevation:uphill"); upHill.IsValid() {
+				if f, err := strconv.ParseFloat(upHill.Value.String(), 64); err == nil {
+					elevation.UpHillPenalty = f
+				} else {
+					return nil, fmt.Errorf("expected a float string for elevation:uphill, found %q", upHill.Value.String())
+				}
+			}
+			if downHill := opts.Get("elevation:downhill"); downHill.IsValid() {
+				if f, err := strconv.ParseFloat(downHill.Value.String(), 64); err == nil {
+					elevation.DownHillPenalty = f
+				} else {
+					return nil, fmt.Errorf("expected a float string for elevation:downhill, found %q", downHill.Value.String())
+				}
+			}
+			elevation.W = w
+			weights = elevation
+		}
 	case "transit":
+		opts.ModifyOrAddTag(b6.Tag{Key: "mode", Value: b6.String("walk")})
+		walking, err := WeightsFromTags(opts, w)
+		if err != nil {
+			return nil, err
+		}
 		if p := opts.Get("peak"); p.Value.String() == "no" {
-			weights = graph.TransitTimeWeights{PeakTraffic: false, Weights: weights}
+			weights = graph.TransitTimeWeights{PeakTraffic: false, Weights: walking}
 		} else {
-			weights = graph.TransitTimeWeights{PeakTraffic: true, Weights: weights}
+			weights = graph.TransitTimeWeights{PeakTraffic: true, Weights: walking}
 		}
 	default:
-		return nil, fmt.Errorf("Expected mode=walk or mode=transit, found %s", m)
+		return nil, fmt.Errorf("expected mode=walk or mode=transit, found %s", m)
 	}
 
 	return weights, nil

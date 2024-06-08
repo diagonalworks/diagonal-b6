@@ -90,26 +90,44 @@ func TestWeightsFromOptions(t *testing.T) {
 		return
 	}
 
-	options := []b6.Tag{{Key: "mode", Value: b6.String("transit")}, {Key: "walking speed", Value: b6.String("7.6")}}
+	options := []b6.Tag{
+		{Key: "mode", Value: b6.String("transit")},
+		{Key: "walk:speed", Value: b6.String("7.6")},
+	}
 	weights, err := WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection(), w)
 	if err != nil {
-		t.Errorf("cannot convert collection to tags")
+		t.Errorf("expected no error, found: %s", err)
 	}
 
 	expected := graph.TransitTimeWeights{PeakTraffic: true, Weights: graph.WalkingTimeWeights{Speed: 7.6}}
 	if weights != expected {
-		t.Errorf("unexpected weights")
+		t.Errorf("expected %+v, found %+v", expected, weights)
 	}
 
-	options = []b6.Tag{{Key: "mode", Value: b6.String("transit")}, {Key: "elevation", Value: b6.String("true")}, {Key: "downhill", Value: b6.String("hard")}}
+	options = []b6.Tag{
+		{Key: "mode", Value: b6.String("transit")},
+		{Key: "elevation", Value: b6.String("true")},
+		{Key: "elevation:downhill", Value: b6.String("1.2")},
+		{Key: "walk:speed", Value: b6.String("8.7")},
+	}
 	weights, err = WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection(), w)
 	if err != nil {
-		t.Errorf("cannot convert collection to tags")
+		t.Errorf("expected no error, found: %s", err)
 	}
 
-	expected = graph.TransitTimeWeights{PeakTraffic: true, Weights: graph.ElevationWeights{DownHillHard: true, W: w}}
+	expected = graph.TransitTimeWeights{
+		PeakTraffic: true,
+		Weights: graph.ElevationWeights{
+			UpHillPenalty:   1.0,
+			DownHillPenalty: 1.2,
+			Weights: graph.WalkingTimeWeights{
+				Speed: 8.7,
+			},
+			W: w,
+		},
+	}
 	if weights != expected {
-		t.Errorf("unexpected weights")
+		t.Errorf("expected %+v, found %+v", expected, weights)
 	}
 }
 
