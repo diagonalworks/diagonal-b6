@@ -158,10 +158,13 @@ func IsPathUsableByPedestrian(path b6.Feature) bool {
 	return false
 }
 
+const NaismithPenalty = 6.0 // Number of seconds added per meter climbed
+
 type ElevationWeights struct {
-	UpHillHard   bool
-	DownHillHard bool
-	W            b6.World
+	UpHillPenalty   float64
+	DownHillPenalty float64
+	Weights         Weights
+	W               b6.World
 }
 
 func (ElevationWeights) IsUseable(segment b6.Segment) bool {
@@ -169,7 +172,7 @@ func (ElevationWeights) IsUseable(segment b6.Segment) bool {
 }
 
 func (e ElevationWeights) Weight(segment b6.Segment) float64 {
-	var weight float64
+	weight := e.Weights.Weight(segment)
 
 	elevation, fromMemory := 0.0, false
 
@@ -181,9 +184,6 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 	for i := first; i < last; i++ {
 		if start, ok := e.W.FindFeatureByID(segment.Feature.Reference(i).Source()).(b6.PhysicalFeature); start != nil && ok {
 			if stop, ok := e.W.FindFeatureByID(segment.Feature.Reference(i + 1).Source()).(b6.PhysicalFeature); stop != nil && ok {
-
-				w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{start.Point(), stop.Point()}).Length())
-
 				startElevation, err := strconv.ParseFloat(start.Get("ele").Value.String(), 64)
 				if err == nil {
 					elevation, fromMemory = startElevation, true
@@ -193,16 +193,13 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 
 				stopElevation, err := strconv.ParseFloat(stop.Get("ele").Value.String(), 64)
 
+				w := 0.0
 				if fromMemory && err == nil {
-					if stopElevation > startElevation { // Ascending.
-						// Naismith’s Rule adds ~6s/m of elevation,
-						// which we're normalizing against 1.38m/s avg. walking speed.
-						w += (stopElevation - startElevation) * 6 * WalkingMetersPerSecond
-					}
-
-					if (e.UpHillHard && stopElevation > startElevation) ||
-						(e.DownHillHard && stopElevation < startElevation) {
-						w *= 1.2 // Arbitrary coefficient.
+					w = math.Abs(stopElevation-startElevation) * NaismithPenalty
+					if stopElevation > startElevation {
+						w *= e.UpHillPenalty
+					} else {
+						w *= e.DownHillPenalty // 0.0 by default
 					}
 				}
 

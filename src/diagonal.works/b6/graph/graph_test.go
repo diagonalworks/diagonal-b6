@@ -470,10 +470,16 @@ func TestElevationWeights(t *testing.T) {
 	camdenWithHill.AddTag(ingest.FromOSMNodeID(4931754283).FeatureID(), b6.Tag{Key: "ele", Value: b6.String("100")})
 	camdenWithHill.AddTag(ingest.FromOSMNodeID(6773349520).FeatureID(), b6.Tag{Key: "ele", Value: b6.String("200")})
 
+	weights := ElevationWeights{
+		Weights:       WalkingTimeWeights{Speed: WalkingMetersPerSecond},
+		UpHillPenalty: 1.2,
+		W:             camdenWithHill,
+	}
+
 	path := ComputeShortestPath(
 		ingest.FromOSMNodeID(33000703),
 		ingest.FromOSMNodeID(970237231),
-		500.0, ElevationWeights{UpHillHard: true, W: camdenWithHill}, camdenWithHill)
+		500.0, weights, camdenWithHill)
 	wayIDs := make(map[osm.WayID]bool)
 	for _, segment := range path {
 		wayIDs[osm.WayID(segment.Feature.FeatureID().Value)] = true
