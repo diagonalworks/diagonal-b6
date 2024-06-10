@@ -292,7 +292,7 @@ func WeightsFromTags(opts b6.Tags, w b6.World) (graph.Weights, error) {
 			weights = elevation
 		}
 	case "transit":
-		opts.ModifyOrAddTag(b6.Tag{Key: "mode", Value: b6.String("walk")})
+		opts.ModifyOrAddTag(b6.Tag{Key: "mode", Value: b6.StringExpression("walk")})
 		walking, err := WeightsFromTags(opts, w)
 		if err != nil {
 			return nil, err

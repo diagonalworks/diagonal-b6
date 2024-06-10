@@ -412,7 +412,7 @@ func ValidateRelationsAsAreas(buildWorld BuildOSMWorld, t *testing.T) {
 	cap := s2.CapFromCenterAngle(s2.PointFromLatLng(s2.LatLngFromDegrees(51.53534, -0.12447)), b6.MetersToAngle(500))
 
 	expectedAreas := 1
-	q := b6.Intersection{b6.NewIntersectsCap(cap), b6.Tagged{Key: "#building", Value: b6.String("yes")}}
+	q := b6.Intersection{b6.NewIntersectsCap(cap), b6.Tagged{Key: "#building", Value: b6.StringExpression("yes")}}
 	if areas := b6.AllAreas(b6.FindAreas(q, w)); len(areas) != expectedAreas {
 		t.Errorf("Expected %d area, found %d", expectedAreas, len(areas))
 	} else {
@@ -608,7 +608,7 @@ func ValidateFindWithIntersectionQuery(buildWorld BuildOSMWorld, t *testing.T) {
 		return
 	}
 
-	q := b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.String("school")}, b6.Tagged{Key: "#building", Value: b6.String("yes")}}
+	q := b6.Intersection{b6.Tagged{Key: "#amenity", Value: b6.StringExpression("school")}, b6.Tagged{Key: "#building", Value: b6.StringExpression("yes")}}
 	fs := b6.AllFeatures(w.FindFeatures(q))
 	if len(fs) != 1 {
 		t.Errorf("Expected one feature, found %d", len(fs))
@@ -1041,7 +1041,7 @@ func ValidateFindRelationsByFeature(buildWorld BuildOSMWorld, t *testing.T) {
 
 	found := b6.AllRelations(w.FindRelationsByFeature(FromOSMWayID(807925586).FeatureID()))
 	if len(found) == 1 {
-		expected := b6.Tag{Key: "#route", Value: b6.String("bicycle")}
+		expected := b6.Tag{Key: "#route", Value: b6.StringExpression("bicycle")}
 		if route := found[0].Get("#route"); route != expected {
 			t.Errorf("Expected tag value %q, found %q", expected, route)
 		}

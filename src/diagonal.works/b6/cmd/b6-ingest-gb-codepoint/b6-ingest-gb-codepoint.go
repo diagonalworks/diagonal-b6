@@ -62,7 +62,7 @@ func (p *Postcodes) Read(options ingest.ReadOptions, emit ingest.Emit, ctx conte
 		return nil
 	}
 	feature := ingest.GenericFeature{
-		Tags: []b6.Tag{{Key: "#place", Value: b6.String("postal_code")}},
+		Tags: []b6.Tag{{Key: "#place", Value: b6.StringExpression("postal_code")}},
 	}
 	for i := range p.Postcode {
 		if id := b6.PointIDFromGBPostcode(p.Postcode[i]); id == b6.FeatureIDInvalid {
