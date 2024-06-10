@@ -116,14 +116,14 @@ func (t Tagged) ToProto() (*pb.QueryProto, error) {
 }
 
 func valuesEqual(a Value, b Value) bool {
-	// TODO: Remove when Values are harmonised with Literal, so
+	// TODO(mari): Remove when Values are harmonised with Literal, so
 	// we have a standard Equal() function
 	if a.ValueType() != b.ValueType() {
 		return false
 	}
 	switch aa := a.(type) {
-	case String:
-		return aa == b.(String)
+	case StringExpression:
+		return aa == b.(StringExpression)
 	case LatLng:
 		return aa == b.(LatLng)
 	case FeatureID:

@@ -94,7 +94,7 @@ func CollectionToTags(c b6.UntypedCollection) (b6.Tags, error) {
 			continue
 		} else if key, ok := i.Key().(string); ok {
 			if value, ok := i.Value().(string); ok {
-				tags = append(tags, b6.Tag{Key: key, Value: b6.String(value)})
+				tags = append(tags, b6.Tag{Key: key, Value: b6.StringExpression(value)})
 				continue
 			}
 		}

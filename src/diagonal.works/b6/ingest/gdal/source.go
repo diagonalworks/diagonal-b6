@@ -334,7 +334,7 @@ type copyFields []copyField
 func (c copyFields) Fill(f *gdal.Feature, tags []b6.Tag) ([]b6.Tag, error) {
 	for _, cc := range c {
 		if value, err := cc.Value(f); err == nil {
-			tags = append(tags, b6.Tag{Key: cc.Key, Value: b6.String(value)})
+			tags = append(tags, b6.Tag{Key: cc.Key, Value: b6.StringExpression(value)})
 		} else {
 			return nil, err
 		}

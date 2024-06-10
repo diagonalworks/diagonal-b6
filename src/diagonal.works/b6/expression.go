@@ -27,12 +27,24 @@ type FloatNumber float64
 
 func (FloatNumber) isNumber() {}
 
+type ValueType int
+
+const (
+	// TODO(mari): rename / implement a type for each expression
+	ValueTypeString ValueType = iota
+	ValueTypeLatLng
+	ValueTypeValues
+	ValueTypeFeatureID
+	ValueTypeInvalid
+)
+
 type AnyExpression interface {
 	ToProto() (*pb.NodeProto, error)
 	FromProto(node *pb.NodeProto) error
 	Equal(other AnyExpression) bool
 	Clone() Expression
 	String() string
+	ValueType() ValueType
 }
 
 type Expression struct {
@@ -268,7 +280,7 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case float64:
 		f := FloatExpression(l)
 		return Literal{AnyLiteral: &f}, nil
-	case FloatNumber:
+	case FloatNumber: // TODO(mari): rethink number interface + it doesnt make sense to allow it as a literal here
 		f := FloatExpression(float64(l))
 		return Literal{AnyLiteral: &f}, nil
 	case bool:
@@ -362,6 +374,10 @@ func (s SymbolExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (SymbolExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 func NewSymbolExpression(symbol string) Expression {
 	s := SymbolExpression(symbol)
 	return Expression{AnyExpression: &s}
@@ -406,6 +422,10 @@ func (i IntExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
+func (IntExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 func NewIntExpression(value int) Expression {
 	i := IntExpression(value)
 	return Expression{AnyExpression: &i}
@@ -448,6 +468,10 @@ func (f FloatExpression) Equal(other AnyExpression) bool {
 		return f == *ff
 	}
 	return false
+}
+
+func (FloatExpression) ValueType() ValueType {
+	return ValueTypeInvalid
 }
 
 func NewFloatExpression(value float64) Expression {
@@ -497,6 +521,10 @@ func (b BoolExpression) String() string {
 	return "false"
 }
 
+func (BoolExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 type StringExpression string
 
 func (s *StringExpression) ToProto() (*pb.NodeProto, error) {
@@ -534,6 +562,10 @@ func (s StringExpression) Equal(other AnyExpression) bool {
 
 func (s StringExpression) String() string {
 	return string(s)
+}
+
+func (StringExpression) ValueType() ValueType {
+	return ValueTypeString
 }
 
 func NewStringExpression(s string) Expression {
@@ -588,6 +620,10 @@ func (f FeatureIDExpression) String() string {
 	return "/" + FeatureID(f).String()
 }
 
+func (FeatureIDExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 func NewFeatureIDExpression(id FeatureID) Expression {
 	l := FeatureIDExpression(id)
 	return Expression{AnyExpression: &l}
@@ -612,7 +648,7 @@ func (t *TagExpression) ToProto() (*pb.NodeProto, error) {
 
 func (t *TagExpression) FromProto(node *pb.NodeProto) error {
 	tt := node.GetLiteral().GetTagValue()
-	*t = TagExpression(Tag{Key: tt.Key, Value: String(tt.Value)})
+	*t = TagExpression(Tag{Key: tt.Key, Value: StringExpression(tt.Value)}) // TODO(mari): tag expression value should support all expression types
 	return nil
 }
 
@@ -638,6 +674,10 @@ func (t TagExpression) Equal(other AnyExpression) bool {
 		return t == *tt
 	}
 	return false
+}
+
+func (TagExpression) ValueType() ValueType {
+	return ValueTypeInvalid
 }
 
 type QueryExpression struct {
@@ -696,6 +736,10 @@ func (q QueryExpression) Equal(other AnyExpression) bool {
 
 func (q QueryExpression) String() string {
 	return q.Query.String()
+}
+
+func (QueryExpression) ValueType() ValueType {
+	return ValueTypeInvalid
 }
 
 func NewQueryExpression(query Query) Expression {
@@ -761,6 +805,10 @@ func (g GeoJSONExpression) String() string {
 	return "x-geojson"
 }
 
+func (GeoJSONExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 type RouteExpression Route
 
 func (r *RouteExpression) ToProto() (*pb.NodeProto, error) {
@@ -808,6 +856,10 @@ func (r *RouteExpression) Equal(other AnyExpression) bool {
 
 func (r *RouteExpression) String() string {
 	return "x-route"
+}
+
+func (RouteExpression) ValueType() ValueType {
+	return ValueTypeInvalid
 }
 
 type FeatureExpression struct {
@@ -868,6 +920,10 @@ func (f FeatureExpression) String() string {
 	return "x-feature"
 }
 
+func (FeatureExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 type PointExpression s2.LatLng
 
 func (p *PointExpression) ToProto() (*pb.NodeProto, error) {
@@ -923,6 +979,10 @@ func (p PointExpression) Equal(other AnyExpression) bool {
 
 func (p PointExpression) String() string {
 	return LatLngToString(s2.LatLng(p))
+}
+
+func (PointExpression) ValueType() ValueType {
+	return ValueTypeInvalid
 }
 
 func NewPointExpressionFromLatLng(ll s2.LatLng) Expression {
@@ -990,7 +1050,11 @@ func (p PathExpression) Equal(other AnyExpression) bool {
 }
 
 func (p PathExpression) String() string {
-	return "x-path"
+	return "x-path" // TODO(mari): implement all string representations
+}
+
+func (PathExpression) ValueType() ValueType {
+	return ValueTypeInvalid
 }
 
 type AreaExpression struct {
@@ -1039,6 +1103,10 @@ func (a AreaExpression) String() string {
 	return "x-area"
 }
 
+func (AreaExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 type NilExpression struct{}
 
 func (_ NilExpression) ToProto() (*pb.NodeProto, error) {
@@ -1070,6 +1138,10 @@ func (n NilExpression) Equal(other AnyExpression) bool {
 
 func (n NilExpression) String() string {
 	return "x-nil"
+}
+
+func (NilExpression) ValueType() ValueType {
+	return ValueTypeInvalid
 }
 
 type CollectionExpression struct {
@@ -1259,6 +1331,10 @@ func (c CollectionExpression) Literal() interface{} {
 	return c.UntypedCollection
 }
 
+func (CollectionExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 type CallExpression struct {
 	Function  Expression   `yaml:",omitempty"`
 	Args      []Expression `yaml:",omitempty"`
@@ -1355,6 +1431,10 @@ func (c *CallExpression) String() string {
 	return s
 }
 
+func (CallExpression) ValueType() ValueType {
+	return ValueTypeInvalid
+}
+
 func NewCallExpression(function Expression, args []Expression) Expression {
 	return Expression{AnyExpression: &CallExpression{Function: function, Args: args}}
 }
@@ -1424,6 +1504,10 @@ func (l *LambdaExpression) String() string {
 	}
 	return s + " -> " + l.Expression.String() + "}"
 
+}
+
+func (LambdaExpression) ValueType() ValueType {
+	return ValueTypeInvalid
 }
 
 func NewLambdaExpression(args []string, e Expression) Expression {

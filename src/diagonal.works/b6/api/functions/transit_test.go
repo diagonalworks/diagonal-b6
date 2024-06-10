@@ -21,7 +21,7 @@ func TestFindReachableFeatures(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	collection, err := reachable(&context, origin, b6.ArrayValuesCollection[b6.Tag]([]b6.Tag{{Key: "mode", Value: b6.String("walk")}}).Collection(), 1000.0, b6.Keyed{Key: "#amenity"})
+	collection, err := reachable(&context, origin, b6.ArrayValuesCollection[b6.Tag]([]b6.Tag{{Key: "mode", Value: b6.StringExpression("walk")}}).Collection(), 1000.0, b6.Keyed{Key: "#amenity"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -56,7 +56,7 @@ func TestPathsToReachFeatures(t *testing.T) {
 	context := api.Context{
 		World: m,
 	}
-	collection, err := pathsToReachFeatures(&context, origin, b6.ArrayValuesCollection[b6.Tag]([]b6.Tag{{Key: "mode", Value: b6.String("walk")}}).Collection(), 1000.0, b6.Keyed{"#amenity"})
+	collection, err := pathsToReachFeatures(&context, origin, b6.ArrayValuesCollection[b6.Tag]([]b6.Tag{{Key: "mode", Value: b6.StringExpression("walk")}}).Collection(), 1000.0, b6.Keyed{"#amenity"})
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

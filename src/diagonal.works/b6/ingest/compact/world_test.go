@@ -262,7 +262,7 @@ func BenchmarkSearchModifiedWorld(b *testing.B) {
 	}
 	mutable := ingest.NewMutableOverlayWorld(w)
 	for _, id := range ids {
-		mutable.AddTag(id, b6.Tag{Key: "#100m", Value: b6.String("yes")})
+		mutable.AddTag(id, b6.Tag{Key: "#100m", Value: b6.StringExpression("yes")})
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
