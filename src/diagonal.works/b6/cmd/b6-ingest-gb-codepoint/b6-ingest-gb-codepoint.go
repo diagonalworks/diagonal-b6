@@ -69,7 +69,7 @@ func (p *Postcodes) Read(options ingest.ReadOptions, emit ingest.Emit, ctx conte
 			return fmt.Errorf("invalid postcode: %q", p.Postcode[i])
 		} else {
 			feature.SetFeatureID(id)
-			feature.ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(p.Lat[i], p.Lng[i]))})
+			feature.ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(p.Lat[i], p.Lng[i]))})
 			if err := emit(&feature, 0); err != nil {
 				return err
 			}

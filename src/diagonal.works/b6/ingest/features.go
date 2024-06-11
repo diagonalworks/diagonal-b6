@@ -108,7 +108,7 @@ func (f *GenericFeature) FillFromOSM(o OSMFeature) {
 		f.SetFeatureID(FromOSMNodeID(o.Node.ID))
 		FillTagsFromOSM(&f.Tags, o.Node.Tags)
 
-		f.ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(o.Node.Location.ToS2LatLng())})
+		f.ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.PointExpression(o.Node.Location.ToS2LatLng())})
 	} else if o.Way != nil {
 		f.SetFeatureID(FromOSMWayID(o.Way.ID))
 		FillTagsFromOSM(&f.Tags, o.Way.Tags)
