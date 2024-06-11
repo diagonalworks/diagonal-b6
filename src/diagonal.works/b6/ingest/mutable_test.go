@@ -33,7 +33,7 @@ var mutableWorldCreators = []struct {
 func osmPoint(id osm.NodeID, lat float64, lng float64) Feature {
 	return &GenericFeature{
 		ID:   FromOSMNodeID(id).FeatureID(),
-		Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(lat, lng))}}}
+		Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(lat, lng))}}}
 }
 
 func osmPath(id osm.WayID, points []Feature) *GenericFeature {
@@ -505,8 +505,8 @@ func ValidateUpdatingPointLocationsUpdatesS2CellIndex(w MutableWorld, t *testing
 	}
 
 	// Eastern Handyside Canopy, East edge
-	newC := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5358965, -0.1230551))}}}
-	newD := &GenericFeature{ID: d.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719))}}}
+	newC := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5358965, -0.1230551))}}}
+	newD := &GenericFeature{ID: d.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5370349, -0.1232719))}}}
 
 	if err := addFeatures(w, newC, newD); err != nil {
 		t.Fatal(err)
@@ -537,7 +537,7 @@ func ValidateUpdatingPointLocationsWillFailIfAreasAreInvalidated(w MutableWorld,
 		t.Fatal(err)
 	}
 
-	modifiedPoint := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5368549, -0.1256275))}}}
+	modifiedPoint := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5368549, -0.1256275))}}}
 
 	if addFeatures(w, modifiedPoint) == nil {
 		t.Error("Expected adding point to fail, as it invalidates an area")
@@ -1053,7 +1053,7 @@ func TestChangeTagsOnExistingPoint(t *testing.T) {
 		{Key: "name", Value: b6.StringExpression("Caravan")},
 		{Key: "wheelchair", Value: b6.StringExpression("yes")},
 		{Key: "amenity", Value: b6.StringExpression("restaurant")},
-		{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
+		{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(point, expected); err != nil {
@@ -1238,7 +1238,7 @@ func TestReturnModifiedTagsFromSearch(t *testing.T) {
 		{Key: "name", Value: b6.StringExpression("Caravan")},
 		{Key: "#amenity", Value: b6.StringExpression("restaurant")},
 		{Key: "wheelchair", Value: b6.StringExpression("yes")},
-		{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
+		{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(point, expected); err != nil {
@@ -1267,7 +1267,7 @@ func TestSettingTheSameTagMultipleTimesChangesTheValue(t *testing.T) {
 		{Key: "#amenity", Value: b6.StringExpression("restaurant")},
 		{Key: "100m", Value: b6.StringExpression("yes")},
 		{Key: "#200m", Value: b6.StringExpression("yes")},
-		{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
+		{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(overlay.FindFeatureByID(caravan.FeatureID()), expected); err != nil {
@@ -1294,7 +1294,7 @@ func TestRemovedTag(t *testing.T) {
 	expected := []b6.Tag{
 		{Key: "name", Value: b6.StringExpression("Caravan")},
 		{Key: "#shop", Value: b6.StringExpression("supermarket")},
-		{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
+		{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(overlay.FindFeatureByID(caravan.FeatureID()), expected); err != nil {
@@ -1420,7 +1420,7 @@ func TestModifiedTagsOnPathWithPlainLatLngs(t *testing.T) {
 	}
 
 	path := &GenericFeature{ID: FromOSMWayID(222021576)}
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{caravan.FeatureID(), b6.LatLng(s2.LatLngFromDegrees(51.535490, -0.125167)), yumchaa.FeatureID()})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{caravan.FeatureID(), b6.PointExpression(s2.LatLngFromDegrees(51.535490, -0.125167)), yumchaa.FeatureID()})})
 	if err := base.AddFeature(path); err != nil {
 		t.Fatal(err)
 	}
@@ -1443,11 +1443,11 @@ func TestModifiedTagsOnPathWithPlainLatLngs(t *testing.T) {
 func TestModifiedTagsFeatureFromArea(t *testing.T) {
 	path := &GenericFeature{ID: FromOSMWayID(265714033)}
 	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{
-		b6.LatLng(s2.LatLngFromDegrees(51.5369431, -0.1231868)),
-		b6.LatLng(s2.LatLngFromDegrees(51.5365692, -0.1230608)),
-		b6.LatLng(s2.LatLngFromDegrees(51.5365536, -0.1229421)),
-		b6.LatLng(s2.LatLngFromDegrees(51.5367378, -0.1229110)),
-		b6.LatLng(s2.LatLngFromDegrees(51.5369431, -0.1231868)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5369431, -0.1231868)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5365692, -0.1230608)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5365536, -0.1229421)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5367378, -0.1229110)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5369431, -0.1231868)),
 	})})
 
 	area := NewAreaFeature(1)

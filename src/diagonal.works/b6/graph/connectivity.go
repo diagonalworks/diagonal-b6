@@ -351,7 +351,7 @@ func (c *Connections) ApplyToPath(path b6.PhysicalFeature) ingest.Feature {
 		if p != b6.FeatureIDInvalid {
 			v = p
 		} else {
-			v = b6.LatLng(s2.LatLngFromPoint(points[i]))
+			v = b6.PointExpression(s2.LatLngFromPoint(points[i]))
 		}
 		applied.ModifyOrAddTagAt(b6.Tag{b6.PathTag, v}, i)
 	}
@@ -412,7 +412,7 @@ func (c *Connections) Change(w b6.World) ingest.Change {
 		}
 	}
 	f := func(id b6.FeatureID, ll s2.LatLng) error {
-		*change = append(*change, &ingest.GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(ll)}}})
+		*change = append(*change, &ingest.GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(ll)}}})
 		return nil
 	}
 	c.EachInsertedPoint(f, w)
@@ -451,7 +451,7 @@ func (m *modifyWorldSource) Read(options ingest.ReadOptions, emit ingest.Emit, c
 	if !o.SkipPoints {
 		var point ingest.Feature
 		f := func(id b6.FeatureID, ll s2.LatLng) error {
-			point = &ingest.GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(ll)}}}
+			point = &ingest.GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(ll)}}}
 			return emit(point, 0)
 		}
 		if err := m.Connections.EachInsertedPoint(f, m.World); err != nil {

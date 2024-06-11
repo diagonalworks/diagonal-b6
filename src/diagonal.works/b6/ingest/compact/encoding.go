@@ -336,7 +336,7 @@ func (l *LatLng) ToS2LatLng() s2.LatLng {
 }
 
 func (l *LatLng) Marshal(_ TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeLatLng, encoding.ZigzagEncode(int64(l.LatE7))))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypePoint, encoding.ZigzagEncode(int64(l.LatE7))))
 	binary.LittleEndian.PutUint32(buffer[i:], uint32(l.LngE7))
 	return i + 4
 }
@@ -426,11 +426,11 @@ func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value 
 	case *Int:
 		return b6.StringExpression(s.Lookup(int(*v)))
 	case *LatLng:
-		return b6.LatLng(v.ToS2LatLng())
+		return b6.PointExpression(v.ToS2LatLng())
 	case *LatLngs:
 		vs := b6.Values(make([]b6.Value, 0, len(*v)))
 		for _, ll := range *v {
-			vs = append(vs, b6.LatLng(ll.ToS2LatLng()))
+			vs = append(vs, b6.PointExpression(ll.ToS2LatLng()))
 		}
 		return vs
 	case *References:
@@ -448,7 +448,7 @@ func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value 
 				typ, ns := r.Reference.TypeAndNamespace.Split()
 				rll = b6.FeatureID{typ, nt.Decode(ns), r.Reference.Value}
 			} else {
-				vs = append(vs, b6.LatLng(r.LatLng.ToS2LatLng()))
+				vs = append(vs, b6.PointExpression(r.LatLng.ToS2LatLng()))
 			}
 
 			vs = append(vs, rll)
@@ -464,7 +464,7 @@ func toCompactValue(v b6.Value, s *encoding.StringTableBuilder, nt *NamespaceTab
 	case b6.StringExpression:
 		r := Int(s.Lookup(v.String()))
 		return &r
-	case b6.LatLng:
+	case b6.PointExpression:
 		return &LatLng{v.Lat.E7(), v.Lng.E7()}
 	case b6.FeatureID:
 		return &Reference{CombineTypeAndNamespace(v.Type, nt.Encode(v.Namespace)), v.Value}
@@ -532,7 +532,7 @@ func inferValueType(buffer []byte) Value {
 	case b6.ValueTypeString:
 		i := Int(0)
 		return &i
-	case b6.ValueTypeLatLng:
+	case b6.ValueTypePoint:
 		return &LatLng{}
 	case b6.ValueTypeValues:
 		switch DecodeGeometryEncoding(v >> ValueTypeBits) {
@@ -685,7 +685,7 @@ func (m MarshalledTags) GeometryLen() int {
 func (m MarshalledTags) PointAt(i int) s2.Point {
 	if r := m.Get(b6.PathTag); r.IsValid() && r.Value != nil && r.ValueType() == b6.ValueTypeValues {
 		if len(r.Value.(b6.Values)) > i {
-			if ll, ok := (r.Value.(b6.Values))[i].(b6.LatLng); ok {
+			if ll, ok := (r.Value.(b6.Values))[i].(b6.PointExpression); ok {
 				return s2.PointFromLatLng(s2.LatLng(ll))
 			}
 		}

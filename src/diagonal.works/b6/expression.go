@@ -32,7 +32,7 @@ type ValueType int
 const (
 	// TODO(mari): rename / implement a type for each expression
 	ValueTypeString ValueType = iota
-	ValueTypeLatLng
+	ValueTypePoint
 	ValueTypeValues
 	ValueTypeFeatureID
 	ValueTypeInvalid
@@ -306,10 +306,6 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case Feature:
 		f := FeatureExpression{Feature: l}
 		return Literal{AnyLiteral: &f}, nil
-	case LatLng:
-		// TODO(mari): Remove and only use Geo(metry). Needed because tag values can current be LatLng.
-		ll := PointExpression(l)
-		return Literal{AnyLiteral: &ll}, nil
 	case Area:
 		return Literal{AnyLiteral: &AreaExpression{Area: l}}, nil
 	case Geometry:
@@ -982,7 +978,7 @@ func (p PointExpression) String() string {
 }
 
 func (PointExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+	return ValueTypePoint
 }
 
 func NewPointExpressionFromLatLng(ll s2.LatLng) Expression {

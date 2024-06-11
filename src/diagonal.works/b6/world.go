@@ -21,13 +21,13 @@ type Value interface {
 	ValueType() ValueType
 }
 
-func ValueFromString(s string, t ValueType) Value {
+func ValueFromString(s string, t ValueType) Value { // TODO(mari): move all of this logic to expression.go
 	switch t {
 	case ValueTypeString:
 		return StringExpression(s)
-	case ValueTypeLatLng:
+	case ValueTypePoint:
 		if ll, err := LatLngFromString(s); err == nil {
-			return LatLng(ll)
+			return PointExpression(ll)
 		}
 	case ValueTypeFeatureID:
 		if id := FeatureIDFromString(s); id.IsValid() {
@@ -38,16 +38,6 @@ func ValueFromString(s string, t ValueType) Value {
 	}
 
 	panic("not implemented")
-}
-
-type LatLng s2.LatLng
-
-func (ll LatLng) String() string {
-	return LatLngToString(s2.LatLng(ll))
-}
-
-func (ll LatLng) ValueType() ValueType {
-	return ValueTypeLatLng
 }
 
 type Values []Value
@@ -69,7 +59,7 @@ func TryValueFromString(s string) Value {
 	if strings.Contains(s, valuesDelimiter) {
 		return ValuesFromString(s)
 	} else if ll, err := LatLngFromString(s); err == nil {
-		return LatLng(ll)
+		return PointExpression(ll)
 	} else if id := FeatureIDFromString(s); id.IsValid() {
 		return id
 	} else {
@@ -130,8 +120,8 @@ func (t Tag) Equal(other Tag) bool { // TODO(mari): reuse expression equal
 		if o, ok := other.Value.(StringExpression); ok {
 			return string(v) == string(o)
 		}
-	case LatLng:
-		if o, ok := other.Value.(LatLng); ok {
+	case PointExpression:
+		if o, ok := other.Value.(PointExpression); ok {
 			return s2.LatLng(v) == s2.LatLng(o)
 		}
 	case Values:
@@ -173,7 +163,7 @@ func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// TODO(mari): harmonise Value and Literal in expression.go
 	switch l := y.Value.AnyLiteral.(type) {
 	case *PointExpression:
-		t.Value = LatLng(*l)
+		t.Value = PointExpression(*l)
 	case *StringExpression:
 		t.Value = TryValueFromString(string(*l))
 	default:
@@ -969,7 +959,7 @@ func (t *Tags) GeometryLen() int {
 }
 
 func (t *Tags) PointAt(i int) s2.Point {
-	if ll, ok := t.GetAt(PathTag, i).(LatLng); ok {
+	if ll, ok := t.GetAt(PathTag, i).(PointExpression); ok {
 		return s2.PointFromLatLng(s2.LatLng(ll))
 	}
 

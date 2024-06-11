@@ -45,7 +45,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	m.RemoveTag(FromOSMNodeID(caravan.ID).FeatureID(), "cuisine")
 	m.AddTag(FromOSMNodeID(dishoom.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
 
-	ifo := &GenericFeature{ID: FromOSMNodeID(osm.NodeID(3868276529)).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5321749, -0.1250181))}}}
+	ifo := &GenericFeature{ID: FromOSMNodeID(osm.NodeID(3868276529)).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5321749, -0.1250181))}}}
 	ifo.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Identified Flying Object")})
 	ifo.AddTag(b6.Tag{Key: "tourism", Value: b6.StringExpression("attraction")})
 	if err := m.AddFeature(ifo); err != nil {
@@ -57,7 +57,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		b6.PathTag,
 		b6.Values([]b6.Value{
 			FromOSMNodeID(caravan.ID),
-			b6.LatLng(s2.LatLngFromDegrees(51.535632, -0.126046)),
+			b6.PointExpression(s2.LatLngFromDegrees(51.535632, -0.126046)),
 			FromOSMNodeID(dishoom.ID),
 		})})
 	footway.AddTag(b6.Tag{Key: "highway", Value: b6.StringExpression("footway")})
@@ -71,7 +71,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		b6.Values([]b6.Value{
 			FromOSMNodeID(caravan.ID),
 			FromOSMNodeID(dishoom.ID),
-			b6.LatLng(s2.LatLngFromDegrees(51.535632, -0.126046)),
+			b6.PointExpression(s2.LatLngFromDegrees(51.535632, -0.126046)),
 			FromOSMNodeID(caravan.ID),
 		})})
 	boundary.AddTag(b6.Tag{Key: "highway", Value: b6.StringExpression("footway")})

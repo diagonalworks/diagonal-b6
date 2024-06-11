@@ -124,7 +124,7 @@ func (s *Source) read(r *csv.Reader, emit ingest.Emit, columns []int, goroutines
 
 		ps[slot].RemoveAllTags()
 		ps[slot].AddTag(b6.Tag{Key: "#place", Value: b6.StringExpression("uprn")})
-		ps[slot].ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(lat, lng))})
+		ps[slot].ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(lat, lng))})
 		s.JoinTags.AddTags(row[columns[0]], ps[slot])
 		if len(ps[slot].AllTags()) > 1 {
 			joined++
@@ -191,7 +191,7 @@ func (s *ClusterSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx c
 			clusters++
 			features[slot].SetFeatureID(b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespaceDiagonalUPRNCluster, Value: uint64(c)})
 			features[slot].ModifyOrAddTag(b6.Tag{Key: "uprn_cluster:size", Value: b6.StringExpression(strconv.Itoa(int(count)))})
-			features[slot].ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.LatLng(c.LatLng())})
+			features[slot].ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.PointExpression(c.LatLng())})
 			if err := parallelised(features[slot], slot%goroutines); err != nil {
 				wait()
 				return err
