@@ -118,7 +118,7 @@ func (f *GenericFeature) FillFromOSM(o OSMFeature) {
 
 		points := b6.Values(make([]b6.Value, 0, len(o.Way.Nodes)))
 		for _, id := range o.Way.Nodes {
-			points = append(points, FromOSMNodeID(id))
+			points = append(points, b6.FeatureIDExpression(FromOSMNodeID(id)))
 		}
 		f.ModifyOrAddTag(b6.Tag{Key: b6.PathTag, Value: points})
 	}

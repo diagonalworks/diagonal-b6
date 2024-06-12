@@ -349,7 +349,7 @@ func (c *Connections) ApplyToPath(path b6.PhysicalFeature) ingest.Feature {
 	for i, p := range ids {
 		var v b6.Value
 		if p != b6.FeatureIDInvalid {
-			v = p
+			v = b6.FeatureIDExpression(p)
 		} else {
 			v = b6.PointExpression(s2.LatLngFromPoint(points[i]))
 		}
@@ -391,7 +391,7 @@ func (c *Connections) EachAddedPath(emit ingest.Emit) error {
 		if a != last {
 			last = a
 			path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespaceDiagonalAccessPaths, hashIDs(a)})
-			path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{a[0], a[1]})})
+			path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(a[0]), b6.FeatureIDExpression(a[1])})})
 			if err := emit(&path, 0); err != nil {
 				return err
 			}

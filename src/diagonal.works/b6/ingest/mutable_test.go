@@ -40,7 +40,7 @@ func osmPath(id osm.WayID, points []Feature) *GenericFeature {
 	path := GenericFeature{}
 	path.SetFeatureID(FromOSMWayID(id))
 	for i, point := range points {
-		path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, point.FeatureID()}, i)
+		path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(point.FeatureID())}, i)
 	}
 	return &path
 }
@@ -164,7 +164,7 @@ func ValidateUpdatePathConnectivity(w MutableWorld, t *testing.T) {
 
 	// Swap pathC from c -> a to c -> b
 	path := NewFeatureFromWorld(w.FindFeatureByID(ca.FeatureID())).(Feature)
-	path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b.FeatureID()}, 1)
+	path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(b.FeatureID())}, 1)
 	if w.AddFeature(path) != nil {
 		t.Error("Failed to swap path c -> b")
 	}
@@ -204,7 +204,7 @@ func ValidateUpdateAreasByPointWhenChangingPointsOnAPath(w MutableWorld, t *test
 
 	// Replace a point on the path
 	modifiedPath := NewFeatureFromWorld(w.FindFeatureByID(path.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, d.FeatureID()}, 1)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(d.FeatureID())}, 1)
 	if err := addFeatures(w, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -256,8 +256,8 @@ func ValidateUpdateAreasSharingAPointOnAPath(w MutableWorld, t *testing.T) {
 
 	// Replace points on pathA
 	modifiedPath := NewFeatureFromWorld(w.FindFeatureByID(pathA.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, h.FeatureID()}, 0)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, h.FeatureID()}, 3)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(h.FeatureID())}, 0)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(h.FeatureID())}, 3)
 	if err := addFeatures(w, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -356,10 +356,10 @@ func ValidateUpdateRelationsByFeatureWhenChangingRelations(w MutableWorld, t *te
 	c := osmPoint(4966136655, 51.5349570, -0.1256696)
 
 	ab := &GenericFeature{ID: FromOSMWayID(807925586)}
-	ab.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{a.FeatureID(), b.FeatureID()})})
+	ab.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(a.FeatureID()), b6.FeatureIDExpression(b.FeatureID())})})
 
 	bc := &GenericFeature{ID: FromOSMWayID(558345068)}
-	bc.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b.FeatureID(), c.FeatureID()})})
+	bc.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(b.FeatureID()), b6.FeatureIDExpression(c.FeatureID())})})
 
 	relation := NewRelationFeature(1)
 	relation.RelationID = FromOSMRelationID(11139964)
@@ -466,8 +466,8 @@ func ValidateUpdatingPathUpdatesS2CellIndex(w MutableWorld, t *testing.T) {
 	}
 
 	modifiedPath := NewFeatureFromWorld(w.FindFeatureByID(path.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, e.FeatureID()}, 2)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, f.FeatureID()}, 3)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(e.FeatureID())}, 2)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(f.FeatureID())}, 3)
 	if err := addFeatures(w, e, f, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -566,7 +566,7 @@ func ValidateUpdatingPathWillFailIfAreasAreInvalidated(w MutableWorld, t *testin
 	}
 
 	modifiedPath := NewFeatureFromWorld(w.FindFeatureByID(path.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, e.FeatureID()}, 2)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(e.FeatureID())}, 2)
 
 	if w.AddFeature(modifiedPath) == nil {
 		t.Error("Expected adding path to fail, as it invalidates an area")
@@ -671,7 +671,7 @@ func ValidateRepeatedModificationChangingNodes(id osm.WayID, find func(b6.World)
 			t.Fatal("Failed to find feature")
 		}
 		modifiedPath := NewFeatureFromWorld(found).(Feature)
-		modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, modifiedPoint.FeatureID()}, i)
+		modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(modifiedPoint.FeatureID())}, i)
 		if err := w.AddFeature(modifiedPath); err != nil {
 			t.Fatal(err)
 		}
@@ -712,11 +712,11 @@ func ValidateRepeatedModificationAddingNodes(id osm.WayID, find func(b6.World) b
 		insert := 0
 		for j := 0; j < len(found.References()); j++ {
 			if j == 1 {
-				newPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, newPoints[i].FeatureID()}, insert)
+				newPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(newPoints[i].FeatureID())}, insert)
 				insert++
 			}
 			id := found.Reference(j).Source()
-			newPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, id}, insert)
+			newPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(id)}, insert)
 			insert++
 		}
 		if err := w.AddFeature(newPath); err != nil {
@@ -854,8 +854,8 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 	}
 
 	modifiedPath := NewFeatureFromWorld(overlay.FindFeatureByID(path.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, e.FeatureID()}, 2)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, f.FeatureID()}, 3)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(e.FeatureID())}, 2)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(f.FeatureID())}, 3)
 	if err := addFeatures(overlay, e, f, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -1085,7 +1085,7 @@ func TestChangeTagsOnExistingPath(t *testing.T) {
 		{Key: "highway", Value: b6.StringExpression("tertiary")},
 		{Key: "lit", Value: b6.StringExpression("yes")},
 		{Key: "cycleway:left", Value: b6.StringExpression("track")},
-		{Key: b6.PathTag, Value: b6.Values([]b6.Value{a.FeatureID(), b.FeatureID()})},
+		{Key: b6.PathTag, Value: b6.Values([]b6.Value{b6.FeatureIDExpression(a.FeatureID()), b6.FeatureIDExpression(b.FeatureID())})},
 	}
 
 	if err := validateTags(path, expected); err != nil {
@@ -1420,7 +1420,7 @@ func TestModifiedTagsOnPathWithPlainLatLngs(t *testing.T) {
 	}
 
 	path := &GenericFeature{ID: FromOSMWayID(222021576)}
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{caravan.FeatureID(), b6.PointExpression(s2.LatLngFromDegrees(51.535490, -0.125167)), yumchaa.FeatureID()})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(caravan.FeatureID()), b6.PointExpression(s2.LatLngFromDegrees(51.535490, -0.125167)), b6.FeatureIDExpression(yumchaa.FeatureID())})})
 	if err := base.AddFeature(path); err != nil {
 		t.Fatal(err)
 	}

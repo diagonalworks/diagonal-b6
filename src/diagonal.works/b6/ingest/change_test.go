@@ -44,7 +44,7 @@ func TestAddPaths(t *testing.T) {
 
 	path := GenericFeature{}
 	path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespacePrivate + "/1", 1})
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{point1.FeatureID(), point2.FeatureID()})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(point1.FeatureID()), b6.FeatureIDExpression(point2.FeatureID())})})
 
 	add := AddFeatures([]Feature{point2.Clone(), path.Clone()})
 
@@ -89,7 +89,7 @@ func TestAddAreas(t *testing.T) {
 
 	path := GenericFeature{}
 	path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespacePrivate + "/1", 1})
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{p1.FeatureID(), p2.FeatureID(), p3.FeatureID(), p1.FeatureID()})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(p1.FeatureID()), b6.FeatureIDExpression(p2.FeatureID()), b6.FeatureIDExpression(p3.FeatureID()), b6.FeatureIDExpression(p1.FeatureID())})})
 
 	area := NewAreaFeature(1)
 	area.AreaID = b6.MakeAreaID(b6.NamespacePrivate+"/2", 1)
@@ -185,7 +185,7 @@ func TestMergeChanges(t *testing.T) {
 
 	path := GenericFeature{}
 	path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, ns, 3})
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{p1.FeatureID(), p2.FeatureID()})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(p1.FeatureID()), b6.FeatureIDExpression(p2.FeatureID())})})
 	add2 := AddFeatures([]Feature{&path})
 
 	merged := MergedChange{&add1, &add2}
@@ -214,7 +214,7 @@ func TestMergeChangesLeavesWorldUnmodfiedFollowingError(t *testing.T) {
 	add1 := AddFeatures([]Feature{point})
 
 	path := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, ns, 3}}
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 0}, b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 1}})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 0}), b6.FeatureIDExpression(b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 1})})})
 	add2 := AddFeatures([]Feature{path})
 
 	merged := MergedChange{&add1, &add2}

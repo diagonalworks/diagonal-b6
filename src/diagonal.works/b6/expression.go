@@ -613,12 +613,22 @@ func (f FeatureIDExpression) Equal(other AnyExpression) bool {
 }
 
 func (f FeatureIDExpression) String() string {
-	return "/" + FeatureID(f).String()
+	return FeatureID(f).String()
 }
 
 func (FeatureIDExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+	return ValueTypeFeatureID
 }
+
+func (f FeatureIDExpression) Source() FeatureID {
+	return FeatureID(f)
+}
+
+func (FeatureIDExpression) Index() (int, error) {
+	return -1, fmt.Errorf("index not available")
+}
+
+func (FeatureIDExpression) SetIndex(i int) {}
 
 func NewFeatureIDExpression(id FeatureID) Expression {
 	l := FeatureIDExpression(id)

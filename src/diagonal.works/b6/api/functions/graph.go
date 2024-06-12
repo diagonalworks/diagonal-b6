@@ -533,7 +533,7 @@ func connect(c *api.Context, a b6.Feature, b b6.Feature) (ingest.Change, error) 
 	if !connected {
 		path := ingest.GenericFeature{}
 		path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespaceDiagonalAccessPoints, 1})
-		path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{a.FeatureID(), b.FeatureID()})})
+		path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(a.FeatureID()), b6.FeatureIDExpression(b.FeatureID())})})
 		*add = append(*add, &path)
 	}
 	return add, nil
