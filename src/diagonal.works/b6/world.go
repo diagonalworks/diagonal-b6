@@ -899,34 +899,6 @@ type Geometry interface {
 	ToGeoJSON() geojson.GeoJSON // TODO(mari): remove from interface / when u do wrapped generic feature
 }
 
-type InvalidGeometry struct{}
-
-func (InvalidGeometry) GeometryType() GeometryType {
-	return GeometryTypeInvalid
-}
-
-func (InvalidGeometry) Point() s2.Point {
-	return s2.Point{}
-}
-
-func (InvalidGeometry) GeometryLen() int {
-	return 0
-}
-
-func (InvalidGeometry) PointAt(i int) s2.Point {
-	panic("InvalidGeometry has no points")
-}
-
-func (InvalidGeometry) Polyline() *s2.Polyline {
-	panic("InvalidGeometry has no polyline")
-}
-
-func (InvalidGeometry) ToGeoJSON() geojson.GeoJSON {
-	return geojson.NewFeatureCollection()
-}
-
-var _ Geometry = InvalidGeometry{}
-
 const (
 	PointTag = "point"
 	PathTag  = "path"
@@ -1163,22 +1135,6 @@ type Area interface {
 	Len() int
 	Polygon(i int) *s2.Polygon
 	MultiPolygon() geometry.MultiPolygon
-}
-
-type InvalidArea struct {
-	InvalidGeometry
-}
-
-func (InvalidArea) Len() int {
-	return 0
-}
-
-func (InvalidArea) Polygon(i int) *s2.Polygon {
-	return s2.PolygonFromLoops([]*s2.Loop{})
-}
-
-func (InvalidArea) MultiPolygon() geometry.MultiPolygon {
-	return geometry.MultiPolygon{}
 }
 
 type area struct {

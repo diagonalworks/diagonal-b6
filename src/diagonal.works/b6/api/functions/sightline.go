@@ -22,7 +22,7 @@ func sightline(context *api.Context, from b6.Geometry, radius float64) (b6.Area,
 	if centroid, ok := b6.Centroid(from); ok {
 		return b6.AreaFromS2Polygon(Sightline(centroid, b6.MetersToAngle(radius), context.World)), nil
 	}
-	return b6.InvalidArea{}, nil
+	return nil, fmt.Errorf("invalid starting point for sightline")
 }
 
 func Sightline(center s2.Point, radius s1.Angle, w b6.World) *s2.Polygon {
@@ -850,5 +850,5 @@ func entranceApproach(c *api.Context, area b6.AreaFeature) (b6.Geometry, error) 
 			}
 		}
 	}
-	return b6.InvalidGeometry{}, nil
+	return nil, fmt.Errorf("no entrance found")
 }
