@@ -56,9 +56,9 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	footway.ModifyOrAddTag(b6.Tag{
 		b6.PathTag,
 		b6.Values([]b6.Value{
-			FromOSMNodeID(caravan.ID),
+			b6.FeatureIDExpression(FromOSMNodeID(caravan.ID)),
 			b6.PointExpression(s2.LatLngFromDegrees(51.535632, -0.126046)),
-			FromOSMNodeID(dishoom.ID),
+			b6.FeatureIDExpression(FromOSMNodeID(dishoom.ID)),
 		})})
 	footway.AddTag(b6.Tag{Key: "highway", Value: b6.StringExpression("footway")})
 	if err := m.AddFeature(footway); err != nil {
@@ -69,10 +69,10 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	boundary.ModifyOrAddTag(b6.Tag{
 		b6.PathTag,
 		b6.Values([]b6.Value{
-			FromOSMNodeID(caravan.ID),
-			FromOSMNodeID(dishoom.ID),
+			b6.FeatureIDExpression(FromOSMNodeID(caravan.ID)),
+			b6.FeatureIDExpression(FromOSMNodeID(dishoom.ID)),
 			b6.PointExpression(s2.LatLngFromDegrees(51.535632, -0.126046)),
-			FromOSMNodeID(caravan.ID),
+			b6.FeatureIDExpression(FromOSMNodeID(caravan.ID)),
 		})})
 	boundary.AddTag(b6.Tag{Key: "highway", Value: b6.StringExpression("footway")})
 	if err := m.AddFeature(boundary); err != nil {

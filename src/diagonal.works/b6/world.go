@@ -21,7 +21,7 @@ type Value interface {
 	ValueType() ValueType
 }
 
-func ValueFromString(s string, t ValueType) Value { // TODO(mari): move all of this logic to expression.go
+func ValueFromString(s string, t ValueType) Value { // TODO(mari): from string part of expression interface
 	switch t {
 	case ValueTypeString:
 		return StringExpression(s)
@@ -31,7 +31,7 @@ func ValueFromString(s string, t ValueType) Value { // TODO(mari): move all of t
 		}
 	case ValueTypeFeatureID:
 		if id := FeatureIDFromString(s); id.IsValid() {
-			return id
+			return FeatureIDExpression(id)
 		}
 	case ValueTypeValues:
 		return ValuesFromString(s)
@@ -61,7 +61,7 @@ func TryValueFromString(s string) Value {
 	} else if ll, err := LatLngFromString(s); err == nil {
 		return PointExpression(ll)
 	} else if id := FeatureIDFromString(s); id.IsValid() {
-		return id
+		return FeatureIDExpression(id)
 	} else {
 		return StringExpression(s)
 	}
@@ -384,8 +384,8 @@ func (t *Tags) References() []Reference {
 	var refs []Reference
 	if r := t.Get(PathTag); r.IsValid() && r.Value != nil && r.ValueType() == ValueTypeValues {
 		for i, v := range r.Value.(Values) {
-			if v, ok := v.(FeatureID); ok && v.IsValid() {
-				refs = append(refs, &IndexedFeatureID{v, i})
+			if v, ok := v.(FeatureIDExpression); ok && FeatureID(v).IsValid() {
+				refs = append(refs, &IndexedFeatureID{FeatureID(v), i})
 			}
 		}
 	}
@@ -509,7 +509,7 @@ type Identifiable interface {
 	FeatureID() FeatureID
 }
 
-type FeatureID struct {
+type FeatureID struct { // TODO(mari): consolidate with FeatureIDExpression once u remove literals
 	Type      FeatureType
 	Namespace Namespace
 	Value     uint64
@@ -533,10 +533,6 @@ func (f FeatureID) Less(other FeatureID) bool {
 
 func (f FeatureID) String() string {
 	return fmt.Sprintf("%s/%s/%d", f.Type.String(), f.Namespace, f.Value)
-}
-
-func (f FeatureID) ValueType() ValueType {
-	return ValueTypeFeatureID
 }
 
 func (f FeatureID) MarshalJSON() ([]byte, error) {

@@ -126,8 +126,8 @@ func valuesEqual(a Value, b Value) bool {
 		return aa == b.(StringExpression)
 	case PointExpression:
 		return aa == b.(PointExpression)
-	case FeatureID:
-		return aa == b.(FeatureID)
+	case FeatureIDExpression:
+		return aa == b.(FeatureIDExpression)
 	case Values:
 		bb := b.(Values)
 		if len(aa) != len(bb) {

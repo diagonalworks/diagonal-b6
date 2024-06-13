@@ -437,7 +437,7 @@ func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value 
 		vs := b6.Values(make([]b6.Value, 0, len(*v)))
 		for _, r := range *v {
 			typ, ns := r.TypeAndNamespace.Split()
-			vs = append(vs, b6.FeatureID{typ, nt.Decode(ns), r.Value})
+			vs = append(vs, b6.FeatureIDExpression(b6.FeatureID{typ, nt.Decode(ns), r.Value}))
 		}
 		return vs
 	case *ReferencesAndLatLngs:
@@ -446,7 +446,7 @@ func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value 
 			var rll b6.Value
 			if r.Reference != ReferenceInvald {
 				typ, ns := r.Reference.TypeAndNamespace.Split()
-				rll = b6.FeatureID{typ, nt.Decode(ns), r.Reference.Value}
+				rll = b6.FeatureIDExpression(b6.FeatureID{typ, nt.Decode(ns), r.Reference.Value})
 			} else {
 				vs = append(vs, b6.PointExpression(r.LatLng.ToS2LatLng()))
 			}
@@ -466,7 +466,7 @@ func toCompactValue(v b6.Value, s *encoding.StringTableBuilder, nt *NamespaceTab
 		return &r
 	case b6.PointExpression:
 		return &LatLng{v.Lat.E7(), v.Lng.E7()}
-	case b6.FeatureID:
+	case b6.FeatureIDExpression:
 		return &Reference{CombineTypeAndNamespace(v.Type, nt.Encode(v.Namespace)), v.Value}
 	case b6.Values:
 		switch e {
@@ -705,8 +705,8 @@ func (m MarshalledTags) References() []b6.Reference {
 	var refs []b6.Reference
 	if r := m.Get(b6.PathTag); r.IsValid() && r.ValueType() == b6.ValueTypeValues {
 		for i, v := range r.Value.(b6.Values) {
-			if v, ok := v.(b6.FeatureID); ok && v.IsValid() {
-				ref := b6.IndexedFeatureID{FeatureID: v}
+			if v, ok := v.(b6.FeatureIDExpression); ok && b6.FeatureID(v).IsValid() {
+				ref := b6.IndexedFeatureID{FeatureID: b6.FeatureID(v)}
 				ref.SetIndex(i)
 				refs = append(refs, &ref)
 			}
