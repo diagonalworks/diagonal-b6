@@ -741,7 +741,7 @@ func fillStringTableAndSummary(source ingest.FeatureSource, o *Options, strings 
 	emit := func(feature ingest.Feature, _ int) error {
 		for _, tag := range feature.AllTags() {
 			strings.Add(tag.Key)
-			if tag.ValueType() == b6.ValueTypeString {
+			if tag.Value.ExpressionType() == b6.ExpressionTypeString {
 				strings.Add(tag.Value.String())
 			}
 		}

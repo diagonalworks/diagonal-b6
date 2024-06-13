@@ -15,144 +15,45 @@ import (
 	"github.com/golang/geo/s2"
 )
 
-// TODO(mari): harmonise Value and Literal in expression.go
-type Value interface {
-	String() string
-	ValueType() ValueType
-}
-
-func ValueFromString(s string, t ValueType) Value { // TODO(mari): from string part of expression interface
-	switch t {
-	case ValueTypeString:
-		return StringExpression(s)
-	case ValueTypePoint:
-		if ll, err := LatLngFromString(s); err == nil {
-			return PointExpression(ll)
-		}
-	case ValueTypeFeatureID:
-		if id := FeatureIDFromString(s); id.IsValid() {
-			return FeatureIDExpression(id)
-		}
-	case ValueTypeValues:
-		return ValuesFromString(s)
-	}
-
-	panic("not implemented")
-}
-
-type Values []Value
-
-const valuesDelimiter = ";"
-
-func (v Values) String() string {
-	s := ""
-	for i, x := range v {
-		s += x.String()
-		if i < len(v)-1 {
-			s += valuesDelimiter
-		}
-	}
-	return s
-}
-
-func TryValueFromString(s string) Value {
-	if strings.Contains(s, valuesDelimiter) {
-		return ValuesFromString(s)
-	} else if ll, err := LatLngFromString(s); err == nil {
-		return PointExpression(ll)
-	} else if id := FeatureIDFromString(s); id.IsValid() {
-		return FeatureIDExpression(id)
-	} else {
-		return StringExpression(s)
-	}
-}
-
-func ValuesFromString(s string) Values {
-	parts := strings.Split(s, valuesDelimiter)
-	v := Values(make([]Value, 0, len(parts)))
-	for _, part := range parts {
-		v = append(v, TryValueFromString(part))
-	}
-	return v
-}
-
-func (v Values) ValueType() ValueType {
-	return ValueTypeValues
-}
-
-func Set(vs Values, v Value, i int) Values {
-	l := len(vs)
-	if l <= i {
-		l = i + 1
-	}
-	r := make([]Value, l)
-	copy(r, vs)
-	r[i] = v
-	return r
-}
-
-type Tag struct {
-	Key string
-	Value
+type Tag struct { // TODO(mari): consolidate expressions and literals
+	Key   string
+	Value Expression
 }
 
 func (t Tag) IsValid() bool {
-	return t.Key != "" && t.Value != nil
+	return t.Key != "" && t.Value.AnyExpression != nil
 }
 
 func (t Tag) String() string {
 	return escapeTagPart(t.Key) + "=" + escapeTagPart(t.Value.String())
 }
 
-func (t *Tag) FromString(s string, typ ValueType) {
+func (t *Tag) FromString(s string) {
 	var rest string
 	t.Key, rest = consumeTagPart(s)
 	value, _ := consumeTagPart(rest)
-	t.Value = ValueFromString(value, typ)
-}
-
-func (t Tag) Equal(other Tag) bool { // TODO(mari): reuse expression equal
-	if t.Key != other.Key {
-		return false
-	}
-	switch v := t.Value.(type) {
-	case StringExpression:
-		if o, ok := other.Value.(StringExpression); ok {
-			return string(v) == string(o)
-		}
-	case PointExpression:
-		if o, ok := other.Value.(PointExpression); ok {
-			return s2.LatLng(v) == s2.LatLng(o)
-		}
-	case Values:
-		return v.String() == other.Value.String()
-	}
-	return false
+	t.Value = ExpressionFromString(value)
 }
 
 type tagYAML struct {
 	Key   string `yaml:"key,omitempty`
-	Value Literal
+	Value Expression
 }
 
 func (t Tag) MarshalYAML() (interface{}, error) {
-	if s, ok := t.Value.(StringExpression); ok {
+	if s, ok := t.Value.AnyExpression.(StringExpression); ok {
 		return escapeTagPart(t.Key) + "=" + escapeTagPart(s.String()), nil
-	} else if t.Value == nil {
+	} else if t.Value.AnyExpression == nil {
 		return escapeTagPart(t.Key) + "=\"\"", nil
 	}
 	// TODO(mari): harmonise Value and Literal in expression.go
-	literal, err := FromLiteral(t.Value.String())
-	if err != nil {
-		return nil, err
-	}
-	return &tagYAML{Key: t.Key, Value: literal}, nil
+	return &tagYAML{Key: t.Key, Value: ExpressionFromString(t.Value.String())}, nil
 }
 
 func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var s string
 	if err := unmarshal(&s); err == nil {
-		t.FromString(s, ValueTypeString)
+		t.FromString(s)
 		return nil
 	}
 	var y tagYAML
@@ -160,15 +61,7 @@ func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	t.Key = y.Key
-	// TODO(mari): harmonise Value and Literal in expression.go
-	switch l := y.Value.AnyLiteral.(type) {
-	case PointExpression:
-		t.Value = PointExpression(l)
-	case StringExpression:
-		t.Value = TryValueFromString(string(l))
-	default:
-		return fmt.Errorf("can't use %T as tag values", l)
-	}
+	t.Value = y.Value
 	return nil
 }
 
@@ -243,7 +136,7 @@ func consumeTagPart(s string) (string, string) {
 }
 
 func InvalidTag() Tag {
-	return Tag{Value: StringExpression("")}
+	return Tag{Value: NewStringExpression("")}
 }
 
 type Taggable interface {
@@ -266,24 +159,24 @@ func (t Tags) Get(key string) Tag {
 	return InvalidTag()
 }
 
-func (t Tags) GetAt(key string, i int) Value {
+func (t Tags) GetAt(key string, i int) Expression {
 	if i >= 0 {
 		for _, tag := range t {
 			if tag.Key == key {
-				if values, ok := tag.Value.(Values); ok && len(values) > i {
-					return values[i]
+				if values, ok := tag.Value.AnyExpression.(Expressions); ok && len(values) > i {
+					return Expression{AnyExpression: values[i]}
 				}
 			}
 		}
 	}
-	return InvalidTag()
+	return Expression{}
 }
 
 func (t Tags) TagOrFallback(key string, fallback string) Tag {
 	if value := t.Get(key); value.IsValid() {
 		return value
 	}
-	return Tag{Key: key, Value: StringExpression(fallback)}
+	return Tag{Key: key, Value: NewStringExpression(fallback)}
 }
 
 func (t *Tags) SetTags(tags []Tag) {
@@ -296,7 +189,7 @@ func (t *Tags) AddTag(tag Tag) {
 
 // Modifies an existing tag value, or add it if it doesn't exist.
 // Returns (true, old value) if it modifies, or (false, undefined) if added.
-func (t *Tags) ModifyOrAddTag(tag Tag) (bool, Value) {
+func (t *Tags) ModifyOrAddTag(tag Tag) (bool, Expression) {
 	for i := range *t {
 		if (*t)[i].Key == tag.Key {
 			old := (*t)[i].Value
@@ -305,19 +198,20 @@ func (t *Tags) ModifyOrAddTag(tag Tag) (bool, Value) {
 		}
 	}
 	t.AddTag(tag)
-	return false, StringExpression("")
+	return false, NewStringExpression("") // TODO(mari): consider returning empty expressions / checking validity before accessing value elsewhere
 }
 
-func (t *Tags) ModifyOrAddTagAt(tag Tag, index int) (bool, Value) {
+func (t *Tags) ModifyOrAddTagAt(tag Tag, index int) (bool, Expression) {
 	for i := range *t {
-		if (*t)[i].Key == tag.Key && (*t)[i].Value.ValueType() == ValueTypeValues {
+		if (*t)[i].Key == tag.Key && (*t)[i].Value.ExpressionType() == ExpressionTypeExpressions {
 			old := (*t)[i].Value
-			(*t)[i].Value = Set((*t)[i].Value.(Values), tag.Value, index)
+			(*t)[i].Value = Set((*t)[i].Value, tag.Value, index)
 			return true, old
 		}
 	}
-	t.AddTag(Tag{tag.Key, Set(make([]Value, 0), tag.Value, index)})
-	return false, StringExpression("")
+	t.AddTag(Tag{tag.Key, Set(NewExpressions([]AnyExpression{}), tag.Value, index)})
+
+	return false, NewStringExpression("")
 }
 
 func (t *Tags) RemoveTag(key string) {
@@ -382,8 +276,8 @@ func (r *IndexedFeatureID) SetIndex(i int) {
 
 func (t *Tags) References() []Reference {
 	var refs []Reference
-	if r := t.Get(PathTag); r.IsValid() && r.Value != nil && r.ValueType() == ValueTypeValues {
-		for i, v := range r.Value.(Values) {
+	if r := t.Get(PathTag); r.IsValid() && r.Value.ExpressionType() == ExpressionTypeExpressions {
+		for i, v := range r.Value.AnyExpression.(Expressions) {
 			if v, ok := v.(FeatureIDExpression); ok && FeatureID(v).IsValid() {
 				refs = append(refs, &IndexedFeatureID{FeatureID(v), i})
 			}
@@ -394,7 +288,7 @@ func (t *Tags) References() []Reference {
 }
 
 func (t *Tags) Reference(i int) Reference {
-	if id, ok := t.GetAt(PathTag, i).(Reference); ok {
+	if id, ok := t.GetAt(PathTag, i).AnyExpression.(Reference); ok {
 		return id
 	}
 	return FeatureIDInvalid
@@ -947,7 +841,7 @@ func (t *Tags) GeometryLen() int {
 	if v := t.Get(PointTag); v.IsValid() {
 		return 1
 	} else if v := t.Get(PathTag); v.IsValid() {
-		if v, ok := v.Value.(Values); ok {
+		if v, ok := v.Value.AnyExpression.(Expressions); ok {
 			return len(v)
 		}
 	}
@@ -955,7 +849,7 @@ func (t *Tags) GeometryLen() int {
 }
 
 func (t *Tags) PointAt(i int) s2.Point {
-	if ll, ok := t.GetAt(PathTag, i).(PointExpression); ok {
+	if ll, ok := t.GetAt(PathTag, i).AnyExpression.(PointExpression); ok {
 		return s2.PointFromLatLng(s2.LatLng(ll))
 	}
 

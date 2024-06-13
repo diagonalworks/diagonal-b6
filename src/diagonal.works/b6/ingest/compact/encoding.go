@@ -336,7 +336,7 @@ func (l *LatLng) ToS2LatLng() s2.LatLng {
 }
 
 func (l *LatLng) Marshal(_ TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypePoint, encoding.ZigzagEncode(int64(l.LatE7))))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ExpressionTypePoint, encoding.ZigzagEncode(int64(l.LatE7))))
 	binary.LittleEndian.PutUint32(buffer[i:], uint32(l.LngE7))
 	return i + 4
 }
@@ -361,7 +361,7 @@ func LatLngFromS2Point(p s2.Point) LatLng {
 type LatLngs []LatLng
 
 func (lls LatLngs) Marshal(_ TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingLatLngs, len(lls))))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ExpressionTypeExpressions, EncodeGeometry(GeometryEncodingLatLngs, len(lls))))
 	return i + lls.MarshalWithoutLength(buffer[i:])
 }
 
@@ -402,12 +402,12 @@ func (lls *LatLngs) UnmarshalWithoutLength(l int, buffer []byte) int {
 
 const ValueTypeBits = 2
 
-type Value interface {
+type Value interface { // TODO(mari): rename / to expression
 	Marshal(TypeAndNamespace, []byte) int
 	Unmarshal(TypeAndNamespace, []byte) int
 }
 
-func EncodeValueType(t b6.ValueType, v uint64) uint64 {
+func EncodeValueType(t b6.ExpressionType, v uint64) uint64 {
 	if e := v << ValueTypeBits; e>>ValueTypeBits != v {
 		panic("Can't encode value type")
 	} else {
@@ -421,29 +421,29 @@ func DecodeValue(buffer []byte) (uint64, int) {
 	return v >> ValueTypeBits, n
 }
 
-func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value {
+func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Expression {
 	switch v := v.(type) {
 	case *Int:
-		return b6.StringExpression(s.Lookup(int(*v)))
+		return b6.NewStringExpression(s.Lookup(int(*v)))
 	case *LatLng:
-		return b6.PointExpression(v.ToS2LatLng())
+		return b6.NewPointExpressionFromLatLng(v.ToS2LatLng())
 	case *LatLngs:
-		vs := b6.Values(make([]b6.Value, 0, len(*v)))
+		vs := make([]b6.AnyExpression, 0, len(*v))
 		for _, ll := range *v {
 			vs = append(vs, b6.PointExpression(ll.ToS2LatLng()))
 		}
-		return vs
+		return b6.NewExpressions(vs)
 	case *References:
-		vs := b6.Values(make([]b6.Value, 0, len(*v)))
+		vs := make([]b6.AnyExpression, 0, len(*v))
 		for _, r := range *v {
 			typ, ns := r.TypeAndNamespace.Split()
 			vs = append(vs, b6.FeatureIDExpression(b6.FeatureID{typ, nt.Decode(ns), r.Value}))
 		}
-		return vs
+		return b6.NewExpressions(vs)
 	case *ReferencesAndLatLngs:
-		vs := b6.Values(make([]b6.Value, 0, len(*v)))
+		vs := make([]b6.AnyExpression, 0, len(*v))
 		for _, r := range *v {
-			var rll b6.Value
+			var rll b6.AnyExpression
 			if r.Reference != ReferenceInvald {
 				typ, ns := r.Reference.TypeAndNamespace.Split()
 				rll = b6.FeatureIDExpression(b6.FeatureID{typ, nt.Decode(ns), r.Reference.Value})
@@ -453,14 +453,14 @@ func fromCompactValue(v Value, s encoding.Strings, nt *NamespaceTable) b6.Value 
 
 			vs = append(vs, rll)
 		}
-		return vs
+		return b6.NewExpressions(vs)
 	default:
 		panic("cannot convert from compact value")
 	}
 }
 
-func toCompactValue(v b6.Value, s *encoding.StringTableBuilder, nt *NamespaceTable, e GeometryEncoding) Value {
-	switch v := v.(type) {
+func toCompactValue(v b6.Expression, s *encoding.StringTableBuilder, nt *NamespaceTable, e GeometryEncoding) Value {
+	switch v := v.AnyExpression.(type) {
 	case b6.StringExpression:
 		r := Int(s.Lookup(v.String()))
 		return &r
@@ -468,24 +468,24 @@ func toCompactValue(v b6.Value, s *encoding.StringTableBuilder, nt *NamespaceTab
 		return &LatLng{v.Lat.E7(), v.Lng.E7()}
 	case b6.FeatureIDExpression:
 		return &Reference{CombineTypeAndNamespace(v.Type, nt.Encode(v.Namespace)), v.Value}
-	case b6.Values:
+	case b6.Expressions:
 		switch e {
 		case GeometryEncodingLatLngs:
 			lls := LatLngs(make([]LatLng, 0, len(v)))
 			for _, x := range v {
-				lls = append(lls, *toCompactValue(x, s, nt, e).(*LatLng))
+				lls = append(lls, *toCompactValue(b6.Expression{AnyExpression: x}, s, nt, e).(*LatLng))
 			}
 			return &lls
 		case GeometryEncodingReferences:
 			refs := References(make([]Reference, 0, len(v)))
 			for _, x := range v {
-				refs = append(refs, *toCompactValue(x, s, nt, e).(*Reference))
+				refs = append(refs, *toCompactValue(b6.Expression{AnyExpression: x}, s, nt, e).(*Reference))
 			}
 			return &refs
 		case GeometryEncodingMixed:
 			m := ReferencesAndLatLngs(make([]ReferenceAndLatLng, 0, len(v)))
 			for _, x := range v {
-				c := toCompactValue(x, s, nt, e)
+				c := toCompactValue(b6.Expression{AnyExpression: x}, s, nt, e)
 				switch c := c.(type) {
 				case *LatLng:
 					m = append(m, ReferenceAndLatLng{ReferenceInvald, *c})
@@ -512,7 +512,7 @@ type Tag struct {
 type Int int
 
 func (i *Int) Marshal(_ TypeAndNamespace, buffer []byte) int {
-	return binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeString, uint64(*i)))
+	return binary.PutUvarint(buffer, EncodeValueType(b6.ExpressionTypeString, uint64(*i)))
 }
 
 func (i *Int) Unmarshal(_ TypeAndNamespace, buffer []byte) int {
@@ -528,13 +528,13 @@ func (t *Tag) Marshal(tns TypeAndNamespace, buffer []byte) int {
 
 func inferValueType(buffer []byte) Value {
 	v, _ := binary.Uvarint(buffer)
-	switch b6.ValueType(v & ((1 << ValueTypeBits) - 1)) {
-	case b6.ValueTypeString:
+	switch b6.ExpressionType(v & ((1 << ValueTypeBits) - 1)) {
+	case b6.ExpressionTypeString:
 		i := Int(0)
 		return &i
-	case b6.ValueTypePoint:
+	case b6.ExpressionTypePoint:
 		return &LatLng{}
-	case b6.ValueTypeValues:
+	case b6.ExpressionTypeExpressions:
 		switch DecodeGeometryEncoding(v >> ValueTypeBits) {
 		case GeometryEncodingLatLngs:
 			return &LatLngs{}
@@ -666,10 +666,8 @@ func (m MarshalledTags) GeometryType() b6.GeometryType {
 }
 
 func (m MarshalledTags) Point() s2.Point {
-	if ll := m.Get(b6.PointTag).Value; ll != nil {
-		if ll, err := b6.LatLngFromString(ll.String()); err == nil {
-			return s2.PointFromLatLng(ll)
-		}
+	if ll, err := b6.LatLngFromString(m.Get(b6.PointTag).Value.String()); err == nil {
+		return s2.PointFromLatLng(ll)
 	}
 
 	return s2.Point{}
@@ -677,15 +675,15 @@ func (m MarshalledTags) Point() s2.Point {
 
 func (m MarshalledTags) GeometryLen() int {
 	if l := m.Get(b6.PathTag); l != b6.InvalidTag() {
-		return len(l.Value.(b6.Values))
+		return len(l.Value.AnyExpression.(b6.Expressions))
 	}
 	return 0
 }
 
 func (m MarshalledTags) PointAt(i int) s2.Point {
-	if r := m.Get(b6.PathTag); r.IsValid() && r.Value != nil && r.ValueType() == b6.ValueTypeValues {
-		if len(r.Value.(b6.Values)) > i {
-			if ll, ok := (r.Value.(b6.Values))[i].(b6.PointExpression); ok {
+	if r := m.Get(b6.PathTag); r.IsValid() && r.Value.ExpressionType() == b6.ExpressionTypeExpressions {
+		if len(r.Value.AnyExpression.(b6.Expressions)) > i {
+			if ll, ok := (r.Value.AnyExpression.(b6.Expressions))[i].(b6.PointExpression); ok {
 				return s2.PointFromLatLng(s2.LatLng(ll))
 			}
 		}
@@ -703,8 +701,8 @@ func (m MarshalledTags) Polyline() *s2.Polyline {
 
 func (m MarshalledTags) References() []b6.Reference {
 	var refs []b6.Reference
-	if r := m.Get(b6.PathTag); r.IsValid() && r.ValueType() == b6.ValueTypeValues {
-		for i, v := range r.Value.(b6.Values) {
+	if r := m.Get(b6.PathTag); r.IsValid() && r.Value.ExpressionType() == b6.ExpressionTypeExpressions {
+		for i, v := range r.Value.AnyExpression.(b6.Expressions) {
 			if v, ok := v.(b6.FeatureIDExpression); ok && b6.FeatureID(v).IsValid() {
 				ref := b6.IndexedFeatureID{FeatureID: b6.FeatureID(v)}
 				ref.SetIndex(i)
@@ -716,8 +714,8 @@ func (m MarshalledTags) References() []b6.Reference {
 }
 
 func (m MarshalledTags) Reference(i int) b6.Reference {
-	if t := m.Get(b6.PathTag); t.IsValid() && t.ValueType() == b6.ValueTypeValues {
-		if vs, ok := t.Value.(b6.Values); ok && len(vs) > i {
+	if t := m.Get(b6.PathTag); t.IsValid() && t.Value.ExpressionType() == b6.ExpressionTypeExpressions {
+		if vs, ok := t.Value.AnyExpression.(b6.Expressions); ok && len(vs) > i {
 			if r, ok := vs[i].(b6.Reference); ok {
 				return r
 			}
@@ -775,7 +773,7 @@ func (rs References) Less(i, j int) bool {
 }
 
 func (rs References) Marshal(primary TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingReferences, len(rs))))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ExpressionTypeExpressions, EncodeGeometry(GeometryEncodingReferences, len(rs))))
 	return i + rs.MarshalWithoutLength(primary, buffer[i:])
 }
 
@@ -948,7 +946,7 @@ type ReferenceAndLatLng struct {
 type ReferencesAndLatLngs []ReferenceAndLatLng
 
 func (g *ReferencesAndLatLngs) Marshal(primary TypeAndNamespace, buffer []byte) int {
-	i := binary.PutUvarint(buffer, EncodeValueType(b6.ValueTypeValues, EncodeGeometry(GeometryEncodingMixed, len(*g))))
+	i := binary.PutUvarint(buffer, EncodeValueType(b6.ExpressionTypeExpressions, EncodeGeometry(GeometryEncodingMixed, len(*g))))
 	references := make(Bits, len(*g))
 	for j, r := range *g {
 		references[j] = r.Reference != ReferenceInvald

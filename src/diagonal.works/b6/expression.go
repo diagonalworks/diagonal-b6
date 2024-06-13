@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"diagonal.works/b6/geojson"
 	"diagonal.works/b6/geometry"
@@ -27,15 +28,15 @@ type FloatNumber float64
 
 func (FloatNumber) isNumber() {}
 
-type ValueType int
+type ExpressionType int
 
 const (
-	// TODO(mari): rename / implement a type for each expression
-	ValueTypeString ValueType = iota
-	ValueTypePoint
-	ValueTypeValues
-	ValueTypeFeatureID
-	ValueTypeInvalid
+	// TODO(mari): implement a type for each expression
+	ExpressionTypeString ExpressionType = iota
+	ExpressionTypePoint
+	ExpressionTypeExpressions
+	ExpressionTypeFeatureID
+	ExpressionTypeInvalid
 )
 
 type AnyExpression interface {
@@ -43,7 +44,7 @@ type AnyExpression interface {
 	Equal(other AnyExpression) bool
 	Clone() Expression
 	String() string
-	ValueType() ValueType
+	ExpressionType() ExpressionType
 }
 
 type Expression struct {
@@ -87,6 +88,8 @@ func (e Expression) MarshalYAML() (interface{}, error) {
 			return float64(e), nil
 		case StringExpression:
 			return string(e), nil
+		case Expressions:
+			return e.String(), nil
 		}
 	}
 
@@ -126,7 +129,7 @@ func (e *Expression) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		e.AnyExpression = FloatExpression(v)
 		return nil
 	case string:
-		e.AnyExpression = StringExpression(v)
+		e.AnyExpression = ExpressionFromString(v).AnyExpression
 		return nil
 	}
 	choice, err := unmarshalChoiceYAML(&expressionChoices{}, unmarshal)
@@ -211,6 +214,8 @@ func (e Expression) Clone() Expression {
 func (e Expression) Equal(other Expression) bool {
 	if e.AnyExpression == nil {
 		return other.AnyExpression == nil
+	} else if other.AnyExpression == nil {
+		return e.AnyExpression == nil
 	}
 	return e.AnyExpression.Equal(other.AnyExpression)
 }
@@ -350,8 +355,8 @@ func (s SymbolExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
-func (SymbolExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (SymbolExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 func NewSymbolExpression(symbol string) Expression {
@@ -395,8 +400,8 @@ func (i IntExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
-func (IntExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (IntExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 func NewIntExpression(value int) Expression {
@@ -440,8 +445,8 @@ func (f FloatExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
-func (FloatExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (FloatExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 func NewFloatExpression(value float64) Expression {
@@ -488,8 +493,8 @@ func (b BoolExpression) String() string {
 	return "false"
 }
 
-func (BoolExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (BoolExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type StringExpression string
@@ -529,8 +534,8 @@ func (s StringExpression) String() string {
 	return string(s)
 }
 
-func (StringExpression) ValueType() ValueType {
-	return ValueTypeString
+func (StringExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeString
 }
 
 func NewStringExpression(s string) Expression {
@@ -582,8 +587,8 @@ func (f FeatureIDExpression) String() string {
 	return FeatureID(f).String()
 }
 
-func (FeatureIDExpression) ValueType() ValueType {
-	return ValueTypeFeatureID
+func (FeatureIDExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeFeatureID
 }
 
 func (f FeatureIDExpression) Source() FeatureID {
@@ -619,7 +624,7 @@ func (t TagExpression) ToProto() (*pb.NodeProto, error) {
 
 func TagExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 	tt := node.GetLiteral().GetTagValue()
-	return Expression{AnyExpression: TagExpression(Tag{Key: tt.Key, Value: StringExpression(tt.Value)})}, nil // TODO(mari): tag expression value should support all expression types
+	return Expression{AnyExpression: TagExpression(Tag{Key: tt.Key, Value: NewStringExpression(tt.Value)})}, nil // TODO(mari): tag expression value should support all expression types
 }
 
 func (t TagExpression) MarshalYAML() (interface{}, error) {
@@ -640,13 +645,17 @@ func (t TagExpression) Literal() interface{} {
 
 func (t TagExpression) Equal(other AnyExpression) bool {
 	if tt, ok := other.(TagExpression); ok {
-		return t == tt
+		return t.Key == tt.Key && t.Value.Equal(tt.Value)
 	}
 	return false
 }
 
-func (TagExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (t TagExpression) String() string {
+	return Tag(t).String()
+}
+
+func (TagExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type QueryExpression struct {
@@ -706,8 +715,8 @@ func (q QueryExpression) String() string {
 	return q.Query.String()
 }
 
-func (QueryExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (QueryExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 func NewQueryExpression(query Query) Expression {
@@ -770,8 +779,8 @@ func (g GeoJSONExpression) String() string {
 	return "x-geojson"
 }
 
-func (GeoJSONExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (GeoJSONExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type RouteExpression Route
@@ -821,8 +830,8 @@ func (r RouteExpression) String() string {
 	return "x-route"
 }
 
-func (RouteExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (RouteExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type FeatureExpression struct {
@@ -882,8 +891,8 @@ func (f FeatureExpression) String() string {
 	return "x-feature"
 }
 
-func (FeatureExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (FeatureExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type PointExpression s2.LatLng
@@ -940,8 +949,8 @@ func (p PointExpression) String() string {
 	return LatLngToString(s2.LatLng(p))
 }
 
-func (PointExpression) ValueType() ValueType {
-	return ValueTypePoint
+func (PointExpression) ExpressionType() ExpressionType {
+	return ExpressionTypePoint
 }
 
 func NewPointExpressionFromLatLng(ll s2.LatLng) Expression {
@@ -952,6 +961,7 @@ type PathExpression struct {
 	Path Geometry
 }
 
+// TODO(mari): consolidate point / path / area expressions into geometry
 func (p PathExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
@@ -1005,11 +1015,11 @@ func (p PathExpression) Equal(other AnyExpression) bool {
 }
 
 func (p PathExpression) String() string {
-	return "x-path" // TODO(mari): implement all string representations
+	return "x-path"
 }
 
-func (PathExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (PathExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type AreaExpression struct {
@@ -1051,12 +1061,12 @@ func (a AreaExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
-func (a AreaExpression) String() string {
+func (a AreaExpression) String() string { // TODO(mari): implement all string representations
 	return "x-area"
 }
 
-func (AreaExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (AreaExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type NilExpression struct{}
@@ -1092,8 +1102,8 @@ func (n NilExpression) String() string {
 	return "x-nil"
 }
 
-func (NilExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (NilExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type CollectionExpression struct {
@@ -1281,8 +1291,8 @@ func (c CollectionExpression) Literal() interface{} {
 	return c.UntypedCollection
 }
 
-func (CollectionExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (CollectionExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 type CallExpression struct {
@@ -1383,8 +1393,8 @@ func (c CallExpression) String() string {
 	return s
 }
 
-func (CallExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (CallExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 func NewCallExpression(function Expression, args []Expression) Expression {
@@ -1465,10 +1475,95 @@ func (l LambdaExpression) String() string {
 
 }
 
-func (LambdaExpression) ValueType() ValueType {
-	return ValueTypeInvalid
+func (LambdaExpression) ExpressionType() ExpressionType {
+	return ExpressionTypeInvalid
 }
 
 func NewLambdaExpression(args []string, e Expression) Expression {
 	return Expression{AnyExpression: LambdaExpression{Args: args, Expression: e}}
+}
+
+type Expressions []AnyExpression // TODO(mari): rethink this when making areas generic / implementing geometry expression
+
+func (Expressions) ToProto() (*pb.NodeProto, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (Expressions) FromProto(node *pb.NodeProto) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (e Expressions) Clone() Expression {
+	return Expression{AnyExpression: e}
+}
+
+func (e Expressions) Literal() interface{} {
+	return fmt.Errorf("not implemented")
+}
+
+func (e Expressions) Equal(other AnyExpression) bool {
+	if o, ok := other.(Expressions); ok {
+		for i, v := range e {
+			if !v.Equal(o[i]) {
+				return false
+			}
+		}
+
+		return true
+	}
+	return false
+}
+
+const valuesDelimiter = ";"
+
+func (e Expressions) String() string {
+	s := ""
+	for i, x := range e {
+		s += x.String()
+		if i < len(e)-1 {
+			s += valuesDelimiter
+		}
+	}
+	return s
+}
+
+func (Expressions) ExpressionType() ExpressionType {
+	return ExpressionTypeExpressions
+}
+
+func ExpressionFromString(s string) Expression { // TODO(mari): from string part of expression interface / implement for all types
+	if strings.Contains(s, valuesDelimiter) {
+		return NewExpressionsFromString(s)
+	} else if ll, err := LatLngFromString(s); err == nil {
+		return NewPointExpressionFromLatLng(ll)
+	} else if id := FeatureIDFromString(s); id.IsValid() {
+		return NewFeatureIDExpression(id)
+	} else {
+		return NewStringExpression(s)
+	}
+}
+
+func NewExpressionsFromString(s string) Expression {
+	parts := strings.Split(s, valuesDelimiter)
+	v := Expressions(make([]AnyExpression, 0, len(parts)))
+	for _, part := range parts {
+		v = append(v, ExpressionFromString(part).AnyExpression)
+	}
+	return NewExpressions(v)
+}
+
+func NewExpressions(e []AnyExpression) Expression {
+	return Expression{AnyExpression: Expressions(e)}
+}
+
+func Set(s Expression, e Expression, i int) Expression {
+	es, _ := s.AnyExpression.(Expressions)
+	l := len(es)
+	if l <= i {
+		l = i + 1
+	}
+	r := make([]AnyExpression, l)
+	copy(r, es)
+	r[i] = e.AnyExpression
+	return NewExpressions(r)
 }
