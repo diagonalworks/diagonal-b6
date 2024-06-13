@@ -26,23 +26,21 @@ func TestTagToAndFromStringHappyPath(t *testing.T) {
 		tag Tag
 		s   string
 	}{
-		{Tag{Key: "#amenity", Value: StringExpression("restaurant")}, "#amenity=restaurant"},
-		{Tag{Key: "note", Value: StringExpression("Only on match days")}, `note="Only on match days"`},
-		{Tag{Key: "note", Value: StringExpression("Value with a \" in the middle")}, `note="Value with a \" in the middle"`},
-		{Tag{Key: "note", Value: StringExpression("Value with a \\ in the middle")}, `note="Value with a \\ in the middle"`},
-		{Tag{Key: `Key with = in middle`, Value: StringExpression("Value with a \\ in the middle")}, `"Key with = in middle"="Value with a \\ in the middle"`},
+		{Tag{Key: "#amenity", Value: NewStringExpression("restaurant")}, "#amenity=restaurant"},
+		{Tag{Key: "note", Value: NewStringExpression("Only on match days")}, `note="Only on match days"`},
+		{Tag{Key: "note", Value: NewStringExpression("Value with a \" in the middle")}, `note="Value with a \" in the middle"`},
+		{Tag{Key: "note", Value: NewStringExpression("Value with a \\ in the middle")}, `note="Value with a \\ in the middle"`},
+		{Tag{Key: `Key with = in middle`, Value: NewStringExpression("Value with a \\ in the middle")}, `"Key with = in middle"="Value with a \\ in the middle"`},
 	}
 	for _, c := range cases {
 		if s := c.tag.String(); s != c.s {
 			t.Errorf("Expected %s, found %s", c.s, s)
 		}
 		var tag Tag
-		tag.FromString(c.s, ValueTypeString)
-		if tag.Key != c.tag.Key {
-			t.Errorf("Expected key %s, found %s", c.tag.Key, tag.Key)
-		}
-		if tag.Value != c.tag.Value {
-			t.Errorf("Expected value %s, found %s", c.tag.Value, tag.Value)
+		tag.FromString(c.s)
+
+		if !TagExpression(tag).Equal(TagExpression(c.tag)) {
+			t.Errorf("Expected %s, found %s", c.tag.String(), tag.String())
 		}
 	}
 }
@@ -52,18 +50,15 @@ func TestTagToAndFromStringBrokenStrings(t *testing.T) {
 		s   string
 		tag Tag
 	}{
-		{`#amenity="restaurant"nonsense`, Tag{Key: "#amenity", Value: StringExpression("restaurant")}},
-		{`#amenity    ="restaurant"nonsense`, Tag{Key: "#amenity", Value: StringExpression("restaurant")}},
-		{`#amenity restaurant`, Tag{Key: "#amenityrestaurant", Value: StringExpression("")}},
+		{`#amenity="restaurant"nonsense`, Tag{Key: "#amenity", Value: NewStringExpression("restaurant")}},
+		{`#amenity    ="restaurant"nonsense`, Tag{Key: "#amenity", Value: NewStringExpression("restaurant")}},
+		{`#amenity restaurant`, Tag{Key: "#amenityrestaurant", Value: NewStringExpression("")}},
 	}
 	for _, c := range cases {
 		var tag Tag
-		tag.FromString(c.s, ValueTypeString)
-		if tag.Key != c.tag.Key {
-			t.Errorf("Expected key %s, found %s", c.tag.Key, tag.Key)
-		}
-		if tag.Value != c.tag.Value {
-			t.Errorf("Expected value %s, found %s", c.tag.Value, tag.Value)
+		tag.FromString(c.s)
+		if !TagExpression(tag).Equal(TagExpression(c.tag)) {
+			t.Errorf("Expected %s, found %s", c.tag.String(), tag.String())
 		}
 	}
 }

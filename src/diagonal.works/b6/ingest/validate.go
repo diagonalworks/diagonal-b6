@@ -63,13 +63,13 @@ func ValidatePath(p b6.PhysicalFeature, o *ValidateOptions, features b6.Location
 
 func invertPoints(f Feature) {
 	if refs := f.Get(b6.PathTag); refs.IsValid() {
-		if refs, ok := refs.Value.(b6.Values); ok {
+		if refs, ok := refs.Value.AnyExpression.(b6.Expressions); ok {
 			n := len(refs)
 			for i := 0; i < n/2; i++ {
 				(refs)[i], (refs)[n-i-1] = (refs)[n-i-1], (refs)[i]
 			}
 
-			f.ModifyOrAddTag(b6.Tag{b6.PathTag, refs})
+			f.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Expression{AnyExpression: refs}})
 		}
 	}
 }

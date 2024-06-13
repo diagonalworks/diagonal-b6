@@ -22,7 +22,7 @@ type Query interface {
 	Compile(i FeatureIndex, w World) search.Iterator
 	Matches(f Feature, w World) bool
 	ToProto() (*pb.QueryProto, error)
-	Equal(other Query) bool
+	Equals(other Query) bool // m: renamed
 	String() string
 }
 
@@ -30,50 +30,50 @@ type Empty struct {
 	search.Empty
 }
 
-func (_ Empty) Matches(f Feature, w World) bool {
+func (Empty) Matches(f Feature, w World) bool {
 	return false
 }
 
-func (_ Empty) Compile(index FeatureIndex, w World) search.Iterator {
+func (Empty) Compile(index FeatureIndex, w World) search.Iterator {
 	return search.Empty{}.Compile(index)
 }
 
-func (_ Empty) String() string {
+func (Empty) String() string {
 	return "(empty)"
 }
 
-func (_ Empty) ToProto() (*pb.QueryProto, error) {
+func (Empty) ToProto() (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_Empty{},
 	}, nil
 }
 
-func (_ Empty) Equal(other Query) bool {
+func (Empty) Equals(other Query) bool {
 	_, ok := other.(Empty)
 	return ok
 }
 
 type All struct{}
 
-func (_ All) Matches(f Feature, w World) bool {
+func (All) Matches(f Feature, w World) bool {
 	return true
 }
 
-func (_ All) Compile(i FeatureIndex, w World) search.Iterator {
+func (All) Compile(i FeatureIndex, w World) search.Iterator {
 	return search.All{Token: search.AllToken}.Compile(i)
 }
 
-func (_ All) String() string {
+func (All) String() string {
 	return "(all)"
 }
 
-func (_ All) ToProto() (*pb.QueryProto, error) {
+func (All) ToProto() (*pb.QueryProto, error) {
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_All{},
 	}, nil
 }
 
-func (_ All) Equal(other Query) bool {
+func (All) Equals(other Query) bool {
 	_, ok := other.(All)
 	return ok
 }
@@ -97,7 +97,7 @@ func (t Tagged) Compile(i FeatureIndex, w World) search.Iterator {
 }
 
 func (t Tagged) Matches(f Feature, w World) bool {
-	return f.Get(t.Key).Equal(Tag(t))
+	return TagExpression(f.Get(t.Key)).Equal(TagExpression(t))
 }
 
 func (t Tagged) String() string {
@@ -115,40 +115,12 @@ func (t Tagged) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func valuesEqual(a Value, b Value) bool {
-	// TODO(mari): Remove when Values are harmonised with Literal, so
-	// we have a standard Equal() function
-	if a.ValueType() != b.ValueType() {
-		return false
-	}
-	switch aa := a.(type) {
-	case StringExpression:
-		return aa == b.(StringExpression)
-	case PointExpression:
-		return aa == b.(PointExpression)
-	case FeatureIDExpression:
-		return aa == b.(FeatureIDExpression)
-	case Values:
-		bb := b.(Values)
-		if len(aa) != len(bb) {
-			return false
-		}
-		for i := range aa {
-			if !valuesEqual(aa[i], bb[i]) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
-}
-
-func (t Tagged) Equal(other Query) bool {
+func (t Tagged) Equals(other Query) bool {
 	switch tt := other.(type) {
 	case Tagged:
-		return t.Key == tt.Key && valuesEqual(t.Value, tt.Value)
+		return t.Key == tt.Key && t.Value.Equal(tt.Value)
 	case *Tagged:
-		return t.Key == tt.Key && valuesEqual(t.Value, tt.Value)
+		return t.Key == tt.Key && t.Value.Equal(tt.Value)
 	}
 	return false
 }
@@ -190,7 +162,7 @@ func (k Keyed) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func (k Keyed) Equal(other Query) bool {
+func (k Keyed) Equals(other Query) bool {
 	switch kk := other.(type) {
 	case Keyed:
 		return k.Key == kk.Key
@@ -253,12 +225,12 @@ func (t Typed) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func (t Typed) Equal(other Query) bool {
+func (t Typed) Equals(other Query) bool {
 	switch tt := other.(type) {
 	case Typed:
-		return t.Type == tt.Type && t.Query.Equal(tt.Query)
+		return t.Type == tt.Type && t.Query.Equals(tt.Query)
 	case *Typed:
-		return t.Type == tt.Type && t.Query.Equal(tt.Query)
+		return t.Type == tt.Type && t.Query.Equals(tt.Query)
 	}
 	return false
 }
@@ -346,13 +318,13 @@ func (i *Intersection) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
-func (i Intersection) Equal(other Query) bool {
+func (i Intersection) Equals(other Query) bool {
 	if ii, ok := other.(Intersection); ok {
 		if len(i) != len(ii) {
 			return false
 		}
 		for j := range i {
-			if !i[j].Equal(ii[j]) {
+			if !i[j].Equals(ii[j]) {
 				return false
 			}
 		}
@@ -425,13 +397,13 @@ func (u *Union) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
-func (u Union) Equal(other Query) bool {
+func (u Union) Equals(other Query) bool {
 	if uu, ok := other.(Union); ok {
 		if len(u) != len(uu) {
 			return false
 		}
 		for i := range u {
-			if !u[i].Equal(uu[i]) {
+			if !u[i].Equals(uu[i]) {
 				return false
 			}
 		}
