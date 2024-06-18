@@ -40,7 +40,6 @@ const (
 
 type AnyExpression interface {
 	ToProto() (*pb.NodeProto, error)
-	FromProto(node *pb.NodeProto) error
 	Equal(other AnyExpression) bool
 	Clone() Expression
 	String() string
@@ -82,12 +81,12 @@ func (e Expression) MarshalYAML() (interface{}, error) {
 	// Fast track types that are handled natively by YAML
 	if e.Name == "" {
 		switch e := e.AnyExpression.(type) {
-		case *IntExpression:
-			return int(*e), nil
-		case *FloatExpression:
-			return float64(*e), nil
-		case *StringExpression:
-			return string(*e), nil
+		case IntExpression:
+			return int(e), nil
+		case FloatExpression:
+			return float64(e), nil
+		case StringExpression:
+			return string(e), nil
 		}
 	}
 
@@ -121,16 +120,13 @@ func (e *Expression) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	switch v := v.(type) {
 	case int:
-		i := IntExpression(v)
-		e.AnyExpression = &i
+		e.AnyExpression = IntExpression(v)
 		return nil
 	case float64:
-		f := FloatExpression(v)
-		e.AnyExpression = &f
+		e.AnyExpression = FloatExpression(v)
 		return nil
 	case string:
-		s := StringExpression(v)
-		e.AnyExpression = &s
+		e.AnyExpression = StringExpression(v)
 		return nil
 	}
 	choice, err := unmarshalChoiceYAML(&expressionChoices{}, unmarshal)
@@ -154,57 +150,56 @@ func (e Expression) ToProto() (*pb.NodeProto, error) {
 	return p, err
 }
 
-func (e *Expression) FromProto(node *pb.NodeProto) error {
+func ExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	e := Expression{}
 	switch n := node.Node.(type) {
 	case *pb.NodeProto_Symbol:
-		e.AnyExpression = new(SymbolExpression)
+		return SymbolExpressionFromProto(node)
 	case *pb.NodeProto_Call:
-		e.AnyExpression = &CallExpression{}
+		return CallExpressionFromProto(node)
 	case *pb.NodeProto_Lambda_:
-		e.AnyExpression = &LambdaExpression{}
+		return LambdaExpressionFromProto(node)
 	case *pb.NodeProto_Literal:
 		switch n.Literal.Value.(type) {
 		case *pb.LiteralNodeProto_IntValue:
-			e.AnyExpression = new(IntExpression)
+			return IntExpressionFromProto(node)
 		case *pb.LiteralNodeProto_FloatValue:
-			e.AnyExpression = new(FloatExpression)
+			return FloatExpressionFromProto(node)
 		case *pb.LiteralNodeProto_BoolValue:
-			e.AnyExpression = new(BoolExpression)
+			return BoolExpressionFromProto(node)
 		case *pb.LiteralNodeProto_StringValue:
-			e.AnyExpression = new(StringExpression)
+			return StringExpressionFromProto(node)
 		case *pb.LiteralNodeProto_FeatureIDValue:
-			e.AnyExpression = new(FeatureIDExpression)
+			return FeatureIDExpressionFromProto(node)
 		case *pb.LiteralNodeProto_TagValue:
-			e.AnyExpression = new(TagExpression)
+			return TagExpressionFromProto(node)
 		case *pb.LiteralNodeProto_PointValue:
-			e.AnyExpression = new(PointExpression)
+			return PointExpressionFromProto(node)
 		case *pb.LiteralNodeProto_PathValue:
-			e.AnyExpression = new(PathExpression)
+			return PathExpressionFromProto(node)
 		case *pb.LiteralNodeProto_AreaValue:
-			e.AnyExpression = new(AreaExpression)
+			return AreaExpressionFromProto(node)
 		case *pb.LiteralNodeProto_QueryValue:
-			e.AnyExpression = new(QueryExpression)
+			return QueryExpressionFromProto(node)
 		case *pb.LiteralNodeProto_NilValue:
-			e.AnyExpression = new(NilExpression)
+			return NilExpressionFromProto(node)
 		case *pb.LiteralNodeProto_GeoJSONValue:
-			e.AnyExpression = new(GeoJSONExpression)
+			return GeoJSONExpressionFromProto(node)
 		case *pb.LiteralNodeProto_RouteValue:
-			e.AnyExpression = new(RouteExpression)
+			return RouteExpressionFromProto(node)
 		case *pb.LiteralNodeProto_CollectionValue:
-			e.AnyExpression = new(CollectionExpression)
+			return CollectionExpressionFromProto(node)
 		default:
-			return fmt.Errorf("Can't convert %T from literal proto", n.Literal.Value)
+			return Expression{}, fmt.Errorf("Can't convert %T from literal proto", n.Literal.Value)
 		}
 	default:
-		return fmt.Errorf("Can't convert expression from proto %T", node.Node)
+		return Expression{}, fmt.Errorf("Can't convert expression from proto %T", node.Node)
 	}
-	if err := e.AnyExpression.FromProto(node); err != nil {
-		return err
-	}
+
 	e.Name = node.Name
 	e.Begin = int(node.Begin)
 	e.End = int(node.End)
-	return nil
+	return e, nil
 }
 
 func (e Expression) Clone() Expression {
@@ -229,21 +224,20 @@ type Literal struct {
 	AnyLiteral
 }
 
-func (l *Literal) ToProto() (*pb.NodeProto, error) {
+func (l Literal) ToProto() (*pb.NodeProto, error) {
 	return l.AnyLiteral.ToProto()
 }
 
-func (l *Literal) FromProto(node *pb.NodeProto) error {
+func LiteralFromProto(node *pb.NodeProto) (Expression, error) {
 	var e Expression
-	if err := e.FromProto(node); err != nil {
-		return err
+	if e, err := ExpressionFromProto(node); err != nil {
+		return e, err
 	}
 	if literal, ok := e.AnyExpression.(AnyLiteral); ok {
-		l.AnyLiteral = literal
+		return Expression{AnyExpression: literal}, nil
 	} else {
-		return fmt.Errorf("Can't convert literal from proto %T", node.Node)
+		return Expression{}, fmt.Errorf("Can't convert literal from proto %T", node.Node)
 	}
-	return nil
 }
 
 func (l Literal) MarshalYAML() (interface{}, error) {
@@ -272,26 +266,19 @@ func FromLiteral(l interface{}) (Literal, error) {
 	}
 	switch l := l.(type) {
 	case int:
-		i := IntExpression(l)
-		return Literal{AnyLiteral: &i}, nil
+		return Literal{AnyLiteral: IntExpression(l)}, nil
 	case IntNumber:
-		i := FloatExpression(int(l))
-		return Literal{AnyLiteral: &i}, nil
+		return Literal{AnyLiteral: FloatExpression(int(l))}, nil
 	case float64:
-		f := FloatExpression(l)
-		return Literal{AnyLiteral: &f}, nil
+		return Literal{AnyLiteral: FloatExpression(l)}, nil
 	case FloatNumber: // TODO(mari): rethink number interface + it doesnt make sense to allow it as a literal here
-		f := FloatExpression(float64(l))
-		return Literal{AnyLiteral: &f}, nil
+		return Literal{AnyLiteral: FloatExpression(float64(l))}, nil
 	case bool:
-		b := BoolExpression(l)
-		return Literal{AnyLiteral: &b}, nil
+		return Literal{AnyLiteral: BoolExpression(l)}, nil
 	case string:
-		s := StringExpression(l)
-		return Literal{AnyLiteral: &s}, nil
+		return Literal{AnyLiteral: StringExpression(l)}, nil
 	case FeatureID:
-		id := FeatureIDExpression(l)
-		return Literal{AnyLiteral: &id}, nil
+		return Literal{AnyLiteral: FeatureIDExpression(l)}, nil
 	case AreaID:
 		return FromLiteral(l.FeatureID())
 	case RelationID:
@@ -301,31 +288,26 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case ExpressionID:
 		return FromLiteral(l.FeatureID())
 	case Tag:
-		tag := TagExpression(l)
-		return Literal{AnyLiteral: &tag}, nil
+		return Literal{AnyLiteral: TagExpression(l)}, nil
 	case Feature:
-		f := FeatureExpression{Feature: l}
-		return Literal{AnyLiteral: &f}, nil
+		return Literal{AnyLiteral: FeatureExpression{Feature: l}}, nil
 	case Area:
-		return Literal{AnyLiteral: &AreaExpression{Area: l}}, nil
+		return Literal{AnyLiteral: AreaExpression{Area: l}}, nil
 	case Geometry:
 		switch l.GeometryType() {
 		case GeometryTypePoint:
-			ll := PointExpression(s2.LatLngFromPoint(l.Point()))
-			return Literal{AnyLiteral: &ll}, nil
+			return Literal{AnyLiteral: PointExpression(s2.LatLngFromPoint(l.Point()))}, nil
 		case GeometryTypePath:
-			return Literal{AnyLiteral: &PathExpression{Path: l}}, nil
+			return Literal{AnyLiteral: PathExpression{Path: l}}, nil
 		}
 	case s2.LatLng:
-		ll := PointExpression(l)
-		return Literal{AnyLiteral: &ll}, nil
+		return Literal{AnyLiteral: PointExpression(l)}, nil
 	case geojson.GeoJSON:
-		return Literal{AnyLiteral: &GeoJSONExpression{GeoJSON: l}}, nil
+		return Literal{AnyLiteral: GeoJSONExpression{GeoJSON: l}}, nil
 	case Route:
-		route := RouteExpression(l)
-		return Literal{AnyLiteral: &route}, nil
+		return Literal{AnyLiteral: RouteExpression(l)}, nil
 	case UntypedCollection:
-		return Literal{AnyLiteral: &CollectionExpression{UntypedCollection: l}}, nil
+		return Literal{AnyLiteral: CollectionExpression{UntypedCollection: l}}, nil
 	}
 	return Literal{}, fmt.Errorf("Can't make literal from %T", l)
 }
@@ -341,22 +323,20 @@ func LiteralEqual(v interface{}, vv interface{}) bool {
 
 type SymbolExpression string
 
-func (s *SymbolExpression) ToProto() (*pb.NodeProto, error) {
+func (s SymbolExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Symbol{
-			Symbol: string(*s),
+			Symbol: string(s),
 		},
 	}, nil
 }
 
-func (s *SymbolExpression) FromProto(node *pb.NodeProto) error {
-	*s = SymbolExpression(node.GetSymbol())
-	return nil
+func SymbolExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: SymbolExpression(node.GetSymbol())}, nil
 }
 
-func (s *SymbolExpression) Clone() Expression {
-	clone := *s
-	return Expression{AnyExpression: &clone}
+func (s SymbolExpression) Clone() Expression {
+	return Expression{AnyExpression: s}
 }
 
 func (s SymbolExpression) String() string {
@@ -364,8 +344,8 @@ func (s SymbolExpression) String() string {
 }
 
 func (s SymbolExpression) Equal(other AnyExpression) bool {
-	if ss, ok := other.(*SymbolExpression); ok {
-		return s == *ss
+	if ss, ok := other.(SymbolExpression); ok {
+		return s == ss
 	}
 	return false
 }
@@ -375,32 +355,29 @@ func (SymbolExpression) ValueType() ValueType {
 }
 
 func NewSymbolExpression(symbol string) Expression {
-	s := SymbolExpression(symbol)
-	return Expression{AnyExpression: &s}
+	return Expression{AnyExpression: SymbolExpression(symbol)}
 }
 
 type IntExpression int
 
-func (i *IntExpression) ToProto() (*pb.NodeProto, error) {
+func (i IntExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_IntValue{
-					IntValue: int64(*i),
+					IntValue: int64(i),
 				},
 			},
 		},
 	}, nil
 }
 
-func (i *IntExpression) FromProto(node *pb.NodeProto) error {
-	*i = IntExpression(node.GetLiteral().GetIntValue())
-	return nil
+func IntExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: IntExpression(node.GetLiteral().GetIntValue())}, nil
 }
 
-func (i *IntExpression) Clone() Expression {
-	clone := *i
-	return Expression{AnyExpression: &clone}
+func (i IntExpression) Clone() Expression {
+	return Expression{AnyExpression: i}
 }
 
 func (i IntExpression) Literal() interface{} {
@@ -412,8 +389,8 @@ func (i IntExpression) String() string {
 }
 
 func (i IntExpression) Equal(other AnyExpression) bool {
-	if ii, ok := other.(*IntExpression); ok {
-		return i == *ii
+	if ii, ok := other.(IntExpression); ok {
+		return i == ii
 	}
 	return false
 }
@@ -423,32 +400,29 @@ func (IntExpression) ValueType() ValueType {
 }
 
 func NewIntExpression(value int) Expression {
-	i := IntExpression(value)
-	return Expression{AnyExpression: &i}
+	return Expression{AnyExpression: IntExpression(value)}
 }
 
 type FloatExpression float64
 
-func (f *FloatExpression) ToProto() (*pb.NodeProto, error) {
+func (f FloatExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_FloatValue{
-					FloatValue: float64(*f),
+					FloatValue: float64(f),
 				},
 			},
 		},
 	}, nil
 }
 
-func (f *FloatExpression) FromProto(node *pb.NodeProto) error {
-	*f = FloatExpression(node.GetLiteral().GetFloatValue())
-	return nil
+func FloatExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: FloatExpression(node.GetLiteral().GetFloatValue())}, nil
 }
 
-func (f *FloatExpression) Clone() Expression {
-	clone := *f
-	return Expression{AnyExpression: &clone}
+func (f FloatExpression) Clone() Expression {
+	return Expression{AnyExpression: f}
 }
 
 func (f FloatExpression) Literal() interface{} {
@@ -460,8 +434,8 @@ func (f FloatExpression) String() string {
 }
 
 func (f FloatExpression) Equal(other AnyExpression) bool {
-	if ff, ok := other.(*FloatExpression); ok {
-		return f == *ff
+	if ff, ok := other.(FloatExpression); ok {
+		return f == ff
 	}
 	return false
 }
@@ -471,32 +445,29 @@ func (FloatExpression) ValueType() ValueType {
 }
 
 func NewFloatExpression(value float64) Expression {
-	i := FloatExpression(value)
-	return Expression{AnyExpression: &i}
+	return Expression{AnyExpression: FloatExpression(value)}
 }
 
 type BoolExpression bool
 
-func (b *BoolExpression) ToProto() (*pb.NodeProto, error) {
+func (b BoolExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_BoolValue{
-					BoolValue: bool(*b),
+					BoolValue: bool(b),
 				},
 			},
 		},
 	}, nil
 }
 
-func (b *BoolExpression) FromProto(node *pb.NodeProto) error {
-	*b = BoolExpression(node.GetLiteral().GetBoolValue())
-	return nil
+func BoolExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: BoolExpression(node.GetLiteral().GetBoolValue())}, nil
 }
 
-func (b *BoolExpression) Clone() Expression {
-	clone := *b
-	return Expression{AnyExpression: &clone}
+func (b BoolExpression) Clone() Expression {
+	return Expression{AnyExpression: b}
 }
 
 func (b BoolExpression) Literal() interface{} {
@@ -504,8 +475,8 @@ func (b BoolExpression) Literal() interface{} {
 }
 
 func (b BoolExpression) Equal(other AnyExpression) bool {
-	if bb, ok := other.(*BoolExpression); ok {
-		return b == *bb
+	if bb, ok := other.(BoolExpression); ok {
+		return b == bb
 	}
 	return false
 }
@@ -523,26 +494,24 @@ func (BoolExpression) ValueType() ValueType {
 
 type StringExpression string
 
-func (s *StringExpression) ToProto() (*pb.NodeProto, error) {
+func (s StringExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_StringValue{
-					StringValue: string(*s),
+					StringValue: string(s),
 				},
 			},
 		},
 	}, nil
 }
 
-func (s *StringExpression) FromProto(node *pb.NodeProto) error {
-	*s = StringExpression(node.GetLiteral().GetStringValue())
-	return nil
+func StringExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: StringExpression(node.GetLiteral().GetStringValue())}, nil
 }
 
-func (s *StringExpression) Clone() Expression {
-	clone := *s
-	return Expression{AnyExpression: &clone}
+func (s StringExpression) Clone() Expression {
+	return Expression{AnyExpression: s}
 }
 
 func (s StringExpression) Literal() interface{} {
@@ -550,8 +519,8 @@ func (s StringExpression) Literal() interface{} {
 }
 
 func (s StringExpression) Equal(other AnyExpression) bool {
-	if ss, ok := other.(*StringExpression); ok {
-		return s == *ss
+	if ss, ok := other.(StringExpression); ok {
+		return s == ss
 	}
 	return false
 }
@@ -565,27 +534,25 @@ func (StringExpression) ValueType() ValueType {
 }
 
 func NewStringExpression(s string) Expression {
-	ss := StringExpression(s)
-	return Expression{AnyExpression: &ss}
+	return Expression{AnyExpression: StringExpression(s)}
 }
 
 type FeatureIDExpression FeatureID
 
-func (f *FeatureIDExpression) ToProto() (*pb.NodeProto, error) {
+func (f FeatureIDExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_FeatureIDValue{
-					FeatureIDValue: NewProtoFromFeatureID(FeatureID(*f)),
+					FeatureIDValue: NewProtoFromFeatureID(FeatureID(f)),
 				},
 			},
 		},
 	}, nil
 }
 
-func (f *FeatureIDExpression) FromProto(node *pb.NodeProto) error {
-	*f = FeatureIDExpression(NewFeatureIDFromProto(node.GetLiteral().GetFeatureIDValue()))
-	return nil
+func FeatureIDExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: FeatureIDExpression(NewFeatureIDFromProto(node.GetLiteral().GetFeatureIDValue()))}, nil
 }
 
 func (f FeatureIDExpression) MarshalYAML() (interface{}, error) {
@@ -596,9 +563,8 @@ func (f *FeatureIDExpression) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return (*FeatureID)(f).UnmarshalYAML(unmarshal)
 }
 
-func (f *FeatureIDExpression) Clone() Expression {
-	clone := *f
-	return Expression{AnyExpression: &clone}
+func (f FeatureIDExpression) Clone() Expression {
+	return Expression{AnyExpression: f}
 }
 
 func (f FeatureIDExpression) Literal() interface{} {
@@ -606,8 +572,8 @@ func (f FeatureIDExpression) Literal() interface{} {
 }
 
 func (f FeatureIDExpression) Equal(other AnyExpression) bool {
-	if ff, ok := other.Clone().AnyExpression.(*FeatureIDExpression); ok {
-		return f == *ff
+	if ff, ok := other.(FeatureIDExpression); ok {
+		return f == ff
 	}
 	return false
 }
@@ -631,20 +597,19 @@ func (FeatureIDExpression) Index() (int, error) {
 func (FeatureIDExpression) SetIndex(i int) {}
 
 func NewFeatureIDExpression(id FeatureID) Expression {
-	l := FeatureIDExpression(id)
-	return Expression{AnyExpression: &l}
+	return Expression{AnyExpression: FeatureIDExpression(id)}
 }
 
 type TagExpression Tag
 
-func (t *TagExpression) ToProto() (*pb.NodeProto, error) {
+func (t TagExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_TagValue{
 					TagValue: &pb.TagProto{
-						Key:   Tag(*t).Key,
-						Value: Tag(*t).Value.String(),
+						Key:   Tag(t).Key,
+						Value: Tag(t).Value.String(),
 					},
 				},
 			},
@@ -652,10 +617,9 @@ func (t *TagExpression) ToProto() (*pb.NodeProto, error) {
 	}, nil
 }
 
-func (t *TagExpression) FromProto(node *pb.NodeProto) error {
+func TagExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 	tt := node.GetLiteral().GetTagValue()
-	*t = TagExpression(Tag{Key: tt.Key, Value: StringExpression(tt.Value)}) // TODO(mari): tag expression value should support all expression types
-	return nil
+	return Expression{AnyExpression: TagExpression(Tag{Key: tt.Key, Value: StringExpression(tt.Value)})}, nil // TODO(mari): tag expression value should support all expression types
 }
 
 func (t TagExpression) MarshalYAML() (interface{}, error) {
@@ -666,9 +630,8 @@ func (t *TagExpression) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return (*Tag)(t).UnmarshalYAML(unmarshal)
 }
 
-func (t *TagExpression) Clone() Expression {
-	clone := *t
-	return Expression{AnyExpression: &clone}
+func (t TagExpression) Clone() Expression {
+	return Expression{AnyExpression: t}
 }
 
 func (t TagExpression) Literal() interface{} {
@@ -676,8 +639,8 @@ func (t TagExpression) Literal() interface{} {
 }
 
 func (t TagExpression) Equal(other AnyExpression) bool {
-	if tt, ok := other.(*TagExpression); ok {
-		return t == *tt
+	if tt, ok := other.(TagExpression); ok {
+		return t == tt
 	}
 	return false
 }
@@ -690,7 +653,7 @@ type QueryExpression struct {
 	Query Query
 }
 
-func (q *QueryExpression) ToProto() (*pb.NodeProto, error) {
+func (q QueryExpression) ToProto() (*pb.NodeProto, error) {
 	if p, err := q.Query.ToProto(); err == nil {
 		return &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
@@ -706,10 +669,9 @@ func (q *QueryExpression) ToProto() (*pb.NodeProto, error) {
 	}
 }
 
-func (q *QueryExpression) FromProto(node *pb.NodeProto) error {
-	var err error
-	q.Query, err = NewQueryFromProto(node.GetLiteral().GetQueryValue())
-	return err
+func QueryExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	q, err := NewQueryFromProto(node.GetLiteral().GetQueryValue())
+	return Expression{AnyExpression: QueryExpression{q}}, err
 }
 
 func (q QueryExpression) MarshalYAML() (interface{}, error) {
@@ -725,8 +687,8 @@ func (q *QueryExpression) UnmarshalYAML(unmarshal func(interface{}) error) error
 	return err
 }
 
-func (q *QueryExpression) Clone() Expression {
-	return Expression{AnyExpression: &QueryExpression{Query: q.Query}}
+func (q QueryExpression) Clone() Expression {
+	return Expression{AnyExpression: q}
 }
 
 func (q QueryExpression) Literal() interface{} {
@@ -734,7 +696,7 @@ func (q QueryExpression) Literal() interface{} {
 }
 
 func (q QueryExpression) Equal(other AnyExpression) bool {
-	if qq, ok := other.(*QueryExpression); ok {
+	if qq, ok := other.(QueryExpression); ok {
 		return q.Query.Equal(qq.Query)
 	}
 	return false
@@ -749,16 +711,14 @@ func (QueryExpression) ValueType() ValueType {
 }
 
 func NewQueryExpression(query Query) Expression {
-	return Expression{AnyExpression: &QueryExpression{
-		Query: query,
-	}}
+	return Expression{AnyExpression: QueryExpression{Query: query}}
 }
 
 type GeoJSONExpression struct {
 	GeoJSON geojson.GeoJSON
 }
 
-func (g *GeoJSONExpression) ToProto() (*pb.NodeProto, error) {
+func (g GeoJSONExpression) ToProto() (*pb.NodeProto, error) {
 	marshalled, err := json.Marshal(g.GeoJSON)
 	if err != nil {
 		return nil, err
@@ -783,13 +743,12 @@ func (g *GeoJSONExpression) ToProto() (*pb.NodeProto, error) {
 	}, nil
 }
 
-func (g *GeoJSONExpression) FromProto(node *pb.NodeProto) error {
+func GeoJSONExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 	panic("Unimplemented")
 }
 
-func (g *GeoJSONExpression) Clone() Expression {
-	clone := *g
-	return Expression{AnyExpression: &clone}
+func (g GeoJSONExpression) Clone() Expression {
+	return Expression{AnyExpression: g}
 }
 
 func (g GeoJSONExpression) Literal() interface{} {
@@ -797,7 +756,7 @@ func (g GeoJSONExpression) Literal() interface{} {
 }
 
 func (g GeoJSONExpression) Equal(other AnyExpression) bool {
-	if gg, ok := other.(*GeoJSONExpression); ok {
+	if gg, ok := other.(GeoJSONExpression); ok {
 		if b, err := json.Marshal(g.GeoJSON); err == nil {
 			if bb, err := json.Marshal(gg.GeoJSON); err == nil {
 				return bytes.Equal(b, bb)
@@ -817,34 +776,32 @@ func (GeoJSONExpression) ValueType() ValueType {
 
 type RouteExpression Route
 
-func (r *RouteExpression) ToProto() (*pb.NodeProto, error) {
+func (r RouteExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_RouteValue{
-					RouteValue: NewProtoFromRoute(Route(*r)),
+					RouteValue: NewProtoFromRoute(Route(r)),
 				},
 			},
 		},
 	}, nil
 }
 
-func (r *RouteExpression) FromProto(node *pb.NodeProto) error {
-	*r = RouteExpression(NewRouteFromProto(node.GetLiteral().GetRouteValue()))
-	return nil
+func RouteExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: RouteExpression(NewRouteFromProto(node.GetLiteral().GetRouteValue()))}, nil
 }
 
-func (r *RouteExpression) Clone() Expression {
-	clone := *r
-	return Expression{AnyExpression: &clone}
+func (r RouteExpression) Clone() Expression {
+	return Expression{AnyExpression: r}
 }
 
-func (r *RouteExpression) Literal() interface{} {
-	return Route(*r)
+func (r RouteExpression) Literal() interface{} {
+	return Route(r)
 }
 
-func (r *RouteExpression) Equal(other AnyExpression) bool {
-	if rr, ok := other.(*RouteExpression); ok {
+func (r RouteExpression) Equal(other AnyExpression) bool {
+	if rr, ok := other.(RouteExpression); ok {
 		if r.Origin != rr.Origin {
 			return false
 		}
@@ -860,7 +817,7 @@ func (r *RouteExpression) Equal(other AnyExpression) bool {
 	return true
 }
 
-func (r *RouteExpression) String() string {
+func (r RouteExpression) String() string {
 	return "x-route"
 }
 
@@ -872,7 +829,7 @@ type FeatureExpression struct {
 	Feature
 }
 
-func (f *FeatureExpression) ToProto() (*pb.NodeProto, error) {
+func (f FeatureExpression) ToProto() (*pb.NodeProto, error) {
 	if p, err := NewProtoFromFeature(f.Feature); err == nil {
 		return &pb.NodeProto{
 			Node: &pb.NodeProto_Literal{
@@ -888,35 +845,34 @@ func (f *FeatureExpression) ToProto() (*pb.NodeProto, error) {
 	}
 }
 
-func (f *FeatureExpression) FromProto(node *pb.NodeProto) error {
+func FeatureExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 	// TODO: Remove Feature from the external API, and instead
 	// just use FeatureIDs
-	return errors.New("Can't import features from protos")
+	return Expression{}, errors.New("Can't import features from protos")
 }
 
-func (f *FeatureExpression) MarshalYAML() (interface{}, error) {
+func (f FeatureExpression) MarshalYAML() (interface{}, error) {
 	// TODO: Remove Feature from the external API, and instead
 	// just use FeatureIDs
 	return nil, errors.New("Can't export features as YAML")
 }
 
-func (f *FeatureExpression) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (f FeatureExpression) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// TODO: Remove Feature from the external API, and instead
 	// just use FeatureIDs
 	return errors.New("Can't import features from YAML")
 }
 
-func (f *FeatureExpression) Clone() Expression {
-	clone := *f
-	return Expression{AnyExpression: &clone}
+func (f FeatureExpression) Clone() Expression {
+	return Expression{AnyExpression: f}
 }
 
-func (f *FeatureExpression) Literal() interface{} {
+func (f FeatureExpression) Literal() interface{} {
 	return f.Feature
 }
 
 func (f FeatureExpression) Equal(other AnyExpression) bool {
-	if ff, ok := other.(*FeatureExpression); ok {
+	if ff, ok := other.(FeatureExpression); ok {
 		return f.FeatureID() == ff.FeatureID()
 	}
 	return false
@@ -932,22 +888,20 @@ func (FeatureExpression) ValueType() ValueType {
 
 type PointExpression s2.LatLng
 
-func (p *PointExpression) ToProto() (*pb.NodeProto, error) {
+func (p PointExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
 				Value: &pb.LiteralNodeProto_PointValue{
-					PointValue: NewPointProtoFromS2LatLng(s2.LatLng(*p)),
+					PointValue: NewPointProtoFromS2LatLng(s2.LatLng(p)),
 				},
 			},
 		},
 	}, nil
 }
 
-func (p *PointExpression) FromProto(node *pb.NodeProto) error {
-	point := node.GetLiteral().GetPointValue()
-	*p = PointExpression(PointProtoToS2LatLng(point))
-	return nil
+func PointExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: PointExpression(PointProtoToS2LatLng(node.GetLiteral().GetPointValue()))}, nil
 }
 
 func (p PointExpression) MarshalYAML() (interface{}, error) {
@@ -967,9 +921,8 @@ func (p *PointExpression) UnmarshalYAML(unmarshal func(interface{}) error) error
 	return nil
 }
 
-func (p *PointExpression) Clone() Expression {
-	clone := *p
-	return Expression{AnyExpression: &clone}
+func (p PointExpression) Clone() Expression {
+	return Expression{AnyExpression: p}
 }
 
 func (p PointExpression) Literal() interface{} {
@@ -977,8 +930,8 @@ func (p PointExpression) Literal() interface{} {
 }
 
 func (p PointExpression) Equal(other AnyExpression) bool {
-	if pp, ok := other.(*PointExpression); ok {
-		return p == *pp
+	if pp, ok := other.(PointExpression); ok {
+		return p == pp
 	}
 	return false
 }
@@ -992,15 +945,14 @@ func (PointExpression) ValueType() ValueType {
 }
 
 func NewPointExpressionFromLatLng(ll s2.LatLng) Expression {
-	p := PointExpression(ll)
-	return Expression{AnyExpression: &p}
+	return Expression{AnyExpression: PointExpression(ll)}
 }
 
 type PathExpression struct {
 	Path Geometry
 }
 
-func (p *PathExpression) ToProto() (*pb.NodeProto, error) {
+func (p PathExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
@@ -1012,10 +964,8 @@ func (p *PathExpression) ToProto() (*pb.NodeProto, error) {
 	}, nil
 }
 
-func (p *PathExpression) FromProto(node *pb.NodeProto) error {
-	path := node.GetLiteral().GetPathValue()
-	p.Path = GeometryFromPoints(*PolylineProtoToS2Polyline(path))
-	return nil
+func PathExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: PathExpression{GeometryFromPoints(*PolylineProtoToS2Polyline(node.GetLiteral().GetPathValue()))}}, nil
 }
 
 func (p PathExpression) MarshalYAML() (interface{}, error) {
@@ -1039,9 +989,8 @@ func (p *PathExpression) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	return err
 }
 
-func (p *PathExpression) Clone() Expression {
-	clone := *p
-	return Expression{AnyExpression: &clone}
+func (p PathExpression) Clone() Expression {
+	return Expression{AnyExpression: p}
 }
 
 func (p PathExpression) Literal() interface{} {
@@ -1049,7 +998,7 @@ func (p PathExpression) Literal() interface{} {
 }
 
 func (p PathExpression) Equal(other AnyExpression) bool {
-	if pp, ok := other.(*PathExpression); ok {
+	if pp, ok := other.(PathExpression); ok {
 		return geometry.PolylineEqual(p.Path.Polyline(), pp.Path.Polyline())
 	}
 	return false
@@ -1067,7 +1016,7 @@ type AreaExpression struct {
 	Area Area
 }
 
-func (a *AreaExpression) ToProto() (*pb.NodeProto, error) {
+func (a AreaExpression) ToProto() (*pb.NodeProto, error) {
 	polygons := make(geometry.MultiPolygon, a.Area.Len())
 	for i := 0; i < a.Area.Len(); i++ {
 		polygons[i] = a.Area.Polygon(i)
@@ -1083,15 +1032,12 @@ func (a *AreaExpression) ToProto() (*pb.NodeProto, error) {
 	}, nil
 }
 
-func (a *AreaExpression) FromProto(node *pb.NodeProto) error {
-	m := MultiPolygonProtoToS2MultiPolygon(node.GetLiteral().GetAreaValue())
-	a.Area = AreaFromS2Polygons(m)
-	return nil
+func AreaExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{AnyExpression: AreaExpression{AreaFromS2Polygons(MultiPolygonProtoToS2MultiPolygon(node.GetLiteral().GetAreaValue()))}}, nil
 }
 
-func (a *AreaExpression) Clone() Expression {
-	clone := *a
-	return Expression{AnyExpression: &clone}
+func (a AreaExpression) Clone() Expression {
+	return Expression{AnyExpression: a}
 }
 
 func (a AreaExpression) Literal() interface{} {
@@ -1099,7 +1045,7 @@ func (a AreaExpression) Literal() interface{} {
 }
 
 func (a AreaExpression) Equal(other AnyExpression) bool {
-	if aa, ok := other.(*AreaExpression); ok {
+	if aa, ok := other.(AreaExpression); ok {
 		return geometry.MultiPolygonEqual(a.Area.MultiPolygon(), aa.Area.MultiPolygon())
 	}
 	return false
@@ -1115,7 +1061,7 @@ func (AreaExpression) ValueType() ValueType {
 
 type NilExpression struct{}
 
-func (_ NilExpression) ToProto() (*pb.NodeProto, error) {
+func (NilExpression) ToProto() (*pb.NodeProto, error) {
 	return &pb.NodeProto{
 		Node: &pb.NodeProto_Literal{
 			Literal: &pb.LiteralNodeProto{
@@ -1125,8 +1071,8 @@ func (_ NilExpression) ToProto() (*pb.NodeProto, error) {
 	}, nil
 }
 
-func (_ NilExpression) FromProto(node *pb.NodeProto) error {
-	return nil
+func NilExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	return Expression{}, nil
 }
 
 func (n NilExpression) Clone() Expression {
@@ -1154,7 +1100,7 @@ type CollectionExpression struct {
 	UntypedCollection
 }
 
-func (c *CollectionExpression) ToProto() (*pb.NodeProto, error) {
+func (c CollectionExpression) ToProto() (*pb.NodeProto, error) {
 	i := c.UntypedCollection.BeginUntyped()
 	keys := make([]*pb.LiteralNodeProto, 0)
 	values := make([]*pb.LiteralNodeProto, 0)
@@ -1198,14 +1144,14 @@ func (c *CollectionExpression) ToProto() (*pb.NodeProto, error) {
 	}, nil
 }
 
-func (c *CollectionExpression) FromProto(node *pb.NodeProto) error {
+func CollectionExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 	p := node.GetLiteral().GetCollectionValue()
 	collection := ArrayCollection[interface{}, interface{}]{
 		Keys:   make([]interface{}, len(p.Keys)),
 		Values: make([]interface{}, len(p.Values)),
 	}
 	if len(collection.Keys) != len(collection.Values) {
-		return fmt.Errorf("Number of keys doesn't match the number of values: %d vs %d", len(collection.Keys), len(collection.Values))
+		return Expression{}, fmt.Errorf("Number of keys doesn't match the number of values: %d vs %d", len(collection.Keys), len(collection.Values))
 	}
 	for i := range p.Keys {
 		var k Literal
@@ -1214,9 +1160,12 @@ func (c *CollectionExpression) FromProto(node *pb.NodeProto) error {
 				Literal: p.Keys[i],
 			},
 		}
-		if err := k.FromProto(n); err != nil {
-			return err
+		expression, err := LiteralFromProto(n)
+		if err != nil {
+			return Expression{}, err
 		}
+		k.AnyLiteral = expression.AnyExpression.(AnyLiteral)
+
 		collection.Keys[i] = k.Literal()
 		var v Literal
 		n = &pb.NodeProto{
@@ -1224,19 +1173,18 @@ func (c *CollectionExpression) FromProto(node *pb.NodeProto) error {
 				Literal: p.Values[i],
 			},
 		}
-		if err := v.FromProto(n); err != nil {
-			return err
+		expression, err = LiteralFromProto(n)
+		if err != nil {
+			return Expression{}, err
 		}
+		v.AnyLiteral = expression.AnyExpression.(AnyLiteral)
 		collection.Values[i] = v.Literal()
 	}
-	c.UntypedCollection = Collection[any, any]{
-		AnyCollection: collection,
-	}
-	return nil
+	return Expression{AnyExpression: CollectionExpression{UntypedCollection: Collection[any, any]{AnyCollection: collection}}}, nil
 }
 
 func (c CollectionExpression) Equal(other AnyExpression) bool {
-	if cc, ok := other.(*CollectionExpression); ok {
+	if cc, ok := other.(CollectionExpression); ok {
 		i := [2]Iterator[any, any]{c.BeginUntyped(), cc.BeginUntyped()}
 		for {
 			var ok [2]bool
@@ -1281,7 +1229,7 @@ func (c CollectionExpression) String() string {
 }
 
 func NewCollectionExpression(c UntypedCollection) Expression {
-	return Expression{AnyExpression: &CollectionExpression{UntypedCollection: c}}
+	return Expression{AnyExpression: CollectionExpression{UntypedCollection: c}}
 }
 
 type collectionYAML struct {
@@ -1325,12 +1273,8 @@ func (c *CollectionExpression) UnmarshalYAML(unmarshal func(interface{}) error) 
 	return err
 }
 
-func (c *CollectionExpression) Clone() Expression {
-	return Expression{
-		AnyExpression: &CollectionExpression{
-			UntypedCollection: c.UntypedCollection,
-		},
-	}
+func (c CollectionExpression) Clone() Expression {
+	return Expression{AnyExpression: CollectionExpression{UntypedCollection: c.UntypedCollection}}
 }
 
 func (c CollectionExpression) Literal() interface{} {
@@ -1347,7 +1291,7 @@ type CallExpression struct {
 	Pipelined bool         `yaml:",omitempty"`
 }
 
-func (c *CallExpression) ToProto() (*pb.NodeProto, error) {
+func (c CallExpression) ToProto() (*pb.NodeProto, error) {
 	var err error
 	args := make([]*pb.NodeProto, len(c.Args))
 	for i, arg := range c.Args {
@@ -1370,34 +1314,36 @@ func (c *CallExpression) ToProto() (*pb.NodeProto, error) {
 	}
 }
 
-func (c *CallExpression) FromProto(node *pb.NodeProto) error {
+func CallExpressionFromProto(node *pb.NodeProto) (Expression, error) {
+	c := CallExpression{}
 	call := node.GetCall()
-	if err := c.Function.FromProto(call.Function); err != nil {
-		return err
+	var err error
+	if c.Function, err = ExpressionFromProto(call.Function); err != nil {
+		return Expression{}, err
 	}
 	c.Args = make([]Expression, len(call.Args))
 	for i, arg := range call.Args {
-		if err := c.Args[i].FromProto(arg); err != nil {
-			return err
+		if c.Args[i], err = ExpressionFromProto(arg); err != nil {
+			return Expression{}, err
 		}
 	}
 	c.Pipelined = call.Pipelined
-	return nil
+	return Expression{AnyExpression: c}, nil
 }
 
-func (c *CallExpression) Clone() Expression {
+func (c CallExpression) Clone() Expression {
 	args := make([]Expression, len(c.Args))
 	for i, arg := range c.Args {
 		args[i] = arg.Clone()
 	}
-	return Expression{AnyExpression: &CallExpression{
+	return Expression{AnyExpression: CallExpression{
 		Function: c.Function.Clone(),
 		Args:     args,
 	}}
 }
 
-func (c *CallExpression) Equal(other AnyExpression) bool {
-	if cc, ok := other.(*CallExpression); ok {
+func (c CallExpression) Equal(other AnyExpression) bool {
+	if cc, ok := other.(CallExpression); ok {
 		if !c.Function.Equal(cc.Function) {
 			return false
 		}
@@ -1414,9 +1360,9 @@ func (c *CallExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
-func (c *CallExpression) String() string {
+func (c CallExpression) String() string {
 	s := ""
-	if _, ok := c.Function.AnyExpression.(*CallExpression); ok {
+	if _, ok := c.Function.AnyExpression.(CallExpression); ok {
 		s += "(" + c.Function.String() + ")"
 	} else {
 		s += c.Function.String()
@@ -1427,7 +1373,7 @@ func (c *CallExpression) String() string {
 			if i > 0 {
 				s += " "
 			}
-			if _, ok := arg.AnyExpression.(*CallExpression); ok {
+			if _, ok := arg.AnyExpression.(CallExpression); ok {
 				s += "(" + arg.String() + ")"
 			} else {
 				s += arg.String()
@@ -1442,7 +1388,7 @@ func (CallExpression) ValueType() ValueType {
 }
 
 func NewCallExpression(function Expression, args []Expression) Expression {
-	return Expression{AnyExpression: &CallExpression{Function: function, Args: args}}
+	return Expression{AnyExpression: CallExpression{Function: function, Args: args}}
 }
 
 type LambdaExpression struct {
@@ -1450,7 +1396,7 @@ type LambdaExpression struct {
 	Expression Expression `yaml:",omitempty"`
 }
 
-func (l *LambdaExpression) ToProto() (*pb.NodeProto, error) {
+func (l LambdaExpression) ToProto() (*pb.NodeProto, error) {
 	if e, err := l.Expression.ToProto(); err == nil {
 		return &pb.NodeProto{
 			Node: &pb.NodeProto_Lambda_{
@@ -1465,25 +1411,32 @@ func (l *LambdaExpression) ToProto() (*pb.NodeProto, error) {
 	}
 }
 
-func (l *LambdaExpression) FromProto(node *pb.NodeProto) error {
+func LambdaExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 	lambda := node.GetLambda_()
+	l := LambdaExpression{}
 	l.Args = lambda.Args
-	return l.Expression.FromProto(lambda.Node)
+	var err error
+	l.Expression, err = ExpressionFromProto(lambda.Node)
+	if err != nil {
+		return Expression{}, err
+	}
+
+	return Expression{AnyExpression: l}, nil
 }
 
-func (l *LambdaExpression) Clone() Expression {
+func (l LambdaExpression) Clone() Expression {
 	names := make([]string, len(l.Args))
 	for i, name := range l.Args {
 		names[i] = name
 	}
-	return Expression{AnyExpression: &LambdaExpression{
+	return Expression{AnyExpression: LambdaExpression{
 		Args:       names,
 		Expression: l.Expression.Clone(),
 	}}
 }
 
-func (l *LambdaExpression) Equal(other AnyExpression) bool {
-	if ll, ok := other.(*LambdaExpression); ok {
+func (l LambdaExpression) Equal(other AnyExpression) bool {
+	if ll, ok := other.(LambdaExpression); ok {
 		if !l.Expression.Equal(ll.Expression) {
 			return false
 		}
@@ -1500,7 +1453,7 @@ func (l *LambdaExpression) Equal(other AnyExpression) bool {
 	return false
 }
 
-func (l *LambdaExpression) String() string {
+func (l LambdaExpression) String() string {
 	s := "{"
 	for i := range l.Args {
 		if i > 0 {
@@ -1517,5 +1470,5 @@ func (LambdaExpression) ValueType() ValueType {
 }
 
 func NewLambdaExpression(args []string, e Expression) Expression {
-	return Expression{AnyExpression: &LambdaExpression{Args: args, Expression: e}}
+	return Expression{AnyExpression: LambdaExpression{Args: args, Expression: e}}
 }

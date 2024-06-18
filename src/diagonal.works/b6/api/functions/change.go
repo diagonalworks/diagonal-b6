@@ -229,7 +229,9 @@ func changesToFile(c *api.Context, filename string) (string, error) {
 		return "", fmt.Errorf("failed to open %s for write: %w", filename, err)
 	}
 	if m, ok := c.World.(ingest.MutableWorld); ok {
-		err = ingest.ExportChangesAsYAML(m, w)
+		if err = ingest.ExportChangesAsYAML(m, w); err != nil {
+			return "", err
+		}
 	}
 	return filename, w.Close()
 }

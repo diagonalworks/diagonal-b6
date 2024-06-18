@@ -47,8 +47,8 @@ func (s *service) Evaluate(ctx context.Context, request *pb.EvaluateRequestProto
 		Context:         ctx,
 	}
 	context.FillFromOptions(&s.options)
-	var expression b6.Expression
-	if err := expression.FromProto(request.Request); err != nil {
+	expression, err := b6.ExpressionFromProto(request.Request)
+	if err != nil {
 		return nil, err
 	}
 	simplified := api.Simplify(expression, context.FunctionSymbols)

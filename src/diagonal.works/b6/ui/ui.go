@@ -475,14 +475,13 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 		if request.Node == nil {
 			expression, err = api.ParseExpression(request.Expression)
 		} else {
-			var lhs b6.Expression
-			if err = lhs.FromProto(request.Node); err == nil {
+			if lhs, err := b6.ExpressionFromProto(request.Node); err == nil {
 				expression, err = api.ParseExpressionWithLHS(request.Expression, lhs)
 			}
 		}
 
 	} else {
-		err = expression.FromProto(request.Node)
+		expression, err = b6.ExpressionFromProto(request.Node)
 	}
 	if err != nil {
 		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)

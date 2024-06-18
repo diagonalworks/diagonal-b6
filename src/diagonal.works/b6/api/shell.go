@@ -289,7 +289,7 @@ func (l *lexer) lexFeatureIDLiteral(yylval *yySymType) int {
 	id, err := ParseFeatureIDToken(token)
 	if err == nil {
 		eid := b6.FeatureIDExpression(id)
-		e.AnyExpression = &eid
+		e.AnyExpression = eid
 		yylval.e = e
 	} else {
 		l.Err = err
@@ -382,18 +382,18 @@ func (l *lexer) Error(s string) {
 }
 
 func reduceLatLng(lat b6.Expression, lng b6.Expression, l *lexer) b6.Expression {
-	latf := lat.AnyExpression.(*b6.FloatExpression)
-	lngf := lng.AnyExpression.(*b6.FloatExpression)
-	ll := s2.LatLngFromDegrees(float64(*latf), float64(*lngf))
+	latf := lat.AnyExpression.(b6.FloatExpression)
+	lngf := lng.AnyExpression.(b6.FloatExpression)
+	ll := s2.LatLngFromDegrees(float64(latf), float64(lngf))
 	return b6.NewPointExpressionFromLatLng(ll)
 }
 
 func expressionToString(expression b6.Expression) string {
 	switch e := expression.AnyExpression.(type) {
-	case *b6.StringExpression:
-		return string(*e)
-	case *b6.SymbolExpression:
-		return string(*e)
+	case b6.StringExpression:
+		return string(e)
+	case b6.SymbolExpression:
+		return string(e)
 	default:
 		panic("Not a symbol or string")
 	}
@@ -401,7 +401,7 @@ func expressionToString(expression b6.Expression) string {
 
 func reduceTag(key b6.Expression, value b6.Expression, l *lexer) b6.Expression {
 	return b6.Expression{
-		AnyExpression: &b6.TagExpression{
+		AnyExpression: b6.TagExpression{
 			Key:   expressionToString(key),
 			Value: b6.StringExpression(expressionToString(value)), // TODO(mari): remove once all tag values are expressions
 		},
@@ -427,7 +427,7 @@ func reduceCallWithArgs(symbol b6.Expression, args []b6.Expression, l *lexer) b6
 	}
 
 	return b6.Expression{
-		AnyExpression: &b6.CallExpression{
+		AnyExpression: b6.CallExpression{
 			Function: symbol,
 			Args:     args,
 		},
@@ -455,7 +455,7 @@ func reduceRootCall(root b6.Expression, l *lexer) b6.Expression {
 // Return a node that calls right with left as an argument
 func Pipeline(left b6.Expression, right b6.Expression) b6.Expression {
 	return b6.Expression{
-		AnyExpression: &b6.CallExpression{
+		AnyExpression: b6.CallExpression{
 			Function:  right,
 			Args:      []b6.Expression{left},
 			Pipelined: true,
@@ -479,14 +479,14 @@ func reducePipeline(left b6.Expression, right b6.Expression, l *lexer) b6.Expres
 func reduceLambda(symbols []b6.Expression, e b6.Expression) b6.Expression {
 	args := make([]string, len(symbols))
 	for i, s := range symbols {
-		args[i] = s.AnyExpression.(*b6.SymbolExpression).String()
+		args[i] = s.AnyExpression.(b6.SymbolExpression).String()
 	}
 	begin := e.Begin
 	if len(symbols) > 0 {
 		begin = symbols[0].Begin
 	}
 	return b6.Expression{
-		AnyExpression: &b6.LambdaExpression{
+		AnyExpression: b6.LambdaExpression{
 			Args:       args,
 			Expression: e,
 		},
@@ -515,9 +515,9 @@ func reduceSymbolsSymbols(ss []b6.Expression, s b6.Expression) []b6.Expression {
 func reduceCollectionItems(collection b6.Expression) b6.Expression {
 	// Fill in integer indicies for collection keys if they weren't
 	// explicitly specified.
-	if call, ok := collection.AnyExpression.(*b6.CallExpression); ok {
+	if call, ok := collection.AnyExpression.(b6.CallExpression); ok {
 		for i, a := range call.Args {
-			if pair, ok := a.AnyExpression.(*b6.CallExpression); ok {
+			if pair, ok := a.AnyExpression.(b6.CallExpression); ok {
 				if len(pair.Args) > 0 && pair.Args[0].AnyExpression == nil {
 					pair.Args[0].AnyExpression = b6.NewIntExpression(i).AnyExpression
 				}
@@ -529,7 +529,7 @@ func reduceCollectionItems(collection b6.Expression) b6.Expression {
 
 func reduceCollectionItemsKeyValue(kv b6.Expression) b6.Expression {
 	return b6.Expression{
-		AnyExpression: &b6.CallExpression{
+		AnyExpression: b6.CallExpression{
 			Function: b6.NewSymbolExpression("collection"),
 			Args:     []b6.Expression{kv},
 		},
@@ -537,15 +537,16 @@ func reduceCollectionItemsKeyValue(kv b6.Expression) b6.Expression {
 }
 
 func reduceCollectionItemsItemsKeyValue(items b6.Expression, kv b6.Expression) b6.Expression {
-	if call, ok := items.AnyExpression.(*b6.CallExpression); ok {
+	if call, ok := items.AnyExpression.(b6.CallExpression); ok {
 		call.Args = append(call.Args, kv)
+		items.AnyExpression = call
 	}
 	return items
 }
 
 func reduceCollectionKeyValue(key b6.Expression, value b6.Expression) b6.Expression {
 	return b6.Expression{
-		AnyExpression: &b6.CallExpression{
+		AnyExpression: b6.CallExpression{
 			Function: b6.NewSymbolExpression("pair"),
 			Args:     []b6.Expression{key, value},
 		},
@@ -554,7 +555,7 @@ func reduceCollectionKeyValue(key b6.Expression, value b6.Expression) b6.Express
 
 func reduceCollectionValueWithImplictKey(value b6.Expression) b6.Expression {
 	return b6.Expression{
-		AnyExpression: &b6.CallExpression{
+		AnyExpression: b6.CallExpression{
 			Function: b6.NewSymbolExpression("pair"),
 			Args:     []b6.Expression{b6.Expression{}, value},
 		},
@@ -563,7 +564,7 @@ func reduceCollectionValueWithImplictKey(value b6.Expression) b6.Expression {
 
 func reduceTagKey(key b6.Expression) b6.Expression {
 	return b6.Expression{
-		AnyExpression: &b6.QueryExpression{
+		AnyExpression: b6.QueryExpression{
 			Query: b6.Keyed{Key: expressionToString(key)},
 		},
 		Begin: key.Begin,
@@ -573,7 +574,7 @@ func reduceTagKey(key b6.Expression) b6.Expression {
 
 func reduceTagKeyValue(key b6.Expression, value b6.Expression) b6.Expression {
 	return b6.Expression{
-		AnyExpression: &b6.QueryExpression{
+		AnyExpression: b6.QueryExpression{
 			Query: b6.Tagged{
 				Key:   expressionToString(key),
 				Value: b6.StringExpression(expressionToString(value)),
@@ -585,10 +586,10 @@ func reduceTagKeyValue(key b6.Expression, value b6.Expression) b6.Expression {
 }
 
 func reduceAnd(a b6.Expression, b b6.Expression) b6.Expression {
-	aq := a.AnyExpression.(*b6.QueryExpression)
-	bq := b.AnyExpression.(*b6.QueryExpression)
+	aq := a.AnyExpression.(b6.QueryExpression)
+	bq := b.AnyExpression.(b6.QueryExpression)
 	return b6.Expression{
-		AnyExpression: &b6.QueryExpression{
+		AnyExpression: b6.QueryExpression{
 			Query: b6.Intersection{aq.Query, bq.Query},
 		},
 		Begin: a.Begin,
@@ -597,10 +598,10 @@ func reduceAnd(a b6.Expression, b b6.Expression) b6.Expression {
 }
 
 func reduceOr(a b6.Expression, b b6.Expression) b6.Expression {
-	aq := a.AnyExpression.(*b6.QueryExpression)
-	bq := b.AnyExpression.(*b6.QueryExpression)
+	aq := a.AnyExpression.(b6.QueryExpression)
+	bq := b.AnyExpression.(b6.QueryExpression)
 	return b6.Expression{
-		AnyExpression: &b6.QueryExpression{
+		AnyExpression: b6.QueryExpression{
 			Query: b6.Union{aq.Query, bq.Query},
 		},
 		Begin: a.Begin,
@@ -645,10 +646,10 @@ func OrderTokens(e b6.Expression) []b6.Expression {
 	for len(queue) > 0 {
 		e := queue[len(queue)-1]
 		queue = queue[0 : len(queue)-1]
-		if c, ok := e.AnyExpression.(*b6.CallExpression); ok {
+		if c, ok := e.AnyExpression.(b6.CallExpression); ok {
 			queue = append(queue, c.Function)
 			queue = append(queue, c.Args...)
-		} else if l, ok := e.AnyExpression.(*b6.LambdaExpression); ok {
+		} else if l, ok := e.AnyExpression.(b6.LambdaExpression); ok {
 			queue = append(queue, l.Expression)
 		}
 		if e.End > e.Begin {
@@ -672,26 +673,28 @@ func Simplify(expression b6.Expression, functions SymbolArgCounts) b6.Expression
 		return expression
 	}
 	switch e := expression.AnyExpression.(type) {
-	case *b6.CallExpression:
+	case b6.CallExpression:
 		return simplifyCall(expression, functions)
-	case *b6.LambdaExpression:
+	case b6.LambdaExpression:
 		return simplifyLambda(expression, functions)
-	case *b6.QueryExpression:
-		simplified := expression
-		simplified.AnyExpression = &b6.QueryExpression{
+	case b6.QueryExpression:
+		expression.AnyExpression = b6.QueryExpression{
 			Query: simplifyQuery(e.Query),
 		}
-		return simplified
+		return expression
 	}
 	return expression
 }
 
 func simplifyCall(expression b6.Expression, functions SymbolArgCounts) b6.Expression {
-	call := expression.AnyExpression.(*b6.CallExpression)
+	call := expression.AnyExpression.(b6.CallExpression)
 	call.Function = Simplify(call.Function, functions)
+
 	for i, arg := range call.Args {
 		call.Args[i] = Simplify(arg, functions)
 	}
+	expression.AnyExpression = call
+
 	if e, ok := simplifyCallWithNoArguments(expression, functions); ok {
 		return e
 	}
@@ -704,15 +707,15 @@ func simplifyCall(expression b6.Expression, functions SymbolArgCounts) b6.Expres
 func simplifyCallWithNoArguments(expression b6.Expression, functions SymbolArgCounts) (b6.Expression, bool) {
 	// Calling a function that expects arguments with no arguments is
 	// semantically equivilent to just using that function.
-	call := expression.AnyExpression.(*b6.CallExpression)
+	call := expression.AnyExpression.(b6.CallExpression)
 	if len(call.Args) == 0 {
-		if symbol, ok := call.Function.AnyExpression.(*b6.SymbolExpression); ok {
-			n, ok := functions.ArgCount(*symbol)
-			v, _ := functions.IsVariadic(*symbol)
+		if symbol, ok := call.Function.AnyExpression.(b6.SymbolExpression); ok {
+			n, ok := functions.ArgCount(symbol)
+			v, _ := functions.IsVariadic(symbol)
 			if ok && n > 0 && !v {
 				return Simplify(call.Function, functions), true
 			}
-		} else if lambda, ok := call.Function.AnyExpression.(*b6.LambdaExpression); ok {
+		} else if lambda, ok := call.Function.AnyExpression.(b6.LambdaExpression); ok {
 			if len(lambda.Args) == 0 {
 				return Simplify(lambda.Expression, functions), true
 			}
@@ -722,12 +725,12 @@ func simplifyCallWithNoArguments(expression b6.Expression, functions SymbolArgCo
 }
 
 func simplifyCallBuildingQuery(expression b6.Expression, functions SymbolArgCounts) (b6.Expression, bool) {
-	call := expression.AnyExpression.(*b6.CallExpression)
-	symbol, ok := call.Function.AnyExpression.(*b6.SymbolExpression)
+	call := expression.AnyExpression.(b6.CallExpression)
+	symbol, ok := call.Function.AnyExpression.(b6.SymbolExpression)
 	if !ok {
 		return b6.Expression{}, false
 	}
-	switch s := string(*symbol); s {
+	switch s := string(symbol); s {
 	case "and", "or":
 		if e, ok := simplifyCallBuildingAndOrOrQuery(s, call); ok {
 			simplified := expression
@@ -750,13 +753,13 @@ func simplifyCallBuildingQuery(expression b6.Expression, functions SymbolArgCoun
 	return b6.Expression{}, false
 }
 
-func simplifyCallBuildingAndOrOrQuery(symbol string, call *b6.CallExpression) (b6.AnyExpression, bool) {
+func simplifyCallBuildingAndOrOrQuery(symbol string, call b6.CallExpression) (b6.AnyExpression, bool) {
 	if len(call.Args) != 2 {
 		return nil, false
 	}
-	args := make([]*b6.QueryExpression, 0, 2)
+	args := make([]b6.QueryExpression, 0, 2)
 	for _, arg := range call.Args {
-		if q, ok := arg.AnyExpression.(*b6.QueryExpression); ok {
+		if q, ok := arg.AnyExpression.(b6.QueryExpression); ok {
 			args = append(args, q)
 		} else {
 			return nil, false
@@ -768,22 +771,22 @@ func simplifyCallBuildingAndOrOrQuery(symbol string, call *b6.CallExpression) (b
 		for i := range args {
 			q[i] = args[i].Query
 		}
-		return &b6.QueryExpression{Query: q}, true
+		return b6.QueryExpression{Query: q}, true
 	case "or":
 		q := make(b6.Union, len(args))
 		for i := range args {
 			q[i] = args[i].Query
 		}
-		return &b6.QueryExpression{Query: q}, true
+		return b6.QueryExpression{Query: q}, true
 	}
 	return nil, false
 }
 
-func simplifyCallBuildingKeyedTaggedQuery(symbol string, call *b6.CallExpression) (b6.AnyExpression, bool) {
+func simplifyCallBuildingKeyedTaggedQuery(symbol string, call b6.CallExpression) (b6.AnyExpression, bool) {
 	args := make([]string, 0, 2)
 	for _, arg := range call.Args {
-		if s, ok := arg.AnyExpression.(*b6.StringExpression); ok {
-			args = append(args, string(*s))
+		if s, ok := arg.AnyExpression.(b6.StringExpression); ok {
+			args = append(args, string(s))
 		} else {
 			return nil, false
 		}
@@ -791,13 +794,13 @@ func simplifyCallBuildingKeyedTaggedQuery(symbol string, call *b6.CallExpression
 	switch symbol {
 	case "keyed":
 		if len(args) == 1 {
-			return &b6.QueryExpression{
+			return b6.QueryExpression{
 				Query: b6.Keyed{Key: args[0]},
 			}, true
 		}
 	case "tagged":
 		if len(args) == 2 {
-			return &b6.QueryExpression{
+			return b6.QueryExpression{
 				Query: b6.Tagged{Key: args[0], Value: b6.StringExpression(args[1])},
 			}, true
 		}
@@ -805,19 +808,19 @@ func simplifyCallBuildingKeyedTaggedQuery(symbol string, call *b6.CallExpression
 	return nil, false
 }
 
-func simplifyCallBuildingTypedQuery(symbol string, call *b6.CallExpression) (b6.AnyExpression, bool) {
-	var qarg *b6.QueryExpression
+func simplifyCallBuildingTypedQuery(symbol string, call b6.CallExpression) (b6.AnyExpression, bool) {
+	var qarg b6.QueryExpression
 	var typ string
 	for _, arg := range call.Args {
-		if q, ok := arg.AnyExpression.(*b6.QueryExpression); ok {
+		if q, ok := arg.AnyExpression.(b6.QueryExpression); ok {
 			qarg = q
-		} else if t, ok := arg.AnyExpression.(*b6.StringExpression); ok {
-			typ = string(*t)
+		} else if t, ok := arg.AnyExpression.(b6.StringExpression); ok {
+			typ = string(t)
 		}
 	}
 	switch symbol {
 	case "typed":
-		return &b6.QueryExpression{
+		return b6.QueryExpression{
 			Query: b6.Typed{Type: b6.FeatureTypeFromString(typ), Query: qarg.Query},
 		}, true
 	}
@@ -825,13 +828,13 @@ func simplifyCallBuildingTypedQuery(symbol string, call *b6.CallExpression) (b6.
 }
 
 func simplifyLambda(expression b6.Expression, functions SymbolArgCounts) b6.Expression {
-	lambda := expression.AnyExpression.(*b6.LambdaExpression)
+	lambda := expression.AnyExpression.(b6.LambdaExpression)
 	lambda.Expression = Simplify(lambda.Expression, functions)
 	// '{a -> area a}' is semantically equivalent to 'area'
-	if call, ok := lambda.Expression.AnyExpression.(*b6.CallExpression); ok && len(lambda.Args) > 0 {
+	if call, ok := lambda.Expression.AnyExpression.(b6.CallExpression); ok && len(lambda.Args) > 0 {
 		i := 0
 		for i < len(lambda.Args) && i < len(call.Args) {
-			if s, ok := call.Args[i].AnyExpression.(*b6.SymbolExpression); ok {
+			if s, ok := call.Args[i].AnyExpression.(b6.SymbolExpression); ok {
 				if s.String() != lambda.Args[i] {
 					break
 				}
@@ -845,7 +848,7 @@ func simplifyLambda(expression b6.Expression, functions SymbolArgCounts) b6.Expr
 				return Simplify(call.Function, functions)
 			}
 			s := expression
-			s.AnyExpression = &b6.CallExpression{
+			s.AnyExpression = b6.CallExpression{
 				Function: call.Function,
 				Args:     call.Args[i:len(call.Args)],
 			}
@@ -979,15 +982,15 @@ func UnparseExpression(e b6.Expression) (string, bool) {
 
 func unparseExpression(e b6.Expression, top bool) (string, bool) {
 	switch e := e.AnyExpression.(type) {
-	case *b6.SymbolExpression:
+	case b6.SymbolExpression:
 		return e.String(), true
-	case *b6.CallExpression:
+	case b6.CallExpression:
 		if e.Pipelined {
 			return unparsePipelinedCall(e, top)
 		} else {
 			return unparseCall(e, top)
 		}
-	case *b6.LambdaExpression:
+	case b6.LambdaExpression:
 		return unparseLambda(e)
 	case b6.AnyLiteral:
 		return unparseLiteral(e)
@@ -995,12 +998,12 @@ func unparseExpression(e b6.Expression, top bool) (string, bool) {
 	return "", false
 }
 
-func unparsePipelinedCall(call *b6.CallExpression, top bool) (string, bool) {
+func unparsePipelinedCall(call b6.CallExpression, top bool) (string, bool) {
 	lhs, ok := unparseExpression(call.Args[0], true)
 	if !ok {
 		return "", false
 	}
-	rhs, ok := unparseCall(&b6.CallExpression{Function: call.Function, Args: call.Args[1:]}, true)
+	rhs, ok := unparseCall(b6.CallExpression{Function: call.Function, Args: call.Args[1:]}, true)
 	if !ok {
 		return "", false
 	}
@@ -1011,7 +1014,7 @@ func unparsePipelinedCall(call *b6.CallExpression, top bool) (string, bool) {
 	}
 }
 
-func unparseCall(call *b6.CallExpression, top bool) (string, bool) {
+func unparseCall(call b6.CallExpression, top bool) (string, bool) {
 	if len(call.Args) == 0 {
 		return unparseExpression(call.Function, top)
 	}
@@ -1038,26 +1041,26 @@ func unparseCall(call *b6.CallExpression, top bool) (string, bool) {
 
 func unparseLiteral(l b6.AnyLiteral) (string, bool) {
 	switch l := l.(type) {
-	case *b6.StringExpression:
-		return UnparseString(string(*l)), true
-	case *b6.IntExpression:
-		return fmt.Sprintf("%d", int(*l)), true
-	case *b6.FloatExpression:
-		return fmt.Sprintf("%.2f", float64(*l)), true
-	case *b6.TagExpression:
+	case b6.StringExpression:
+		return UnparseString(string(l)), true
+	case b6.IntExpression:
+		return fmt.Sprintf("%d", int(l)), true
+	case b6.FloatExpression:
+		return fmt.Sprintf("%.2f", float64(l)), true
+	case b6.TagExpression:
 		return UnparseTag(b6.Tag{Key: l.Key, Value: l.Value}), true
-	case *b6.FeatureIDExpression:
-		return UnparseFeatureID(b6.FeatureID(*l), true), true
-	case *b6.PointExpression:
+	case b6.FeatureIDExpression:
+		return UnparseFeatureID(b6.FeatureID(l), true), true
+	case b6.PointExpression:
 		return fmt.Sprintf("%f, %f", l.Lat.Degrees(), l.Lng.Degrees()), true
-	case *b6.QueryExpression:
+	case b6.QueryExpression:
 		return UnparseQuery(l.Query)
 	default:
 		return fmt.Sprintf("(broken-value \"%v\")", l), true
 	}
 }
 
-func unparseLambda(l *b6.LambdaExpression) (string, bool) {
+func unparseLambda(l b6.LambdaExpression) (string, bool) {
 	body, ok := unparseExpression(l.Expression, true)
 	if !ok {
 		return "", false
@@ -1072,15 +1075,15 @@ func unparseLambda(l *b6.LambdaExpression) (string, bool) {
 
 func AddPipelines(e b6.Expression) b6.Expression {
 	switch e := e.AnyExpression.(type) {
-	case *b6.CallExpression:
+	case b6.CallExpression:
 		if len(e.Args) > 0 {
-			if _, ok := e.Args[0].AnyExpression.(*b6.CallExpression); ok {
+			if _, ok := e.Args[0].AnyExpression.(b6.CallExpression); ok {
 				args := make([]b6.Expression, len(e.Args))
 				for i := range e.Args {
 					args[i] = AddPipelines(e.Args[i])
 				}
 				return b6.Expression{
-					AnyExpression: &b6.CallExpression{
+					AnyExpression: b6.CallExpression{
 						Function:  AddPipelines(e.Function),
 						Args:      args,
 						Pipelined: true,
@@ -1088,9 +1091,9 @@ func AddPipelines(e b6.Expression) b6.Expression {
 				}
 			}
 		}
-	case *b6.LambdaExpression:
+	case b6.LambdaExpression:
 		return b6.Expression{
-			AnyExpression: &b6.LambdaExpression{
+			AnyExpression: b6.LambdaExpression{
 				Args:       e.Args,
 				Expression: AddPipelines(e.Expression),
 			},

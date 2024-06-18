@@ -162,10 +162,10 @@ func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	t.Key = y.Key
 	// TODO(mari): harmonise Value and Literal in expression.go
 	switch l := y.Value.AnyLiteral.(type) {
-	case *PointExpression:
-		t.Value = PointExpression(*l)
-	case *StringExpression:
-		t.Value = TryValueFromString(string(*l))
+	case PointExpression:
+		t.Value = PointExpression(l)
+	case StringExpression:
+		t.Value = TryValueFromString(string(l))
 	default:
 		return fmt.Errorf("can't use %T as tag values", l)
 	}

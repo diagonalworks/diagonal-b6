@@ -15,7 +15,7 @@ func TestExportCollectionExpressionAsYAML(t *testing.T) {
 		},
 		Values: []string{"good", "best"},
 	}
-	e := Expression{AnyExpression: &CollectionExpression{UntypedCollection: c.Collection()}}
+	e := Expression{AnyExpression: CollectionExpression{UntypedCollection: c.Collection()}}
 	m, err := yaml.Marshal(e)
 	if err != nil {
 		t.Fatalf("Expected no error, found: %s", err)

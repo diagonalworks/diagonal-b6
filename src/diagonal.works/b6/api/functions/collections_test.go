@@ -225,13 +225,13 @@ func TestCountKeys(t *testing.T) {
 
 func TestCountValidKeys(t *testing.T) {
 	origins := []b6.FeatureID{
-		b6.FeatureID{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/origin", Value: 0},
-		b6.FeatureID{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/origin", Value: 1},
+		{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/origin", Value: 0},
+		{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/origin", Value: 1},
 	}
 
 	destinations := []b6.FeatureID{
-		b6.FeatureID{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/destination", Value: 0},
-		b6.FeatureID{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/destination", Value: 1},
+		{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/destination", Value: 0},
+		{Type: b6.FeatureTypeArea, Namespace: "diagonal.works/test/destination", Value: 1},
 	}
 
 	collection := b6.ArrayCollection[b6.FeatureID, b6.FeatureID]{
