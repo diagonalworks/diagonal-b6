@@ -62,13 +62,13 @@ export const HistogramAdaptor = ({
             (l) => l.path === 'histogram'
         );
 
-        if (!histogram && outliner && histogramLayer) {
+        if (histogramLayer && outliner) {
             mapActions.setHistogramLayer(outliner.id, {
                 world: outliner.world,
                 spec: {
                     tiles: `/tiles/${histogramLayer.path}/{z}/{x}/{y}.mvt?q=${histogramLayer.q}&r=collection/${world.featureId.namespace}/${world.featureId.value}`,
-                    show: outliner.properties.show,
                     selected: undefined,
+                    showOnMap: outliner.properties.show,
                 },
             });
         }

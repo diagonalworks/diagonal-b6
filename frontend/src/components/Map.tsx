@@ -94,7 +94,7 @@ export const Map = ({
             .filter((h) => h.world === world)
             .flatMap((h) => h.features);
         return histogramData.flatMap((hist) => {
-            if (!hist.show) return [];
+            if (!hist.showOnMap) return [];
             return new MVTLayer({
                 data: [hist.tiles],
                 beforeId: 'road-label',

@@ -9,9 +9,9 @@ import { World } from '@/stores/worlds';
 
 type HistogramLayerSpec = {
     tiles: string;
-    show: boolean;
     selected: string | undefined;
     colorScale?: ScaleOrdinal<string, string, never>;
+    showOnMap?: boolean;
 };
 
 export type FeatureHighlight = {
