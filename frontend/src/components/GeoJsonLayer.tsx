@@ -64,16 +64,14 @@ function GeoJsonLayer({
         state.actions.getByWorld(world)
     );
 
-    const activeOutliners = useMemo(() => {
+    const visibleOutliners = useMemo(() => {
         return Object.values(outliners).filter(
-            (outliner) =>
-                outliner.world === world &&
-                (outliner.properties.active || outliner.properties.transient)
+            (outliner) => outliner.world === world && outliner.properties.show
         );
     }, [outliners, world]);
 
     const queries = useStacks(
-        activeOutliners.map((outliner) => ({
+        visibleOutliners.map((outliner) => ({
             request: outliner?.request,
             fallback: outliner.data,
         }))

@@ -11,14 +11,17 @@ import { useMap } from './useMap';
  * Highlight features on the map
  * @param world - The world the features are in
  * @param features - The features to highlight
+ * @param visible - Whether the features are visible
  * @returns The features that are highlighted
  */
 export const useHighlight = ({
     world,
     features,
+    visible,
 }: {
     world: World['id'];
     features?: FeatureIDsProto;
+    visible?: boolean;
 }) => {
     const { [world]: map } = useMapLibre();
     const [{ findFeatureInLayer, highlightFeature }] = useMap({ id: world });
@@ -60,7 +63,7 @@ export const useHighlight = ({
 
     useEffect(() => {
         geoJsonFeatures.forEach((feature) => {
-            highlightFeature({ ...feature, highlight: true });
+            highlightFeature({ ...feature, highlight: !!visible });
         });
 
         return () => {
@@ -72,7 +75,7 @@ export const useHighlight = ({
                 console.error(e);
             }
         };
-    }, [geoJsonFeatures, highlightFeature]);
+    }, [geoJsonFeatures, highlightFeature, visible]);
 
     return [geoJsonFeatures];
 };

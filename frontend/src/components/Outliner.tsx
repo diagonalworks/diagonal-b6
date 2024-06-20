@@ -26,23 +26,23 @@ function Outliner({
     useHighlight({
         world: outliner.world,
         features: stackData.data?.proto.highlighted,
+        visible: outliner.properties.show,
     });
 
     useEffect(() => {
-        if (
-            (outliner.properties.active || outliner.properties.transient) &&
-            stackData.data?.geoJSON
-        ) {
+        if (outliner.properties.show && stackData.data?.geoJSON) {
             mapActions.setGeoJsonLayer(outliner.id, {
                 world: outliner.world,
                 features: stackData.data.geoJSON,
             });
         }
+        if (!outliner.properties.show) {
+            mapActions.removeGeoJsonLayer(outliner.id);
+        }
     }, [
         outliner.id,
         outliner.world,
-        outliner.properties.active,
-        outliner.properties.transient,
+        outliner.properties.show,
         stackData.data?.geoJSON,
         mapActions,
     ]);
@@ -56,6 +56,7 @@ function Outliner({
     const handleOpenChange = useCallback(
         (open: boolean) => {
             outlinerActions.setActive(outliner.id, open);
+            outlinerActions.setVisibility(outliner.id, open);
             setOpen(open);
         },
         [outlinerActions, outliner.id]
@@ -100,6 +101,7 @@ function Outliner({
                                 substack={firstSubstack}
                                 collapsible={firstSubstack.collapsable}
                                 close={!outliner.properties.docked}
+                                show={!outliner.properties.docked}
                             />
                         </Stack.Trigger>
                     )}

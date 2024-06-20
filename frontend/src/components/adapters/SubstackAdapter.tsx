@@ -1,7 +1,9 @@
-import { useStackContext } from '@/lib/context/stack';
-import { SubstackProto } from '@/types/generated/ui';
 import { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
+
+import { useStackContext } from '@/lib/context/stack';
+import { SubstackProto } from '@/types/generated/ui';
+
 import { Stack } from '../system/Stack';
 import { HistogramAdaptor } from './HistogramAdapter';
 import { LineAdapter } from './LineAdapter';
@@ -10,11 +12,13 @@ export const SubstackAdapter = ({
     substack,
     collapsible = false,
     close,
+    show,
     analysisTitle,
 }: {
     substack: SubstackProto;
     collapsible?: boolean;
     close?: boolean;
+    show?: boolean;
     analysisTitle?: string; // @TODO: remove this, it's a hack to get the analysis title
 }) => {
     const [open, setOpen] = useState(collapsible ? false : true);
@@ -85,7 +89,10 @@ export const SubstackAdapter = ({
                             <LineAdapter
                                 key={i}
                                 line={l}
-                                close={close && i === 0}
+                                actions={{
+                                    close: close && i === 0,
+                                    show: show && i === 0,
+                                }}
                             />
                         );
                     })}

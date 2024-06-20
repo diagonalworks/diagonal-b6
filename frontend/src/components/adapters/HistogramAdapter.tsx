@@ -67,9 +67,7 @@ export const HistogramAdaptor = ({
                 world: outliner.world,
                 spec: {
                     tiles: `/tiles/${histogramLayer.path}/{z}/{x}/{y}.mvt?q=${histogramLayer.q}&r=collection/${world.featureId.namespace}/${world.featureId.value}`,
-                    show:
-                        outliner.properties.active ||
-                        outliner.properties.transient,
+                    show: outliner.properties.show,
                     selected: undefined,
                 },
             });

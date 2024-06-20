@@ -44,7 +44,9 @@ export default function World({
                 <GeoJsonLayer world={id} side={side} />
             </Map>
             <div className="absolute top-0 left-0 ">
-                {id !== 'baseline' && <ChangePanel world={id} id={id} />}
+                {id !== 'baseline' && (
+                    <ChangePanel world={id} id={id} key={id} />
+                )}
             </div>
         </div>
     );

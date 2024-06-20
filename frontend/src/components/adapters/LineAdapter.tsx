@@ -1,4 +1,8 @@
-import { Cross1Icon } from '@radix-ui/react-icons';
+import {
+    ComponentInstanceIcon,
+    ComponentNoneIcon,
+    Cross1Icon,
+} from '@radix-ui/react-icons';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
@@ -7,22 +11,30 @@ import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
 import { ShellAdapter } from '@/components/adapters/ShellAdapter';
 import { IconButton } from '@/components/system/IconButton';
 import { Line } from '@/components/system/Line';
-import { TooltipOverflow } from '@/components/system/Tooltip';
+import { Tooltip, TooltipOverflow } from '@/components/system/Tooltip';
 import { LineContextProvider } from '@/lib/context/line';
 import { useStackContext } from '@/lib/context/stack';
 import { LineProto, TagsLineProto } from '@/types/generated/ui';
 
 export const LineAdapter = ({
     line,
-    close,
+    actions,
 }: {
     line: LineProto;
-    close?: boolean;
+    actions?: {
+        show?: boolean;
+        close?: boolean;
+    };
 }) => {
     const clickable =
         line.value?.clickExpression ?? line.action?.clickExpression;
     const Wrapper = clickable ? Line.Button : React.Fragment;
-    const { close: closeFn, evaluateNode } = useStackContext();
+    const {
+        close: closeFn,
+        evaluateNode,
+        toggleVisibility,
+        outliner,
+    } = useStackContext();
 
     const handleLineClick = () => {
         if (!clickable) return;
@@ -86,17 +98,39 @@ export const LineAdapter = ({
                         </span>
                     )}
                     {line.tags && <Tags tagLine={line.tags} />}
-                    {close && (
-                        <IconButton
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                closeFn();
-                            }}
-                            className="close"
-                        >
-                            <Cross1Icon />
-                        </IconButton>
+                    {actions && (actions.show || actions.close) && (
+                        <div className="flex gap-1">
+                            {actions.show && (
+                                <Tooltip content={'Toggle visiblity'}>
+                                    <IconButton
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            toggleVisibility();
+                                        }}
+                                    >
+                                        {outliner &&
+                                        outliner.properties.show ? (
+                                            <ComponentInstanceIcon />
+                                        ) : (
+                                            <ComponentNoneIcon />
+                                        )}
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            {actions.close && (
+                                <IconButton
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        closeFn();
+                                    }}
+                                    className="close"
+                                >
+                                    <Cross1Icon />
+                                </IconButton>
+                            )}
+                        </div>
                     )}
                 </Wrapper>
             </Line>
