@@ -148,7 +148,7 @@ export default function ComparisonCard({
         <div>
             <div className="border-t border-x border-graphite-30">
                 {analysisTitle && (
-                    <Line className="border-b-0">
+                    <Line className="border-b-0 w-80">
                         <HeaderAdapter header={analysisTitle} />
                     </Line>
                 )}

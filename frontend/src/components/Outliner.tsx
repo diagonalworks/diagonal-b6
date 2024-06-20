@@ -96,7 +96,7 @@ function Outliner({
                     onOpenChange={handleOpenChange}
                 >
                     {firstSubstack && (
-                        <Stack.Trigger>
+                        <Stack.Trigger className="w-80">
                             <SubstackAdapter
                                 substack={firstSubstack}
                                 collapsible={firstSubstack.collapsable}
@@ -106,7 +106,7 @@ function Outliner({
                         </Stack.Trigger>
                     )}
                     {otherSubstacks && (
-                        <Stack.Content>
+                        <Stack.Content className="w-80">
                             {otherSubstacks.map((substack, i) => {
                                 return (
                                     <SubstackAdapter
@@ -131,14 +131,12 @@ const LoadingStack = ({ expression }: { expression: string }) => {
     return (
         <Stack>
             <Stack.Trigger>
-                <Stack.Trigger>
-                    <Line className="flex flex-nowrap ">
-                        <div className="loader shrink-0" />
-                        <div className="text-graphite-60 italic text-nowrap overflow-hidden overflow-ellipsis">
-                            {expression}
-                        </div>
-                    </Line>
-                </Stack.Trigger>
+                <Line className="flex flex-nowrap w-80 ">
+                    <div className="loader shrink-0" />
+                    <div className="text-graphite-60 italic text-nowrap overflow-hidden overflow-ellipsis">
+                        {expression}
+                    </div>
+                </Line>
             </Stack.Trigger>
         </Stack>
     );

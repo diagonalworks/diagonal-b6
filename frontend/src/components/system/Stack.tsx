@@ -27,10 +27,10 @@ const Root = React.forwardRef<
                 {...omit(props, 'collapsible')}
                 ref={forwardedRef}
                 className={twMerge(
-                    'border box-border border-graphite-30',
+                    'border  border-graphite-30',
                     props.open &&
                         props.collapsible &&
-                        'border border-graphite-50 transition-colors w-fit  ',
+                        'border border-graphite-50 transition-colors ',
                     'stack ',
                     '[&_.line]:border-t-0 [&_.stack]:border-0',
                     className
@@ -55,16 +55,16 @@ const Trigger = React.forwardRef<
     const { collapsible } = useStackContext();
 
     return (
-        <CollapsiblePrimitive.Trigger
-            {...props}
-            ref={forwardedRef}
-            className={twMerge(
-                collapsible &&
-                    'cursor-pointer select-none [&_.line]:data-[state=closed]:border-b-0',
-                className
-            )}
-        >
-            {children}
+        <CollapsiblePrimitive.Trigger {...props} ref={forwardedRef} asChild>
+            <div
+                className={twMerge(
+                    collapsible &&
+                        'cursor-pointer select-none [&_.line]:data-[state=closed]:border-b-0',
+                    className
+                )}
+            >
+                {children}
+            </div>
         </CollapsiblePrimitive.Trigger>
     );
 });
@@ -100,7 +100,7 @@ const Content = React.forwardRef<
                         exit={collapsible ? 'collapsed' : 'open'}
                         transition={{ duration: 0.5, type: 'spring' }}
                         className={twMerge(
-                            'text-base overflow-hidden overflow-y-auto',
+                            'text-base overflow-y-auto ',
                             header &&
                                 'group-[&_.line]:border-t-0 group-[&_.stack]:border-t-0',
                             className
