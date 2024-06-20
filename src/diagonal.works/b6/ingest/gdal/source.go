@@ -265,12 +265,12 @@ func newFeatureFromS2Region(r s2.Region) ingest.Feature {
 	case s2.Point:
 		return &ingest.GenericFeature{
 			ID:   b6.FeatureIDInvalid,
-			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromPoint(g))}},
+			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromPoint(g))}},
 		}
 	case *s2.Polyline:
 		f := &ingest.GenericFeature{}
 		for i, p := range *g {
-			f.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.LatLng(s2.LatLngFromPoint(p))}, i)
+			f.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.PointExpression(s2.LatLngFromPoint(p))}, i)
 		}
 		return f
 	case *s2.Polygon:
@@ -334,7 +334,7 @@ type copyFields []copyField
 func (c copyFields) Fill(f *gdal.Feature, tags []b6.Tag) ([]b6.Tag, error) {
 	for _, cc := range c {
 		if value, err := cc.Value(f); err == nil {
-			tags = append(tags, b6.Tag{Key: cc.Key, Value: b6.String(value)})
+			tags = append(tags, b6.Tag{Key: cc.Key, Value: b6.StringExpression(value)})
 		} else {
 			return nil, err
 		}

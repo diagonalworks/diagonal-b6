@@ -390,6 +390,49 @@ func TestShortestPathFromBuildingWithMoreThanOneEntrance(t *testing.T) {
 	}
 }
 
+func TestShortestPathFromUnconnectedPointOnBuilding(t *testing.T) {
+	// If we attempt to traverse from a point on a building, which isn't directly
+	// connected to any other path, we should treat it as a search from that
+	// building.
+	camden := camden.BuildCamdenForTests(t)
+
+	stPancras := b6.FindAreaByID(ingest.AreaIDFromOSMWayID(4256246), camden)
+	if stPancras == nil {
+		t.Fatal("Expected to find St Pancras")
+	}
+
+	origin := b6.FeatureIDInvalid
+	for i := 0; i < stPancras.Len(); i++ {
+		for _, path := range stPancras.Feature(i) {
+			for _, r := range path.References() {
+				highways := 0
+				fs := camden.FindReferences(r.Source())
+				for fs.Next() {
+					f := camden.FindFeatureByID(fs.FeatureID())
+					if f.Get("#highway").IsValid() {
+						highways++
+					}
+				}
+				if highways == 0 {
+					origin = r.Source()
+					break
+				}
+			}
+		}
+	}
+
+	if !origin.IsValid() {
+		t.Fatal("Expected to find unconnected point on St Pancras")
+	}
+
+	weights := SimpleHighwayWeights{}
+	search := NewShortestPathSearchFromFeature(camden.FindFeatureByID(origin), weights, camden)
+	search.ExpandSearch(500.0, weights, Points, camden)
+	if len(search.PointDistances()) <= 1 {
+		t.Fatal("Expected to be able to traverse from a disconnected point on a building")
+	}
+}
+
 func TestShortestPathReturnsBuildings(t *testing.T) {
 	w := camden.BuildCamdenForTests(t)
 
@@ -398,7 +441,7 @@ func TestShortestPathReturnsBuildings(t *testing.T) {
 	if from == nil {
 		t.Fatal("Failed to find from node")
 	}
-	s := NewShortestPathSearchFromPoint(from.FeatureID())
+	s := NewShortestPathSearchFromPoint(from.FeatureID(), SimpleWeights{}, w)
 	s.ExpandSearch(500.0, SimpleWeights{}, PointsAndAreas, w)
 
 	expected := ingest.AreaIDFromOSMWayID(camden.CoalDropsYardWestBuildingWay)
@@ -424,13 +467,19 @@ func TestElevationWeights(t *testing.T) {
 	camden := camden.BuildCamdenForTests(t)
 
 	camdenWithHill := ingest.NewMutableTagsOverlayWorld(camden)
-	camdenWithHill.AddTag(ingest.FromOSMNodeID(4931754283).FeatureID(), b6.Tag{Key: "ele", Value: b6.String("100")})
-	camdenWithHill.AddTag(ingest.FromOSMNodeID(6773349520).FeatureID(), b6.Tag{Key: "ele", Value: b6.String("200")})
+	camdenWithHill.AddTag(ingest.FromOSMNodeID(4931754283).FeatureID(), b6.Tag{Key: "ele", Value: b6.StringExpression("100")})
+	camdenWithHill.AddTag(ingest.FromOSMNodeID(6773349520).FeatureID(), b6.Tag{Key: "ele", Value: b6.StringExpression("200")})
+
+	weights := ElevationWeights{
+		Weights:       WalkingTimeWeights{Speed: WalkingMetersPerSecond},
+		UpHillPenalty: 1.2,
+		W:             camdenWithHill,
+	}
 
 	path := ComputeShortestPath(
 		ingest.FromOSMNodeID(33000703),
 		ingest.FromOSMNodeID(970237231),
-		500.0, ElevationWeights{UpHillHard: true, w: camdenWithHill}, camdenWithHill)
+		500.0, weights, camdenWithHill)
 	wayIDs := make(map[osm.WayID]bool)
 	for _, segment := range path {
 		wayIDs[osm.WayID(segment.Feature.FeatureID().Value)] = true
@@ -466,8 +515,9 @@ func TestBuildRoute(t *testing.T) {
 		t.Fatal("Expected a point reference")
 	}
 
-	s := NewShortestPathSearchFromPoint(from)
-	s.ExpandSearchTo(to, 1000.0, WalkingTimeWeights{Speed: WalkingMetersPerSecond}, camden)
+	weights := WalkingTimeWeights{Speed: WalkingMetersPerSecond}
+	s := NewShortestPathSearchFromPoint(from, weights, camden)
+	s.ExpandSearchTo(to, 1000.0, weights, camden)
 	route := s.BuildRoute(to)
 
 	if steps := len(route.Steps); steps < 35 || steps > 45 {

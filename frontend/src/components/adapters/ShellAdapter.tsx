@@ -1,9 +1,9 @@
+import { useMemo } from 'react';
+
 import { Shell } from '@/components/system/Shell';
 import { useMap } from '@/hooks/useMap';
 import { useStackContext } from '@/lib/context/stack';
-
 import { ShellLineProto } from '@/types/generated/ui';
-import { useMemo } from 'react';
 
 export const ShellAdapter = ({ shell }: { shell?: ShellLineProto }) => {
     const { evaluateExpressionInOutliner } = useStackContext();

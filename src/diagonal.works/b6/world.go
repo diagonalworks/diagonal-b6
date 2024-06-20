@@ -16,57 +16,28 @@ import (
 )
 
 // TODO(mari): harmonise Value and Literal in expression.go
-type ValueType int
-
-const (
-	ValueTypeString ValueType = iota
-	ValueTypeLatLng
-	ValueTypeValues
-	ValueTypeFeatureID
-)
-
 type Value interface {
 	String() string
 	ValueType() ValueType
 }
 
-func ValueFromString(s string, t ValueType) Value {
+func ValueFromString(s string, t ValueType) Value { // TODO(mari): from string part of expression interface
 	switch t {
 	case ValueTypeString:
-		return String(s)
-	case ValueTypeLatLng:
+		return StringExpression(s)
+	case ValueTypePoint:
 		if ll, err := LatLngFromString(s); err == nil {
-			return LatLng(ll)
+			return PointExpression(ll)
 		}
 	case ValueTypeFeatureID:
 		if id := FeatureIDFromString(s); id.IsValid() {
-			return id
+			return FeatureIDExpression(id)
 		}
 	case ValueTypeValues:
 		return ValuesFromString(s)
 	}
 
 	panic("not implemented")
-}
-
-type String string
-
-func (s String) String() string {
-	return string(s)
-}
-
-func (s String) ValueType() ValueType {
-	return ValueTypeString
-}
-
-type LatLng s2.LatLng
-
-func (ll LatLng) String() string {
-	return LatLngToString(s2.LatLng(ll))
-}
-
-func (ll LatLng) ValueType() ValueType {
-	return ValueTypeLatLng
 }
 
 type Values []Value
@@ -88,11 +59,11 @@ func TryValueFromString(s string) Value {
 	if strings.Contains(s, valuesDelimiter) {
 		return ValuesFromString(s)
 	} else if ll, err := LatLngFromString(s); err == nil {
-		return LatLng(ll)
+		return PointExpression(ll)
 	} else if id := FeatureIDFromString(s); id.IsValid() {
-		return id
+		return FeatureIDExpression(id)
 	} else {
-		return String(s)
+		return StringExpression(s)
 	}
 }
 
@@ -140,17 +111,17 @@ func (t *Tag) FromString(s string, typ ValueType) {
 	t.Value = ValueFromString(value, typ)
 }
 
-func (t Tag) Equal(other Tag) bool {
+func (t Tag) Equal(other Tag) bool { // TODO(mari): reuse expression equal
 	if t.Key != other.Key {
 		return false
 	}
 	switch v := t.Value.(type) {
-	case String:
-		if o, ok := other.Value.(String); ok {
+	case StringExpression:
+		if o, ok := other.Value.(StringExpression); ok {
 			return string(v) == string(o)
 		}
-	case LatLng:
-		if o, ok := other.Value.(LatLng); ok {
+	case PointExpression:
+		if o, ok := other.Value.(PointExpression); ok {
 			return s2.LatLng(v) == s2.LatLng(o)
 		}
 	case Values:
@@ -165,7 +136,7 @@ type tagYAML struct {
 }
 
 func (t Tag) MarshalYAML() (interface{}, error) {
-	if s, ok := t.Value.(String); ok {
+	if s, ok := t.Value.(StringExpression); ok {
 		return escapeTagPart(t.Key) + "=" + escapeTagPart(s.String()), nil
 	} else if t.Value == nil {
 		return escapeTagPart(t.Key) + "=\"\"", nil
@@ -189,10 +160,10 @@ func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	t.Key = y.Key
-	// TODO: harmonise Value and Literal in expression.go
+	// TODO(mari): harmonise Value and Literal in expression.go
 	switch l := y.Value.AnyLiteral.(type) {
 	case *PointExpression:
-		t.Value = LatLng(*l)
+		t.Value = PointExpression(*l)
 	case *StringExpression:
 		t.Value = TryValueFromString(string(*l))
 	default:
@@ -272,7 +243,7 @@ func consumeTagPart(s string) (string, string) {
 }
 
 func InvalidTag() Tag {
-	return Tag{Value: String("")}
+	return Tag{Value: StringExpression("")}
 }
 
 type Taggable interface {
@@ -312,7 +283,7 @@ func (t Tags) TagOrFallback(key string, fallback string) Tag {
 	if value := t.Get(key); value.IsValid() {
 		return value
 	}
-	return Tag{Key: key, Value: String(fallback)}
+	return Tag{Key: key, Value: StringExpression(fallback)}
 }
 
 func (t *Tags) SetTags(tags []Tag) {
@@ -334,7 +305,7 @@ func (t *Tags) ModifyOrAddTag(tag Tag) (bool, Value) {
 		}
 	}
 	t.AddTag(tag)
-	return false, String("")
+	return false, StringExpression("")
 }
 
 func (t *Tags) ModifyOrAddTagAt(tag Tag, index int) (bool, Value) {
@@ -346,7 +317,7 @@ func (t *Tags) ModifyOrAddTagAt(tag Tag, index int) (bool, Value) {
 		}
 	}
 	t.AddTag(Tag{tag.Key, Set(make([]Value, 0), tag.Value, index)})
-	return false, String("")
+	return false, StringExpression("")
 }
 
 func (t *Tags) RemoveTag(key string) {
@@ -413,8 +384,8 @@ func (t *Tags) References() []Reference {
 	var refs []Reference
 	if r := t.Get(PathTag); r.IsValid() && r.Value != nil && r.ValueType() == ValueTypeValues {
 		for i, v := range r.Value.(Values) {
-			if v, ok := v.(FeatureID); ok && v.IsValid() {
-				refs = append(refs, &IndexedFeatureID{v, i})
+			if v, ok := v.(FeatureIDExpression); ok && FeatureID(v).IsValid() {
+				refs = append(refs, &IndexedFeatureID{FeatureID(v), i})
 			}
 		}
 	}
@@ -538,7 +509,7 @@ type Identifiable interface {
 	FeatureID() FeatureID
 }
 
-type FeatureID struct {
+type FeatureID struct { // TODO(mari): consolidate with FeatureIDExpression once u remove literals
 	Type      FeatureType
 	Namespace Namespace
 	Value     uint64
@@ -562,10 +533,6 @@ func (f FeatureID) Less(other FeatureID) bool {
 
 func (f FeatureID) String() string {
 	return fmt.Sprintf("%s/%s/%d", f.Type.String(), f.Namespace, f.Value)
-}
-
-func (f FeatureID) ValueType() ValueType {
-	return ValueTypeFeatureID
 }
 
 func (f FeatureID) MarshalJSON() ([]byte, error) {
@@ -988,7 +955,7 @@ func (t *Tags) GeometryLen() int {
 }
 
 func (t *Tags) PointAt(i int) s2.Point {
-	if ll, ok := t.GetAt(PathTag, i).(LatLng); ok {
+	if ll, ok := t.GetAt(PathTag, i).(PointExpression); ok {
 		return s2.PointFromLatLng(s2.LatLng(ll))
 	}
 

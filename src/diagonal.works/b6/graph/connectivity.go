@@ -349,9 +349,9 @@ func (c *Connections) ApplyToPath(path b6.PhysicalFeature) ingest.Feature {
 	for i, p := range ids {
 		var v b6.Value
 		if p != b6.FeatureIDInvalid {
-			v = p
+			v = b6.FeatureIDExpression(p)
 		} else {
-			v = b6.LatLng(s2.LatLngFromPoint(points[i]))
+			v = b6.PointExpression(s2.LatLngFromPoint(points[i]))
 		}
 		applied.ModifyOrAddTagAt(b6.Tag{b6.PathTag, v}, i)
 	}
@@ -386,12 +386,12 @@ func (c *Connections) EachInsertedPoint(f func(id b6.FeatureID, ll s2.LatLng) er
 func (c *Connections) EachAddedPath(emit ingest.Emit) error {
 	last := [2]b6.FeatureID{b6.FeatureIDInvalid, b6.FeatureIDInvalid}
 	path := ingest.GenericFeature{}
-	path.AddTag(b6.Tag{Key: "diagonal", Value: b6.String("connection")})
+	path.AddTag(b6.Tag{Key: "diagonal", Value: b6.StringExpression("connection")})
 	for _, a := range c.additions {
 		if a != last {
 			last = a
 			path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespaceDiagonalAccessPaths, hashIDs(a)})
-			path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{a[0], a[1]})})
+			path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(a[0]), b6.FeatureIDExpression(a[1])})})
 			if err := emit(&path, 0); err != nil {
 				return err
 			}
@@ -412,7 +412,7 @@ func (c *Connections) Change(w b6.World) ingest.Change {
 		}
 	}
 	f := func(id b6.FeatureID, ll s2.LatLng) error {
-		*change = append(*change, &ingest.GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(ll)}}})
+		*change = append(*change, &ingest.GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(ll)}}})
 		return nil
 	}
 	c.EachInsertedPoint(f, w)
@@ -451,7 +451,7 @@ func (m *modifyWorldSource) Read(options ingest.ReadOptions, emit ingest.Emit, c
 	if !o.SkipPoints {
 		var point ingest.Feature
 		f := func(id b6.FeatureID, ll s2.LatLng) error {
-			point = &ingest.GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(ll)}}}
+			point = &ingest.GenericFeature{ID: id, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(ll)}}}
 			return emit(point, 0)
 		}
 		if err := m.Connections.EachInsertedPoint(f, m.World); err != nil {

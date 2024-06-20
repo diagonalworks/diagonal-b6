@@ -158,10 +158,13 @@ func IsPathUsableByPedestrian(path b6.Feature) bool {
 	return false
 }
 
+const NaismithPenalty = 6.0 // Number of seconds added per meter climbed
+
 type ElevationWeights struct {
-	UpHillHard   bool
-	DownHillHard bool
-	w            b6.World
+	UpHillPenalty   float64
+	DownHillPenalty float64
+	Weights         Weights
+	W               b6.World
 }
 
 func (ElevationWeights) IsUseable(segment b6.Segment) bool {
@@ -169,7 +172,7 @@ func (ElevationWeights) IsUseable(segment b6.Segment) bool {
 }
 
 func (e ElevationWeights) Weight(segment b6.Segment) float64 {
-	var weight float64
+	weight := e.Weights.Weight(segment)
 
 	elevation, fromMemory := 0.0, false
 
@@ -179,11 +182,8 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 	}
 
 	for i := first; i < last; i++ {
-		if start, ok := e.w.FindFeatureByID(segment.Feature.Reference(i).Source()).(b6.PhysicalFeature); start != nil && ok {
-			if stop, ok := e.w.FindFeatureByID(segment.Feature.Reference(i + 1).Source()).(b6.PhysicalFeature); stop != nil && ok {
-
-				w := b6.AngleToMeters((*s2.Polyline)(&[]s2.Point{start.Point(), stop.Point()}).Length())
-
+		if start, ok := e.W.FindFeatureByID(segment.Feature.Reference(i).Source()).(b6.PhysicalFeature); start != nil && ok {
+			if stop, ok := e.W.FindFeatureByID(segment.Feature.Reference(i + 1).Source()).(b6.PhysicalFeature); stop != nil && ok {
 				startElevation, err := strconv.ParseFloat(start.Get("ele").Value.String(), 64)
 				if err == nil {
 					elevation, fromMemory = startElevation, true
@@ -193,16 +193,13 @@ func (e ElevationWeights) Weight(segment b6.Segment) float64 {
 
 				stopElevation, err := strconv.ParseFloat(stop.Get("ele").Value.String(), 64)
 
+				w := 0.0
 				if fromMemory && err == nil {
-					if stopElevation > startElevation { // Ascending.
-						// Naismith’s Rule adds ~6s/m of elevation,
-						// which we're normalizing against 1.38m/s avg. walking speed.
-						w += (stopElevation - startElevation) * 6 * WalkingMetersPerSecond
-					}
-
-					if (e.UpHillHard && stopElevation > startElevation) ||
-						(e.DownHillHard && stopElevation < startElevation) {
-						w *= 1.2 // Arbitrary coefficient.
+					w = math.Abs(stopElevation-startElevation) * NaismithPenalty
+					if stopElevation > startElevation {
+						w *= e.UpHillPenalty
+					} else {
+						w *= e.DownHillPenalty // 0.0 by default
 					}
 				}
 
@@ -322,7 +319,7 @@ func NewShortestPathSearchFromFeature(f b6.Feature, weights Weights, w b6.World)
 	if f, ok := f.(b6.PhysicalFeature); ok {
 		switch f.GeometryType() {
 		case b6.GeometryTypePoint:
-			return NewShortestPathSearchFromPoint(f.FeatureID())
+			return NewShortestPathSearchFromPoint(f.FeatureID(), weights, w)
 		case b6.GeometryTypeArea:
 			return NewShortestPathSearchFromBuilding(f.(b6.AreaFeature), weights, w)
 		}
@@ -330,10 +327,27 @@ func NewShortestPathSearchFromFeature(f b6.Feature, weights Weights, w b6.World)
 	return newShortestPathSearch()
 }
 
-func NewShortestPathSearchFromPoint(from b6.FeatureID) *ShortestPathSearch {
+func NewShortestPathSearchFromPoint(from b6.FeatureID, weights Weights, w b6.World) *ShortestPathSearch {
+	connected := false
+	buildings := make([]b6.Feature, 0)
+	rs := w.FindReferences(from)
+	for rs.Next() {
+		f := w.FindFeatureByID(rs.FeatureID())
+		if p, ok := f.(b6.PhysicalFeature); ok && weights.IsUseable(b6.Segment{Feature: p}) {
+			connected = true
+			break
+		}
+		if building := f.Get("#building"); building.IsValid() {
+			buildings = append(buildings, f)
+		}
+	}
 	s := newShortestPathSearch()
-	s.queue = append(s.queue, &reachable{point: from, visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: 0})
-	s.byPoint[from] = s.queue[0]
+	if connected {
+		s.queue = append(s.queue, &reachable{point: from, visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: 0})
+		s.byPoint[from] = s.queue[0]
+	} else {
+		s.FillOriginsFromBuildings(buildings, weights, w)
+	}
 	return s
 }
 
@@ -347,23 +361,9 @@ func isConnected(p b6.FeatureID, weights Weights, w b6.World) bool {
 	return false
 }
 
-func NewShortestPathSearchFromBuilding(area b6.AreaFeature, weights Weights, w b6.World) *ShortestPathSearch {
+func NewShortestPathSearchFromBuilding(building b6.AreaFeature, weights Weights, w b6.World) *ShortestPathSearch {
 	s := newShortestPathSearch()
-	for i := 0; i < area.Len(); i++ {
-		for _, path := range area.Feature(i) {
-			for _, r := range path.References() {
-				if point := w.FindFeatureByID(r.Source()); point != nil {
-					if isConnected(point.FeatureID(), weights, w) {
-						r := &reachable{point: point.FeatureID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
-						s.queue = append(s.queue, r)
-					}
-				}
-			}
-		}
-	}
-	for _, r := range s.queue {
-		s.byPoint[r.point] = r
-	}
+	s.FillOriginsFromBuildings([]b6.Feature{building}, weights, w)
 	return s
 }
 
@@ -374,6 +374,29 @@ func newShortestPathSearch() *ShortestPathSearch {
 		byArea:     make(map[b6.AreaID]*reachable),
 		pathStates: make(map[b6.SegmentKey]PathState),
 	}
+}
+
+func (s *ShortestPathSearch) FillOriginsFromBuildings(buildings []b6.Feature, weights Weights, w b6.World) {
+	for _, f := range buildings {
+		if area, ok := f.(b6.AreaFeature); ok {
+			for i := 0; i < area.Len(); i++ {
+				for _, path := range area.Feature(i) {
+					for _, r := range path.References() {
+						if point := w.FindFeatureByID(r.Source()); point != nil {
+							if isConnected(point.FeatureID(), weights, w) {
+								r := &reachable{point: point.FeatureID(), visited: false, distance: 0.0, segment: b6.SegmentInvalid, index: len(s.queue)}
+								s.queue = append(s.queue, r)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	for _, r := range s.queue {
+		s.byPoint[r.point] = r
+	}
+
 }
 
 func (s *ShortestPathSearch) Len() int { return len(s.queue) }
@@ -615,13 +638,13 @@ func (s *ShortestPathSearch) PathStates() map[b6.SegmentKey]PathState {
 }
 
 func ComputeShortestPath(from b6.FeatureID, to b6.FeatureID, maxDistance float64, weights Weights, w b6.World) []b6.Segment {
-	s := NewShortestPathSearchFromPoint(from)
+	s := NewShortestPathSearchFromPoint(from, weights, w)
 	s.ExpandSearchTo(to, maxDistance, weights, w)
 	return s.BuildPath(to)
 }
 
 func ComputeAccessibility(from b6.FeatureID, maxDistance float64, weights Weights, w b6.World) (map[b6.FeatureID]float64, map[b6.SegmentKey]int) {
-	s := NewShortestPathSearchFromPoint(from)
+	s := NewShortestPathSearchFromPoint(from, weights, w)
 	s.ExpandSearch(maxDistance, weights, Points, w)
 	// TODO: Rework this API: We shouldn't have to do PointDistances() and the Fill()
 	distances := s.PointDistances()

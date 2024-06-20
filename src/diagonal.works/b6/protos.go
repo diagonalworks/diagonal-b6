@@ -63,6 +63,8 @@ func NewProtoFromFeatureType(t FeatureType) pb.FeatureType {
 		return pb.FeatureType_FeatureTypeCollection
 	case FeatureTypeExpression:
 		return pb.FeatureType_FeatureTypeExpression
+	case FeatureTypeInvalid:
+		return pb.FeatureType_FeatureTypeInvalid
 	}
 	panic(fmt.Sprintf("Invalid FeatureType: %s", t))
 }

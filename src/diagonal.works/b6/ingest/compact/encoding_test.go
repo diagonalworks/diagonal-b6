@@ -187,7 +187,7 @@ func TestStringTagEncoding(t *testing.T) {
 	}
 
 	m := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}
-	expected := b6.Tags{{Key: "highway", Value: b6.String("primary")}, {Key: "bicycle", Value: b6.String("designated")}}
+	expected := b6.Tags{{Key: "highway", Value: b6.StringExpression("primary")}, {Key: "bicycle", Value: b6.StringExpression("designated")}}
 	if found := m.AllTags(); !reflect.DeepEqual(found, expected) {
 		t.Errorf("Expected %+v, found %+v", expected, found)
 	}
@@ -221,7 +221,7 @@ func TestPointTagEncoding(t *testing.T) {
 	}
 
 	m := MarshalledTags{Tags: buffer[0:n], Strings: encoding.StringMap(s)}
-	expected := b6.Tags{{Key: "latlng", Value: b6.LatLng(ll)}}
+	expected := b6.Tags{{Key: "latlng", Value: b6.PointExpression(ll)}}
 	if found := m.AllTags(); !reflect.DeepEqual(found, expected) {
 		t.Errorf("Expected %+v, found %+v", expected, found)
 	}

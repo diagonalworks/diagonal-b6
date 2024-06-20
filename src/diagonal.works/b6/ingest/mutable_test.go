@@ -33,14 +33,14 @@ var mutableWorldCreators = []struct {
 func osmPoint(id osm.NodeID, lat float64, lng float64) Feature {
 	return &GenericFeature{
 		ID:   FromOSMNodeID(id).FeatureID(),
-		Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(lat, lng))}}}
+		Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(lat, lng))}}}
 }
 
 func osmPath(id osm.WayID, points []Feature) *GenericFeature {
 	path := GenericFeature{}
 	path.SetFeatureID(FromOSMWayID(id))
 	for i, point := range points {
-		path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, point.FeatureID()}, i)
+		path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(point.FeatureID())}, i)
 	}
 	return &path
 }
@@ -121,25 +121,25 @@ func ValidateReplaceFeatureWithAdditionalTag(w MutableWorld, t *testing.T) {
 	start := osmPoint(5384190463, 51.5358664, -0.1272493)
 	end := osmPoint(5384190494, 51.5362126, -0.1270125)
 	path := osmPath(558345071, []Feature{start, end})
-	path.ModifyOrAddTag(b6.Tag{Key: "#highway", Value: b6.String("footway")})
+	path.ModifyOrAddTag(b6.Tag{Key: "#highway", Value: b6.StringExpression("footway")})
 
 	if err := addFeatures(w, start, end, path); err != nil {
 		t.Fatal(err)
 	}
 
-	paths := b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#highway", Value: b6.String("footway")}}))
+	paths := b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#highway", Value: b6.StringExpression("footway")}}))
 	if len(paths) != 1 || paths[0].FeatureID() != path.FeatureID() {
 		t.Error("Expected to find one path")
 	}
 
-	paths = b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#bridge", Value: b6.String("yes")}}))
+	paths = b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Tagged{Key: "#bridge", Value: b6.StringExpression("yes")}}))
 	if len(paths) != 0 {
 		t.Error("Didn't expect to find any bridges")
 	}
 
-	path.Tags = append(path.Tags, b6.Tag{Key: "#bridge", Value: b6.String("yes")})
+	path.Tags = append(path.Tags, b6.Tag{Key: "#bridge", Value: b6.StringExpression("yes")})
 	w.AddFeature(path)
-	paths = b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Intersection{b6.Tagged{Key: "#highway", Value: b6.String("footway")}, b6.Tagged{Key: "#bridge", Value: b6.String("yes")}}}))
+	paths = b6.AllFeatures(w.FindFeatures(b6.Typed{b6.FeatureTypePath, b6.Intersection{b6.Tagged{Key: "#highway", Value: b6.StringExpression("footway")}, b6.Tagged{Key: "#bridge", Value: b6.StringExpression("yes")}}}))
 	if len(paths) != 1 || paths[0].FeatureID() != path.FeatureID() {
 		t.Errorf("Expected to find one path, found %d", len(paths))
 	}
@@ -164,7 +164,7 @@ func ValidateUpdatePathConnectivity(w MutableWorld, t *testing.T) {
 
 	// Swap pathC from c -> a to c -> b
 	path := NewFeatureFromWorld(w.FindFeatureByID(ca.FeatureID())).(Feature)
-	path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b.FeatureID()}, 1)
+	path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(b.FeatureID())}, 1)
 	if w.AddFeature(path) != nil {
 		t.Error("Failed to swap path c -> b")
 	}
@@ -204,7 +204,7 @@ func ValidateUpdateAreasByPointWhenChangingPointsOnAPath(w MutableWorld, t *test
 
 	// Replace a point on the path
 	modifiedPath := NewFeatureFromWorld(w.FindFeatureByID(path.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, d.FeatureID()}, 1)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(d.FeatureID())}, 1)
 	if err := addFeatures(w, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -256,8 +256,8 @@ func ValidateUpdateAreasSharingAPointOnAPath(w MutableWorld, t *testing.T) {
 
 	// Replace points on pathA
 	modifiedPath := NewFeatureFromWorld(w.FindFeatureByID(pathA.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, h.FeatureID()}, 0)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, h.FeatureID()}, 3)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(h.FeatureID())}, 0)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(h.FeatureID())}, 3)
 	if err := addFeatures(w, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -356,15 +356,15 @@ func ValidateUpdateRelationsByFeatureWhenChangingRelations(w MutableWorld, t *te
 	c := osmPoint(4966136655, 51.5349570, -0.1256696)
 
 	ab := &GenericFeature{ID: FromOSMWayID(807925586)}
-	ab.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{a.FeatureID(), b.FeatureID()})})
+	ab.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(a.FeatureID()), b6.FeatureIDExpression(b.FeatureID())})})
 
 	bc := &GenericFeature{ID: FromOSMWayID(558345068)}
-	bc.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b.FeatureID(), c.FeatureID()})})
+	bc.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(b.FeatureID()), b6.FeatureIDExpression(c.FeatureID())})})
 
 	relation := NewRelationFeature(1)
 	relation.RelationID = FromOSMRelationID(11139964)
 	relation.Members[0] = b6.RelationMember{ID: ab.FeatureID()}
-	relation.Tags = []b6.Tag{{Key: "type", Value: b6.String("route")}}
+	relation.Tags = []b6.Tag{{Key: "type", Value: b6.StringExpression("route")}}
 
 	if err := addFeatures(w, a, b, c, ab, bc, relation); err != nil {
 		t.Fatal(err)
@@ -466,8 +466,8 @@ func ValidateUpdatingPathUpdatesS2CellIndex(w MutableWorld, t *testing.T) {
 	}
 
 	modifiedPath := NewFeatureFromWorld(w.FindFeatureByID(path.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, e.FeatureID()}, 2)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, f.FeatureID()}, 3)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(e.FeatureID())}, 2)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(f.FeatureID())}, 3)
 	if err := addFeatures(w, e, f, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -505,8 +505,8 @@ func ValidateUpdatingPointLocationsUpdatesS2CellIndex(w MutableWorld, t *testing
 	}
 
 	// Eastern Handyside Canopy, East edge
-	newC := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5358965, -0.1230551))}}}
-	newD := &GenericFeature{ID: d.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5370349, -0.1232719))}}}
+	newC := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5358965, -0.1230551))}}}
+	newD := &GenericFeature{ID: d.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5370349, -0.1232719))}}}
 
 	if err := addFeatures(w, newC, newD); err != nil {
 		t.Fatal(err)
@@ -537,7 +537,7 @@ func ValidateUpdatingPointLocationsWillFailIfAreasAreInvalidated(w MutableWorld,
 		t.Fatal(err)
 	}
 
-	modifiedPoint := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5368549, -0.1256275))}}}
+	modifiedPoint := &GenericFeature{ID: c.FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5368549, -0.1256275))}}}
 
 	if addFeatures(w, modifiedPoint) == nil {
 		t.Error("Expected adding point to fail, as it invalidates an area")
@@ -566,7 +566,7 @@ func ValidateUpdatingPathWillFailIfAreasAreInvalidated(w MutableWorld, t *testin
 	}
 
 	modifiedPath := NewFeatureFromWorld(w.FindFeatureByID(path.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, e.FeatureID()}, 2)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(e.FeatureID())}, 2)
 
 	if w.AddFeature(modifiedPath) == nil {
 		t.Error("Expected adding path to fail, as it invalidates an area")
@@ -593,12 +593,12 @@ func ValidateAddingFeaturesWithNoIDFails(w MutableWorld, t *testing.T) {
 
 func ValidateAddTagToExistingFeature(w MutableWorld, t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
 	if err := addFeatures(w, caravan); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.String("restaurant")}); err != nil {
+	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.StringExpression("restaurant")}); err != nil {
 		t.Fatalf("Failed to add tag: %s", err)
 	}
 
@@ -653,7 +653,7 @@ func ValidateRepeatedModificationChangingNodes(id osm.WayID, find func(b6.World)
 	d := osmPoint(2309943872, 51.5372656, -0.1248160)
 
 	path := osmPath(id, []Feature{a, b, c, d, a})
-	path.ModifyOrAddTag(b6.Tag{Key: "#highway", Value: b6.String("primary")})
+	path.ModifyOrAddTag(b6.Tag{Key: "#highway", Value: b6.StringExpression("primary")})
 	if err := addFeatures(w, a, b, c, d, path); err != nil {
 		t.Fatal(err)
 	}
@@ -671,7 +671,7 @@ func ValidateRepeatedModificationChangingNodes(id osm.WayID, find func(b6.World)
 			t.Fatal("Failed to find feature")
 		}
 		modifiedPath := NewFeatureFromWorld(found).(Feature)
-		modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, modifiedPoint.FeatureID()}, i)
+		modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(modifiedPoint.FeatureID())}, i)
 		if err := w.AddFeature(modifiedPath); err != nil {
 			t.Fatal(err)
 		}
@@ -695,7 +695,7 @@ func ValidateRepeatedModificationAddingNodes(id osm.WayID, find func(b6.World) b
 	e := osmPoint(4031177264, 51.5368549, -0.1256275)
 
 	path := osmPath(id, []Feature{a, b})
-	path.ModifyOrAddTag(b6.Tag{Key: "#highway", Value: b6.String("primary")})
+	path.ModifyOrAddTag(b6.Tag{Key: "#highway", Value: b6.StringExpression("primary")})
 	if err := addFeatures(w, a, b, c, d, e, path); err != nil {
 		t.Fatal(err)
 	}
@@ -712,11 +712,11 @@ func ValidateRepeatedModificationAddingNodes(id osm.WayID, find func(b6.World) b
 		insert := 0
 		for j := 0; j < len(found.References()); j++ {
 			if j == 1 {
-				newPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, newPoints[i].FeatureID()}, insert)
+				newPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(newPoints[i].FeatureID())}, insert)
 				insert++
 			}
 			id := found.Reference(j).Source()
-			newPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, id}, insert)
+			newPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(id)}, insert)
 			insert++
 		}
 		if err := w.AddFeature(newPath); err != nil {
@@ -738,22 +738,22 @@ func ValidateRepeatedModificationAddingNodes(id osm.WayID, find func(b6.World) b
 
 func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
 
 	lighterman := osmPoint(427900370, 51.5353986, -0.1243711)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
-	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.StringExpression("restaurant")})
 
 	if err := addFeatures(w, caravan, lighterman); err != nil {
 		t.Fatal(err)
 	}
 
-	points := w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	points := w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}})
 	if points.Next() != true && points.Next() != false {
 		t.Fatal("Expected to find 1 point")
 	}
 
-	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.String("restaurant")}); err != nil {
+	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.StringExpression("restaurant")}); err != nil {
 		t.Fatalf("Failed to add tag: %s", err)
 	}
 
@@ -765,7 +765,7 @@ func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 		t.Errorf("Failed to find expected tag value")
 	}
 
-	points = w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	points = w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}})
 	pointLen := 0
 	found := false
 	for points.Next() {
@@ -786,23 +786,23 @@ func ValidateAddSearchableTagToExistingFeature(w MutableWorld, t *testing.T) {
 
 func ValidateChangeSearchableTagOnExistingFeature(w MutableWorld, t *testing.T) {
 	lighterman := osmPoint(427900370, 51.5353986, -0.1243711)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
-	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.StringExpression("restaurant")})
 
 	if err := addFeatures(w, lighterman); err != nil {
 		t.Fatal(err)
 	}
 
-	points := w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	points := w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}})
 	if points.Next() != true && points.Next() != false {
 		t.Fatal("Expected to find 1 point")
 	}
 
-	if err := w.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.String("pub")}); err != nil {
+	if err := w.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.StringExpression("pub")}); err != nil {
 		t.Fatalf("Failed to add tag: %s", err)
 	}
 
-	points = w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	points = w.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}})
 	if points.Next() != false {
 		t.Fatal("Expected to find 0 points")
 	}
@@ -810,7 +810,7 @@ func ValidateChangeSearchableTagOnExistingFeature(w MutableWorld, t *testing.T) 
 
 func ValidateAddTagToNonExistingFeature(w MutableWorld, t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.String("restaurant")}); err == nil {
+	if err := w.AddTag(caravan.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.StringExpression("restaurant")}); err == nil {
 		t.Error("Expected an error, found none")
 	}
 }
@@ -854,8 +854,8 @@ func TestModifyPathInExistingWorld(t *testing.T) {
 	}
 
 	modifiedPath := NewFeatureFromWorld(overlay.FindFeatureByID(path.FeatureID())).(Feature)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, e.FeatureID()}, 2)
-	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, f.FeatureID()}, 3)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(e.FeatureID())}, 2)
+	modifiedPath.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.FeatureIDExpression(f.FeatureID())}, 3)
 	if err := addFeatures(overlay, e, f, modifiedPath); err != nil {
 		t.Fatal(err)
 	}
@@ -1034,8 +1034,8 @@ func validateTags(tagged b6.Taggable, expected []b6.Tag) error {
 
 func TestChangeTagsOnExistingPoint(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
-	caravan.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1044,16 +1044,16 @@ func TestChangeTagsOnExistingPoint(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(base)
 	// TODO: Updating the amenity actually needs to update the search index too.
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.StringExpression("restaurant")})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("yes")})
 
 	point := overlay.FindFeatureByID(caravan.FeatureID())
 
 	expected := []b6.Tag{
-		{Key: "name", Value: b6.String("Caravan")},
-		{Key: "wheelchair", Value: b6.String("yes")},
-		{Key: "amenity", Value: b6.String("restaurant")},
-		{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
+		{Key: "name", Value: b6.StringExpression("Caravan")},
+		{Key: "wheelchair", Value: b6.StringExpression("yes")},
+		{Key: "amenity", Value: b6.StringExpression("restaurant")},
+		{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(point, expected); err != nil {
@@ -1067,8 +1067,8 @@ func TestChangeTagsOnExistingPath(t *testing.T) {
 
 	// Goods Way, South of Granary Square
 	ab := osmPath(807924986, []Feature{a, b})
-	ab.AddTag(b6.Tag{Key: "highway", Value: b6.String("tertiary")})
-	ab.AddTag(b6.Tag{Key: "lit", Value: b6.String("no")})
+	ab.AddTag(b6.Tag{Key: "highway", Value: b6.StringExpression("tertiary")})
+	ab.AddTag(b6.Tag{Key: "lit", Value: b6.StringExpression("no")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, ab); err != nil {
@@ -1076,16 +1076,16 @@ func TestChangeTagsOnExistingPath(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(ab.FeatureID(), b6.Tag{Key: "cycleway:left", Value: b6.String("track")})
-	overlay.AddTag(ab.FeatureID(), b6.Tag{Key: "lit", Value: b6.String("yes")})
+	overlay.AddTag(ab.FeatureID(), b6.Tag{Key: "cycleway:left", Value: b6.StringExpression("track")})
+	overlay.AddTag(ab.FeatureID(), b6.Tag{Key: "lit", Value: b6.StringExpression("yes")})
 
 	path := overlay.FindFeatureByID(ab.FeatureID())
 
 	expected := []b6.Tag{
-		{Key: "highway", Value: b6.String("tertiary")},
-		{Key: "lit", Value: b6.String("yes")},
-		{Key: "cycleway:left", Value: b6.String("track")},
-		{Key: b6.PathTag, Value: b6.Values([]b6.Value{a.FeatureID(), b.FeatureID()})},
+		{Key: "highway", Value: b6.StringExpression("tertiary")},
+		{Key: "lit", Value: b6.StringExpression("yes")},
+		{Key: "cycleway:left", Value: b6.StringExpression("track")},
+		{Key: b6.PathTag, Value: b6.Values([]b6.Value{b6.FeatureIDExpression(a.FeatureID()), b6.FeatureIDExpression(b.FeatureID())})},
 	}
 
 	if err := validateTags(path, expected); err != nil {
@@ -1100,8 +1100,8 @@ func TestChangeTagsOnExistingArea(t *testing.T) {
 	abc := osmPath(427900370, []Feature{a, b, c, a})
 
 	lighterman := osmSimpleArea(427900370)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, c, abc, lighterman); err != nil {
@@ -1109,15 +1109,15 @@ func TestChangeTagsOnExistingArea(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "amenity", Value: b6.String("pub")})
-	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
+	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "amenity", Value: b6.StringExpression("pub")})
+	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("yes")})
 
 	area := b6.FindAreaByID(lighterman.AreaID, overlay)
 
 	expected := []b6.Tag{
-		{Key: "name", Value: b6.String("The Lighterman")},
-		{Key: "amenity", Value: b6.String("pub")},
-		{Key: "wheelchair", Value: b6.String("yes")},
+		{Key: "name", Value: b6.StringExpression("The Lighterman")},
+		{Key: "amenity", Value: b6.StringExpression("pub")},
+		{Key: "wheelchair", Value: b6.StringExpression("yes")},
 	}
 
 	if err := validateTags(area, expected); err != nil {
@@ -1132,8 +1132,8 @@ func TestAddSearchableTagTagToExistingArea(t *testing.T) {
 	abc := osmPath(427900370, []Feature{a, b, c, a})
 
 	lighterman := osmSimpleArea(427900370)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, c, abc, lighterman); err != nil {
@@ -1141,9 +1141,9 @@ func TestAddSearchableTagTagToExistingArea(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#reachable", Value: b6.String("yes")})
+	overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#reachable", Value: b6.StringExpression("yes")})
 
-	areas := b6.AllAreas(b6.FindAreas(b6.Tagged{Key: "#reachable", Value: b6.String("yes")}, overlay))
+	areas := b6.AllAreas(b6.FindAreas(b6.Tagged{Key: "#reachable", Value: b6.StringExpression("yes")}, overlay))
 	if len(areas) != 1 {
 		t.Fatalf("Expected to find 1 area, found %d", len(areas))
 	}
@@ -1159,8 +1159,8 @@ func TestChangeTagsOnExistingRelation(t *testing.T) {
 	ab := osmPath(807924986, []Feature{a, b})
 	// Part of C6
 	c6 := osmSimpleRelation(10341051, 807924986)
-	c6.AddTag(b6.Tag{Key: "type", Value: b6.String("route")})
-	c6.AddTag(b6.Tag{Key: "network", Value: b6.String("lcn")})
+	c6.AddTag(b6.Tag{Key: "type", Value: b6.StringExpression("route")})
+	c6.AddTag(b6.Tag{Key: "network", Value: b6.StringExpression("lcn")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, a, b, ab, c6); err != nil {
@@ -1168,15 +1168,15 @@ func TestChangeTagsOnExistingRelation(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(c6.FeatureID(), b6.Tag{Key: "route", Value: b6.String("bicycle")})
-	overlay.AddTag(c6.FeatureID(), b6.Tag{Key: "network", Value: b6.String("rcn")})
+	overlay.AddTag(c6.FeatureID(), b6.Tag{Key: "route", Value: b6.StringExpression("bicycle")})
+	overlay.AddTag(c6.FeatureID(), b6.Tag{Key: "network", Value: b6.StringExpression("rcn")})
 
 	relation := b6.FindRelationByID(c6.RelationID, overlay)
 
 	expected := []b6.Tag{
-		{Key: "type", Value: b6.String("route")},
-		{Key: "route", Value: b6.String("bicycle")},
-		{Key: "network", Value: b6.String("rcn")},
+		{Key: "type", Value: b6.StringExpression("route")},
+		{Key: "route", Value: b6.StringExpression("bicycle")},
+		{Key: "network", Value: b6.StringExpression("rcn")},
 	}
 
 	if err := validateTags(relation, expected); err != nil {
@@ -1186,8 +1186,8 @@ func TestChangeTagsOnExistingRelation(t *testing.T) {
 
 func TestChangeTagsOnExistingCollection(t *testing.T) {
 	c := simpleCollection(b6.MakeCollectionID(b6.Namespace("test"), 1), "sappho", "fragments")
-	f13 := b6.Tag{Key: "13", Value: b6.String("Of all the stars")}
-	f31 := b6.Tag{Key: "31", Value: b6.String("That man seems to me to be equal to the gods, sitting opposite of you..")}
+	f13 := b6.Tag{Key: "13", Value: b6.StringExpression("Of all the stars")}
+	f31 := b6.Tag{Key: "31", Value: b6.StringExpression("That man seems to me to be equal to the gods, sitting opposite of you..")}
 	c.AddTag(f13)
 	c.AddTag(f31)
 
@@ -1197,13 +1197,13 @@ func TestChangeTagsOnExistingCollection(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(c.FeatureID(), b6.Tag{Key: "13", Value: b6.String("Of all the stars, the loveliest")})
+	overlay.AddTag(c.FeatureID(), b6.Tag{Key: "13", Value: b6.StringExpression("Of all the stars, the loveliest")})
 
 	collection := b6.FindCollectionByID(c.CollectionID, overlay)
 
 	expected := []b6.Tag{
-		{Key: "31", Value: b6.String("That man seems to me to be equal to the gods, sitting opposite of you..")},
-		{Key: "13", Value: b6.String("Of all the stars, the loveliest")},
+		{Key: "31", Value: b6.StringExpression("That man seems to me to be equal to the gods, sitting opposite of you..")},
+		{Key: "13", Value: b6.StringExpression("Of all the stars, the loveliest")},
 	}
 
 	if err := validateTags(collection, expected); err != nil {
@@ -1213,8 +1213,8 @@ func TestChangeTagsOnExistingCollection(t *testing.T) {
 
 func TestReturnModifiedTagsFromSearch(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
-	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.StringExpression("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1222,9 +1222,9 @@ func TestReturnModifiedTagsFromSearch(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("yes")})
 
-	points := overlay.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}})
+	points := overlay.FindFeatures(b6.Typed{b6.FeatureTypePoint, b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}})
 	if !points.Next() {
 		t.Fatal("Expected to find 1 point")
 	}
@@ -1235,10 +1235,10 @@ func TestReturnModifiedTagsFromSearch(t *testing.T) {
 	}
 
 	expected := []b6.Tag{
-		{Key: "name", Value: b6.String("Caravan")},
-		{Key: "#amenity", Value: b6.String("restaurant")},
-		{Key: "wheelchair", Value: b6.String("yes")},
-		{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
+		{Key: "name", Value: b6.StringExpression("Caravan")},
+		{Key: "#amenity", Value: b6.StringExpression("restaurant")},
+		{Key: "wheelchair", Value: b6.StringExpression("yes")},
+		{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(point, expected); err != nil {
@@ -1248,8 +1248,8 @@ func TestReturnModifiedTagsFromSearch(t *testing.T) {
 
 func TestSettingTheSameTagMultipleTimesChangesTheValue(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
-	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.StringExpression("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1258,16 +1258,16 @@ func TestSettingTheSameTagMultipleTimesChangesTheValue(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(base)
 	for i := 0; i < 4; i++ {
-		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "100m", Value: b6.String("yes")})
-		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "#200m", Value: b6.String("yes")})
+		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "100m", Value: b6.StringExpression("yes")})
+		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "#200m", Value: b6.StringExpression("yes")})
 	}
 
 	expected := []b6.Tag{
-		{Key: "name", Value: b6.String("Caravan")},
-		{Key: "#amenity", Value: b6.String("restaurant")},
-		{Key: "100m", Value: b6.String("yes")},
-		{Key: "#200m", Value: b6.String("yes")},
-		{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
+		{Key: "name", Value: b6.StringExpression("Caravan")},
+		{Key: "#amenity", Value: b6.StringExpression("restaurant")},
+		{Key: "100m", Value: b6.StringExpression("yes")},
+		{Key: "#200m", Value: b6.StringExpression("yes")},
+		{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(overlay.FindFeatureByID(caravan.FeatureID()), expected); err != nil {
@@ -1277,8 +1277,8 @@ func TestSettingTheSameTagMultipleTimesChangesTheValue(t *testing.T) {
 
 func TestRemovedTag(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
-	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "#amenity", Value: b6.StringExpression("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1288,13 +1288,13 @@ func TestRemovedTag(t *testing.T) {
 	overlay := NewMutableOverlayWorld(base)
 	for i := 0; i < 4; i++ {
 		overlay.RemoveTag(caravan.FeatureID(), "#amenity")
-		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "#shop", Value: b6.String("supermarket")})
+		overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "#shop", Value: b6.StringExpression("supermarket")})
 	}
 
 	expected := []b6.Tag{
-		{Key: "name", Value: b6.String("Caravan")},
-		{Key: "#shop", Value: b6.String("supermarket")},
-		{Key: b6.PointTag, Value: b6.LatLng(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
+		{Key: "name", Value: b6.StringExpression("Caravan")},
+		{Key: "#shop", Value: b6.StringExpression("supermarket")},
+		{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5357237, -0.1253052))},
 	}
 
 	if err := validateTags(overlay.FindFeatureByID(caravan.FeatureID()), expected); err != nil {
@@ -1316,7 +1316,7 @@ func TestConnectivityUnchangedFollowingTagModification(t *testing.T) {
 	}
 
 	for _, a := range before {
-		m.AddTag(a.FeatureID(), b6.Tag{Key: "#reachable", Value: b6.String("yes")})
+		m.AddTag(a.FeatureID(), b6.Tag{Key: "#reachable", Value: b6.StringExpression("yes")})
 	}
 
 	after := b6.AllAreas(m.FindAreasByPoint(entrance))
@@ -1327,7 +1327,7 @@ func TestConnectivityUnchangedFollowingTagModification(t *testing.T) {
 
 func TestWatchModifiedTags(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
 		t.Fatal(err)
@@ -1336,7 +1336,7 @@ func TestWatchModifiedTags(t *testing.T) {
 	overlay := NewMutableTagsOverlayWorld(base)
 	c, cancel := overlay.Watch()
 
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("yes")})
 	var m ModifiedTag
 	ok := true
 	for ok {
@@ -1347,8 +1347,8 @@ func TestWatchModifiedTags(t *testing.T) {
 		}
 	}
 	cancel()
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("no")})
-	expected := ModifiedTag{ID: caravan.FeatureID(), Tag: b6.Tag{Key: "wheelchair", Value: b6.String("yes")}, Deleted: false}
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
+	expected := ModifiedTag{ID: caravan.FeatureID(), Tag: b6.Tag{Key: "wheelchair", Value: b6.StringExpression("yes")}, Deleted: false}
 	if m != expected {
 		t.Errorf("Expected %v, found %v", expected, m)
 	}
@@ -1358,7 +1358,7 @@ func TestPropagateModifiedTags(t *testing.T) {
 	base := NewBasicMutableWorld()
 
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
 	if err := base.AddFeature(caravan); err != nil {
 		t.Fatal(err)
 	}
@@ -1374,7 +1374,7 @@ func TestPropagateModifiedTags(t *testing.T) {
 	}
 
 	w := NewMutableTagsOverlayWorld(base)
-	w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
+	w.AddTag(caravan.FeatureID(), b6.Tag{Key: "amenity", Value: b6.StringExpression("restaurant")})
 
 	found := w.FindFeatureByID(caravan.FeatureID())
 	if found == nil {
@@ -1420,13 +1420,13 @@ func TestModifiedTagsOnPathWithPlainLatLngs(t *testing.T) {
 	}
 
 	path := &GenericFeature{ID: FromOSMWayID(222021576)}
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{caravan.FeatureID(), b6.LatLng(s2.LatLngFromDegrees(51.535490, -0.125167)), yumchaa.FeatureID()})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(caravan.FeatureID()), b6.PointExpression(s2.LatLngFromDegrees(51.535490, -0.125167)), b6.FeatureIDExpression(yumchaa.FeatureID())})})
 	if err := base.AddFeature(path); err != nil {
 		t.Fatal(err)
 	}
 
 	w := NewMutableTagsOverlayWorld(base)
-	w.AddTag(path.FeatureID(), b6.Tag{Key: "#highway", Value: b6.String("path")})
+	w.AddTag(path.FeatureID(), b6.Tag{Key: "#highway", Value: b6.StringExpression("path")})
 
 	path2 := w.FindFeatureByID(path.FeatureID()).(b6.PhysicalFeature)
 	if path2 == nil {
@@ -1443,17 +1443,17 @@ func TestModifiedTagsOnPathWithPlainLatLngs(t *testing.T) {
 func TestModifiedTagsFeatureFromArea(t *testing.T) {
 	path := &GenericFeature{ID: FromOSMWayID(265714033)}
 	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{
-		b6.LatLng(s2.LatLngFromDegrees(51.5369431, -0.1231868)),
-		b6.LatLng(s2.LatLngFromDegrees(51.5365692, -0.1230608)),
-		b6.LatLng(s2.LatLngFromDegrees(51.5365536, -0.1229421)),
-		b6.LatLng(s2.LatLngFromDegrees(51.5367378, -0.1229110)),
-		b6.LatLng(s2.LatLngFromDegrees(51.5369431, -0.1231868)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5369431, -0.1231868)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5365692, -0.1230608)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5365536, -0.1229421)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5367378, -0.1229110)),
+		b6.PointExpression(s2.LatLngFromDegrees(51.5369431, -0.1231868)),
 	})})
 
 	area := NewAreaFeature(1)
 	area.AreaID = AreaIDFromOSMWayID(265714033)
 	area.SetPathIDs(0, []b6.FeatureID{path.FeatureID()})
-	area.AddTag(b6.Tag{Key: "#leisure", Value: b6.String("playground")})
+	area.AddTag(b6.Tag{Key: "#leisure", Value: b6.StringExpression("playground")})
 
 	base := NewBasicMutableWorld()
 	if err := base.AddFeature(path); err != nil {
@@ -1464,7 +1464,7 @@ func TestModifiedTagsFeatureFromArea(t *testing.T) {
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(path.FeatureID(), b6.Tag{Key: "barrier", Value: b6.String("fence")})
+	overlay.AddTag(path.FeatureID(), b6.Tag{Key: "barrier", Value: b6.StringExpression("fence")})
 
 	found := b6.FindAreaByID(area.AreaID, overlay)
 	if found == nil {
@@ -1478,16 +1478,16 @@ func TestModifiedTagsFeatureFromArea(t *testing.T) {
 
 func TestSnapshot(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
 		t.Fatal(err)
 	}
 
 	overlay := NewMutableOverlayWorld(base)
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("yes")})
 	snapshot := overlay.Snapshot()
-	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("no")})
+	overlay.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
 
 	if wheelchair := overlay.FindFeatureByID(caravan.FeatureID()).Get("wheelchair"); wheelchair.Value.String() != "no" {
 		t.Errorf("Expected wheelchair=no in overlay, found %s", wheelchair.Value)
@@ -1500,7 +1500,7 @@ func TestSnapshot(t *testing.T) {
 
 func TestChangeTagsOnNonExistantPoint(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1515,12 +1515,12 @@ func TestChangeTagsOnNonExistantPoint(t *testing.T) {
 
 func TestModifyingFeaturesWhileQueryingPanics(t *testing.T) {
 	lighterman := osmPoint(427900370, 51.535242, -0.124388)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
 
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
-	caravan.AddTag(b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "amenity", Value: b6.StringExpression("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan, lighterman); err != nil {
@@ -1543,10 +1543,10 @@ func TestModifyingFeaturesWhileQueryingPanics(t *testing.T) {
 
 func TestEachFeatureWithAPathDependingOnTheBaseWorld(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
 
 	dishoom := osmPoint(3501612811, 51.536454, -0.126826)
-	dishoom.AddTag(b6.Tag{Key: "name", Value: b6.String("Dishoom")})
+	dishoom.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Dishoom")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan, dishoom); err != nil {
@@ -1554,7 +1554,7 @@ func TestEachFeatureWithAPathDependingOnTheBaseWorld(t *testing.T) {
 	}
 
 	footway := osmPath(558345071, []Feature{caravan, dishoom})
-	footway.AddTag(b6.Tag{Key: "highway", Value: b6.String("footway")})
+	footway.AddTag(b6.Tag{Key: "highway", Value: b6.StringExpression("footway")})
 	m := NewMutableOverlayWorld(base)
 	if err := m.AddFeature(footway); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -1581,8 +1581,8 @@ func TestEachFeatureWithAPathDependingOnTheBaseWorld(t *testing.T) {
 
 func TestEachFeatureWithModifiedTags(t *testing.T) {
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
-	caravan.AddTag(b6.Tag{Key: "cuisine", Value: b6.String("coffee_shop")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "cuisine", Value: b6.StringExpression("coffee_shop")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, caravan); err != nil {
@@ -1590,7 +1590,7 @@ func TestEachFeatureWithModifiedTags(t *testing.T) {
 	}
 
 	m := NewMutableOverlayWorld(base)
-	m.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.String("yes")})
+	m.AddTag(caravan.FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("yes")})
 	m.RemoveTag(caravan.FeatureID(), "cuisine")
 
 	found := false
@@ -1614,12 +1614,12 @@ func TestEachFeatureWithModifiedTags(t *testing.T) {
 
 func TestMergeWorlds(t *testing.T) {
 	lighterman := osmPoint(427900370, 51.535242, -0.124388)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
-	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.String("no")})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
 
 	caravan := osmPoint(2300722786, 51.5357237, -0.1253052)
-	caravan.AddTag(b6.Tag{Key: "name", Value: b6.String("Caravan")})
-	caravan.AddTag(b6.Tag{Key: "amenity", Value: b6.String("restaurant")})
+	caravan.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Caravan")})
+	caravan.AddTag(b6.Tag{Key: "amenity", Value: b6.StringExpression("restaurant")})
 
 	base := NewBasicMutableWorld()
 	if err := addFeatures(base, lighterman); err != nil {
@@ -1644,8 +1644,8 @@ func TestMergeWorlds(t *testing.T) {
 
 func TestChangeSearchableTagOnFeatureInBaseWorld(t *testing.T) {
 	lighterman := osmPoint(427900370, 51.5353986, -0.1243711)
-	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.String("The Lighterman")})
-	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.String("restaurant")})
+	lighterman.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("The Lighterman")})
+	lighterman.AddTag(b6.Tag{Key: "#amenity", Value: b6.StringExpression("restaurant")})
 
 	// Recreate a bug that occured where modified features where incorrectly
 	// returning from a search when embeded between other matching features
@@ -1665,13 +1665,13 @@ func TestChangeSearchableTagOnFeatureInBaseWorld(t *testing.T) {
 
 	overlay := NewMutableOverlayWorld(w)
 
-	q := b6.Tagged{Key: "#amenity", Value: b6.String("restaurant")}
+	q := b6.Tagged{Key: "#amenity", Value: b6.StringExpression("restaurant")}
 	found := b6.AllFeatures(overlay.FindFeatures(q))
 	if len(found) != 3 {
 		t.Fatalf("Expected to find 3 features, found %d", len(found))
 	}
 
-	if err := overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.String("pub")}); err != nil {
+	if err := overlay.AddTag(lighterman.FeatureID(), b6.Tag{Key: "#amenity", Value: b6.StringExpression("pub")}); err != nil {
 		t.Fatalf("Failed to add tag: %s", err)
 	}
 
