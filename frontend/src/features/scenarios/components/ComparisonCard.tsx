@@ -75,6 +75,7 @@ export default function ComparisonCard({
                     transient: false,
                     docked: false,
                     type: 'comparison',
+                    show: true,
                 },
                 data: {
                     geoJSON: originAnalysisQuery.data?.geoJSON ?? [],
@@ -110,6 +111,7 @@ export default function ComparisonCard({
                         transient: false,
                         docked: false,
                         type: 'comparison',
+                        show: true,
                     },
                     data: {
                         geoJSON: targetAnalysisQuery.data?.geoJSON ?? [],

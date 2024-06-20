@@ -28,6 +28,11 @@ type StoreContext = {
      */
     close: () => void;
     /**
+     * Toggle the visibility of the layers in the outliner.
+     * @returns void
+     */
+    toggleVisibility: () => void;
+    /**
      * Evaluate a node in a new outliner.
      * @param node - The node to evaluate
      * @returns void
@@ -47,6 +52,7 @@ type StoreContext = {
  */
 const StackContext = createContext<StoreContext>({
     close: () => {},
+    toggleVisibility: () => {},
     evaluateNode: () => {},
     evaluateExpressionInOutliner: () => {},
 });
@@ -63,6 +69,10 @@ export const StackContextProvider = ({
     const close = useCallback(() => {
         actions.remove(outliner.id);
     }, [actions, outliner.id]);
+
+    const toggleVisibility = useCallback(() => {
+        actions.setVisibility(outliner.id, !outliner.properties.show);
+    }, [actions, outliner.id, outliner.properties.show]);
 
     const evaluateExpressionInOutliner = useCallback(
         (expression: string) => {
@@ -92,6 +102,7 @@ export const StackContextProvider = ({
                     transient: false,
                     docked: false,
                     type: 'core',
+                    show: true,
                 },
                 request: {
                     root: outliner.request.root,
@@ -113,6 +124,7 @@ export const StackContextProvider = ({
             outliner,
             origin,
             close,
+            toggleVisibility,
             evaluateNode,
             evaluateExpressionInOutliner,
         };
@@ -121,6 +133,7 @@ export const StackContextProvider = ({
         outliner,
         origin,
         close,
+        toggleVisibility,
         evaluateNode,
         evaluateExpressionInOutliner,
     ]);

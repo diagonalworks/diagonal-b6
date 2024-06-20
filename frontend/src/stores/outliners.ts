@@ -16,6 +16,7 @@ export interface OutlinerSpec {
         active: boolean;
         docked: boolean;
         transient: boolean;
+        show: boolean;
         type: 'core' | 'comparison';
         coordinates?: {
             x: number;
@@ -73,6 +74,13 @@ interface OutlinersStore {
          */
         setTransient: (id: string, transient: boolean) => void;
         /**
+         * Set the visibility of the layers of an outliner
+         * @param id - The id of the outliner to set
+         * @param show - Whether the outliner should be visible
+         * @returns void
+         */
+        setVisibility: (id: string, show: boolean) => void;
+        /**
          * Get all outliners for a given world
          * @param world - The world to get outliners for
          * @returns An array of outliner specs
@@ -118,6 +126,11 @@ export const createOutlinersStore: ImmerStateCreator<
         setActive: (id, active) => {
             set((state) => {
                 state.outliners[id].properties.active = active;
+            });
+        },
+        setVisibility: (id, show) => {
+            set((state) => {
+                state.outliners[id].properties.show = show;
             });
         },
         setTransient: (id, transient) => {

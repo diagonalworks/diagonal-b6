@@ -55,6 +55,7 @@ export const useMap = ({ id }: { id: World['id'] }) => {
                     transient: true,
                     coordinates: e.point,
                     type: 'core',
+                    show: true,
                 },
                 request: {
                     ...baseRequest(),
@@ -90,6 +91,7 @@ export const useMap = ({ id }: { id: World['id'] }) => {
                     transient: true,
                     coordinates: e.point,
                     type: 'core',
+                    show: true,
                 },
                 request: {
                     ...baseRequest(),
@@ -113,6 +115,7 @@ export const useMap = ({ id }: { id: World['id'] }) => {
                     transient: true,
                     coordinates: { x: 8, y: 60 },
                     type: 'core',
+                    show: true,
                 },
                 request: {
                     ...baseRequest(),

@@ -53,6 +53,7 @@ export const useStartup = () => {
                         docked: true,
                         transient: false,
                         type: 'core',
+                        show: false,
                     },
                     data: d,
                 });
