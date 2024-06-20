@@ -42,7 +42,7 @@ export const OutlinerChangeWrapper = ({
         findAtoms(l, 'labelledIcon')
     )?.[0]?.labelledIcon;
 
-    if (!showChangeElements) return null;
+    if (!showChangeElements) return children;
 
     return (
         <>
