@@ -1,9 +1,10 @@
+import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
+import { isUndefined } from 'lodash';
+
+import { AtomAdapter } from '@/components/adapters/AtomAdapter';
 import { Tooltip } from '@/components/system/Tooltip';
 import { useLineContext } from '@/lib/context/line';
 import { ConditionalProto } from '@/types/generated/ui';
-import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
-import { isUndefined } from 'lodash';
-import { AtomAdapter } from './AtomAdapter';
 
 export const ConditionalAdapter = ({ atom }: { atom: ConditionalProto }) => {
     const line = useLineContext();

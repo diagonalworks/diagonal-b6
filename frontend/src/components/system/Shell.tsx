@@ -1,11 +1,13 @@
-import { getWordAt, highlighted } from '@/lib/text';
 import { CaretRightIcon } from '@radix-ui/react-icons';
 import { Command } from 'cmdk';
 import { isNil } from 'lodash';
 import { QuickScore } from 'quick-score';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
-import { Line } from './Line';
+
+import { Line } from '@/components/system/Line';
+import { getWordAt, highlighted } from '@/utils/text';
+
 import './Shell.css';
 
 type FunctionB6 = {

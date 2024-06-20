@@ -1,12 +1,13 @@
-import { Grocery, School, Shop } from '@/assets/icons/circle';
-import { Dot } from '@/assets/icons/solid';
 import { PlusIcon } from '@radix-ui/react-icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { Header } from './Header';
-import { LabelledIcon } from './LabelledIcon';
-import { Line as LineComponent } from './Line';
-import { Select } from './Select';
+
+import { Grocery, School, Shop } from '@/assets/icons/circle';
+import { Dot } from '@/assets/icons/solid';
+import { Header } from '@/components/system/Header';
+import { LabelledIcon } from '@/components/system/LabelledIcon';
+import { Line as LineComponent } from '@/components/system/Line';
+import { Select } from '@/components/system/Select';
 
 type Story = StoryObj<typeof LineComponent>;
 

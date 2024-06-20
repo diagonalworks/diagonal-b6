@@ -36,11 +36,7 @@ For map styling, we follow the [MapLibre Style Specification](https://maplibre.o
 
 ##### State management
 
-We use [Jotai](https://jotai.org/) and [Immer](https://immerjs.github.io/immer/)for state management. Jotai takes an atomic approach to global React state management, allowing for a primitive and flexible way to manage state. Immer is used to update the state in an immutable way.
-
-We defined a custom [atom with storage](https://jotai.org/docs/utilities/storage#atomwithstorage) to persist the view state in the URL search params. This allows us to share the current view with others.
-
-We keep the global app state in an [atomWithImmer](https://jotai.org/docs/extensions/immer#withimmer), so that we can update the state in an immutable way, while having a single source of truth for the app state.
+We use [Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction) and [Immer](https://immerjs.github.io/immer/)for state management. Zustand is a small and fast state management library that uses React hooks. Immer is used to create immutable state updates in a more readable way. We define multiple stores in the `@/stores` directory, each store is responsible for managing a specific part of the application state. For the core stores, the `@/stores/outliners` and `@/stores/map` depend on the `@/stores/world` store.
 
 ##### Components
 
@@ -54,17 +50,20 @@ Stack and Line adapters require their own state management, as such we use React
 
 ##### API
 
-We use [@tanstack/query](https://tanstack.com/query/latest) to fetch data from the API. This library provides hooks for fetching, caching and updating asynchronous data in React.
-
-We currently define a proxy in `vite.config.ts` to forward API requests from `/api` to the backend.
+We use AXIOS for making API requests. We define an API client in `@/api/client.ts` that is responsible for making requests to the API.
+We use [@tanstack/query](https://tanstack.com/query/latest) for data fetching and caching.
 
 ##### Typing
 
 We use [TypeScript](https://www.typescriptlang.org/) for static typing. We define custom types in the `@/types` directory. Some types are generated from the proto files using [ts-proto](https://ts-proto.readthedocs.io/).
 
+#### Testing
+
+// TODO
+
 ## Note on fidelity
 
-The version of the frontend in this PR is a simplified version of the final product, it intends to lay the architecture foundations and achieve the core functionality of Baseline. Therefore some features are not implemented or are implemented with a lower fidelity than the final product. Also, some design decisions may be subject to change in the future. Code quality, testing, and performance are not the main focus of this PR, but they will be addressed in future PRs.
+As we're currently migrating the Baseline UI to React, we're focusing on achieving the core functionality of Baseline. Therefore, some features of the original Baseline UI are not yet implemented or are implemented with a lower fidelity than the final product. Some design decisions may be subject to change in the future.
 
 #### Storybook
 

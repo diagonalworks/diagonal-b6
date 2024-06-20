@@ -1,62 +1,55 @@
-import { Line } from '@/components/system/Line';
-import { LineContextProvider } from '@/lib/context/line';
-import { useOutlinerContext } from '@/lib/context/outliner';
-import { useScenarioContext } from '@/lib/context/scenario';
-import { LineProto, TagsLineProto } from '@/types/generated/ui';
 import {
     ComponentInstanceIcon,
     ComponentNoneIcon,
     Cross1Icon,
 } from '@radix-ui/react-icons';
 import React from 'react';
-import { IconButton } from '../system/IconButton';
-import { Tooltip, TooltipOverflow } from '../system/Tooltip';
-import { AtomAdapter } from './AtomAdapter';
-import { ChoiceAdapter } from './ChoiceAdapter';
-import { HeaderAdapter } from './HeaderAdapter';
-import { ShellAdapter } from './ShellAdapter';
+import { twMerge } from 'tailwind-merge';
+
+import { AtomAdapter } from '@/components/adapters/AtomAdapter';
+import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
+import { ShellAdapter } from '@/components/adapters/ShellAdapter';
+import { IconButton } from '@/components/system/IconButton';
+import { Line } from '@/components/system/Line';
+import { Tooltip, TooltipOverflow } from '@/components/system/Tooltip';
+import { LineContextProvider } from '@/lib/context/line';
+import { useStackContext } from '@/lib/context/stack';
+import { LineProto, TagsLineProto } from '@/types/generated/ui';
 
 export const LineAdapter = ({
     line,
-    actions: { close, show },
+    actions,
 }: {
     line: LineProto;
-    actions: {
-        close: boolean;
-        show: boolean;
+    actions?: {
+        show?: boolean;
+        close?: boolean;
     };
 }) => {
     const clickable =
         line.value?.clickExpression ?? line.action?.clickExpression;
     const Wrapper = clickable ? Line.Button : React.Fragment;
-
-    const { outliner, close: closeFn, setVisible } = useOutlinerContext();
-    const { createOutlinerInScenario } = useScenarioContext();
+    const {
+        close: closeFn,
+        evaluateNode,
+        toggleVisibility,
+        outliner,
+    } = useStackContext();
 
     const handleLineClick = () => {
         if (!clickable) return;
-        createOutlinerInScenario({
-            active: true,
-            id: JSON.stringify(clickable),
-            properties: {
-                coordinates: { x: 4, y: 240 },
-                scenario: outliner.properties.scenario,
-                transient: outliner.properties.transient,
-                docked: outliner.properties.docked,
-                show: true,
-            },
-            request: {
-                expression: '',
-                locked: true,
-                eventType: 'oc',
-                node: clickable,
-            },
-        });
+        evaluateNode(clickable);
     };
 
     return (
         <LineContextProvider line={line}>
-            <Line className="flex justify-between">
+            <Line
+                className={twMerge(
+                    'flex justify-between',
+                    line.error && 'bg-red-20 text-red-70 hover:bg-red-20',
+                    line.expression && 'bg-graphite-10 '
+                )}
+            >
                 <Wrapper
                     {...(clickable && {
                         onClick: (e) => {
@@ -92,41 +85,54 @@ export const LineAdapter = ({
                             )}
                         </div>
                     )}
-                    {line.choice && <ChoiceAdapter choice={line.choice} />}
                     {line.shell && <ShellAdapter shell={line.shell} />}
                     {line.expression && (
-                        <span className="expression">
+                        <span className="expression ">
                             {line.expression.expression}
                         </span>
                     )}
+                    {line.error && (
+                        <span className="error">
+                            <span className=" font-medium mr-1">Error:</span>
+                            {line.error.error}
+                        </span>
+                    )}
                     {line.tags && <Tags tagLine={line.tags} />}
-                </Wrapper>
-                {(show || close) && (
-                    <div className="flex gap-1">
-                        {show && (
-                            <Tooltip content={'Toggle visiblity'}>
+                    {actions && (actions.show || actions.close) && (
+                        <div className="flex gap-1">
+                            {actions.show && (
+                                <Tooltip content={'Toggle visiblity'}>
+                                    <IconButton
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            toggleVisibility();
+                                        }}
+                                    >
+                                        {outliner &&
+                                        outliner.properties.show ? (
+                                            <ComponentInstanceIcon />
+                                        ) : (
+                                            <ComponentNoneIcon />
+                                        )}
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            {actions.close && (
                                 <IconButton
                                     onClick={(e) => {
-                                        e.stopPropagation();
                                         e.preventDefault();
-                                        setVisible(!outliner.properties.show);
+                                        e.stopPropagation();
+                                        closeFn();
                                     }}
+                                    className="close"
                                 >
-                                    {outliner.properties.show ? (
-                                        <ComponentInstanceIcon />
-                                    ) : (
-                                        <ComponentNoneIcon />
-                                    )}
+                                    <Cross1Icon />
                                 </IconButton>
-                            </Tooltip>
-                        )}
-                        {close && (
-                            <IconButton onClick={closeFn} className="close">
-                                <Cross1Icon />
-                            </IconButton>
-                        )}
-                    </div>
-                )}
+                            )}
+                        </div>
+                    )}
+                </Wrapper>
             </Line>
         </LineContextProvider>
     );

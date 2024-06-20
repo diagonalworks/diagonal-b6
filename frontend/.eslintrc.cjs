@@ -10,6 +10,7 @@ module.exports = {
     parser: '@typescript-eslint/parser',
     plugins: ['react-refresh', '@tanstack/query'],
     rules: {
+        'react-hooks/rules-of-hooks': 'error',
         'react-refresh/only-export-components': [
             'warn',
             { allowConstantExport: true },

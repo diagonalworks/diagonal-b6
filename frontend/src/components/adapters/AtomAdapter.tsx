@@ -1,10 +1,11 @@
+import { isUndefined } from 'lodash';
+
+import { ChipAdapter } from '@/components/adapters/ChipAdapter';
+import { ConditionalAdapter } from '@/components/adapters/ConditionalAdapter';
+import { LabelledIconAdapter } from '@/components/adapters/LabelledIconAdapter';
 import { Line } from '@/components/system/Line';
 import { useLineContext } from '@/lib/context/line';
 import { AtomProto } from '@/types/generated/ui';
-import { isUndefined } from 'lodash';
-import { ChipAdapter } from './ChipAdapter';
-import { ConditionalAdapter } from './ConditionalAdapter';
-import { LabelledIconAdapter } from './LabelledIconAdapter';
 
 export const AtomAdapter = ({ atom }: { atom: AtomProto }) => {
     const line = useLineContext();

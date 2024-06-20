@@ -1,6 +1,9 @@
-import { SubstackProto } from '@/types/generated/ui';
 import { useMemo, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
+
+import { useStackContext } from '@/lib/context/stack';
+import { SubstackProto } from '@/types/generated/ui';
+
 import { Stack } from '../system/Stack';
 import { HistogramAdaptor } from './HistogramAdapter';
 import { LineAdapter } from './LineAdapter';
@@ -10,18 +13,16 @@ export const SubstackAdapter = ({
     collapsible = false,
     close,
     show,
-    origin,
     analysisTitle,
 }: {
     substack: SubstackProto;
     collapsible?: boolean;
     close?: boolean;
     show?: boolean;
-    origin?: SubstackProto;
     analysisTitle?: string; // @TODO: remove this, it's a hack to get the analysis title
 }) => {
     const [open, setOpen] = useState(collapsible ? false : true);
-
+    const { origin } = useStackContext();
     const header = useMemo(() => {
         return substack.lines?.[0].header;
     }, [substack.lines]);
@@ -37,6 +38,8 @@ export const SubstackAdapter = ({
 
     const histogramProps = useMemo(() => {
         if (isHistogram) {
+            // @TODO: find more robust way to access origin histogram
+            const originHistogram = origin?.data?.proto.stack?.substacks?.[0];
             return {
                 type: (contentLines[0].swatch ? 'swatch' : 'histogram') as
                     | 'swatch'
@@ -44,14 +47,14 @@ export const SubstackAdapter = ({
                 bars: contentLines.flatMap((l) => l.histogramBar ?? []),
                 swatches: contentLines.flatMap((l) => l.swatch ?? []),
                 chartLabel: analysisTitle,
-                origin: origin
+                origin: originHistogram
                     ? {
                           bars:
-                              origin.lines
+                              originHistogram.lines
                                   ?.slice(header ? 1 : 0)
                                   ?.flatMap((l) => l.histogramBar ?? []) ?? [],
                           swatches:
-                              origin.lines
+                              originHistogram.lines
                                   ?.slice(header ? 1 : 0)
                                   ?.flatMap((l) => l.swatch ?? []) ?? [],
                       }
@@ -79,17 +82,13 @@ export const SubstackAdapter = ({
                 >
                     <LineAdapter
                         line={substack.lines[0]}
-                        actions={{
-                            close: false,
-                            show: false,
-                        }}
                         //changeable={changeable}
                     />
                 </Stack.Trigger>
             )}
 
             <Stack.Content
-                className="text-sm max-h-80 w-full "
+                className="text-sm max-h-80 w-full"
                 header={!!header}
             >
                 {!isHistogram &&
@@ -99,8 +98,8 @@ export const SubstackAdapter = ({
                                 key={i}
                                 line={l}
                                 actions={{
-                                    close: !!close && i === 0,
-                                    show: !!show && i === 0,
+                                    close: close && i === 0,
+                                    show: show && i === 0,
                                 }}
                             />
                         );

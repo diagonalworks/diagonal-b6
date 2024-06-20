@@ -1,6 +1,7 @@
-import { Chip } from '@/types/stack';
 import { useMemo } from 'react';
-import { SelectAdapter } from './SelectAdapter';
+
+import { SelectAdapter } from '@/components/adapters/SelectAdapter';
+import { Chip } from '@/types/stack';
 
 export const ChipAdapter = ({
     chip,

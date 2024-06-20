@@ -1,8 +1,10 @@
-import { $IntentionalAny } from '@/utils/defs';
 import { ArgumentParser } from 'argparse';
 import { rgb } from 'd3-color';
 import fs from 'fs';
 import { groupBy, mapValues } from 'lodash';
+
+import { $IntentionalAny } from '@/utils/defs';
+
 import { figma } from './api';
 
 const main = async () => {
@@ -33,7 +35,7 @@ const main = async () => {
                 document.fills[0].color.r * 255,
                 document.fills[0].color.g * 255,
                 document.fills[0].color.b * 255,
-                document.fills[0].color.a,
+                document.fills[0].color.a
             ).formatHex(),
         };
     });
@@ -43,9 +45,9 @@ const main = async () => {
         (d) => {
             return d.reduce(
                 (acc, curr) => ({ ...acc, [curr.shade]: curr.color }),
-                {} as Record<string, string>,
+                {} as Record<string, string>
             );
-        },
+        }
     );
 
     fs.writeFileSync(output, JSON.stringify(colors, null, 2));

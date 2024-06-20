@@ -1,4 +1,5 @@
 import { FeatureCollection } from 'geojson';
+
 import { ChipProto, UIResponseProto } from './generated/ui';
 
 export type StackResponse = {

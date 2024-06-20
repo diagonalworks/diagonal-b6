@@ -1,10 +1,11 @@
-import { Shop } from '@/assets/icons/circle';
 import { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { Header } from './Header';
-import { LabelledIcon } from './LabelledIcon';
-import { Line } from './Line';
-import { Stack as StackComponent } from './Stack';
+
+import { Shop } from '@/assets/icons/circle';
+import { Header } from '@/components/system/Header';
+import { LabelledIcon } from '@/components/system/LabelledIcon';
+import { Line } from '@/components/system/Line';
+import { Stack as StackComponent } from '@/components/system/Stack';
 
 type Story = StoryObj<typeof StackComponent>;
 

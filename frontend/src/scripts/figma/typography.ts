@@ -1,8 +1,10 @@
-import { $IntentionalAny } from '@/utils/defs';
 import { ArgumentParser } from 'argparse';
 import fs from 'fs';
 import defaultConfig from 'tailwindcss/defaultConfig';
 import resolveConfig from 'tailwindcss/resolveConfig';
+
+import { $IntentionalAny } from '@/utils/defs';
+
 import { figma } from './api';
 
 const config = resolveConfig(defaultConfig);

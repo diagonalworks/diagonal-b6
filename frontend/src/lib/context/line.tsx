@@ -1,6 +1,3 @@
-import { findAtoms } from '@/lib/atoms';
-import { LineProto } from '@/types/generated/ui';
-import { Chip } from '@/types/stack';
 import { isUndefined } from 'lodash';
 import {
     PropsWithChildren,
@@ -10,6 +7,10 @@ import {
     useMemo,
 } from 'react';
 import { Updater, useImmer } from 'use-immer';
+
+import { LineProto } from '@/types/generated/ui';
+import { Chip } from '@/types/stack';
+import { findAtoms } from '@/utils/atoms';
 
 const LineContext = createContext<{
     state: LineStore;
@@ -105,4 +106,11 @@ export const LineContextProvider = ({
     );
 };
 
+/**
+ * Hook for using the line context.
+ * This context is used to provide the line and chip data to the children components.
+ * @TODO: This needs to be refactored. We're no longer using a context provider for the Outliner,
+ * therefore chip data is not provided. Also, we should now be using context providers mostly for
+ * dependency injection and zustand for state management.
+ */
 export const useLineContext = () => useContext(LineContext);

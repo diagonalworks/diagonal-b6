@@ -2,8 +2,9 @@ import { ColorItem, ColorPalette } from '@storybook/blocks';
 import type { Meta } from '@storybook/react';
 import { hsl } from 'd3-color';
 
-import { toTitleCase } from '@/lib/text';
 import { $FixMe, $IntentionalAny } from '@/utils/defs';
+import { toTitleCase } from '@/utils/text';
+
 import colors from './colors.json';
 
 const colorOrder = Object.entries(colors)
