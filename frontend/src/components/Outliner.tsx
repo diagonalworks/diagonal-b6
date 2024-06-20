@@ -24,9 +24,8 @@ function Outliner({
     const [open, setOpen] = useState(outliner.properties.docked ? false : true);
     const mapActions = useMapStore((state) => state.actions);
     useHighlight({
-        world: outliner.world,
+        outliner,
         features: stackData.data?.proto.highlighted,
-        visible: outliner.properties.show,
     });
 
     useEffect(() => {
@@ -55,9 +54,11 @@ function Outliner({
 
     const handleOpenChange = useCallback(
         (open: boolean) => {
-            outlinerActions.setActive(outliner.id, open);
-            outlinerActions.setVisibility(outliner.id, open);
-            setOpen(open);
+            if (outliner.properties.docked) {
+                outlinerActions.setActive(outliner.id, open);
+                outlinerActions.setVisibility(outliner.id, open);
+                setOpen(open);
+            }
         },
         [outlinerActions, outliner.id]
     );

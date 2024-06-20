@@ -2,29 +2,32 @@ import { useEffect, useMemo } from 'react';
 import { useMap as useMapLibre } from 'react-map-gl/maplibre';
 import { match } from 'ts-pattern';
 
-import { World } from '@/stores/worlds';
+import { useMapStore } from '@/stores/map';
+import { OutlinerSpec } from '@/stores/outliners';
 import { FeatureIDsProto } from '@/types/generated/ui';
 
 import { useMap } from './useMap';
 
 /**
  * Highlight features on the map
- * @param world - The world the features are in
+ * @param outliner - The outliner specification
  * @param features - The features to highlight
- * @param visible - Whether the features are visible
  * @returns The features that are highlighted
  */
 export const useHighlight = ({
-    world,
+    outliner,
     features,
-    visible,
 }: {
-    world: World['id'];
+    outliner: OutlinerSpec;
     features?: FeatureIDsProto;
-    visible?: boolean;
 }) => {
-    const { [world]: map } = useMapLibre();
-    const [{ findFeatureInLayer, highlightFeature }] = useMap({ id: world });
+    const { [outliner.world]: map } = useMapLibre();
+    const [{ findFeatureInLayer, highlightFeature }] = useMap({
+        id: outliner.world,
+    });
+    const { setHighlightLayer, removeHighlightLayer } = useMapStore(
+        (state) => state.actions
+    );
 
     const geoJsonFeatures = useMemo(() => {
         if (!map || !features) return [];
@@ -63,19 +66,34 @@ export const useHighlight = ({
 
     useEffect(() => {
         geoJsonFeatures.forEach((feature) => {
-            highlightFeature({ ...feature, highlight: !!visible });
+            highlightFeature({
+                ...feature,
+                highlight: !!outliner.properties.show,
+            });
         });
+
+        if (geoJsonFeatures.length > 0) {
+            if (outliner.properties.show) {
+                setHighlightLayer(outliner.id, {
+                    features: geoJsonFeatures,
+                    world: outliner.world,
+                });
+            } else {
+                removeHighlightLayer(outliner.id);
+            }
+        }
 
         return () => {
             try {
                 geoJsonFeatures.forEach((feature) => {
                     highlightFeature({ ...feature, highlight: false });
                 });
+                removeHighlightLayer(outliner.id);
             } catch (e) {
                 console.error(e);
             }
         };
-    }, [geoJsonFeatures, highlightFeature, visible]);
+    }, [geoJsonFeatures, highlightFeature, outliner]);
 
     return [geoJsonFeatures];
 };

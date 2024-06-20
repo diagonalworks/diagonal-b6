@@ -93,6 +93,7 @@ export const Map = ({
         const highlighted = Object.values(highlight)
             .filter((h) => h.world === world)
             .flatMap((h) => h.features);
+
         return histogramData.flatMap((hist) => {
             if (!hist.showOnMap) return [];
             return new MVTLayer({
@@ -150,12 +151,13 @@ export const Map = ({
                     return 0;
                 },
                 getLineColor: (f: Feature) => {
-                    const isHighlighted = highlighted?.find(
-                        (hf) =>
+                    const isHighlighted = highlighted?.find((hf) => {
+                        return (
                             hf.feature.properties.id &&
                             hf.feature.properties.id.toString() ===
-                                parseInt(f.properties.id, 16).toString()
-                    );
+                                f.properties.id
+                        );
+                    });
                     if (isHighlighted) {
                         return [0, 0, 0, 255];
                     }

@@ -98,6 +98,25 @@ export interface MapStore {
          * @returns void
          */
         removeHistogramLayer: (id: string) => void;
+        /**
+         * Set a highlight layer on the map
+         * @param id - The unique identifier for the layer
+         * @param features - An array of features to highlight
+         * @returns void
+         */
+        setHighlightLayer: (
+            id: string,
+            highlight: {
+                features: FeatureHighlight[];
+                world: World['id'];
+            }
+        ) => void;
+        /**
+         * Remove a highlight layer from the map
+         * @param id - The unique identifier for the layer
+         * @returns void
+         */
+        removeHighlightLayer: (id: string) => void;
     };
 }
 
@@ -140,6 +159,16 @@ export const createMapStore: ImmerStateCreator<MapStore, MapStore> = (set) => ({
         removeHistogramLayer: (id) => {
             set((state) => {
                 delete state.layers.histogram[id];
+            });
+        },
+        setHighlightLayer: (id, highlight) => {
+            set((state) => {
+                state.layers.highlight[id] = highlight;
+            });
+        },
+        removeHighlightLayer: (id) => {
+            set((state) => {
+                delete state.layers.highlight[id];
             });
         },
     },
