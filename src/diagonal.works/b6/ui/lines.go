@@ -129,11 +129,11 @@ func highlightInResponse(response *pb.UIResponseProto, id b6.FeatureID) {
 }
 
 func fillSubstackFromExpression(lines *pb.SubstackProto, expression b6.Expression, root bool) {
-	if call, ok := expression.AnyExpression.(*b6.CallExpression); ok {
+	if call, ok := expression.AnyExpression.(b6.CallExpression); ok {
 		if call.Pipelined {
 			left := call.Args[0]
 			right := b6.Expression{
-				AnyExpression: &b6.CallExpression{
+				AnyExpression: b6.CallExpression{
 					Function: call.Function,
 					Args:     call.Args[1:],
 				},

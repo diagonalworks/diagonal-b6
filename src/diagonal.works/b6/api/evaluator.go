@@ -23,8 +23,8 @@ type Evaluator struct {
 }
 
 func (e *Evaluator) EvaluateProto(request *pb.EvaluateRequestProto) (interface{}, error) {
-	var expression b6.Expression
-	if err := expression.FromProto(request.Request); err != nil {
+	expression, err := b6.ExpressionFromProto(request.Request)
+	if err != nil {
 		return nil, err
 	}
 	root := b6.NewFeatureIDFromProto(request.Root)

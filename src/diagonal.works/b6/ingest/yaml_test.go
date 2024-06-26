@@ -109,11 +109,11 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	var expression ExpressionFeature
 	expression.ExpressionID = b6.MakeExpressionID(b6.Namespace("diagonal.works/test"), 6)
 	expression.Expression = b6.Expression{
-		AnyExpression: &b6.CallExpression{
+		AnyExpression: b6.CallExpression{
 			Function: b6.NewSymbolExpression("find"),
 			Args: []b6.Expression{
 				{
-					AnyExpression: &b6.QueryExpression{
+					AnyExpression: b6.QueryExpression{
 						Query: b6.Intersection{
 							b6.Tagged{Key: "#highway", Value: b6.StringExpression("cycleway")},
 							b6.IntersectsFeature{

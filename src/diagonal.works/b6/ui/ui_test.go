@@ -116,6 +116,7 @@ func TestEvaluateFunctionThatChangesWorld(t *testing.T) {
 		t.Errorf("expected tag %s, found %s", expected, levels)
 	}
 }
+
 func TestEvaluateFunctionViaEvaluateEndpoint(t *testing.T) {
 	worlds := &ingest.MutableWorlds{
 		Base: camden.BuildGranarySquareForTests(t),

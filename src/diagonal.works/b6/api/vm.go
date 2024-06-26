@@ -265,11 +265,11 @@ func newVM(expression b6.Expression, fs FunctionSymbols) (*VM, error) {
 func compileTarget(e b6.Expression, c *compilation) error {
 	var err error
 	switch e.AnyExpression.(type) {
-	case *b6.CallExpression:
+	case b6.CallExpression:
 		err = compileCall(e, c)
-	case *b6.SymbolExpression:
+	case b6.SymbolExpression:
 		err = compileSymbol(e, c)
-	case *b6.LambdaExpression:
+	case b6.LambdaExpression:
 		var l *lambdaCall
 		l, err = compileLambda(e, c)
 		if err == nil {
@@ -284,7 +284,7 @@ func compileTarget(e b6.Expression, c *compilation) error {
 }
 
 func compileCall(e b6.Expression, c *compilation) error {
-	call := e.AnyExpression.(*b6.CallExpression)
+	call := e.AnyExpression.(b6.CallExpression)
 	for _, a := range call.Args {
 		if err := compileTarget(a, c); err != nil {
 			return err
@@ -293,20 +293,20 @@ func compileCall(e b6.Expression, c *compilation) error {
 	var args [2]int16
 	args[ArgsNumArgs] = int16(len(call.Args))
 	switch f := call.Function.AnyExpression.(type) {
-	case *b6.SymbolExpression:
-		if ff, ok := c.Globals.Function(*f); ok {
+	case b6.SymbolExpression:
+		if ff, ok := c.Globals.Function(f); ok {
 			callable := goCall{f: ff, expression: call.Function}
 			c.Append(Instruction{Op: OpCallValue, Callable: callable, Args: args, Expression: e})
 		} else {
-			return fmt.Errorf("undefined symbol %q", *f)
+			return fmt.Errorf("undefined symbol %q", f)
 		}
-	case *b6.LambdaExpression:
+	case b6.LambdaExpression:
 		if l, err := compileLambda(e, c); err == nil {
 			c.Append(Instruction{Op: OpCallValue, Callable: l, Args: args, Expression: e})
 		} else {
 			return err
 		}
-	case *b6.CallExpression:
+	case b6.CallExpression:
 		if err := compileTarget(call.Function, c); err != nil {
 			return err
 		}
@@ -318,10 +318,10 @@ func compileCall(e b6.Expression, c *compilation) error {
 }
 
 func compileSymbol(e b6.Expression, c *compilation) error {
-	symbol := e.AnyExpression.(*b6.SymbolExpression)
-	if a, ok := c.Args.Lookup(*symbol); ok {
+	symbol := e.AnyExpression.(b6.SymbolExpression)
+	if a, ok := c.Args.Lookup(symbol); ok {
 		c.Append(Instruction{Op: OpLoad, Args: [2]int16{int16(a)}, Expression: e})
-	} else if f, ok := c.Globals.Function(*symbol); ok {
+	} else if f, ok := c.Globals.Function(symbol); ok {
 		c.Append(Instruction{Op: OpPushValue, Value: reflect.ValueOf(&goCall{f: f, expression: e}), Expression: e})
 	} else {
 		return fmt.Errorf("undefined symbol %q", symbol)
@@ -330,7 +330,7 @@ func compileSymbol(e b6.Expression, c *compilation) error {
 }
 
 func compileLambda(e b6.Expression, c *compilation) (*lambdaCall, error) {
-	lambda := e.AnyExpression.(*b6.LambdaExpression)
+	lambda := e.AnyExpression.(b6.LambdaExpression)
 	l := &lambdaCall{args: len(lambda.Args), expression: e}
 	f := &frame{Previous: c.Args}
 	t := target{
@@ -531,7 +531,7 @@ func (v *VM) Expression() b6.Expression {
 	if len(v.Stack) == 0 {
 		panic("not in a call, stack empty")
 	}
-	_, ok := v.Stack[len(v.Stack)-1].Expression.AnyExpression.(*b6.CallExpression)
+	_, ok := v.Stack[len(v.Stack)-1].Expression.AnyExpression.(b6.CallExpression)
 	if !ok {
 		panic("not in a call")
 	}
@@ -542,7 +542,7 @@ func (v *VM) ArgExpressions() []b6.Expression {
 	if len(v.Stack) == 0 {
 		panic("not in a call, stack empty")
 	}
-	_, ok := v.Stack[len(v.Stack)-1].Expression.AnyExpression.(*b6.CallExpression)
+	_, ok := v.Stack[len(v.Stack)-1].Expression.AnyExpression.(b6.CallExpression)
 	if !ok {
 		panic("not in a call")
 	}
@@ -757,8 +757,8 @@ func (p *partialCall) CallFromStack(context *Context, n int, scratch []reflect.V
 	if n+p.n == p.c.NumArgs() {
 		vm.Stack = vm.Stack[0 : len(vm.Stack)-1]
 		vm.Stack = append(vm.Stack, p.args[0:p.n]...)
-		call := &b6.CallExpression{
-			Function: expression.AnyExpression.(*b6.CallExpression).Function,
+		call := b6.CallExpression{
+			Function: expression.AnyExpression.(b6.CallExpression).Function,
 			Args:     make([]b6.Expression, p.c.NumArgs()),
 		}
 		for i := 0; i < p.c.NumArgs(); i++ {
