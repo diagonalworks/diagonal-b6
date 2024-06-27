@@ -79,8 +79,13 @@ export const usePersistURL = <T>(
                 searchParams.set(key, value);
             }
         });
-
-        url.search = new URLSearchParams(searchParams).toString();
+        const newParams = new URLSearchParams(searchParams).toString();
+        /**
+         * we don't encode the URL params because:
+         * 1. We want to keep the URL human-readable and editable
+         * 2. We want to avoid double encoding issues
+         */
+        url.search = decodeURIComponent(newParams);
         window.history.pushState({}, '', url.toString());
     }, debounceWait);
 
