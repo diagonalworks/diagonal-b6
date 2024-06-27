@@ -6,6 +6,7 @@ import { MapProvider } from 'react-map-gl';
 
 import { useStartup } from '@/api/startup';
 import ComparisonCard from '@/features/scenarios/components/ComparisonCard';
+import ScenariosDrawer from '@/features/scenarios/components/ScenariosDrawer';
 import { Tabs } from '@/features/scenarios/components/Tabs';
 import { useComparisonsStore } from '@/features/scenarios/stores/comparisons';
 import { useTabsStore } from '@/features/scenarios/stores/tabs';
@@ -95,31 +96,16 @@ export default function Workspace() {
         <div className="h-screen max-h-screen flex flex-col relative">
             {/* @TODO: extract tabs menu logic to a separate component. */}
             <Tabs.Menu splitScreen={splitScreen}>
-                <div className="flex items-end justify-between gap-1">
-                    {leftTabs.map((tab) => (
-                        <Tabs.Button
-                            key={tab.id}
-                            tab={tab}
-                            active={leftTab === tab.id}
-                            onClick={(id) => tabActions.setActive(id, 'left')}
-                            onClose={tabActions.remove}
-                            onValueChange={tabActions.rename}
-                        />
-                    ))}
-                    {rightTabs.length === 0 && (
-                        <button
-                            onClick={() => {
-                                handleAddScenario();
-                                tabActions.setSplitScreen(true);
-                            }}
-                            aria-label="add scenario"
-                            className="text-sm flex gap-2 mb-[1px] items-center bg-rose-10 rounded w-fit border border-b-0 hover:bg-rose-20 rounded-b-none border-rose-30 text-rose-60 px-2 py-1"
-                        >
-                            <PlusIcon />
-                            scenario
-                        </button>
-                    )}
-                </div>
+                {leftTabs.map((tab) => (
+                    <Tabs.Button
+                        key={tab.id}
+                        tab={tab}
+                        active={leftTab === tab.id}
+                        onClick={(id) => tabActions.setActive(id, 'left')}
+                        onClose={tabActions.remove}
+                        onValueChange={tabActions.rename}
+                    />
+                ))}
                 <div className="flex gap-1">
                     {rightTabs.map((tab) => (
                         <Tabs.Button
@@ -147,6 +133,8 @@ export default function Workspace() {
                         </button>
                     )}
                 </div>
+
+                <ScenariosDrawer className="absolute right-1 " />
             </Tabs.Menu>
             <Tabs.Content>
                 {leftTab && (
