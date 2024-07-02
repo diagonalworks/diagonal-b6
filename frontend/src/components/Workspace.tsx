@@ -90,6 +90,7 @@ export default function Workspace() {
             },
         });
         tabActions.setActive(id, 'right');
+        tabActions.setSplitScreen(true);
     }, [tabActions, rightTabs.length]);
 
     return (
@@ -123,7 +124,7 @@ export default function Workspace() {
                             }}
                         />
                     ))}
-                    {rightTabs.length > 0 && (
+                    {rightTabs.length > 0 && rightTabs.length < 3 && (
                         <button
                             className="bg-rose-10 hover:bg-rose-20  border border-b border-b-rose-40 border-rose-30 text-rose-70 hover:text-rose-90 px-2 rounded-t"
                             aria-label="create new scenario"
@@ -133,9 +134,11 @@ export default function Workspace() {
                         </button>
                     )}
                 </div>
-
-                <ScenariosDrawer className="absolute right-1 " />
             </Tabs.Menu>
+            <ScenariosDrawer
+                className="z-20 absolute right-1 top-2 "
+                onAdd={handleAddScenario}
+            />
             <Tabs.Content>
                 {leftTab && (
                     <Tabs.Item side="left" splitScreen={splitScreen}>

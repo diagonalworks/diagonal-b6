@@ -1,7 +1,9 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { PlusIcon, ReaderIcon } from '@radix-ui/react-icons';
-import React, { HTMLAttributes } from 'react';
+import React, { HTMLAttributes, useMemo } from 'react';
 import { twMerge } from 'tailwind-merge';
+
+import { useChangesStore } from '../stores/changes';
 
 const EXAMPLE_SCENARIOS = [
     {
@@ -16,8 +18,17 @@ const EXAMPLE_SCENARIOS = [
 ];
 
 export default function ScenariosDrawer({
+    onAdd,
     ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: HTMLAttributes<HTMLDivElement> & {
+    onAdd: () => void;
+}) {
+    const scenarios = useChangesStore((state) => state.changes);
+    const savedScenarios = useMemo(() => {
+        return Object.values(scenarios).filter((scenario) => scenario.created);
+    }, [scenarios]);
+
+    console.log(savedScenarios);
     return (
         <div {...props} className={twMerge(props.className)}>
             <DropdownMenu.Root>
@@ -38,7 +49,10 @@ export default function ScenariosDrawer({
                             </DropdownMenu.Item>
                         ))}
                         <DropdownMenu.Item asChild>
-                            <button className=" items-center w-60 flex gap-2 bg-rose-20 px-2 py-1 hover:outline-0 hover:bg-rose-10 rounded">
+                            <button
+                                className=" items-center w-60 flex gap-2 bg-rose-20 px-2 py-1 hover:outline-0 hover:bg-rose-10 rounded"
+                                onClick={onAdd}
+                            >
                                 <PlusIcon />
                                 New scenario
                             </button>
