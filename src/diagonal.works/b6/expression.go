@@ -151,7 +151,16 @@ func (e Expression) ToProto() (*pb.NodeProto, error) {
 }
 
 func ExpressionFromProto(node *pb.NodeProto) (Expression, error) {
-	e := Expression{}
+	e, err := expressionFromProto(node)
+	if err == nil {
+		e.Name = node.Name
+		e.Begin = int(node.Begin)
+		e.End = int(node.End)
+	}
+	return e, err
+}
+
+func expressionFromProto(node *pb.NodeProto) (Expression, error) {
 	switch n := node.Node.(type) {
 	case *pb.NodeProto_Symbol:
 		return SymbolExpressionFromProto(node)
@@ -190,16 +199,11 @@ func ExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 		case *pb.LiteralNodeProto_CollectionValue:
 			return CollectionExpressionFromProto(node)
 		default:
-			return Expression{}, fmt.Errorf("Can't convert %T from literal proto", n.Literal.Value)
+			return Expression{}, fmt.Errorf("can't convert %T from literal proto", n.Literal.Value)
 		}
 	default:
-		return Expression{}, fmt.Errorf("Can't convert expression from proto %T", node.Node)
+		return Expression{}, fmt.Errorf("can't convert expression from proto %T", node.Node)
 	}
-
-	e.Name = node.Name
-	e.Begin = int(node.Begin)
-	e.End = int(node.End)
-	return e, nil
 }
 
 func (e Expression) Clone() Expression {
@@ -228,15 +232,15 @@ func (l Literal) ToProto() (*pb.NodeProto, error) {
 	return l.AnyLiteral.ToProto()
 }
 
-func LiteralFromProto(node *pb.NodeProto) (Expression, error) {
-	var e Expression
-	if e, err := ExpressionFromProto(node); err != nil {
-		return e, err
+func LiteralFromProto(node *pb.NodeProto) (Literal, error) {
+	e, err := ExpressionFromProto(node)
+	if err != nil {
+		return Literal{}, err
 	}
 	if literal, ok := e.AnyExpression.(AnyLiteral); ok {
-		return Expression{AnyExpression: literal}, nil
+		return Literal{AnyLiteral: literal}, nil
 	} else {
-		return Expression{}, fmt.Errorf("Can't convert literal from proto %T", node.Node)
+		return Literal{}, fmt.Errorf("can't convert %T (from proto %T) to literal", e.AnyExpression, node.Node)
 	}
 }
 
@@ -251,7 +255,7 @@ func (l *Literal) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if literal, ok := e.AnyExpression.(AnyLiteral); ok {
 		l.AnyLiteral = literal
 	} else {
-		return fmt.Errorf("Can't convert literal from yaml %T", e.AnyExpression)
+		return fmt.Errorf("can't convert literal from yaml %T", e.AnyExpression)
 	}
 	return nil
 }
@@ -309,7 +313,7 @@ func FromLiteral(l interface{}) (Literal, error) {
 	case UntypedCollection:
 		return Literal{AnyLiteral: CollectionExpression{UntypedCollection: l}}, nil
 	}
-	return Literal{}, fmt.Errorf("Can't make literal from %T", l)
+	return Literal{}, fmt.Errorf("can't make literal from %T", l)
 }
 
 func LiteralEqual(v interface{}, vv interface{}) bool {
@@ -1151,7 +1155,7 @@ func CollectionExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 		Values: make([]interface{}, len(p.Values)),
 	}
 	if len(collection.Keys) != len(collection.Values) {
-		return Expression{}, fmt.Errorf("Number of keys doesn't match the number of values: %d vs %d", len(collection.Keys), len(collection.Values))
+		return Expression{}, fmt.Errorf("number of keys doesn't match the number of values: %d vs %d", len(collection.Keys), len(collection.Values))
 	}
 	for i := range p.Keys {
 		var k Literal
@@ -1160,11 +1164,11 @@ func CollectionExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 				Literal: p.Keys[i],
 			},
 		}
-		expression, err := LiteralFromProto(n)
+		l, err := LiteralFromProto(n)
 		if err != nil {
 			return Expression{}, err
 		}
-		k.AnyLiteral = expression.AnyExpression.(AnyLiteral)
+		k.AnyLiteral = l.AnyLiteral
 
 		collection.Keys[i] = k.Literal()
 		var v Literal
@@ -1173,11 +1177,11 @@ func CollectionExpressionFromProto(node *pb.NodeProto) (Expression, error) {
 				Literal: p.Values[i],
 			},
 		}
-		expression, err = LiteralFromProto(n)
+		l, err = LiteralFromProto(n)
 		if err != nil {
 			return Expression{}, err
 		}
-		v.AnyLiteral = expression.AnyExpression.(AnyLiteral)
+		v.AnyLiteral = l.AnyLiteral
 		collection.Values[i] = v.Literal()
 	}
 	return Expression{AnyExpression: CollectionExpression{UntypedCollection: Collection[any, any]{AnyCollection: collection}}}, nil

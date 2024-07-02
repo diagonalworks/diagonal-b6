@@ -1,6 +1,6 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { PlusIcon, ReaderIcon } from '@radix-ui/react-icons';
-import React, { HTMLAttributes, useMemo } from 'react';
+import { HTMLAttributes, useMemo } from 'react';
 import { twMerge } from 'tailwind-merge';
 
 import { useChangesStore } from '../stores/changes';
