@@ -22,7 +22,7 @@ func TestAddRelation(t *testing.T) {
 	id := b6.MakeRelationID("diagonal.works/test", 1)
 
 	tags := b6.ArrayValuesCollection[b6.Tag]{
-		{Key: "#route", Value: b6.StringExpression("bicycle")},
+		{Key: "#route", Value: b6.NewStringExpression("bicycle")},
 	}
 
 	members := &b6.ArrayCollection[b6.Identifiable, string]{
@@ -49,7 +49,7 @@ func TestAddCollection(t *testing.T) {
 
 	tags := b6.AdaptCollection[any, b6.Tag](
 		b6.ArrayValuesCollection[b6.Tag]{
-			{Key: "#route", Value: b6.StringExpression("bicycle")},
+			{Key: "#route", Value: b6.NewStringExpression("bicycle")},
 		}.Collection(),
 	)
 
@@ -78,7 +78,7 @@ func TestAddExpression(t *testing.T) {
 
 	tags := b6.AdaptCollection[any, b6.Tag](
 		b6.ArrayValuesCollection[b6.Tag]{
-			{Key: "b6", Value: b6.StringExpression("docked")},
+			{Key: "b6", Value: b6.NewStringExpression("docked")},
 		}.Collection(),
 	)
 

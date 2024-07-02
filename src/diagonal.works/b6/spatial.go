@@ -46,7 +46,7 @@ func (m MightIntersect) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func (m MightIntersect) Equal(other Query) bool {
+func (m MightIntersect) Equals(other Query) bool {
 	if mm, ok := other.(MightIntersect); ok {
 		return reflect.DeepEqual(m.Region, mm.Region)
 	}
@@ -98,7 +98,7 @@ func (i IntersectsCells) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func (i IntersectsCells) Equal(other Query) bool {
+func (i IntersectsCells) Equals(other Query) bool {
 	var ii IntersectsCells
 	switch iii := other.(type) {
 	case IntersectsCells:
@@ -283,7 +283,7 @@ func (i *IntersectsCap) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
-func (i *IntersectsCap) Equal(other Query) bool {
+func (i *IntersectsCap) Equals(other Query) bool {
 	if ii, ok := other.(*IntersectsCap); ok {
 		return i.cap.Center() == ii.cap.Center() && i.cap.Radius() == ii.cap.Radius()
 	}
@@ -410,7 +410,7 @@ func (i IntersectsFeature) toGeometryQuery(w World) Query {
 	return Empty{}
 }
 
-func (i IntersectsFeature) Equal(other Query) bool {
+func (i IntersectsFeature) Equals(other Query) bool {
 	if ii, ok := other.(*IntersectsFeature); ok {
 		return i.ID == ii.ID
 	}
@@ -445,7 +445,7 @@ func (i IntersectsPoint) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func (i IntersectsPoint) Equal(other Query) bool {
+func (i IntersectsPoint) Equals(other Query) bool {
 	if ii, ok := other.(*IntersectsPoint); ok {
 		return i.Point == ii.Point
 	}
@@ -533,7 +533,7 @@ func (i IntersectsPolyline) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func (i IntersectsPolyline) Equal(other Query) bool {
+func (i IntersectsPolyline) Equals(other Query) bool {
 	if ii, ok := other.(*IntersectsPolyline); ok {
 		return geometry.PolylineEqual(i.Polyline, ii.Polyline)
 	}
@@ -638,7 +638,7 @@ func (i IntersectsMultiPolygon) ToProto() (*pb.QueryProto, error) {
 	}, nil
 }
 
-func (i IntersectsMultiPolygon) Equal(other Query) bool {
+func (i IntersectsMultiPolygon) Equals(other Query) bool {
 	if ii, ok := other.(*IntersectsMultiPolygon); ok {
 		return geometry.MultiPolygonEqual(i.MultiPolygon, ii.MultiPolygon)
 	}
@@ -738,7 +738,7 @@ func NewQueryFromProto(p *pb.QueryProto) (Query, error) {
 	case *pb.QueryProto_Keyed:
 		return Keyed{q.Keyed}, nil
 	case *pb.QueryProto_Tagged:
-		return Tagged{Key: q.Tagged.Key, Value: StringExpression(q.Tagged.Value)}, nil
+		return Tagged{Key: q.Tagged.Key, Value: NewStringExpression(q.Tagged.Value)}, nil
 	case *pb.QueryProto_IntersectsCap:
 		ll := PointProtoToS2LatLng(q.IntersectsCap.Center)
 		cap := s2.CapFromCenterAngle(s2.PointFromLatLng(ll), MetersToAngle(q.IntersectsCap.RadiusMeters))

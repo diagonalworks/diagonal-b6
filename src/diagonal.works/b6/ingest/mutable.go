@@ -333,7 +333,7 @@ func modifyTags(t b6.Taggable, modifications map[string]modifiedTag) []b6.Tag {
 		if modifications != nil {
 			if modification, ok := modifications[tag.Key]; ok {
 				if !modification.deleted {
-					modified = append(modified, b6.Tag{Key: tag.Key, Value: b6.StringExpression(modification.value)})
+					modified = append(modified, b6.Tag{Key: tag.Key, Value: b6.NewStringExpression(modification.value)})
 				}
 			} else {
 				modified = append(modified, tag)
@@ -346,7 +346,7 @@ func modifyTags(t b6.Taggable, modifications map[string]modifiedTag) []b6.Tag {
 	for key, modification := range modifications {
 		if !modification.deleted {
 			if _, ok := seen[key]; !ok {
-				modified = append(modified, b6.Tag{Key: key, Value: b6.StringExpression(modification.value)})
+				modified = append(modified, b6.Tag{Key: key, Value: b6.NewStringExpression(modification.value)})
 			}
 		}
 	}
@@ -360,7 +360,7 @@ func modifyTag(t b6.Taggable, key string, modifications map[string]modifiedTag) 
 			if modification.deleted {
 				return b6.InvalidTag()
 			}
-			return b6.Tag{Key: key, Value: b6.StringExpression(modification.value)}
+			return b6.Tag{Key: key, Value: b6.NewStringExpression(modification.value)}
 		}
 	}
 
@@ -566,7 +566,7 @@ done:
 				select {
 				case <-gc.Done():
 					break done
-				case c <- ModifiedTag{ID: id, Tag: b6.Tag{Key: key, Value: b6.StringExpression(value.value)}, Deleted: value.deleted}:
+				case c <- ModifiedTag{ID: id, Tag: b6.Tag{Key: key, Value: b6.NewStringExpression(value.value)}, Deleted: value.deleted}:
 				}
 			}
 		}

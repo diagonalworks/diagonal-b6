@@ -41,7 +41,7 @@ func TestValidateWorld(t *testing.T) {
 	ingest.ValidateWorld("Compact", build, t)
 }
 
-func TestPointPathValueTypesCorrectlyInferred(t *testing.T) {
+func TestPointPathExpressionTypesCorrectlyInferred(t *testing.T) {
 	nodes := []osm.Node{
 		{
 			ID:       9663680708,
@@ -262,7 +262,7 @@ func BenchmarkSearchModifiedWorld(b *testing.B) {
 	}
 	mutable := ingest.NewMutableOverlayWorld(w)
 	for _, id := range ids {
-		mutable.AddTag(id, b6.Tag{Key: "#100m", Value: b6.StringExpression("yes")})
+		mutable.AddTag(id, b6.Tag{Key: "#100m", Value: b6.NewStringExpression("yes")})
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

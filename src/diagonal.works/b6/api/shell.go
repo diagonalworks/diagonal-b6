@@ -388,7 +388,7 @@ func reduceLatLng(lat b6.Expression, lng b6.Expression, l *lexer) b6.Expression 
 	return b6.NewPointExpressionFromLatLng(ll)
 }
 
-func expressionToString(expression b6.Expression) string {
+func expressionToString(expression b6.Expression) string { // m: call string ?
 	switch e := expression.AnyExpression.(type) {
 	case b6.StringExpression:
 		return string(e)
@@ -403,7 +403,7 @@ func reduceTag(key b6.Expression, value b6.Expression, l *lexer) b6.Expression {
 	return b6.Expression{
 		AnyExpression: b6.TagExpression{
 			Key:   expressionToString(key),
-			Value: b6.StringExpression(expressionToString(value)), // TODO(mari): remove once all tag values are expressions
+			Value: b6.NewStringExpression(expressionToString(value)), // TODO(mari): remove once all tag values are expressions
 		},
 		Begin: key.Begin,
 		End:   value.End,
@@ -577,7 +577,7 @@ func reduceTagKeyValue(key b6.Expression, value b6.Expression) b6.Expression {
 		AnyExpression: b6.QueryExpression{
 			Query: b6.Tagged{
 				Key:   expressionToString(key),
-				Value: b6.StringExpression(expressionToString(value)),
+				Value: b6.NewStringExpression(expressionToString(value)),
 			},
 		},
 		Begin: key.Begin,
@@ -801,7 +801,7 @@ func simplifyCallBuildingKeyedTaggedQuery(symbol string, call b6.CallExpression)
 	case "tagged":
 		if len(args) == 2 {
 			return b6.QueryExpression{
-				Query: b6.Tagged{Key: args[0], Value: b6.StringExpression(args[1])},
+				Query: b6.Tagged{Key: args[0], Value: b6.NewStringExpression(args[1])},
 			}, true
 		}
 	}

@@ -16,15 +16,15 @@ func TestUPRNClusters(t *testing.T) {
 	uprns := []ingest.Feature{
 		&ingest.GenericFeature{
 			ID:   b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceGBUPRN, 5150460},
-			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5349035, -0.1257194))}},
+			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5349035, -0.1257194))}},
 		},
 		&ingest.GenericFeature{
 			ID:   b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceGBUPRN, 5150461},
-			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5349035, -0.1257194))}},
+			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5349035, -0.1257194))}},
 		},
 		&ingest.GenericFeature{
 			ID:   b6.FeatureID{b6.FeatureTypePoint, b6.NamespaceGBUPRN, 5158495},
-			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.536685, -0.127258))}},
+			Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.536685, -0.127258))}},
 		}}
 
 	source := ClusterSource{
