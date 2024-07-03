@@ -9,6 +9,7 @@ import ComparisonCard from '@/features/scenarios/components/ComparisonCard';
 import { Tabs } from '@/features/scenarios/components/Tabs';
 import { useComparisonsStore } from '@/features/scenarios/stores/comparisons';
 import { useTabsStore } from '@/features/scenarios/stores/tabs';
+import useFeatureFlag from '@/hooks/useFeatureFlag';
 import { useViewStore, useViewURLStorage } from '@/stores/view';
 import { useWorkspaceURLStorage } from '@/stores/workspace';
 
@@ -29,6 +30,8 @@ export default function Workspace() {
         state.actions.setView,
         state.view,
     ]);
+
+    const isScenariosEnabled = useFeatureFlag('scenarios');
 
     const startup = useStartup();
 
@@ -106,7 +109,11 @@ export default function Workspace() {
                             onValueChange={tabActions.rename}
                         />
                     ))}
-                    {rightTabs.length === 0 && (
+                    {/**
+                     * Only show the add scenario button if there are no right tabs and scenarios are enabled.
+                     * This is the entrypoint for the scenarios feature, we hide it if the feature is disabled.
+                     */}
+                    {rightTabs.length === 0 && isScenariosEnabled && (
                         <button
                             onClick={() => {
                                 handleAddScenario();
