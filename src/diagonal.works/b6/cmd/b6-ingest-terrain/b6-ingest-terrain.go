@@ -203,7 +203,7 @@ func (s *elevationSource) Read(options ingest.ReadOptions, emit ingest.Emit, ctx
 				if path.Get("#highway").IsValid() {
 					if e, ok := s.Elevations.Elevation(f.Point()); ok {
 						atomic.AddUint64(&elevations, 1)
-						point.AddTag(b6.Tag{Key: "ele", Value: b6.StringExpression(strconv.Itoa(int(math.Round(e))))})
+						point.AddTag(b6.Tag{Key: "ele", Value: b6.NewStringExpression(strconv.Itoa(int(math.Round(e))))})
 					}
 					break
 				}

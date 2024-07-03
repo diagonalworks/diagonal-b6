@@ -738,7 +738,7 @@ func NewQueryFromProto(p *pb.QueryProto) (Query, error) {
 	case *pb.QueryProto_Keyed:
 		return Keyed{q.Keyed}, nil
 	case *pb.QueryProto_Tagged:
-		return Tagged{Key: q.Tagged.Key, Value: StringExpression(q.Tagged.Value)}, nil
+		return Tagged{Key: q.Tagged.Key, Value: NewStringExpression(q.Tagged.Value)}, nil
 	case *pb.QueryProto_IntersectsCap:
 		ll := PointProtoToS2LatLng(q.IntersectsCap.Center)
 		cap := s2.CapFromCenterAngle(s2.PointFromLatLng(ll), MetersToAngle(q.IntersectsCap.RadiusMeters))
