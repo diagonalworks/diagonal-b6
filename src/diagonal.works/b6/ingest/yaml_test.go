@@ -41,13 +41,13 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	}
 
 	m := NewMutableOverlayWorld(base)
-	m.AddTag(FromOSMNodeID(caravan.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("yes")})
+	m.AddTag(FromOSMNodeID(caravan.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.NewStringExpression("yes")})
 	m.RemoveTag(FromOSMNodeID(caravan.ID).FeatureID(), "cuisine")
-	m.AddTag(FromOSMNodeID(dishoom.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.StringExpression("no")})
+	m.AddTag(FromOSMNodeID(dishoom.ID).FeatureID(), b6.Tag{Key: "wheelchair", Value: b6.NewStringExpression("no")})
 
-	ifo := &GenericFeature{ID: FromOSMNodeID(osm.NodeID(3868276529)).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5321749, -0.1250181))}}}
-	ifo.AddTag(b6.Tag{Key: "name", Value: b6.StringExpression("Identified Flying Object")})
-	ifo.AddTag(b6.Tag{Key: "tourism", Value: b6.StringExpression("attraction")})
+	ifo := &GenericFeature{ID: FromOSMNodeID(osm.NodeID(3868276529)).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5321749, -0.1250181))}}}
+	ifo.AddTag(b6.Tag{Key: "name", Value: b6.NewStringExpression("Identified Flying Object")})
+	ifo.AddTag(b6.Tag{Key: "tourism", Value: b6.NewStringExpression("attraction")})
 	if err := m.AddFeature(ifo); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -55,12 +55,12 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	footway := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, b6.Namespace("diagonal.works/test"), 1}}
 	footway.ModifyOrAddTag(b6.Tag{
 		b6.PathTag,
-		b6.Values([]b6.Value{
+		b6.NewExpressions([]b6.AnyExpression{
 			b6.FeatureIDExpression(FromOSMNodeID(caravan.ID)),
 			b6.PointExpression(s2.LatLngFromDegrees(51.535632, -0.126046)),
 			b6.FeatureIDExpression(FromOSMNodeID(dishoom.ID)),
 		})})
-	footway.AddTag(b6.Tag{Key: "highway", Value: b6.StringExpression("footway")})
+	footway.AddTag(b6.Tag{Key: "highway", Value: b6.NewStringExpression("footway")})
 	if err := m.AddFeature(footway); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -68,13 +68,13 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	boundary := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, b6.Namespace("diagonal.works/test"), 2}}
 	boundary.ModifyOrAddTag(b6.Tag{
 		b6.PathTag,
-		b6.Values([]b6.Value{
+		b6.NewExpressions([]b6.AnyExpression{
 			b6.FeatureIDExpression(FromOSMNodeID(caravan.ID)),
 			b6.FeatureIDExpression(FromOSMNodeID(dishoom.ID)),
 			b6.PointExpression(s2.LatLngFromDegrees(51.535632, -0.126046)),
 			b6.FeatureIDExpression(FromOSMNodeID(caravan.ID)),
 		})})
-	boundary.AddTag(b6.Tag{Key: "highway", Value: b6.StringExpression("footway")})
+	boundary.AddTag(b6.Tag{Key: "highway", Value: b6.NewStringExpression("footway")})
 	if err := m.AddFeature(boundary); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -92,7 +92,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		{ID: FromOSMNodeID(caravan.ID).FeatureID(), Role: "good"},
 		{ID: FromOSMNodeID(dishoom.ID).FeatureID(), Role: "best"},
 	}
-	ranking.AddTag(b6.Tag{Key: "source", Value: b6.StringExpression("diagonal")})
+	ranking.AddTag(b6.Tag{Key: "source", Value: b6.NewStringExpression("diagonal")})
 	if err := m.AddFeature(ranking); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -101,7 +101,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 	analysis.CollectionID = b6.MakeCollectionID(b6.Namespace("diagonal.works/test"), 5)
 	analysis.Keys = []interface{}{FromOSMNodeID(caravan.ID).FeatureID(), FromOSMNodeID(dishoom.ID).FeatureID()}
 	analysis.Values = []interface{}{"good", "best"}
-	analysis.AddTag(b6.Tag{Key: "source", Value: b6.StringExpression("diagonal")})
+	analysis.AddTag(b6.Tag{Key: "source", Value: b6.NewStringExpression("diagonal")})
 	if err := m.AddFeature(&analysis); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -115,7 +115,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 				{
 					AnyExpression: b6.QueryExpression{
 						Query: b6.Intersection{
-							b6.Tagged{Key: "#highway", Value: b6.StringExpression("cycleway")},
+							b6.Tagged{Key: "#highway", Value: b6.NewStringExpression("cycleway")},
 							b6.IntersectsFeature{
 								ID: AreaIDFromOSMWayID(222021571).FeatureID(),
 							},
@@ -128,7 +128,7 @@ func TestExportModificationsAsYAML(t *testing.T) {
 			},
 		},
 	}
-	expression.AddTag(b6.Tag{Key: "source", Value: b6.StringExpression("diagonal")})
+	expression.AddTag(b6.Tag{Key: "source", Value: b6.NewStringExpression("diagonal")})
 	if err := m.AddFeature(&expression); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}

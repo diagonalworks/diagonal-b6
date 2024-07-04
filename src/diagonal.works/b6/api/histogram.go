@@ -21,7 +21,7 @@ func NewHistogramFromCollection(c b6.UntypedCollection, id b6.CollectionID) (*in
 		h, err = newBucketedHistogram(c)
 	}
 	h.CollectionID = id
-	h.Tags = append(h.Tags, b6.Tag{Key: "b6", Value: b6.StringExpression("histogram")})
+	h.Tags = append(h.Tags, b6.Tag{Key: "b6", Value: b6.NewStringExpression("histogram")})
 	return h, err
 }
 
@@ -38,7 +38,7 @@ func newBucketedHistogram(c b6.UntypedCollection) (*ingest.CollectionFeature, er
 
 	histogram := ingest.CollectionFeature{}
 	for i, bucket := range buckets {
-		histogram.Tags = append(histogram.Tags, b6.Tag{Key: fmt.Sprintf("bucket:%d", i), Value: b6.StringExpression(bucket.label)})
+		histogram.Tags = append(histogram.Tags, b6.Tag{Key: fmt.Sprintf("bucket:%d", i), Value: b6.NewStringExpression(bucket.label)})
 	}
 
 	i := c.BeginUntyped()
@@ -60,7 +60,7 @@ func newBucketedHistogram(c b6.UntypedCollection) (*ingest.CollectionFeature, er
 
 func newOriginDestinationHistogram(c b6.UntypedCollection) (*ingest.CollectionFeature, error) {
 	histogram := ingest.CollectionFeature{
-		Tags: []b6.Tag{{Key: HistogramOriginDestinationKey, Value: b6.StringExpression("yes")}},
+		Tags: []b6.Tag{{Key: HistogramOriginDestinationKey, Value: b6.NewStringExpression("yes")}},
 	}
 	i := c.BeginUntyped()
 	for {

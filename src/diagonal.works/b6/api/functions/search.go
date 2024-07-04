@@ -170,7 +170,7 @@ func withinCap(context *api.Context, point b6.Geometry, radius float64) (b6.Quer
 
 // Return a query that will match features tagged with the given key and value.
 func tagged(context *api.Context, key string, value string) (b6.Query, error) {
-	return b6.Tagged{Key: key, Value: b6.StringExpression(value)}, nil
+	return b6.Tagged{Key: key, Value: b6.NewStringExpression(value)}, nil
 }
 
 // Return a query that will match features tagged with the given key independent of value.
