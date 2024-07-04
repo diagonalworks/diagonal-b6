@@ -71,7 +71,7 @@ func addPoint(_ *api.Context, point b6.Geometry, id b6.FeatureID, tags b6.Collec
 	p := &ingest.GenericFeature{
 		ID: id,
 		Tags: []b6.Tag{
-			{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromPoint(point.Point()))},
+			{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromPoint(point.Point()))},
 		}}
 
 	t := tags.Begin()

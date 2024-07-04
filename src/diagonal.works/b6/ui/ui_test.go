@@ -111,7 +111,7 @@ func TestEvaluateFunctionThatChangesWorld(t *testing.T) {
 	if f == nil {
 		t.Fatal("failed to find expected feature")
 	}
-	expected := b6.Tag{Key: "building:levels", Value: b6.StringExpression("25")}
+	expected := b6.Tag{Key: "building:levels", Value: b6.NewStringExpression("25")}
 	if levels := f.Get(expected.Key); levels != expected {
 		t.Errorf("expected tag %s, found %s", expected, levels)
 	}
@@ -217,7 +217,7 @@ func TestCompareScenarios(t *testing.T) {
 
 	w := worlds.FindOrCreateWorld(scenario)
 	// The horror
-	w.AddTag(camden.DishoomID, b6.Tag{Key: "#amenity", Value: b6.StringExpression("dentist")})
+	w.AddTag(camden.DishoomID, b6.Tag{Key: "#amenity", Value: b6.NewStringExpression("dentist")})
 
 	url := "http://b6.diagonal.works/compare"
 	j := map[string]interface{}{

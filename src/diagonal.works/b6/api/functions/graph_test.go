@@ -18,7 +18,7 @@ func TestAccessibility(t *testing.T) {
 		return
 	}
 
-	options := []b6.Tag{{Key: "mode", Value: b6.StringExpression("walk")}}
+	options := []b6.Tag{{Key: "mode", Value: b6.NewStringExpression("walk")}}
 	od, err := accessibilityForGranarySquare(options, w)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestAccessibilityFlipped(t *testing.T) {
 		return
 	}
 
-	options := []b6.Tag{{Key: "flip", Value: b6.StringExpression("yes")}, {Key: "mode", Value: b6.StringExpression("walk")}}
+	options := []b6.Tag{{Key: "flip", Value: b6.NewStringExpression("yes")}, {Key: "mode", Value: b6.NewStringExpression("walk")}}
 	od, err := accessibilityForGranarySquare(options, w)
 	if err != nil {
 		t.Fatal(err)
@@ -91,8 +91,8 @@ func TestWeightsFromOptions(t *testing.T) {
 	}
 
 	options := []b6.Tag{
-		{Key: "mode", Value: b6.StringExpression("transit")},
-		{Key: "walk:speed", Value: b6.StringExpression("7.6")},
+		{Key: "mode", Value: b6.NewStringExpression("transit")},
+		{Key: "walk:speed", Value: b6.NewStringExpression("7.6")},
 	}
 	weights, err := WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection(), w)
 	if err != nil {
@@ -105,10 +105,10 @@ func TestWeightsFromOptions(t *testing.T) {
 	}
 
 	options = []b6.Tag{
-		{Key: "mode", Value: b6.StringExpression("transit")},
-		{Key: "elevation", Value: b6.StringExpression("true")},
-		{Key: "elevation:downhill", Value: b6.StringExpression("1.2")},
-		{Key: "walk:speed", Value: b6.StringExpression("8.7")},
+		{Key: "mode", Value: b6.NewStringExpression("transit")},
+		{Key: "elevation", Value: b6.NewStringExpression("true")},
+		{Key: "elevation:downhill", Value: b6.NewStringExpression("1.2")},
+		{Key: "walk:speed", Value: b6.NewStringExpression("8.7")},
 	}
 	weights, err = WeightsFromOptions(b6.ArrayValuesCollection[b6.Tag](options).Collection(), w)
 	if err != nil {

@@ -9,8 +9,8 @@ import (
 )
 
 func TestAddPoints(t *testing.T) {
-	point1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
-	point2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
+	point1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	point2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
 	add := AddFeatures([]Feature{point1, point2.Clone()})
 
 	w := NewBasicMutableWorld()
@@ -39,12 +39,12 @@ func TestAddPoints(t *testing.T) {
 }
 
 func TestAddPaths(t *testing.T) {
-	point1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
-	point2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
+	point1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	point2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
 
 	path := GenericFeature{}
 	path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespacePrivate + "/1", 1})
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(point1.FeatureID()), b6.FeatureIDExpression(point2.FeatureID())})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.NewExpressions([]b6.AnyExpression{b6.FeatureIDExpression(point1.FeatureID()), b6.FeatureIDExpression(point2.FeatureID())})})
 
 	add := AddFeatures([]Feature{point2.Clone(), path.Clone()})
 
@@ -83,13 +83,13 @@ func TestAddPaths(t *testing.T) {
 }
 
 func TestAddAreas(t *testing.T) {
-	p1 := &GenericFeature{ID: FromOSMNodeID(4270651271).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5354124, -0.1243817))}}}
-	p2 := &GenericFeature{ID: FromOSMNodeID(5693730034).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5353117, -0.1244943))}}}
-	p3 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5353736, -0.1242415))}}}
+	p1 := &GenericFeature{ID: FromOSMNodeID(4270651271).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5354124, -0.1243817))}}}
+	p2 := &GenericFeature{ID: FromOSMNodeID(5693730034).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5353117, -0.1244943))}}}
+	p3 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5353736, -0.1242415))}}}
 
 	path := GenericFeature{}
 	path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespacePrivate + "/1", 1})
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(p1.FeatureID()), b6.FeatureIDExpression(p2.FeatureID()), b6.FeatureIDExpression(p3.FeatureID()), b6.FeatureIDExpression(p1.FeatureID())})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.NewExpressions([]b6.AnyExpression{b6.FeatureIDExpression(p1.FeatureID()), b6.FeatureIDExpression(p2.FeatureID()), b6.FeatureIDExpression(p3.FeatureID()), b6.FeatureIDExpression(p1.FeatureID())})})
 
 	area := NewAreaFeature(1)
 	area.AreaID = b6.MakeAreaID(b6.NamespacePrivate+"/2", 1)
@@ -122,8 +122,8 @@ func TestAddAreas(t *testing.T) {
 }
 
 func TestAddRelations(t *testing.T) {
-	p1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
-	p2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
+	p1 := &GenericFeature{ID: FromOSMNodeID(6082053666).FeatureID(), Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	p2 := &GenericFeature{ID: b6.FeatureID{Type: b6.FeatureTypePoint, Namespace: b6.NamespacePrivate, Value: 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
 
 	relation := NewRelationFeature(2)
 	relation.RelationID = b6.MakeRelationID(b6.NamespaceDiagonalAccessPoints, 1)
@@ -179,13 +179,13 @@ func TestAddCollections(t *testing.T) {
 
 func TestMergeChanges(t *testing.T) {
 	ns := b6.Namespace("diagonal.works/test")
-	p1 := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
-	p2 := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 2}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
+	p1 := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	p2 := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 2}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5351906, -0.1245464))}}}
 	add1 := AddFeatures([]Feature{p1, p2})
 
 	path := GenericFeature{}
 	path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, ns, 3})
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(p1.FeatureID()), b6.FeatureIDExpression(p2.FeatureID())})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.NewExpressions([]b6.AnyExpression{b6.FeatureIDExpression(p1.FeatureID()), b6.FeatureIDExpression(p2.FeatureID())})})
 	add2 := AddFeatures([]Feature{&path})
 
 	merged := MergedChange{&add1, &add2}
@@ -210,11 +210,11 @@ func TestMergeChanges(t *testing.T) {
 
 func TestMergeChangesLeavesWorldUnmodfiedFollowingError(t *testing.T) {
 	ns := b6.Namespace("diagonal.works/test")
-	point := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.PointExpression(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
+	point := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, ns, 1}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(51.5366467, -0.1263796))}}}
 	add1 := AddFeatures([]Feature{point})
 
 	path := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, ns, 3}}
-	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 0}), b6.FeatureIDExpression(b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 1})})})
+	path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.NewExpressions([]b6.AnyExpression{b6.FeatureIDExpression(b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 0}), b6.FeatureIDExpression(b6.FeatureID{b6.FeatureTypePoint, b6.Namespace("nonexistant"), 1})})})
 	add2 := AddFeatures([]Feature{path})
 
 	merged := MergedChange{&add1, &add2}
