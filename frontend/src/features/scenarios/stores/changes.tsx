@@ -1,7 +1,9 @@
 import { isEqual } from 'lodash';
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
+import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
 import { World } from '@/stores/worlds';
 import { FeatureIDProto } from '@/types/generated/api';
@@ -136,4 +138,46 @@ export const createChangesStore: ImmerStateCreator<
  * This is a zustand store that uses immer for immutability.
  * @returns The changes store
  */
-export const useChangesStore = create(immer(createChangesStore));
+export const useChangesStore = create(devtools(immer(createChangesStore)));
+
+type ChangesURLParams = {
+    s?: string;
+};
+
+const encode = (state: Partial<ChangesStore>): ChangesURLParams => {
+    if (!state.changes) {
+        return {};
+    }
+    const createdScenarios = Object.entries(state.changes)
+        .filter(([, change]) => change.created)
+        .map(([id]) => id);
+    return {
+        s: createdScenarios.join(','),
+    };
+};
+
+const decode = (
+    params: ChangesURLParams
+): ((state: ChangesStore) => ChangesStore) => {
+    return (state) => {
+        const createdScenarios = params.s?.split(',') ?? [];
+        createdScenarios.forEach((id) => {
+            if (!state.changes[id]) {
+                state.actions.add({
+                    id,
+                    origin: 'baseline',
+                    target: id,
+                    created: true,
+                    spec: {
+                        features: [],
+                    },
+                });
+            }
+        });
+        return state;
+    };
+};
+
+export const useChangesURLStorage = () => {
+    return usePersistURL(useChangesStore, encode, decode);
+};
