@@ -8,6 +8,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// marshalChoiceYAML marshals a union/oneof style data structure into yaml.
+// `choices` is effectively the schema for the union. `value` is matched against
+// the types present in `choices`, and if a match is found, a yaml map is
+// emitted, with a single key and value: the key is the name of the corresponding
+// field in the schema, and the value is simply the yaml encoding of `value`.
+// unmarshalChoiceYAML reverses this process.
 func marshalChoiceYAML(choices interface{}, value interface{}, extra interface{}) (interface{}, error) {
 	ct := reflect.TypeOf(choices).Elem()
 	vt := reflect.TypeOf(value)
@@ -43,7 +49,11 @@ func unmarshalChoiceYAML(choices interface{}, unmarshal func(interface{}) error)
 	v := reflect.ValueOf(choices).Elem()
 	for i := 0; i < t.NumField(); i++ {
 		if f := v.Field(i); !f.IsNil() {
-			return f.Interface(), nil
+			if f.Kind() != reflect.Slice { // Unpacks pointers.
+				return f.Elem().Interface(), nil
+			} else {
+				return f.Interface(), nil
+			}
 		}
 	}
 	var broken interface{}

@@ -123,12 +123,12 @@ func (r *RenderRule) ToQuery(zoom uint) (b6.Query, bool) {
 	}
 }
 
-func (r *RenderRule) Matches(f b6.Taggable) (b6.Value, bool) {
+func (r *RenderRule) Matches(f b6.Taggable) (b6.Expression, bool) {
 	t := f.Get(r.Tag.Key)
 	if !t.IsValid() {
-		return nil, false
+		return b6.Expression{}, false
 	}
-	matches := r.Tag.Value == nil || r.Tag.Value.String() == "" || r.Tag.Value.String() == t.Value.String()
+	matches := r.Tag.Value.AnyExpression == nil || (r.Tag.Value.String() == "" || r.Tag.Value.String() == t.Value.String())
 	return t.Value, matches
 }
 
@@ -147,7 +147,7 @@ func (rs RenderRules) ToQuery(zoom uint) b6.Query {
 func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 	for _, r := range rs {
 		if r.Tag.Key == tag.Key {
-			if r.Tag.Value == nil || r.Tag.Value.String() == "" || r.Tag.Value.String() == tag.Value.String() {
+			if r.Tag.Value.AnyExpression == nil || r.Tag.Value.String() == "" || tag.Value.String() == "" || r.Tag.Value.String() == tag.Value.String() {
 				return true
 			}
 		}
@@ -156,41 +156,41 @@ func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 }
 
 var BasemapRenderRules = RenderRules{
-	{Tag: b6.Tag{Key: "#building", Value: b6.StringExpression("train_station")}, MinZoom: 12, Layer: BasemapLayerBuilding},
+	{Tag: b6.Tag{Key: "#building", Value: b6.NewStringExpression("train_station")}, MinZoom: 12, Layer: BasemapLayerBuilding},
 	{Tag: b6.Tag{Key: "#building"}, MinZoom: 14, Layer: BasemapLayerBuilding},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("cycleway")}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("footway")}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("motorway")}, MinZoom: 12, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("path")}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("pedestrian")}, MinZoom: 16, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("primary")}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("residential")}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("secondary")}, MinZoom: 16, Layer: BasemapLayerRoad, Label: true},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("service")}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("street")}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("tertiary")}, MinZoom: 14, Layer: BasemapLayerRoad, Label: true},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("trunk")}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
-	{Tag: b6.Tag{Key: "#highway", Value: b6.StringExpression("unclassified")}, MinZoom: 14, Layer: BasemapLayerRoad},
-	{Tag: b6.Tag{Key: "#landuse", Value: b6.StringExpression("cemetary")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: b6.StringExpression("forest")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: b6.StringExpression("grass")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: b6.StringExpression("heath")}, MinZoom: 16, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: b6.StringExpression("meadow")}, MinZoom: 16, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: b6.StringExpression("park")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: b6.StringExpression("pitch")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#landuse", Value: b6.StringExpression("vacant")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: b6.StringExpression("park")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: b6.StringExpression("pitch")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: b6.StringExpression("playground")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: b6.StringExpression("garden")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#leisure", Value: b6.StringExpression("nature_reserve")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#natural", Value: b6.StringExpression("coastline")}, MinZoom: 12, Layer: BasemapLayerBoundary},
-	{Tag: b6.Tag{Key: "#natural", Value: b6.StringExpression("heath")}, MinZoom: 14, Layer: BasemapLayerLandUse},
-	{Tag: b6.Tag{Key: "#outline", Value: b6.StringExpression("contour")}, MinZoom: 14, Layer: BasemapLayerContour},
-	{Tag: b6.Tag{Key: "#railway", Value: b6.StringExpression("rail")}, MinZoom: 12, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("cycleway")}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("footway")}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("motorway")}, MinZoom: 12, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("path")}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("pedestrian")}, MinZoom: 16, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("primary")}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("residential")}, MinZoom: 14, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("secondary")}, MinZoom: 16, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("service")}, MinZoom: 14, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("street")}, MinZoom: 14, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("tertiary")}, MinZoom: 14, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("trunk")}, MinZoom: 12, Layer: BasemapLayerRoad, Label: true},
+	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("unclassified")}, MinZoom: 14, Layer: BasemapLayerRoad},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.NewStringExpression("cemetary")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.NewStringExpression("forest")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.NewStringExpression("grass")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.NewStringExpression("heath")}, MinZoom: 16, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.NewStringExpression("meadow")}, MinZoom: 16, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.NewStringExpression("park")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.NewStringExpression("pitch")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#landuse", Value: b6.NewStringExpression("vacant")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.NewStringExpression("park")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.NewStringExpression("pitch")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.NewStringExpression("playground")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.NewStringExpression("garden")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#leisure", Value: b6.NewStringExpression("nature_reserve")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#natural", Value: b6.NewStringExpression("coastline")}, MinZoom: 12, Layer: BasemapLayerBoundary},
+	{Tag: b6.Tag{Key: "#natural", Value: b6.NewStringExpression("heath")}, MinZoom: 14, Layer: BasemapLayerLandUse},
+	{Tag: b6.Tag{Key: "#outline", Value: b6.NewStringExpression("contour")}, MinZoom: 14, Layer: BasemapLayerContour},
+	{Tag: b6.Tag{Key: "#railway", Value: b6.NewStringExpression("rail")}, MinZoom: 12, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#water"}, MinZoom: 12, Layer: BasemapLayerWater},
 	{Tag: b6.Tag{Key: "#waterway"}, MinZoom: 14, Layer: BasemapLayerWater},
-	{Tag: b6.Tag{Key: "#place", Value: b6.StringExpression("city")}, MaxZoom: 11, Layer: BasemapLayerLabel},
+	{Tag: b6.Tag{Key: "#place", Value: b6.NewStringExpression("city")}, MaxZoom: 11, Layer: BasemapLayerLabel},
 }
 
 type BasemapRenderer struct {

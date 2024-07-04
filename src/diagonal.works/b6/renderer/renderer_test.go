@@ -25,7 +25,7 @@ func TestFillColourFromFeature(t *testing.T) {
 		{"red", false, ""},
 	}
 	for _, test := range tests {
-		tags := b6.Tags{{Key: "diagonal:colour", Value: b6.StringExpression(test.featureColour)}}
+		tags := b6.Tags{{Key: "diagonal:colour", Value: b6.NewStringExpression(test.featureColour)}}
 		feature := NewFeature(&Point{})
 		fillColourFromFeature(feature, tags)
 		tileColour, ok := feature.Tags["colour"]
@@ -85,13 +85,13 @@ func TestFeaturesAreOrderedByLayerTag(t *testing.T) {
 	lighterman := b6.FindAreaByID(camden.LightermanID, mutable)
 	roof := ingest.NewAreaFeatureFromWorld(lighterman)
 	roof.AreaID = b6.MakeAreaID(b6.NamespacePrivate, 1)
-	roof.AddTag(b6.Tag{Key: "layer", Value: b6.StringExpression("2")})
+	roof.AddTag(b6.Tag{Key: "layer", Value: b6.NewStringExpression("2")})
 	if err := mutable.AddFeature(roof); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 	basement := ingest.NewAreaFeatureFromWorld(lighterman)
 	basement.AreaID = b6.MakeAreaID(b6.NamespacePrivate, 2)
-	basement.AddTag(b6.Tag{Key: "layer", Value: b6.StringExpression("-1")})
+	basement.AddTag(b6.Tag{Key: "layer", Value: b6.NewStringExpression("-1")})
 	if err := mutable.AddFeature(basement); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
@@ -124,21 +124,21 @@ func TestRulesThatMatchAllTagValues(t *testing.T) {
 		{
 			Tag: b6.Tag{
 				Key:   "#building",
-				Value: b6.StringExpression(""),
+				Value: b6.NewStringExpression(""),
 			},
 		},
 		{
 			Tag: b6.Tag{
 				Key:   "#building",
-				Value: nil,
+				Value: b6.Expression{},
 			},
 		},
 	}
 	for _, r := range rules {
-		if !(RenderRules{r}).IsRendered(b6.Tag{Key: "#building", Value: b6.StringExpression("yes")}) {
+		if !(RenderRules{r}).IsRendered(b6.Tag{Key: "#building", Value: b6.NewStringExpression("yes")}) {
 			t.Errorf("Expected building to be rendered with %+v", r)
 		}
-		if (RenderRules{r}).IsRendered(b6.Tag{Key: "#amenity", Value: b6.StringExpression("cafe")}) {
+		if (RenderRules{r}).IsRendered(b6.Tag{Key: "#amenity", Value: b6.NewStringExpression("cafe")}) {
 			t.Errorf("Expected cafe to not be rendered with %+v", r)
 		}
 	}

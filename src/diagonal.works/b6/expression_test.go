@@ -27,7 +27,7 @@ func TestExportCollectionExpressionAsYAML(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	if collection, ok := ee.AnyExpression.(*CollectionExpression); ok {
+	if collection, ok := ee.AnyExpression.(CollectionExpression); ok {
 		cc := AdaptCollection[FeatureID, string](collection.UntypedCollection)
 		if keys, err := cc.AllKeys(nil); err == nil {
 			if diff := cmp.Diff(c.Keys, keys); diff != "" {
