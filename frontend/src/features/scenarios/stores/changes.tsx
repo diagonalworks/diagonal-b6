@@ -160,10 +160,10 @@ const decode = (
     params: ChangesURLParams
 ): ((state: ChangesStore) => ChangesStore) => {
     return (state) => {
-        const createdScenarios = params.s?.split(',') ?? [];
-        createdScenarios.forEach((id) => {
-            if (!state.changes[id]) {
-                state.actions.add({
+        const changes = Object.fromEntries(
+            (params.s ?? '').split(',').map((id) => [
+                id,
+                {
                     id,
                     origin: 'baseline',
                     target: id,
@@ -171,13 +171,19 @@ const decode = (
                     spec: {
                         features: [],
                     },
-                });
-            }
-        });
-        return state;
+                },
+            ])
+        );
+
+        return {
+            ...state,
+            changes: {
+                ...changes,
+                ...state.changes,
+            },
+        };
     };
 };
 
-export const useChangesURLStorage = () => {
-    return usePersistURL(useChangesStore, encode, decode);
-};
+export const useChangesURLStorage = () =>
+    usePersistURL(useChangesStore, encode, decode);

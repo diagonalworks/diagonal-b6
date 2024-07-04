@@ -74,7 +74,7 @@ export const ChangePanel = ({
                     <div>
                         <div className="flex flex-col gap-2">
                             {change?.spec.features &&
-                            change.spec.features.length > 0 ? (
+                                change.spec.features.length > 0 &&
                                 change.spec.features.map((feature, i) => (
                                     <Line
                                         className={twMerge(
@@ -105,12 +105,21 @@ export const ChangePanel = ({
                                             </button>
                                         )}
                                     </Line>
-                                ))
-                            ) : (
-                                <div className=" text-graphite-90 italic text-xs py-2 px-3 ">
-                                    Click on a feature to add it to the change
-                                </div>
-                            )}
+                                ))}
+                            {change?.spec.features &&
+                                change.spec.features.length === 0 &&
+                                !change.created && (
+                                    <div className=" text-graphite-90 italic text-xs py-2 px-3 ">
+                                        Click on a feature to add it to the
+                                        change
+                                    </div>
+                                )}
+                            {change.created &&
+                                change.spec.features.length === 0 && (
+                                    <div className=" text-graphite-90 italic text-xs py-2 px-3 ">
+                                        Scenario details not available
+                                    </div>
+                                )}
                         </div>
                         {change.spec.features &&
                             change.spec.features.length > 0 && (
@@ -131,6 +140,7 @@ const ChangeCombo = ({
     id: Change['id'];
 }) => {
     const change = useChangesStore((state) => state.changes[id]);
+
     const world = useWorldStore((state) => state.worlds[worldId]);
     const changeActions = useChangesStore((state) => state.actions);
 
