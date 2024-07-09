@@ -27,8 +27,8 @@ type Feature interface {
 	SetFeatureID(id b6.FeatureID)
 	SetTags(tags []b6.Tag)
 	AddTag(tag b6.Tag)
-	ModifyOrAddTag(tag b6.Tag) (bool, b6.Value)
-	ModifyOrAddTagAt(tag b6.Tag, index int) (bool, b6.Value)
+	ModifyOrAddTag(tag b6.Tag) (bool, b6.Expression)
+	ModifyOrAddTagAt(tag b6.Tag, index int) (bool, b6.Expression)
 	RemoveTag(key string)
 	RemoveTags(keys []string)
 	RemoveAllTags()
@@ -108,7 +108,7 @@ func (f *GenericFeature) FillFromOSM(o OSMFeature) {
 		f.SetFeatureID(FromOSMNodeID(o.Node.ID))
 		FillTagsFromOSM(&f.Tags, o.Node.Tags)
 
-		f.ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.PointExpression(o.Node.Location.ToS2LatLng())})
+		f.ModifyOrAddTag(b6.Tag{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(o.Node.Location.ToS2LatLng())})
 	} else if o.Way != nil {
 		f.SetFeatureID(FromOSMWayID(o.Way.ID))
 		FillTagsFromOSM(&f.Tags, o.Way.Tags)
@@ -116,11 +116,11 @@ func (f *GenericFeature) FillFromOSM(o OSMFeature) {
 			f.Tags = f.Tags[0:0]
 		}
 
-		points := b6.Values(make([]b6.Value, 0, len(o.Way.Nodes)))
+		points := make([]b6.AnyExpression, 0, len(o.Way.Nodes))
 		for _, id := range o.Way.Nodes {
 			points = append(points, b6.FeatureIDExpression(FromOSMNodeID(id)))
 		}
-		f.ModifyOrAddTag(b6.Tag{Key: b6.PathTag, Value: points})
+		f.ModifyOrAddTag(b6.Tag{Key: b6.PathTag, Value: b6.NewExpressions(points)})
 	}
 }
 

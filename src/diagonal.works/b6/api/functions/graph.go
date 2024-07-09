@@ -292,7 +292,7 @@ func WeightsFromTags(opts b6.Tags, w b6.World) (graph.Weights, error) {
 			weights = elevation
 		}
 	case "transit":
-		opts.ModifyOrAddTag(b6.Tag{Key: "mode", Value: b6.StringExpression("walk")})
+		opts.ModifyOrAddTag(b6.Tag{Key: "mode", Value: b6.NewStringExpression("walk")})
 		walking, err := WeightsFromTags(opts, w)
 		if err != nil {
 			return nil, err
@@ -533,7 +533,7 @@ func connect(c *api.Context, a b6.Feature, b b6.Feature) (ingest.Change, error) 
 	if !connected {
 		path := ingest.GenericFeature{}
 		path.SetFeatureID(b6.FeatureID{b6.FeatureTypePath, b6.NamespaceDiagonalAccessPoints, 1})
-		path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.Values([]b6.Value{b6.FeatureIDExpression(a.FeatureID()), b6.FeatureIDExpression(b.FeatureID())})})
+		path.ModifyOrAddTag(b6.Tag{b6.PathTag, b6.NewExpressions([]b6.AnyExpression{b6.FeatureIDExpression(a.FeatureID()), b6.FeatureIDExpression(b.FeatureID())})})
 		*add = append(*add, &path)
 	}
 	return add, nil
