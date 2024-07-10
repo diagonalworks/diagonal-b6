@@ -1,9 +1,12 @@
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
+import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
 import { useWorldStore } from '@/stores/worlds';
 
+// import { getWorldFeatureId } from '@/utils/world';
 import { useChangesStore } from './changes';
 
 export interface Tab {
@@ -150,4 +153,55 @@ export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
  * This is a zustand store that uses immer for immutability.
  * @returns The tabs store
  */
-export const useTabsStore = create(immer(createTabsStore));
+export const useTabsStore = create(devtools(immer(createTabsStore)));
+
+type TabsURLParams = {
+    t?: string;
+};
+
+const encode = (state: Partial<TabsStore>): TabsURLParams => {
+    console.log('HERE');
+    console.log(state.tabs);
+    if (!state.tabs || state.tabs.length === 0) return {};
+    const t = state.tabs
+        .map(
+            (tab) => `${tab.id}:${tab.side}:${tab.index}:${tab.properties.name}`
+        )
+        .join(',');
+    return {
+        t,
+    };
+};
+
+const decode = (params: TabsURLParams): ((state: TabsStore) => TabsStore) => {
+    return (state) => {
+        if (!params.t) return state;
+
+        const tabs = params.t.split(',').map((tab) => {
+            const [id, side, index, name] = tab.split(':');
+            return {
+                id,
+                index: parseInt(index),
+                side: side as 'left' | 'right',
+                properties: {
+                    name,
+                    closable: side === 'right',
+                    editable: side === 'right',
+                },
+            };
+        });
+
+        tabs.forEach(() => {
+            // create world for tab if it doesnt exist yet
+            // if right tab, create change - ignor for now, different PR.
+        });
+        return {
+            ...state,
+            tabs: state.tabs.concat(tabs),
+        };
+    };
+};
+
+export const useTabsURLStorage = () => {
+    return usePersistURL(useTabsStore, encode, decode);
+};

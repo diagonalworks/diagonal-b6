@@ -3,6 +3,9 @@ import { immer } from 'zustand/middleware/immer';
 
 import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
+import { getNamespace, getValue } from '@/utils/world';
+
+import { useWorldStore } from './worlds';
 
 /**
  * Workspace store that holds data related with the workspace that wraps the tabs and the map.
@@ -35,14 +38,21 @@ const encode = (state: Partial<WorkspaceStore>): WorkspaceURLParams => ({
 
 const decode =
     (params: WorkspaceURLParams): ((state: WorkspaceStore) => WorkspaceStore) =>
-    (state) => ({
-        ...state,
-        root: params.r || state.root,
-    });
+    (state) => {
+        const root = params.r || state.root;
 
-/**
- * Hook to use URL persistence for the workspace store.
- */
-export const useWorkspaceURLStorage = () => {
+        if (root) {
+            useWorldStore.getState().actions.setFeatureId('baseline', {
+                namespace: getNamespace(root),
+                value: getValue(root),
+            });
+        }
+        return {
+            ...state,
+            root,
+        };
+    };
+
+export const usePersistWorkspaceURL = () => {
     return usePersistURL(useWorkspaceStore, encode, decode);
 };

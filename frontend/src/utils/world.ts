@@ -29,3 +29,18 @@ export const getWorldFeatureId = (
     }
     return featureId;
 };
+
+export const getNamespace = (worldPath: string): string | undefined => {
+    const namespace = worldPath.match(/(?<=\/)\w*(?=\/\w*$)/)?.[0];
+    return namespace;
+};
+
+export const getValue = (worldPath: string): number | undefined => {
+    const value = worldPath.match(/(?<=\/)\w*$/)?.[0];
+    return value ? +value : undefined;
+};
+
+export const getType = (worldPath: string): string | undefined => {
+    const type = worldPath.match(/(?<=^)\w*(?=\/)/)?.[0];
+    return type;
+};

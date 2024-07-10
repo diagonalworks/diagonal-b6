@@ -8,7 +8,10 @@ import { useStartup } from '@/api/startup';
 import ComparisonCard from '@/features/scenarios/components/ComparisonCard';
 import { Tabs } from '@/features/scenarios/components/Tabs';
 import { useComparisonsStore } from '@/features/scenarios/stores/comparisons';
-import { useTabsStore } from '@/features/scenarios/stores/tabs';
+import {
+    useTabsStore,
+    useTabsURLStorage,
+} from '@/features/scenarios/stores/tabs';
 import { useViewStore, useViewURLStorage } from '@/stores/view';
 import { useWorkspaceURLStorage } from '@/stores/workspace';
 
@@ -25,6 +28,9 @@ const generateWorldId = () => {
 export default function Workspace() {
     useWorkspaceURLStorage();
     useViewURLStorage();
+    // useWorldURLStorage();
+    useTabsURLStorage();
+
     const [setView, view] = useViewStore((state) => [
         state.actions.setView,
         state.view,

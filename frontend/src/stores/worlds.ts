@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
+import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
 import { FeatureIDProto } from '@/types/generated/api';
 import { getWorldFeatureId } from '@/utils/world';
@@ -72,4 +74,49 @@ export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
  * This is a zustand store that uses immer for immutability.
  * @returns The world store
  */
-export const useWorldStore = create(immer(createWorldStore));
+export const useWorldStore = create(devtools(immer(createWorldStore)));
+
+type WorldURLParams = {
+    w?: string;
+};
+
+const encode = (state: Partial<WorldsStore>): WorldURLParams => {
+    console.log(state.worlds);
+    if (!state.worlds) {
+        return {};
+    }
+    return {
+        w: Object.values(state.worlds)
+            .map((w) => `${w.featureId.namespace}/${w.featureId.value}`)
+            .join(','),
+    };
+};
+
+const decode = (
+    params: WorldURLParams
+): ((state: WorldsStore) => WorldsStore) => {
+    const worlds: World[] =
+        params.w?.split(',').flatMap((ws) => {
+            const value = ws.match(/([a-z]|\d)*$/)?.[0];
+            const namespace = ws.match(/.*(?=\/([a-z]|\d)*$)/)?.[0];
+            if (!value) {
+                return [];
+            }
+            return {
+                id: value,
+                featureId: getWorldFeatureId(value, namespace),
+            };
+        }) ?? [];
+
+    return (state) => ({
+        ...state,
+        worlds: worlds.reduce((acc, w) => {
+            acc[w.id] = w;
+            return acc;
+        }, state.worlds ?? {}),
+    });
+};
+
+export const useWorldURLStorage = () => {
+    return usePersistURL(useWorldStore, encode, decode);
+};
