@@ -15,7 +15,11 @@ import { Tab as TabT } from '../stores/tabs';
 const Root = React.forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     ({ children, ...props }, forwardedRef) => {
         return (
-            <div {...props} ref={forwardedRef}>
+            <div
+                {...props}
+                ref={forwardedRef}
+                className={twMerge('relative h-full', props.className)}
+            >
                 {children}
             </div>
         );
@@ -30,14 +34,14 @@ const Menu = React.forwardRef<
         <div
             {...props}
             className={twMerge(
-                'w-full px-1 pt-2 z-10 -mb-[1px]',
+                'w-full flex px-1 pt-2 z-10 -mb-[1px]',
                 props.className
             )}
             ref={forwardedRef}
         >
             <div
                 className={twMerge(
-                    'grid grid-cols-1',
+                    'w-full grid grid-cols-1',
                     splitScreen && 'grid-cols-2'
                 )}
             >
