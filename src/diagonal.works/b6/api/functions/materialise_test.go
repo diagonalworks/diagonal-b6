@@ -58,8 +58,8 @@ func TestMaterialiseFeatureIntCollection(t *testing.T) {
 		t.Errorf("Expected to find a collection")
 	}
 
-	if ee := b6.FindExpressionByID(b6.MakeExpressionID(id.Namespace, id.Value), w); ee != nil {
-		if diff := cmp.Diff(lambda, ee.Expression()); diff != "" {
+	if ee := w.FindFeatureByID(b6.FeatureID{b6.FeatureTypeExpression, id.Namespace, id.Value}); ee != nil {
+		if diff := cmp.Diff(lambda, ee.Get(b6.ExpressionTag).Value); diff != "" {
 			t.Errorf(diff)
 		}
 	} else {

@@ -74,7 +74,7 @@ func TestAddCollection(t *testing.T) {
 
 func TestAddExpression(t *testing.T) {
 	m := ingest.NewMutableOverlayWorld(b6.EmptyWorld{})
-	id := b6.MakeExpressionID("diagonal.works/test", 1)
+	id := b6.FeatureID{b6.FeatureTypeExpression, "diagonal.works/test", 1}
 
 	tags := b6.AdaptCollection[any, b6.Tag](
 		b6.ArrayValuesCollection[b6.Tag]{
@@ -99,7 +99,7 @@ func TestAddExpression(t *testing.T) {
 		t.Fatalf("Expected no error applying change, found: %s", err)
 	}
 
-	if collection := b6.FindExpressionByID(id, m); collection == nil {
+	if expression := m.FindFeatureByID(id); expression == nil {
 		t.Errorf("Expected to find added expression, found none")
 	}
 }
