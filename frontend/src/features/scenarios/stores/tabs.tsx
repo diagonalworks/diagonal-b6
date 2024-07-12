@@ -4,7 +4,9 @@ import { immer } from 'zustand/middleware/immer';
 
 import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
+import { useWorkspaceStore } from '@/stores/workspace';
 import { useWorldStore } from '@/stores/worlds';
+import { getValue, getWorldFeatureId } from '@/utils/world';
 
 // import { getWorldFeatureId } from '@/utils/world';
 import { useChangesStore } from './changes';
@@ -17,6 +19,7 @@ export interface Tab {
         name: string;
         closable: boolean;
         editable: boolean;
+        persist: boolean;
     };
 }
 
@@ -24,7 +27,7 @@ interface TabsStore {
     /* List of tabs */
     tabs: Tab[];
     /* The id of the active tab on the left side */
-    leftTab: Tab['id'];
+    leftTab?: Tab['id'];
     /* The id of the active tab on the right side */
     rightTab?: Tab['id'];
     /* Whether the screen is split */
@@ -62,6 +65,7 @@ interface TabsStore {
          * @returns void
          */
         setSplitScreen: (splitScreen: boolean) => void;
+        setPersist: (tabId: Tab['id'], persist: boolean) => void;
     };
 }
 
@@ -69,19 +73,7 @@ export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
     set,
     get
 ) => ({
-    tabs: [
-        {
-            id: useWorldStore.getState().worlds.baseline.id,
-            index: 0,
-            side: 'left',
-            properties: {
-                name: 'Baseline',
-                closable: false,
-                editable: false,
-            },
-        },
-    ],
-    leftTab: 'baseline',
+    tabs: [],
     splitScreen: false,
     actions: {
         add: (tab) => {
@@ -92,15 +84,23 @@ export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
                 } else {
                     state.rightTab = tab.id;
                 }
-                // create a new world for the tab
+                if (tab.side === 'left') return;
+                const root = useWorkspaceStore.getState().root ?? 'baseline';
+
+                const rootWorld = useWorldStore.getState().worlds?.[root];
+
                 useWorldStore.getState().actions.createWorld({
                     id: tab.id,
-                    featureId:
-                        useWorldStore.getState().worlds.baseline.featureId,
+                    featureId: getWorldFeatureId({
+                        ...rootWorld?.featureId,
+                        namespace: `${rootWorld.featureId.namespace}/scenario`,
+                        value: getValue(tab.id),
+                    }),
+                    tiles: rootWorld.id,
                 });
                 useChangesStore.getState().actions.add({
                     id: tab.id,
-                    origin: get().leftTab,
+                    origin: root,
                     target: tab.id,
                     created: false,
                     spec: {
@@ -137,6 +137,7 @@ export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
             set((state) => {
                 if (side === 'left') {
                     state.leftTab = tabId;
+                    useWorkspaceStore.getState().setRoot(tabId);
                 } else {
                     state.rightTab = tabId;
                 }
@@ -144,6 +145,12 @@ export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
         },
         setSplitScreen: (splitScreen) => {
             set({ splitScreen });
+        },
+        setPersist: (tabId, persist) => {
+            set((state) => {
+                const index = state.tabs.findIndex((t) => t.id === tabId);
+                state.tabs[index].properties.persist = persist;
+            });
         },
     },
 });
@@ -160,16 +167,17 @@ type TabsURLParams = {
 };
 
 const encode = (state: Partial<TabsStore>): TabsURLParams => {
-    console.log('HERE');
-    console.log(state.tabs);
     if (!state.tabs || state.tabs.length === 0) return {};
-    const t = state.tabs
-        .map(
-            (tab) => `${tab.id}:${tab.side}:${tab.index}:${tab.properties.name}`
-        )
-        .join(',');
+
     return {
-        t,
+        t: state.tabs
+            .filter((tab) => tab.properties.persist)
+            .map((tab) => {
+                return `${tab.id}:${tab.side === 'left' ? 'l' : 'r'}:${
+                    tab.index
+                }:${tab.properties.name}`;
+            })
+            .join(','),
     };
 };
 
@@ -182,7 +190,7 @@ const decode = (params: TabsURLParams): ((state: TabsStore) => TabsStore) => {
             return {
                 id,
                 index: parseInt(index),
-                side: side as 'left' | 'right',
+                side: (side === 'l' ? 'left' : 'right') as Tab['side'],
                 properties: {
                     name,
                     closable: side === 'right',
@@ -191,13 +199,15 @@ const decode = (params: TabsURLParams): ((state: TabsStore) => TabsStore) => {
             };
         });
 
-        tabs.forEach(() => {
-            // create world for tab if it doesnt exist yet
-            // if right tab, create change - ignor for now, different PR.
-        });
+        const rightTabs = tabs
+            .filter((tab) => tab.side === 'right')
+            .sort((a, b) => a.index - b.index);
+
         return {
             ...state,
-            tabs: state.tabs.concat(tabs),
+            tabs,
+            splitScreen: rightTabs.length > 0,
+            rightTab: rightTabs?.[0]?.id,
         };
     };
 };

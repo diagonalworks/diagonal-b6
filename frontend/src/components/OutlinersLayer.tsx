@@ -37,7 +37,13 @@ const useOutlinerSensors = () => {
  * The layer that renders the outliners in a world.
  * @param world - The id of the world to render outliners for
  */
-function OutlinersLayer({ world }: { world: World['id'] }) {
+function OutlinersLayer({
+    world,
+    side,
+}: {
+    world: World['id'];
+    side: 'left' | 'right';
+}) {
     const outliners = useOutlinersStore((state) =>
         state.actions.getByWorld(world)
     );
@@ -87,6 +93,7 @@ function OutlinersLayer({ world }: { world: World['id'] }) {
                             <DraggableOutliner
                                 key={outliner.id}
                                 outliner={outliner}
+                                side={side}
                             />
                         ))}
                     </AnimatePresence>
@@ -114,7 +121,13 @@ const Droppable = ({
     );
 };
 
-const DraggableOutliner = ({ outliner }: { outliner: OutlinerSpec }) => {
+const DraggableOutliner = ({
+    outliner,
+    side,
+}: {
+    outliner: OutlinerSpec;
+    side: 'left' | 'right';
+}) => {
     const { attributes, transform, setNodeRef, listeners } = useDraggable({
         id: outliner.id,
     });
@@ -163,7 +176,7 @@ const DraggableOutliner = ({ outliner }: { outliner: OutlinerSpec }) => {
                     duration: 0.1,
                 }}
             >
-                <Outliner outliner={outliner} />
+                <Outliner outliner={outliner} side={side} />
             </motion.div>
         </div>
     );

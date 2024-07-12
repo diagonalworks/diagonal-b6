@@ -14,6 +14,7 @@ import { getWorldFeatureId } from '@/utils/world';
 export interface World {
     id: string;
     featureId: FeatureIDProto;
+    tiles: string;
 }
 
 export interface WorldsStore {
@@ -38,18 +39,20 @@ export interface WorldsStore {
          * @returns void
          */
         setFeatureId: (worldId: string, featureId: FeatureIDProto) => void;
+        /**
+         * Set the tiles for a world
+         * @param worldId - The id of the world to set the tiles for
+         * @param tiles - The path for the tiles to set
+         * @returns void
+         */
+        setTiles: (worldId: string, tiles: string) => void;
     };
 }
 
 export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
     set
 ) => ({
-    worlds: {
-        baseline: {
-            id: 'baseline',
-            featureId: getWorldFeatureId('baseline'),
-        },
-    },
+    worlds: {},
     actions: {
         createWorld: (world) => {
             set((state) => {
@@ -64,6 +67,11 @@ export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
         setFeatureId: (worldId, featureId) => {
             set((state) => {
                 state.worlds[worldId].featureId = featureId;
+            });
+        },
+        setTiles: (worldId, tiles) => {
+            set((state) => {
+                state.worlds[worldId].tiles = tiles;
             });
         },
     },
@@ -81,14 +89,11 @@ type WorldURLParams = {
 };
 
 const encode = (state: Partial<WorldsStore>): WorldURLParams => {
-    console.log(state.worlds);
     if (!state.worlds) {
         return {};
     }
     return {
-        w: Object.values(state.worlds)
-            .map((w) => `${w.featureId.namespace}/${w.featureId.value}`)
-            .join(','),
+        w: Object.keys(state.worlds).join(','),
     };
 };
 
@@ -103,8 +108,12 @@ const decode = (
                 return [];
             }
             return {
-                id: value,
-                featureId: getWorldFeatureId(value, namespace),
+                id: ws,
+                featureId: getWorldFeatureId({
+                    namespace,
+                    value: +value,
+                }),
+                tiles: ws,
             };
         }) ?? [];
 
@@ -113,7 +122,7 @@ const decode = (
         worlds: worlds.reduce((acc, w) => {
             acc[w.id] = w;
             return acc;
-        }, state.worlds ?? {}),
+        }, Object.assign({}, state.worlds) as Record<string, World>),
     });
 };
 

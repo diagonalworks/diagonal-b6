@@ -1,24 +1,28 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
+import { useTabsStore } from '@/features/scenarios/stores/tabs';
 import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
-import { getNamespace, getValue } from '@/utils/world';
-
-import { useWorldStore } from './worlds';
 
 /**
  * Workspace store that holds data related with the workspace that wraps the tabs and the map.
  */
 interface WorkspaceStore {
     root?: string;
+    setRoot: (root: string) => void;
 }
 
 export const createWorkspaceStore: ImmerStateCreator<
     WorkspaceStore,
     WorkspaceStore
-> = () => ({
+> = (set) => ({
     root: undefined,
+    setRoot: (root: string) => {
+        set((state) => {
+            state.root = root;
+        });
+    },
 });
 
 /**
@@ -40,12 +44,8 @@ const decode =
     (params: WorkspaceURLParams): ((state: WorkspaceStore) => WorkspaceStore) =>
     (state) => {
         const root = params.r || state.root;
-
         if (root) {
-            useWorldStore.getState().actions.setFeatureId('baseline', {
-                namespace: getNamespace(root),
-                value: getValue(root),
-            });
+            useTabsStore.getState().actions.setActive(root, 'left');
         }
         return {
             ...state,
@@ -53,6 +53,6 @@ const decode =
         };
     };
 
-export const usePersistWorkspaceURL = () => {
+export const useWorkspaceURLStorage = () => {
     return usePersistURL(useWorkspaceStore, encode, decode);
 };
