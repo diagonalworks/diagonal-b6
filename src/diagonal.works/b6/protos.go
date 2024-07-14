@@ -91,7 +91,7 @@ func NewProtoFromFeature(feature Feature) (*pb.FeatureProto, error) {
 	case FeatureTypeCollection:
 		return newProtoFromCollectionFeature(feature.(CollectionFeature))
 	case FeatureTypeExpression:
-		return newProtoFromExpressionFeature(feature.(ExpressionFeature))
+		return newProtoFromExpressionFeature(feature)
 	}
 	panic(fmt.Sprintf("Can't handle feature %T", feature))
 }
@@ -171,8 +171,8 @@ func newProtoFromCollectionFeature(f CollectionFeature) (*pb.FeatureProto, error
 	}
 }
 
-func newProtoFromExpressionFeature(f ExpressionFeature) (*pb.FeatureProto, error) {
-	e := f.Expression()
+func newProtoFromExpressionFeature(f Feature) (*pb.FeatureProto, error) {
+	e := f.Get(ExpressionTag).Value
 	if node, err := e.ToProto(); err == nil {
 		return &pb.FeatureProto{
 			Feature: &pb.FeatureProto_Expression{

@@ -28,34 +28,16 @@ func (t Tag) String() string {
 	return escapeTagPart(t.Key) + "=" + escapeTagPart(t.Value.String())
 }
 
-func (t *Tag) FromString(s string) {
-	var rest string
-	t.Key, rest = consumeTagPart(s)
-	value, _ := consumeTagPart(rest)
-	t.Value = ExpressionFromString(value)
-}
-
 type tagYAML struct {
 	Key   string `yaml:"key,omitempty`
 	Value Expression
 }
 
 func (t Tag) MarshalYAML() (interface{}, error) {
-	if s, ok := t.Value.AnyExpression.(StringExpression); ok {
-		return escapeTagPart(t.Key) + "=" + escapeTagPart(s.String()), nil
-	} else if t.Value.AnyExpression == nil {
-		return escapeTagPart(t.Key) + "=\"\"", nil
-	}
-	// TODO(mari): harmonise Value and Literal in expression.go
-	return &tagYAML{Key: t.Key, Value: ExpressionFromString(t.Value.String())}, nil
+	return &tagYAML{Key: t.Key, Value: t.Value}, nil
 }
 
 func (t *Tag) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var s string
-	if err := unmarshal(&s); err == nil {
-		t.FromString(s)
-		return nil
-	}
 	var y tagYAML
 	if err := unmarshal(&y); err != nil {
 		return err
@@ -139,6 +121,9 @@ func InvalidTag() Tag {
 	return Tag{Value: NewStringExpression("")}
 }
 
+// TODO(mari): try to rename.
+// Technically, this interface is not taggabble, b/c it's not editable, but tagged is taken;
+// Also, ingest feature is basically feature interface + taggable (fns).
 type Taggable interface {
 	AllTags() Tags
 	Get(key string) Tag
@@ -494,13 +479,6 @@ func (f FeatureID) ToCollectionID() CollectionID {
 	panic("Not a collection")
 }
 
-func (f FeatureID) ToExpressionID() ExpressionID {
-	if f.Type == FeatureTypeExpression || f.Type == FeatureTypeInvalid {
-		return ExpressionID{Namespace: f.Namespace, Value: f.Value}
-	}
-	panic("Not an expression")
-}
-
 type Reference interface {
 	Source() FeatureID
 }
@@ -717,57 +695,6 @@ func (c *CollectionID) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
-type ExpressionID struct {
-	Namespace Namespace
-	Value     uint64
-}
-
-func MakeExpressionID(ns Namespace, v uint64) ExpressionID {
-	return ExpressionID{Namespace: ns, Value: v}
-}
-
-func (e ExpressionID) FeatureID() FeatureID {
-	return FeatureID{Type: FeatureTypeExpression, Namespace: e.Namespace, Value: e.Value}
-}
-
-func (e ExpressionID) IsValid() bool {
-	return e.Namespace != NamespaceInvalid
-}
-
-func (e ExpressionID) String() string {
-	return e.FeatureID().String()
-}
-
-func (e ExpressionID) Less(other CollectionID) bool {
-	if e.Namespace == other.Namespace {
-		return e.Value < other.Value
-	} else {
-		return e.Namespace < other.Namespace
-	}
-}
-
-func (e *ExpressionID) FromFeatureID(other FeatureID) error {
-	if other.Type != FeatureTypeExpression {
-		return errors.New("not an expression ID")
-	}
-	e.Namespace = other.Namespace
-	e.Value = other.Value
-	return nil
-}
-
-func (e ExpressionID) MarshalYAML() (interface{}, error) {
-	return e.FeatureID().MarshalYAML()
-}
-
-func (e *ExpressionID) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var id FeatureID
-	err := unmarshal(&id)
-	if err == nil {
-		err = e.FromFeatureID(id)
-	}
-	return err
-}
-
 type GeometryType int
 
 const (
@@ -780,7 +707,7 @@ const (
 type Geometry interface {
 	GeometryType() GeometryType
 
-	Point() s2.Point
+	Point() s2.Point // TODO(mari): rethink this when doing areas / consolidating with geometryexpression
 
 	GeometryLen() int
 	PointAt(i int) s2.Point
@@ -818,8 +745,9 @@ func (InvalidGeometry) ToGeoJSON() geojson.GeoJSON {
 var _ Geometry = InvalidGeometry{}
 
 const (
-	PointTag = "point"
-	PathTag  = "path"
+	PointTag      = "point"
+	PathTag       = "path"
+	ExpressionTag = "expression"
 )
 
 func (t *Tags) GeometryType() GeometryType {
@@ -1163,12 +1091,6 @@ type CollectionFeature interface {
 	IsSortedByKey() bool
 	FindValue(key any) (any, bool)
 	FindValues(key any, values []any) []any
-}
-
-type ExpressionFeature interface {
-	Feature
-	ExpressionID() ExpressionID
-	Expression() Expression
 }
 
 type Features interface {
@@ -1623,13 +1545,6 @@ func (EmptyCollectionFeatures) Next() bool {
 func FindCollectionByID(id CollectionID, features FeaturesByID) CollectionFeature {
 	if collection := features.FindFeatureByID(id.FeatureID()); collection != nil {
 		return collection.(CollectionFeature)
-	}
-	return nil
-}
-
-func FindExpressionByID(id ExpressionID, features FeaturesByID) ExpressionFeature {
-	if expression := features.FindFeatureByID(id.FeatureID()); expression != nil {
-		return expression.(ExpressionFeature)
 	}
 	return nil
 }

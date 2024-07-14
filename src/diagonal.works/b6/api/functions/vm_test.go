@@ -505,12 +505,12 @@ func TestVMProvidesCurrentExpressionWithPartialCalls(t *testing.T) {
 func TestCallExpressionFeature(t *testing.T) {
 	w := ingest.NewBasicMutableWorld()
 	id := b6.FeatureID{Type: b6.FeatureTypeExpression, Namespace: "diagonal.works/test", Value: 0}
-	f := &ingest.ExpressionFeature{
-		ExpressionID: id.ToExpressionID(),
-		Expression: b6.NewCallExpression(
-			b6.NewSymbolExpression("add"),
-			[]b6.Expression{b6.NewIntExpression(10)},
-		),
+	f := &ingest.GenericFeature{
+		ID: id,
+		Tags: []b6.Tag{{
+			Key:   b6.ExpressionTag,
+			Value: b6.NewCallExpression(b6.NewSymbolExpression("add"), []b6.Expression{b6.NewIntExpression(10)}),
+		}},
 	}
 	if err := w.AddFeature(f); err != nil {
 		t.Fatalf("Failed to add feature")
@@ -541,18 +541,21 @@ func TestCallExpressionFeature(t *testing.T) {
 func TestCallExpressionFeatureWithLambda(t *testing.T) {
 	w := ingest.NewBasicMutableWorld()
 	id := b6.FeatureID{Type: b6.FeatureTypeExpression, Namespace: "diagonal.works/test", Value: 0}
-	f := &ingest.ExpressionFeature{
-		ExpressionID: id.ToExpressionID(),
-		Expression: b6.NewLambdaExpression(
-			[]string{"i"},
-			b6.NewCallExpression(
-				b6.NewSymbolExpression("add"),
-				[]b6.Expression{
-					b6.NewSymbolExpression("i"),
-					b6.NewIntExpression(10),
-				},
+	f := &ingest.GenericFeature{
+		ID: id,
+		Tags: []b6.Tag{{
+			Key: b6.ExpressionTag,
+			Value: b6.NewLambdaExpression(
+				[]string{"i"},
+				b6.NewCallExpression(
+					b6.NewSymbolExpression("add"),
+					[]b6.Expression{
+						b6.NewSymbolExpression("i"),
+						b6.NewIntExpression(10),
+					},
+				),
 			),
-		),
+		}},
 	}
 	if err := w.AddFeature(f); err != nil {
 		t.Fatalf("Failed to add feature")

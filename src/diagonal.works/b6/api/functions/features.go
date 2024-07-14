@@ -46,14 +46,6 @@ func findCollectionFeature(context *api.Context, id b6.FeatureID) (b6.Collection
 	return nil, fmt.Errorf("%s isn't a collection", id)
 }
 
-// Return the expression feature with the given ID.
-func findExpressionFeature(context *api.Context, id b6.FeatureID) (b6.ExpressionFeature, error) {
-	if id.Type == b6.FeatureTypeCollection {
-		return b6.FindExpressionByID(id.ToExpressionID(), context.World), nil
-	}
-	return nil, fmt.Errorf("%s isn't an expression", id)
-}
-
 func areaContainsAnyPoint(area b6.AreaFeature, points []s2.Point) (s2.Point, bool) {
 	for i := 0; i < area.Len(); i++ {
 		polygon := area.Polygon(i)
@@ -524,12 +516,12 @@ func listFeature(context *api.Context, id b6.CollectionID) (b6.Collection[any, a
 	return b6.AdaptCollection[any, any](c), nil
 }
 
-func evaluateFeature(context *api.Context, id b6.ExpressionID) (interface{}, error) {
-	e := b6.FindExpressionByID(id, context.World)
+func evaluateFeature(context *api.Context, id b6.FeatureID) (interface{}, error) {
+	e := context.World.FindFeatureByID(id)
 	if e == nil {
 		return nil, fmt.Errorf("no expression with ID %s", id)
 	}
-	r, err := context.Evaluate(e.Expression())
+	r, err := context.Evaluate(e.Get(b6.ExpressionTag).Value)
 	return r, err
 }
 

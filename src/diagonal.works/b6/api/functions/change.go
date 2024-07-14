@@ -66,6 +66,8 @@ func removeTags(c *api.Context, collection b6.Collection[b6.FeatureID, string]) 
 	return tags, nil
 }
 
+// TODO(mari): cover paths and areas as well, once you figure out how to smoothly do geometry.
+
 // Adds a point feature with the given id, tags and members.
 func addPoint(_ *api.Context, point b6.Geometry, id b6.FeatureID, tags b6.Collection[interface{}, b6.Tag]) (ingest.Change, error) {
 	p := &ingest.GenericFeature{
@@ -156,10 +158,10 @@ func addCollection(c *api.Context, id b6.CollectionID, tags b6.Collection[any, b
 }
 
 // Add an expression feature with the given id, tags and expression.
-func addExpression(c *api.Context, id b6.ExpressionID, tags b6.Collection[any, b6.Tag], expresson b6.Expression) (ingest.Change, error) {
-	feature := &ingest.ExpressionFeature{
-		ExpressionID: id,
-		Expression:   expresson,
+func addExpression(c *api.Context, id b6.FeatureID, tags b6.Collection[any, b6.Tag], expresson b6.Expression) (ingest.Change, error) {
+	feature := &ingest.GenericFeature{
+		ID:   id,
+		Tags: []b6.Tag{{Key: b6.ExpressionTag, Value: expresson}},
 	}
 
 	t := tags.Begin()

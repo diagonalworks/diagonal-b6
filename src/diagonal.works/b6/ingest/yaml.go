@@ -116,11 +116,6 @@ func (i ingestedYAML) Apply(m MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 			if c, err = newCollectionFeatureFromYAML(&y); err == nil {
 				err = m.AddFeature(c)
 			}
-		} else if y.Expression != nil {
-			var e *ExpressionFeature
-			if e, err = newExpressionFromYAML(&y); err == nil {
-				err = m.AddFeature(e)
-			}
 		} else if y.Tags != nil {
 			err = m.AddFeature(newGenericFeatureFromYAML(&y))
 		}
@@ -234,18 +229,6 @@ func newCollectionFeatureFromYAML(y *exportedYAML) (*CollectionFeature, error) {
 		Values:       values,
 		Tags:         y.Tags,
 		sorted:       sorted,
-	}, nil
-}
-
-func newExpressionFromYAML(y *exportedYAML) (*ExpressionFeature, error) {
-	if y.ID.Type != b6.FeatureTypeExpression {
-		return nil, fmt.Errorf("expected an expression for %s", y.ID)
-	}
-
-	return &ExpressionFeature{
-		ExpressionID: y.ID.ToExpressionID(),
-		Tags:         y.Tags,
-		Expression:   *y.Expression,
 	}, nil
 }
 

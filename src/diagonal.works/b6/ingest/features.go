@@ -45,12 +45,9 @@ func NewFeatureFromWorld(f b6.Feature) Feature {
 		return NewRelationFeatureFromWorld(f.(b6.RelationFeature))
 	case b6.FeatureTypeCollection:
 		return NewCollectionFeatureFromWorld(f.(b6.CollectionFeature))
-	case b6.FeatureTypeExpression:
-		return NewExpressionFeatureFromWorld(f.(b6.ExpressionFeature))
 	default:
 		return NewGenericFeatureFromWorld(f)
 	}
-	panic(fmt.Sprintf("Can't handle feature type: %T", f))
 }
 
 func WrapFeature(f Feature, byID b6.FeaturesByID) b6.Feature {
@@ -64,7 +61,7 @@ func WrapFeature(f Feature, byID b6.FeaturesByID) b6.Feature {
 	case b6.FeatureTypeCollection:
 		return WrapCollectionFeature(f.(*CollectionFeature), byID)
 	case b6.FeatureTypeExpression:
-		return WrapExpressionFeature(f.(*ExpressionFeature))
+		return f
 	}
 	panic(fmt.Sprintf("Can't wrap feature type: %T", f))
 }
@@ -621,65 +618,6 @@ func (c *CollectionFeature) MarshalYAML() (interface{}, error) {
 	}
 
 	return y, nil
-}
-
-type ExpressionFeature struct {
-	b6.ExpressionID
-	b6.Tags
-	b6.Expression
-}
-
-func (c *ExpressionFeature) References() []b6.Reference {
-	return []b6.Reference{}
-}
-
-func (e *ExpressionFeature) Clone() Feature {
-	return &ExpressionFeature{
-		ExpressionID: e.ExpressionID,
-		Tags:         e.Tags.Clone(),
-		Expression:   e.Expression.Clone(),
-	}
-}
-
-func (e *ExpressionFeature) SetFeatureID(id b6.FeatureID) {
-	e.ExpressionID = id.ToExpressionID()
-}
-
-func (e *ExpressionFeature) MergeFrom(other Feature) {
-	if expression, ok := other.(*ExpressionFeature); ok {
-		e.MergeFromExpressionFeature(expression)
-	} else {
-		panic(fmt.Sprintf("Expected an ExpressionFeature, found %T", other))
-	}
-}
-
-func (e *ExpressionFeature) MergeFromExpressionFeature(other *ExpressionFeature) {
-	e.ExpressionID = other.ExpressionID
-	e.Tags.MergeFrom(other.Tags)
-	e.Expression = other.Expression.Clone()
-}
-
-func (e *ExpressionFeature) MarshalYAML() (interface{}, error) {
-	y := map[string]interface{}{
-		"id":         e.ExpressionID,
-		"expression": e.Expression,
-	}
-	if len(e.Tags) > 0 {
-		y["tags"] = e.Tags
-	}
-	return y, nil
-}
-
-func (e *ExpressionFeature) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	return e.Expression.UnmarshalYAML(unmarshal)
-}
-
-func NewExpressionFeatureFromWorld(e b6.ExpressionFeature) *ExpressionFeature {
-	return &ExpressionFeature{
-		ExpressionID: e.ExpressionID(),
-		Tags:         e.AllTags().Clone(),
-		Expression:   e.Expression().Clone(),
-	}
 }
 
 type FeaturesByID map[b6.FeatureID]Feature
