@@ -137,10 +137,3 @@ func ValidateCollection(c *CollectionFeature) error {
 	}
 	return nil
 }
-
-func ValidateExpression(e *ExpressionFeature) error {
-	if !e.ExpressionID.IsValid() {
-		return fmt.Errorf("%s: invalid ID", e.ExpressionID)
-	}
-	return nil
-}

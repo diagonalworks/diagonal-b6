@@ -53,9 +53,9 @@ func materialise(context *api.Context, id b6.CollectionID, function api.Callable
 		return nil, err
 	}
 
-	expression := ingest.ExpressionFeature{
-		ExpressionID: b6.ExpressionID(id),
-		Expression:   function.Expression(),
+	expression := ingest.GenericFeature{
+		ID:   b6.FeatureID{b6.FeatureTypeExpression, id.Namespace, id.Value},
+		Tags: []b6.Tag{{Key: b6.ExpressionTag, Value: function.Expression()}},
 	}
 
 	add := ingest.AddFeatures([]ingest.Feature{&expression, collection})
@@ -100,21 +100,24 @@ func materialiseMap(context *api.Context, collection b6.Collection[any, b6.Featu
 				if err != nil {
 					return err
 				}
-				var bound *ingest.ExpressionFeature
+				var bound *ingest.GenericFeature
 				if expression.IsValid() {
-					bound = &ingest.ExpressionFeature{
-						ExpressionID: b6.ExpressionID(id),
-						Expression: b6.NewCallExpression(
-							expression,
-							[]b6.Expression{
-								b6.NewCallExpression(
-									b6.NewSymbolExpression("find-feature"),
-									[]b6.Expression{
-										b6.NewFeatureIDExpression(f.FeatureID()),
-									},
-								),
-							},
-						),
+					bound = &ingest.GenericFeature{
+						ID: b6.FeatureID{b6.FeatureTypeExpression, id.Namespace, id.Value},
+						Tags: []b6.Tag{{
+							Key: b6.ExpressionTag,
+							Value: b6.NewCallExpression(
+								expression,
+								[]b6.Expression{
+									b6.NewCallExpression(
+										b6.NewSymbolExpression("find-feature"),
+										[]b6.Expression{
+											b6.NewFeatureIDExpression(f.FeatureID()),
+										},
+									),
+								},
+							),
+						}},
 					}
 				}
 				lock.Lock()

@@ -430,17 +430,17 @@ func (m *modifiedTagsCollection) Get(key string) b6.Tag {
 	return modifyTag(m.CollectionFeature, key, m.tags[m.CollectionFeature.FeatureID()])
 }
 
-type modifiedTagsExpression struct {
-	b6.ExpressionFeature
+type modifiedTagsFeature struct {
+	b6.Feature
 	tags ModifiedTags
 }
 
-func (m *modifiedTagsExpression) AllTags() b6.Tags {
-	return modifyTags(m.ExpressionFeature, m.tags[m.ExpressionFeature.FeatureID()])
+func (m *modifiedTagsFeature) AllTags() b6.Tags {
+	return modifyTags(m.Feature, m.tags[m.Feature.FeatureID()])
 }
 
-func (m *modifiedTagsExpression) Get(key string) b6.Tag {
-	return modifyTag(m.ExpressionFeature, key, m.tags[m.ExpressionFeature.FeatureID()])
+func (m *modifiedTagsFeature) Get(key string) b6.Tag {
+	return modifyTag(m.Feature, key, m.tags[m.Feature.FeatureID()])
 }
 
 type ModifiedTag struct {
@@ -477,6 +477,7 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 	if feature == nil {
 		return nil
 	}
+
 	switch f := feature.(type) {
 	case b6.AreaFeature:
 		return m.WrapAreaFeature(f)
@@ -484,12 +485,11 @@ func (m ModifiedTags) WrapFeature(feature b6.Feature) b6.Feature {
 		return m.WrapRelationFeature(f)
 	case b6.CollectionFeature:
 		return m.WrapCollectionFeature(f)
-	case b6.ExpressionFeature:
-		return m.WrapExpressionFeature(f)
 	case b6.PhysicalFeature:
 		return m.WrapPhysicalFeature(f)
+	default:
+		return &modifiedTagsFeature{Feature: feature, tags: m}
 	}
-	panic(fmt.Sprintf("Can't wrap %T", feature))
 }
 
 func (m ModifiedTags) WrapPhysicalFeature(f b6.PhysicalFeature) b6.PhysicalFeature {
@@ -506,10 +506,6 @@ func (m ModifiedTags) WrapRelationFeature(f b6.RelationFeature) b6.RelationFeatu
 
 func (m ModifiedTags) WrapCollectionFeature(f b6.CollectionFeature) b6.CollectionFeature {
 	return &modifiedTagsCollection{CollectionFeature: f, tags: m}
-}
-
-func (m ModifiedTags) WrapExpressionFeature(f b6.ExpressionFeature) b6.ExpressionFeature {
-	return &modifiedTagsExpression{ExpressionFeature: f, tags: m}
 }
 
 func (m ModifiedTags) WrapSegment(segment b6.Segment) b6.Segment {
@@ -1068,8 +1064,6 @@ func (m *ModifiedFeatures) Update(features *FeaturesByID, references *FeatureRef
 			existing.MergeFrom(m.features[0].(*RelationFeature))
 		case *CollectionFeature:
 			existing.MergeFrom(m.features[0].(*CollectionFeature))
-		case *ExpressionFeature:
-			existing.MergeFrom(m.features[0].(*ExpressionFeature))
 		default:
 			m.existing.MergeFrom(m.features[0])
 		}

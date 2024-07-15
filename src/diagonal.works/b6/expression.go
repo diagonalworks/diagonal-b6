@@ -294,8 +294,6 @@ func FromLiteral(l interface{}) (Literal, error) {
 		return FromLiteral(l.FeatureID())
 	case CollectionID:
 		return FromLiteral(l.FeatureID())
-	case ExpressionID:
-		return FromLiteral(l.FeatureID())
 	case Tag:
 		return Literal{AnyLiteral: TagExpression(l)}, nil
 	case Feature:
@@ -1535,7 +1533,7 @@ func (Expressions) ExpressionType() ExpressionType {
 	return ExpressionTypeExpressions
 }
 
-func ExpressionFromString(s string) Expression { // TODO(mari): from string part of expression interface / implement for all types
+func ExpressionFromString(s string) Expression { // TODO(mari): remove / implement marshal / unmarshal on expressions.
 	if strings.Contains(s, valuesDelimiter) {
 		return NewExpressionsFromString(s)
 	} else if ll, err := LatLngFromString(s); err == nil {

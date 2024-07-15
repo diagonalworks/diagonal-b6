@@ -573,35 +573,38 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 		var substack pb.SubstackProto
 		fillSubstackFromAtom(&substack, AtomFromString(r))
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
-	case b6.ExpressionFeature:
-		// This is not perfect, as it makes original expression that
-		// returned the ExpressionFeature, and the expression from the
-		// feature itself, look like part of the same stack.
-		// TODO: improve the UX for expression features
-		substack := &pb.SubstackProto{}
-		expression := api.AddPipelines(api.Simplify(b6.NewCallExpression(r.Expression(), []b6.Expression{}), o.FunctionSymbols))
-		fillSubstackFromExpression(substack, expression, true)
-		if len(substack.Lines) > 0 {
-			response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, substack)
-		}
-		id := b6.MakeCollectionID(r.ExpressionID().Namespace, r.ExpressionID().Value)
-		if c := b6.FindCollectionByID(id, w); c != nil {
-			substack := &pb.SubstackProto{}
-			if err := fillSubstackFromCollection(substack, c, p, w); err == nil {
-				p.Stack.Substacks = append(p.Stack.Substacks, substack)
-			} else {
-				return err
-			}
-		}
 	case b6.Feature:
-		p.Stack.Id = b6.NewProtoFromFeatureID(r.FeatureID())
-		if c, ok := r.(b6.CollectionFeature); ok {
-			if b6 := c.Get("b6"); b6.Value.String() == "histogram" {
-				return fillResponseFromHistogramFeature(response, c, w)
+		switch r.FeatureID().Type {
+		case b6.FeatureTypeExpression:
+			// This is not perfect, as it makes original expression that
+			// returned the ExpressionFeature, and the expression from the
+			// feature itself, look like part of the same stack.
+			// TODO: improve the UX for expression features
+			substack := &pb.SubstackProto{}
+			expression := api.AddPipelines(api.Simplify(b6.NewCallExpression(r.Get(b6.ExpressionTag).Value, []b6.Expression{}), o.FunctionSymbols))
+			fillSubstackFromExpression(substack, expression, true)
+			if len(substack.Lines) > 0 {
+				response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, substack)
 			}
+			id := b6.MakeCollectionID(r.FeatureID().Namespace, r.FeatureID().Value)
+			if c := b6.FindCollectionByID(id, w); c != nil {
+				substack := &pb.SubstackProto{}
+				if err := fillSubstackFromCollection(substack, c, p, w); err == nil {
+					p.Stack.Substacks = append(p.Stack.Substacks, substack)
+				} else {
+					return err
+				}
+			}
+		default:
+			p.Stack.Id = b6.NewProtoFromFeatureID(r.FeatureID())
+			if c, ok := r.(b6.CollectionFeature); ok {
+				if b6 := c.Get("b6"); b6.Value.String() == "histogram" {
+					return fillResponseFromHistogramFeature(response, c, w)
+				}
+			}
+			p.Stack.Substacks = fillSubstacksFromFeature(response, p.Stack.Substacks, r, w)
+			highlightInResponse(p, r.FeatureID())
 		}
-		p.Stack.Substacks = fillSubstacksFromFeature(response, p.Stack.Substacks, r, w)
-		highlightInResponse(p, r.FeatureID())
 	case b6.FeatureID:
 		if f := w.FindFeatureByID(r); f != nil {
 			return o.fillResponseFromResult(response, f, w)
@@ -848,13 +851,15 @@ func (c *CompareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var analysis b6.CollectionFeature
-	var expression b6.ExpressionFeature
+	var expression b6.Feature
 	id := b6.NewFeatureIDFromProto(request.Analysis)
 	if id.Type == b6.FeatureTypeCollection {
 		if analysis = b6.FindCollectionByID(id.ToCollectionID(), baseline); analysis != nil {
 			id.Type = b6.FeatureTypeExpression
-			if expression = b6.FindExpressionByID(id.ToExpressionID(), baseline); expression == nil {
+			if f := baseline.FindFeatureByID(id); f == nil {
 				err = fmt.Errorf("no expression with ID %s", id)
+			} else {
+				expression = f
 			}
 		} else {
 			err = fmt.Errorf("no collection with ID %s", id)
@@ -874,7 +879,7 @@ func (c *CompareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.Evaluator.Lock.RLock()
 	defer c.Evaluator.Lock.RUnlock()
 	for _, scenario := range scenarios {
-		if _, err = c.Evaluator.EvaluateExpression(expression.Expression(), scenario); err == nil {
+		if _, err = c.Evaluator.EvaluateExpression(expression.Get(b6.ExpressionTag).Value, scenario); err == nil {
 			w := c.Worlds.FindOrCreateWorld(scenario)
 			if comparison := b6.FindCollectionByID(analysis.CollectionID(), w); comparison != nil {
 				response.Scenarios = append(response.Scenarios, newComparisonHistogram(comparison, w))

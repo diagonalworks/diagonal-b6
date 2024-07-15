@@ -455,9 +455,9 @@ func histogramWithID(c *api.Context, collection b6.Collection[any, any], id b6.C
 	if err != nil {
 		return nil, err
 	}
-	expression := &ingest.ExpressionFeature{
-		ExpressionID: b6.MakeExpressionID(id.Namespace, id.Value),
-		Expression:   c.VM.Expression(),
+	expression := &ingest.GenericFeature{
+		ID:   b6.FeatureID{b6.FeatureTypeExpression, id.Namespace, id.Value},
+		Tags: []b6.Tag{{Key: b6.ExpressionTag, Value: c.VM.Expression()}},
 	}
 	return &ingest.AddFeatures{histogram, expression}, nil
 }
@@ -475,9 +475,9 @@ func histogramSwatchWithID(c *api.Context, collection b6.Collection[any, any], i
 		return nil, err
 	}
 	histogram.AddTag(b6.Tag{Key: "b6:histogram", Value: b6.NewStringExpression("swatch")})
-	expression := &ingest.ExpressionFeature{
-		ExpressionID: b6.MakeExpressionID(id.Namespace, id.Value),
-		Expression:   c.VM.Expression(),
+	expression := &ingest.GenericFeature{
+		ID:   b6.FeatureID{b6.FeatureTypeExpression, id.Namespace, id.Value},
+		Tags: []b6.Tag{{Key: b6.ExpressionTag, Value: c.VM.Expression()}},
 	}
 	return &ingest.AddFeatures{histogram, expression}, nil
 }

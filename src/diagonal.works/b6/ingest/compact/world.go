@@ -249,7 +249,7 @@ type wrappedMarshalledPhysicalFeature struct {
 	byID *FeaturesByID
 
 	lock     sync.Mutex
-	polyline s2.Polyline // TODO(mari): avoid caching
+	polyline s2.Polyline // TODO: avoid caching
 }
 
 func (m *wrappedMarshalledPhysicalFeature) PointAt(i int) s2.Point {
@@ -875,9 +875,9 @@ func (f *FeaturesByID) fillRelationsFromRelation(fb *featureBlock, id uint64, re
 	return relations
 }
 
+// TODO(andrew): implement binary encoding for expressions and collections.
 func (f *FeaturesByID) FindCollectionsByFeature(id b6.FeatureID) b6.CollectionFeatures {
 	collections := make([]b6.CollectionFeature, 0, 2)
-	// TODO(mari)
 	return ingest.NewCollectionFeatureIterator(collections)
 }
 
