@@ -3,6 +3,7 @@ package b6
 import (
 	"testing"
 
+	pb "diagonal.works/b6/proto"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v3"
 )
@@ -44,5 +45,62 @@ func TestExportCollectionExpressionAsYAML(t *testing.T) {
 		}
 	} else {
 		t.Errorf("Expected a CollectionExpression, found %T", e.AnyExpression)
+	}
+}
+
+func TestIntLiteralFromProto(t *testing.T) {
+	const speed = 4
+
+	p := &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_IntValue{
+					IntValue: speed,
+				},
+			},
+		},
+	}
+
+	l, err := LiteralFromProto(p)
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+
+	if i, ok := l.AnyLiteral.(IntExpression); ok {
+		if i != speed {
+			t.Fatalf("expected %d, found %d", speed, int(i))
+		}
+	} else {
+		t.Fatalf("expected an int, found %T", l.AnyLiteral)
+	}
+}
+
+func TestNameAndTokenPositionsFromProto(t *testing.T) {
+	p := &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_IntValue{
+					IntValue: 4,
+				},
+			},
+		},
+		Name:  "speed",
+		Begin: 2,
+		End:   3,
+	}
+
+	e, err := ExpressionFromProto(p)
+	if err != nil {
+		t.Fatalf("Expected no error, found %s", err)
+	}
+
+	if e.Name != "speed" {
+		t.Errorf("unexpected name: %s", e.Name)
+	}
+	if e.Begin != 2 {
+		t.Errorf("unexpected begin: %d", e.Begin)
+	}
+	if e.End != 3 {
+		t.Errorf("unexpected end: %d", e.End)
 	}
 }
