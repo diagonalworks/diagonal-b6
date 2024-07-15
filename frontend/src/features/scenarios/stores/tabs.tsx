@@ -70,8 +70,7 @@ interface TabsStore {
 }
 
 export const createTabsStore: ImmerStateCreator<TabsStore, TabsStore> = (
-    set,
-    get
+    set
 ) => ({
     tabs: [],
     splitScreen: false,
@@ -195,6 +194,7 @@ const decode = (params: TabsURLParams): ((state: TabsStore) => TabsStore) => {
                     name,
                     closable: side === 'right',
                     editable: side === 'right',
+                    persist: true,
                 },
             };
         });

@@ -46,6 +46,7 @@ export const useStartup = () => {
                 createWorld({
                     id: 'baseline',
                     featureId,
+                    tiles: 'collection/diagonal.works/0',
                 });
             } else {
                 if (worlds[root]) {
@@ -54,6 +55,7 @@ export const useStartup = () => {
                     createWorld({
                         id: root,
                         featureId,
+                        tiles: 'collection/diagonal.works/0',
                     });
                 }
             }

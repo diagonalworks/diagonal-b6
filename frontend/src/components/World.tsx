@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 
 import { Map } from '@/components/Map';
