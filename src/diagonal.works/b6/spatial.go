@@ -283,7 +283,7 @@ func (i *IntersectsCap) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
-func (i *IntersectsCap) Equal(other Query) bool {
+func (i IntersectsCap) Equal(other Query) bool {
 	if ii, ok := other.(*IntersectsCap); ok {
 		return i.cap.Center() == ii.cap.Center() && i.cap.Radius() == ii.cap.Radius()
 	}
@@ -411,7 +411,7 @@ func (i IntersectsFeature) toGeometryQuery(w World) Query {
 }
 
 func (i IntersectsFeature) Equal(other Query) bool {
-	if ii, ok := other.(*IntersectsFeature); ok {
+	if ii, ok := other.(IntersectsFeature); ok {
 		return i.ID == ii.ID
 	}
 	return false

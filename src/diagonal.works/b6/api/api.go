@@ -58,7 +58,6 @@ var featureIDType = reflect.TypeOf(b6.FeatureID{})
 var areaIDType = reflect.TypeOf(b6.AreaID{})
 var relationIDType = reflect.TypeOf(b6.RelationID{})
 var collectionIDType = reflect.TypeOf(b6.CollectionID{})
-var expressionIDType = reflect.TypeOf(b6.ExpressionID{})
 var callableInterface = reflect.TypeOf((*Callable)(nil)).Elem()
 var untypedCollectionInterface = reflect.TypeOf((*b6.UntypedCollection)(nil)).Elem()
 
@@ -92,12 +91,6 @@ func Convert(v reflect.Value, t reflect.Type, w b6.World) (reflect.Value, error)
 		if vv, ok := v.Interface().(b6.Identifiable); ok {
 			if id := vv.FeatureID(); id.Type == b6.FeatureTypeCollection {
 				return reflect.ValueOf(id.ToCollectionID()), nil
-			}
-		}
-	case expressionIDType:
-		if vv, ok := v.Interface().(b6.Identifiable); ok {
-			if id := vv.FeatureID(); id.Type == b6.FeatureTypeExpression {
-				return reflect.ValueOf(id.ToExpressionID()), nil
 			}
 		}
 	case numberInterface:

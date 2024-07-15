@@ -208,24 +208,6 @@ func (c collectionFeatureIterator) ValueExpression() b6.Expression {
 	}
 }
 
-type expressionFeature struct {
-	*ExpressionFeature
-}
-
-func (e expressionFeature) ExpressionID() b6.ExpressionID {
-	return e.ExpressionFeature.ExpressionID
-}
-
-func (e expressionFeature) Expression() b6.Expression {
-	return e.ExpressionFeature.Expression
-}
-
-func WrapExpressionFeature(f *ExpressionFeature) b6.ExpressionFeature {
-	return expressionFeature{ExpressionFeature: f}
-}
-
-var _ b6.ExpressionFeature = &expressionFeature{}
-
 type segmentIterator struct {
 	segments []b6.Segment
 	i        int

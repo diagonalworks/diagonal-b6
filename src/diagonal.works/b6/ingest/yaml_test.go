@@ -12,7 +12,6 @@ import (
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
 	"github.com/google/go-cmp/cmp"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestExportModificationsAsYAML(t *testing.T) {
@@ -106,28 +105,30 @@ func TestExportModificationsAsYAML(t *testing.T) {
 		t.Fatalf("Expected no error, found: %s", err)
 	}
 
-	var expression ExpressionFeature
-	expression.ExpressionID = b6.MakeExpressionID(b6.Namespace("diagonal.works/test"), 6)
-	expression.Expression = b6.Expression{
-		AnyExpression: b6.CallExpression{
-			Function: b6.NewSymbolExpression("find"),
-			Args: []b6.Expression{
-				{
-					AnyExpression: b6.QueryExpression{
-						Query: b6.Intersection{
-							b6.Tagged{Key: "#highway", Value: b6.NewStringExpression("cycleway")},
-							b6.IntersectsFeature{
-								ID: AreaIDFromOSMWayID(222021571).FeatureID(),
+	var expression GenericFeature
+	expression.ID = b6.FeatureID{b6.FeatureTypeExpression, b6.Namespace("diagonal.works/test"), 6}
+	expression.AddTag(b6.Tag{
+		Key: b6.ExpressionTag,
+		Value: b6.Expression{
+			AnyExpression: b6.CallExpression{
+				Function: b6.NewSymbolExpression("find"),
+				Args: []b6.Expression{
+					{
+						AnyExpression: b6.QueryExpression{
+							Query: b6.Intersection{
+								b6.Tagged{Key: "#highway", Value: b6.NewStringExpression("cycleway")},
+								b6.IntersectsFeature{
+									ID: AreaIDFromOSMWayID(222021571).FeatureID(),
+								},
 							},
 						},
+						Name:  "bike paths",
+						Begin: 36,
+						End:   42,
 					},
-					Name:  "bike paths",
-					Begin: 36,
-					End:   42,
 				},
 			},
-		},
-	}
+		}})
 	expression.AddTag(b6.Tag{Key: "source", Value: b6.NewStringExpression("diagonal")})
 	if err := m.AddFeature(&expression); err != nil {
 		t.Fatalf("Expected no error, found: %s", err)
@@ -225,13 +226,8 @@ func DiffFeatures(expected b6.Feature, actual b6.Feature) string {
 		a := actual.(b6.Geometry)
 		coverer := s2.RegionCoverer{MaxLevel: 18, MaxCells: 10} // 18 implies 3cm accuracy
 		diffs += cmp.Diff(b6.Covering(e, coverer), b6.Covering(a, coverer))
-	} else if e, ok := expected.(b6.ExpressionFeature); ok {
-		a := actual.(b6.ExpressionFeature)
-		ae, _ := a.Expression().ToProto()
-		ee, _ := e.Expression().ToProto()
-		// TODO: implement a cmp.Diff transformer for expressions
-		diffs += cmp.Diff(ee, ae, protocmp.Transform())
 	}
+
 	approxAngles := cmp.Comparer(func(a s1.Angle, b s1.Angle) bool {
 		return math.Abs(float64(a-b)) < 0.001
 	})
