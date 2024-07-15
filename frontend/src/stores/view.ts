@@ -47,7 +47,7 @@ const encode = (state: Partial<ViewStore>): ViewURLParams => ({
                   4
               )}`
             : '',
-    z: state.view?.zoom ? state.view.zoom.toString() : '',
+    z: state.view?.zoom ? state.view.zoom.toFixed(4) : '',
 });
 
 const decode = (

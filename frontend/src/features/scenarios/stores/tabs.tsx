@@ -192,8 +192,8 @@ const decode = (params: TabsURLParams): ((state: TabsStore) => TabsStore) => {
                 side: (side === 'l' ? 'left' : 'right') as Tab['side'],
                 properties: {
                     name,
-                    closable: side === 'right',
-                    editable: side === 'right',
+                    closable: side === 'r',
+                    editable: side === 'r',
                     persist: true,
                 },
             };
@@ -203,11 +203,18 @@ const decode = (params: TabsURLParams): ((state: TabsStore) => TabsStore) => {
             .filter((tab) => tab.side === 'right')
             .sort((a, b) => a.index - b.index);
 
+        const leftTabs = tabs
+            .filter((tab) => tab.side === 'left')
+            .sort((a, b) => a.index - b.index);
+
+        const root = useWorkspaceStore.getState().root;
+
         return {
             ...state,
             tabs,
             splitScreen: rightTabs.length > 0,
             rightTab: rightTabs?.[0]?.id,
+            leftTab: root ?? leftTabs?.[0]?.id,
         };
     };
 };

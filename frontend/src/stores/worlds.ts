@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
+import { useTabsStore } from '@/features/scenarios/stores/tabs';
 import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
 import { FeatureIDProto } from '@/types/generated/api';
@@ -92,8 +93,16 @@ const encode = (state: Partial<WorldsStore>): WorldURLParams => {
     if (!state.worlds) {
         return {};
     }
+    const persistWorlds = Object.values(state.worlds)
+        .filter(
+            (w) =>
+                useTabsStore.getState().tabs.find((t) => t.id === w.id)
+                    ?.properties.persist
+        )
+        .map((w) => w.id);
+
     return {
-        w: Object.keys(state.worlds).join(','),
+        w: persistWorlds.join(','),
     };
 };
 
