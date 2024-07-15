@@ -128,6 +128,8 @@ docs/docs/b6-api-documentation.md: clean-api-docs
 	mkdir -p docs/docs
 	bin/${TARGETPLATFORM}/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py > docs/docs/b6-api-documentation.md
 
+all-tests: test python-test
+
 clean:
 	cd src/diagonal.works/b6; go clean
 	rm -f src/diagonal.works/b6/proto/*.pb.go

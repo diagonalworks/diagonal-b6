@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diagonal_b6"
+description = "A Python client library for b6, Diagonal's geospatial analysis engine."
+readme = "README.md"
+license = {text = "Apache License"}
+version = "0.0.4"
+authors = [
+  {name="Diagonal Works", email="hello@diagonal.works"},
+]
+requires-python = ">=3.10"
+dependencies = [
+    "grpcio>=1.43.0",
+    "protobuf>=3.14.0",
+    "s2sphere>=0.2.5",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+
+[project.urls]
+"Homepage" = "https://diagonal.works/b6"
+
+[tool.setuptools.packages]
+find = {}
+

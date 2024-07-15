@@ -68,7 +68,7 @@ this the b6 shell. The shell lets you enter a b6 function to run on the value
 shown in the result window. For example, clicking a point on the map to show
 the lat, lng and entering `sightline 300` will show an estimated viewshed
 polygon from that point, with a cutoff of 300m. The Python client library and
-the shell provide the same set of functions. 
+the shell provide the same set of functions.
 
 Pressing backtick will slide open a b6 shell that's not associated with a
 result. This is a good starting point for jumping to new locations and finding
@@ -198,4 +198,32 @@ docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/D
 ```
 
 
+### Building with Nix
 
+A [Nix](https://nixos.org/) [flake](https://nixos.wiki/wiki/flakes) is
+provided to build the binaries and/or do development.
+
+If you use [direnv](https://direnv.net/) you will get a development shell
+automatically, and otherwise you can get one with:
+
+```shell
+nix develop
+```
+
+You can build the go binaries with `nix build` and run the `b6` binary with
+`nix run . -- --help`. You can find the rest of the binaries in `./result/bin`
+(if you have called `nix build`.)
+
+The go application is built with [gomod2nix](https://github.com/nix-community/gomod2nix/).
+
+For day-to-day development, it is convenient to use the Makefile; so you can
+run `make b6`, or any other make target, from the Nix shell and it should work
+fine. Note that the resulting binaries are placed in the `./bin` folder; but
+they should (!) be identical to the ones built by Nix; or at least, they are
+built from the same source!
+
+The JavaScript projects are all managed by npm; invoked also in the devShell.
+
+There is a Python project defined which can be built with `nix build
+.#python`; but this is probably only useful as a flake input to another
+project, and not really used here at present.
