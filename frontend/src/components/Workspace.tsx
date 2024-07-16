@@ -13,6 +13,7 @@ import {
     useTabsStore,
     useTabsURLStorage,
 } from '@/features/scenarios/stores/tabs';
+import useFeatureFlag from '@/hooks/useFeatureFlag';
 import { useViewStore, useViewURLStorage } from '@/stores/view';
 import { useWorkspaceStore, useWorkspaceURLStorage } from '@/stores/workspace';
 import { useWorldStore, useWorldURLStorage } from '@/stores/worlds';
@@ -41,6 +42,8 @@ export default function Workspace() {
         state.actions.setView,
         state.view,
     ]);
+
+    const isScenariosEnabled = useFeatureFlag('scenarios');
 
     const startup = useStartup();
 
@@ -142,7 +145,7 @@ export default function Workspace() {
                             />
                         ))}
                     </div>
-                    {rightTabs.length === 0 && (
+                    {rightTabs.length === 0 && isScenariosEnabled && (
                         <button
                             onClick={() => {
                                 handleAddScenario();
