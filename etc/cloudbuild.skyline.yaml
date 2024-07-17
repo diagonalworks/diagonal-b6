@@ -19,8 +19,8 @@ steps:
               "-f",
               "docker/Dockerfile.b6",
               "-t",
-              "europe-docker.pkg.dev/diagonal-public/b6/b6:nightly",
+              "europe-docker.pkg.dev/diagonal-public/b6/b6:skyline",
               ".",
           ]
 images:
-    - "europe-docker.pkg.dev/diagonal-public/b6/b6:nightly"
+    - "europe-docker.pkg.dev/diagonal-public/b6/b6:skyline"

@@ -1,0 +1,109 @@
+map:
+  rules:
+  - tag: '#building='
+    min: 14
+    layer: building
+  - tag: '#highway=cycleway'
+    min: 11
+    layer: road
+  - tag: '#highway=footway'
+    min: 14
+    layer: road
+  - tag: '#highway=motorway'
+    min: 3
+    layer: road
+  - tag: '#highway=path'
+    min: 14
+    layer: road
+  - tag: '#highway=pedestrian'
+    min: 14
+    layer: road
+  - tag: '#highway=primary'
+    min: 6
+    layer: road
+    label: true
+  - tag: '#highway=residential'
+    min: 11
+    layer: road
+  - tag: '#highway=secondary'
+    min: 10
+    layer: road
+    label: true
+  - tag: '#highway=service'
+    min: 11
+    layer: road
+  - tag: '#highway=street'
+    min: 11
+    layer: road
+  - tag: '#highway=tertiary'
+    min: 10
+    layer: road
+    label: true
+  - tag: '#highway=trunk'
+    min: 12
+    layer: road
+    label: true
+  - tag: '#highway=unclassified'
+    min: 11
+    layer: road
+  - tag: '#landuse=cemetary'
+    min: 14
+    layer: landuse
+  - tag: '#landuse=forest'
+    min: 11
+    layer: landuse
+  - tag: '#landuse=grass'
+    min: 14
+    layer: landuse
+  - tag: '#landuse=heath'
+    min: 11
+    layer: landuse
+  - tag: '#landuse=meadow'
+    min: 11
+    layer: landuse
+  - tag: '#landuse=park'
+    min: 11
+    layer: landuse
+  - tag: '#landuse=pitch'
+    min: 11
+    layer: landuse
+  - tag: '#landuse=vacant'
+    min: 11
+    layer: landuse
+  - tag: '#landuse=commercial'
+    max: 13
+    min: 11
+    layer: landuse
+  - tag: '#leisure=park'
+    min: 14
+    layer: landuse
+  - tag: '#leisure=pitch'
+    min: 14
+    layer: landuse
+  - tag: '#leisure=playground'
+    min: 14
+    layer: landuse
+  - tag: '#leisure=garden'
+    min: 14
+    layer: landuse
+  - tag: '#leisure=nature_reserve'
+    min: 11
+    layer: landuse
+  - tag: '#natural=coastline'
+    min: 12
+    layer: boundary
+  - tag: '#natural=heath'
+    min: 11
+    layer: landuse
+  - tag: '#outline=contour'
+    min: 14
+    layer: contour
+  - tag: '#water='
+    min: 12
+    layer: water
+  - tag: '#waterway='
+    min: 14
+    layer: water
+  - tag: '#place=city'
+    max: 11
+    layer: label
