@@ -21,7 +21,7 @@ func main() {
 	output := flag.String("output", "tmp/out", "Output filename")
 	cores := flag.Int("cores", runtime.NumCPU(), "Available cores")
 	memory := flag.Bool("memory", true, "Use memory for intermediate data")
-	scratch := flag.String("scratch", ".", "Directory for temporary files, for --memory=false")
+	scratch := flag.String("scratch", ".", "Directory for temporary files, for --memory=false  or writing to cloud")
 	flag.Parse()
 
 	var err error
