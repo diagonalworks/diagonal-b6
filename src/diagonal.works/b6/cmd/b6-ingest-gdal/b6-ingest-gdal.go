@@ -26,6 +26,7 @@ var idStrategies = map[string]gdal.IDStrategy{
 	"strip":       gdal.StripNonDigitsIDStrategy,
 	"hash":        gdal.HashIDStrategy,
 	"uk-ons-2011": gdal.UKONS2011IDStrategy,
+	"uk-ons-2021": gdal.UKONS2021IDStrategy,
 	"uk-ons-2022": gdal.UKONS2022IDStrategy,
 }
 
@@ -44,6 +45,7 @@ func main() {
 	boundingBoxFlag := flag.String("bounding-box", "", "lat,lng,lat,lng bounding box to crop points outside")
 	joinFlag := flag.String("join", "", "Join tag values from a CSV")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
+	scratch := flag.String("scratch", ".", "Directory for temporary files, for --memory=false or writing to cloud")
 	flag.Parse()
 
 	if *inputFlag == "" || *outputFlag == "" {
@@ -129,11 +131,16 @@ func main() {
 	options := compact.Options{
 		OutputFilename:          *outputFlag,
 		Goroutines:              *coresFlag,
-		ScratchDirectory:        "",
+		ScratchDirectory:        *scratch,
 		PointsScratchOutputType: compact.OutputTypeMemory,
 	}
-
-	if err := compact.Build(source, &options); err != nil {
+	finish, err := compact.MaybeWriteToCloud(&options)
+	if err == nil {
+		if err = compact.Build(source, &options); err == nil {
+			err = finish()
+		}
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
