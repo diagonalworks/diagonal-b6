@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -16,6 +17,7 @@ import (
 	pb "diagonal.works/b6/proto"
 	"diagonal.works/b6/search"
 	"github.com/golang/geo/s2"
+	"golang.org/x/mod/semver"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -23,6 +25,16 @@ import (
 // A semver 2.0.0 compliant version for the index format. Indicies generated
 // with a different major version will fail to load.
 const Version = "5.0.0"
+
+const FilenameVersionPattern = "VERSION"
+
+func includeVersion(f string) string {
+	major := semver.Major("v" + Version)
+	if major == "" {
+		major = "v0"
+	}
+	return strings.ReplaceAll(f, FilenameVersionPattern, major)
+}
 
 func init() {
 	if l := encoding.MarshalledSize(Header{}); l != HeaderLength {

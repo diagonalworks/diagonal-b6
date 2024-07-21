@@ -53,37 +53,37 @@ type Output interface {
 type FileOutput string
 
 func (f FileOutput) Read() (ReadCloserAt, error) {
-	r, err := mmap.Open(string(f))
+	r, err := mmap.Open(includeVersion(string(f)))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to mmap %s: %w", f, err)
+		return nil, fmt.Errorf("failed to mmap %s: %w", f, err)
 
 	}
 	return r, nil
 }
 
 func (f FileOutput) Write() (WriteCloserAt, error) {
-	w, err := os.OpenFile(string(f), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	w, err := os.OpenFile(includeVersion(string(f)), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open %s for write: %w", f, err)
+		return nil, fmt.Errorf("failed to open %s for write: %w", f, err)
 	}
 	return w, nil
 }
 
 func (f FileOutput) ReadWrite() (ReadWriteCloserAt, error) {
-	w, err := os.OpenFile(string(f), os.O_RDWR, 0644)
+	w, err := os.OpenFile(includeVersion(string(f)), os.O_RDWR, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open %s for write: %w", f, err)
+		return nil, fmt.Errorf("failed to open %s for write: %w", f, err)
 	}
 	return w, nil
 }
 
 func (f FileOutput) Bytes() ([]byte, io.Closer, error) {
-	m, err := encoding.Mmap(string(f))
+	m, err := encoding.Mmap(includeVersion(string(f)))
 	return m.Data, m, err
 }
 
 func (f FileOutput) Len() (int64, error) {
-	info, err := os.Stat(string(f))
+	info, err := os.Stat(includeVersion(string(f)))
 	if err != nil {
 		return -1, err
 	}
@@ -1121,7 +1121,7 @@ func isCloudFilename(filename string) bool {
 
 func MaybeWriteToCloud(options *Options) (func() error, error) {
 	if isCloudFilename(options.OutputFilename) {
-		originalOutputFilename := options.OutputFilename
+		originalOutputFilename := includeVersion(options.OutputFilename)
 		if options.ScratchDirectory == "" {
 			return nil, errors.New("need scratch directory")
 		}
