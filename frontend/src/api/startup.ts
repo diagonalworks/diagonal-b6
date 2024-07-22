@@ -17,15 +17,17 @@ const getStartup = (request: StartupRequest): Promise<StartupResponse> => {
 };
 
 export const useStartup = () => {
-    const root = useWorkspaceStore((state) => state?.root);
+    const root = useWorkspaceStore((state) => state.root);
+    const worlds = useWorldStore((state) => state.worlds);
     const view = useViewStore((state) => state.initialView);
     const actions = useOutlinersStore((state) => state.actions);
-
-    const { setFeatureId } = useWorldStore((state) => state.actions);
+    const { setFeatureId, createWorld } = useWorldStore(
+        (state) => state.actions
+    );
 
     const request = useMemo(() => {
         return {
-            ...(root && { r: root }),
+            ...(root && { r: root || '' }),
             ...(view.latitude &&
                 view.longitude && { ll: `${view.latitude},${view.longitude}` }),
             ...(view.zoom && { z: `${view.zoom}` }),
@@ -39,15 +41,29 @@ export const useStartup = () => {
 
     useEffect(() => {
         if (query.data) {
-            setFeatureId(
-                'baseline',
-                getWorldFeatureId('baseline', query.data.root?.namespace, root)
-            );
+            const featureId = getWorldFeatureId({ ...query.data.root });
+            if (!root) {
+                createWorld({
+                    id: 'baseline',
+                    featureId,
+                    tiles: 'collection/diagonal.works/0',
+                });
+            } else {
+                if (worlds[root]) {
+                    setFeatureId(root, featureId);
+                } else {
+                    createWorld({
+                        id: root,
+                        featureId,
+                        tiles: 'collection/diagonal.works/0',
+                    });
+                }
+            }
 
             query.data.docked?.forEach((d, i) => {
                 actions.add({
                     id: `docked-${i}`,
-                    world: 'baseline',
+                    world: root || 'baseline',
                     properties: {
                         active: false,
                         docked: true,

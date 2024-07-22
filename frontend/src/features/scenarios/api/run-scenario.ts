@@ -7,6 +7,7 @@ import { getWorldFeatureId } from '@/utils/world';
 
 import { useChangesStore } from '../stores/changes';
 import { useComparisonsStore } from '../stores/comparisons';
+import { useTabsStore } from '../stores/tabs';
 import { ChangeSpec } from '../types/change';
 
 export const useScenario = (
@@ -15,7 +16,8 @@ export const useScenario = (
     change: ChangeSpec
 ) => {
     const actions = useChangesStore((state) => state.actions);
-    const { setFeatureId } = useWorldStore((state) => state.actions);
+    const tabActions = useTabsStore((state) => state.actions);
+    const { setFeatureId, setTiles } = useWorldStore((state) => state.actions);
     const { add: addComparison } = useComparisonsStore(
         (state) => state.actions
     );
@@ -40,9 +42,7 @@ export const useScenario = (
                         args: [
                             {
                                 literal: {
-                                    featureIDValue: getWorldFeatureId(
-                                        target.id
-                                    ),
+                                    featureIDValue: target.featureId,
                                 },
                             },
                             {
@@ -99,7 +99,15 @@ export const useScenario = (
     useEffect(() => {
         if (query.isSuccess) {
             actions.setCreate(target.id, true);
-            setFeatureId(target.id, getWorldFeatureId(target.id));
+            tabActions.setPersist(target.id, true);
+            const featureId = getWorldFeatureId({
+                ...origin.featureId,
+                namespace: `${origin.featureId.namespace}/scenario`,
+                value: target.featureId.value,
+            });
+
+            setFeatureId(target.id, featureId);
+            setTiles(target.id, target.id);
 
             if (change.analysis) {
                 addComparison({
@@ -108,7 +116,8 @@ export const useScenario = (
                     scenarios: [
                         {
                             id: target.id,
-                            featureId: getWorldFeatureId(target.id),
+                            featureId: featureId,
+                            tiles: target.id,
                         },
                     ],
                     analysis: change.analysis,

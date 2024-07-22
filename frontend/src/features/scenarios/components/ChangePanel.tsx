@@ -13,6 +13,7 @@ import { twMerge } from 'tailwind-merge';
 import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
 import { LabelledIconAdapter } from '@/components/adapters/LabelledIconAdapter';
 import { Line } from '@/components/system/Line';
+import { useWorkspaceStore } from '@/stores/workspace';
 import { World, useWorldStore } from '@/stores/worlds';
 import { $FixMe } from '@/utils/defs';
 import { highlighted } from '@/utils/text';
@@ -133,8 +134,10 @@ const ChangeCombo = ({
     const change = useChangesStore((state) => state.changes[id]);
     const world = useWorldStore((state) => state.worlds[worldId]);
     const changeActions = useChangesStore((state) => state.actions);
-
-    const baseline = useWorldStore((state) => state.worlds.baseline);
+    const root = useWorkspaceStore((state) => state.root);
+    const baseline = useWorldStore(
+        (state) => state.worlds?.[root ?? 'baseline']
+    );
     const changeFunctions = useChangeFunctions({
         origin: baseline,
     });

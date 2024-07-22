@@ -1,6 +1,9 @@
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
+import { useTabsStore } from '@/features/scenarios/stores/tabs';
+import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
 import { FeatureIDProto } from '@/types/generated/api';
 import { getWorldFeatureId } from '@/utils/world';
@@ -12,6 +15,7 @@ import { getWorldFeatureId } from '@/utils/world';
 export interface World {
     id: string;
     featureId: FeatureIDProto;
+    tiles: string;
 }
 
 export interface WorldsStore {
@@ -36,18 +40,20 @@ export interface WorldsStore {
          * @returns void
          */
         setFeatureId: (worldId: string, featureId: FeatureIDProto) => void;
+        /**
+         * Set the tiles for a world
+         * @param worldId - The id of the world to set the tiles for
+         * @param tiles - The path for the tiles to set
+         * @returns void
+         */
+        setTiles: (worldId: string, tiles: string) => void;
     };
 }
 
 export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
     set
 ) => ({
-    worlds: {
-        baseline: {
-            id: 'baseline',
-            featureId: getWorldFeatureId('baseline'),
-        },
-    },
+    worlds: {},
     actions: {
         createWorld: (world) => {
             set((state) => {
@@ -64,6 +70,11 @@ export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
                 state.worlds[worldId].featureId = featureId;
             });
         },
+        setTiles: (worldId, tiles) => {
+            set((state) => {
+                state.worlds[worldId].tiles = tiles;
+            });
+        },
     },
 });
 
@@ -72,4 +83,58 @@ export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
  * This is a zustand store that uses immer for immutability.
  * @returns The world store
  */
-export const useWorldStore = create(immer(createWorldStore));
+export const useWorldStore = create(devtools(immer(createWorldStore)));
+
+type WorldURLParams = {
+    w?: string;
+};
+
+const encode = (state: Partial<WorldsStore>): WorldURLParams => {
+    if (!state.worlds) {
+        return {};
+    }
+    const persistWorlds = Object.values(state.worlds)
+        .filter(
+            (w) =>
+                useTabsStore.getState().tabs.find((t) => t.id === w.id)
+                    ?.properties.persist
+        )
+        .map((w) => w.id);
+
+    return {
+        w: persistWorlds.join(','),
+    };
+};
+
+const decode = (
+    params: WorldURLParams
+): ((state: WorldsStore) => WorldsStore) => {
+    const worlds: World[] =
+        params.w?.split(',').flatMap((ws) => {
+            const value = ws.match(/([a-z]|\d)*$/)?.[0];
+            const namespace = ws.match(/.*(?=\/([a-z]|\d)*$)/)?.[0];
+            if (!value) {
+                return [];
+            }
+            return {
+                id: ws,
+                featureId: getWorldFeatureId({
+                    namespace,
+                    value: +value,
+                }),
+                tiles: ws,
+            };
+        }) ?? [];
+
+    return (state) => ({
+        ...state,
+        worlds: worlds.reduce((acc, w) => {
+            acc[w.id] = w;
+            return acc;
+        }, Object.assign({}, state.worlds) as Record<string, World>),
+    });
+};
+
+export const useWorldURLStorage = () => {
+    return usePersistURL(useWorldStore, encode, decode);
+};
