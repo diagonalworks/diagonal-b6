@@ -99,6 +99,7 @@ func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 	toClose := make([]io.Closer, len(sources))
 
 	for i, s := range sources {
+		s = includeVersion(s)
 		var hasCompactPrefix, hasOSMPRefix bool
 		if hasCompactPrefix = strings.HasPrefix(s, "compact:"); hasCompactPrefix {
 			s = strings.TrimPrefix(s, "compact:")
@@ -111,7 +112,7 @@ func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 		}
 		toClose[i] = fs
 		var children []string
-		if strings.Index(s, "*") >= 0 {
+		if strings.Contains(s, "*") {
 			children, err = fs.List(ctx, s)
 		} else {
 			children, err = fs.List(ctx, s+"/*")
