@@ -1,5 +1,6 @@
 import { EnterFullScreenIcon, PlusIcon } from '@radix-ui/react-icons';
 import { AnimatePresence } from 'framer-motion';
+import { isEmpty } from 'lodash';
 import { customAlphabet } from 'nanoid';
 import { useCallback, useEffect, useMemo } from 'react';
 import { MapProvider } from 'react-map-gl';
@@ -8,17 +9,21 @@ import { useStartup } from '@/api/startup';
 import ComparisonCard from '@/features/scenarios/components/ComparisonCard';
 import { Tabs } from '@/features/scenarios/components/Tabs';
 import { useComparisonsStore } from '@/features/scenarios/stores/comparisons';
-import { useTabsStore } from '@/features/scenarios/stores/tabs';
+import {
+    useTabsStore,
+    useTabsURLStorage,
+} from '@/features/scenarios/stores/tabs';
 import useFeatureFlag from '@/hooks/useFeatureFlag';
 import { useViewStore, useViewURLStorage } from '@/stores/view';
-import { useWorkspaceURLStorage } from '@/stores/workspace';
+import { useWorkspaceStore, useWorkspaceURLStorage } from '@/stores/workspace';
+import { useWorldStore, useWorldURLStorage } from '@/stores/worlds';
 
 import World from './World';
 import Logo from './system/Logo';
 
-const generateWorldId = () => {
+const generateWorldId = (path?: string) => {
     const nanoid = customAlphabet('1234567890', 6);
-    return nanoid();
+    return `${path}${nanoid()}`;
 };
 
 /**
@@ -27,6 +32,13 @@ const generateWorldId = () => {
 export default function Workspace() {
     useWorkspaceURLStorage();
     useViewURLStorage();
+    useWorldURLStorage();
+    useTabsURLStorage();
+
+    const worlds = useWorldStore((state) => state.worlds);
+    const root = useWorkspaceStore((state) => state.root);
+    const rootWorld = worlds?.[root || 'baseline'];
+
     const [setView, view] = useViewStore((state) => [
         state.actions.setView,
         state.view,
@@ -60,6 +72,7 @@ export default function Workspace() {
         leftTab,
         rightTab,
     } = useTabsStore();
+
     const leftTabs = useMemo(
         () => tabs.filter((tab) => tab.side === 'left'),
         [tabs]
@@ -68,6 +81,22 @@ export default function Workspace() {
         () => tabs.filter((tab) => tab.side === 'right'),
         [tabs]
     );
+
+    useEffect(() => {
+        if (leftTabs.length === 0 && !isEmpty(worlds)) {
+            tabActions.add({
+                id: root || 'baseline',
+                side: 'left',
+                index: 0,
+                properties: {
+                    name: 'Baseline',
+                    closable: false,
+                    editable: false,
+                    persist: true,
+                },
+            });
+        }
+    }, [tabs, worlds]);
 
     const comparators = useComparisonsStore((state) => state.comparisons);
 
@@ -82,7 +111,9 @@ export default function Workspace() {
     }, [comparators, leftTab, rightTab]);
 
     const handleAddScenario = useCallback(() => {
-        const id = generateWorldId();
+        const id = generateWorldId(
+            `/collection/${rootWorld?.featureId?.namespace}/scenario/`
+        );
         tabActions.add({
             id,
             side: 'right',
@@ -95,7 +126,7 @@ export default function Workspace() {
             },
         });
         tabActions.setActive(id, 'right');
-    }, [tabActions, rightTabs.length]);
+    }, [tabActions, rightTabs.length, rootWorld?.featureId?.namespace]);
 
     return (
         <div className="h-screen max-h-screen flex flex-col relative">
@@ -119,18 +150,20 @@ export default function Workspace() {
             {!isInIframe && (
                 <Tabs.Menu splitScreen={splitScreen}>
                     <div className="flex items-end justify-between gap-1">
-                        {leftTabs.map((tab) => (
-                            <Tabs.Button
-                                key={tab.id}
-                                tab={tab}
-                                active={leftTab === tab.id}
-                                onClick={(id) =>
-                                    tabActions.setActive(id, 'left')
-                                }
-                                onClose={tabActions.remove}
-                                onValueChange={tabActions.rename}
-                            />
-                        ))}
+                        <div className="flex gap-1">
+                            {leftTabs.map((tab) => (
+                                <Tabs.Button
+                                    key={tab.id}
+                                    tab={tab}
+                                    active={leftTab === tab.id}
+                                    onClick={(id) =>
+                                        tabActions.setActive(id, 'left')
+                                    }
+                                    onClose={tabActions.remove}
+                                    onValueChange={tabActions.rename}
+                                />
+                            ))}
+                        </div>
                         {/**
                          * Only show the add scenario button if there are no right tabs and scenarios are enabled.
                          * This is the entrypoint for the scenarios feature, we hide it if the feature is disabled.

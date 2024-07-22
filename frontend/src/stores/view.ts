@@ -43,9 +43,11 @@ type ViewURLParams = {
 const encode = (state: Partial<ViewStore>): ViewURLParams => ({
     ll:
         state.view?.latitude && state.view?.longitude
-            ? `${state.view.latitude},${state.view.longitude}`
+            ? `${state.view.latitude.toFixed(4)},${state.view.longitude.toFixed(
+                  4
+              )}`
             : '',
-    z: state.view?.zoom ? state.view.zoom.toString() : '',
+    z: state.view?.zoom ? state.view.zoom.toFixed(4) : '',
 });
 
 const decode = (

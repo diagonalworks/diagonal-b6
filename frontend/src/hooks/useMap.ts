@@ -6,6 +6,7 @@ import {
 import { useCallback, useMemo } from 'react';
 import { useMap as useMapLibre } from 'react-map-gl/maplibre';
 
+import { useTabsStore } from '@/features/scenarios/stores/tabs';
 import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
 import { World, useWorldStore } from '@/stores/worlds';
 import { Event } from '@/types/events';
@@ -21,14 +22,17 @@ export const useMap = ({ id }: { id: World['id'] }) => {
     const { [id]: maplibre } = useMapLibre();
     const outlinerActions = useOutlinersStore((state) => state.actions);
     const world = useWorldStore((state) => state.worlds[id]);
-    const baseline = useWorldStore((state) => state.worlds.baseline);
+    const leftTab = useTabsStore((state) => state.leftTab);
+    const baseline = useWorldStore((state) =>
+        leftTab ? state.worlds?.[leftTab] : undefined
+    );
 
     const baseRequest: () => Partial<OutlinerSpec['request']> =
         useCallback(() => {
             const mapCenter = maplibre?.getCenter();
             const mapZoom = maplibre?.getZoom();
             return {
-                root: world.featureId ?? baseline.featureId,
+                root: world.featureId ?? baseline?.featureId ?? undefined,
                 ...(mapCenter && {
                     logMapCenter: {
                         latE7: Math.round(mapCenter.lat * 1e7),

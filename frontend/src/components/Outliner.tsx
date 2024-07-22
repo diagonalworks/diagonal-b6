@@ -14,9 +14,11 @@ import { Stack } from './system/Stack';
 
 function Outliner({
     outliner,
+    side,
     origin,
 }: {
     outliner: OutlinerSpec;
+    side?: 'left' | 'right';
     origin?: OutlinerSpec;
 }) {
     const outlinerActions = useOutlinersStore((state) => state.actions);
@@ -78,7 +80,7 @@ function Outliner({
         <StackContextProvider outliner={outliner} origin={origin}>
             <ConditionalWrap
                 condition={
-                    outliner.world !== 'baseline' &&
+                    side === 'right' &&
                     outliner.properties.type !== 'comparison'
                 }
                 wrap={(children) => (

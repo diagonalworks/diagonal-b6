@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
+import { useTabsStore } from '@/features/scenarios/stores/tabs';
 import { usePersistURL } from '@/hooks/usePersistURL';
 import { ImmerStateCreator } from '@/lib/zustand';
 
@@ -9,13 +10,19 @@ import { ImmerStateCreator } from '@/lib/zustand';
  */
 interface WorkspaceStore {
     root?: string;
+    setRoot: (root: string) => void;
 }
 
 export const createWorkspaceStore: ImmerStateCreator<
     WorkspaceStore,
     WorkspaceStore
-> = () => ({
+> = (set) => ({
     root: undefined,
+    setRoot: (root: string) => {
+        set((state) => {
+            state.root = root;
+        });
+    },
 });
 
 /**
@@ -35,14 +42,17 @@ const encode = (state: Partial<WorkspaceStore>): WorkspaceURLParams => ({
 
 const decode =
     (params: WorkspaceURLParams): ((state: WorkspaceStore) => WorkspaceStore) =>
-    (state) => ({
-        ...state,
-        root: params.r || state.root,
-    });
+    (state) => {
+        const root = params.r || state.root;
+        if (root) {
+            useTabsStore.getState().actions.setActive(root, 'left');
+        }
+        return {
+            ...state,
+            root,
+        };
+    };
 
-/**
- * Hook to use URL persistence for the workspace store.
- */
 export const useWorkspaceURLStorage = () => {
     return usePersistURL(useWorkspaceStore, encode, decode);
 };
