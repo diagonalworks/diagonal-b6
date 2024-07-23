@@ -50,7 +50,7 @@ func main() {
 	addr := flag.String("addr", "", "Address to listen on for status over HTTP")
 	base := flag.String("base", "", "World to make connections to")
 	input := flag.String("input", "", "World to make connections from")
-	output := flag.String("output", "", "Output connected world")
+	output := flag.String("output", "", "Output index filename")
 	connect := flag.String("connect", "[#building | #amenity | #leisure | #shop | #landuse=vacant]", "Feature types to connect")
 	modifyPaths := flag.Bool("modify-paths", true, "Add new connection points to existing paths")
 	networkThreshold := flag.Float64("network-threshold", 500.0, "Distance to travel before a street is considered connected")

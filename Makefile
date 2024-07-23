@@ -28,6 +28,9 @@ b6-ingest-osm:
 b6-ingest-gdal:
 	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 
+b6-ingest-gtfs:
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+
 b6-ingest-terrain:
 	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
 

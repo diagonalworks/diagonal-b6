@@ -1,0 +1,371 @@
+stop_id,stop_code,stop_name,stop_lat,stop_lon,stop_url
+1800BNIN001,MANWADMA,"Bolton, Bolton Interchange",53.57589,-2.42788,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800BNIN001
+1800BYIC001,MANADAGD,"Bury, at Bury Interchange",53.59138,-2.29702,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800BYIC001
+1800EB07741,MANADWDM,"Rusholme, Wilmslow Rd (Stop H)",53.45559,-2.22512,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800EB07741
+1800EB07761,MANADWDT,"Rusholme, Rusholme Ctr (Stop F)",53.45360,-2.22352,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800EB07761
+1800EB07771,MANADWDW,"Rusholme, Wilmslow Rd (Stop E)",53.45264,-2.22267,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800EB07771
+1800EB07781,MANADWGA,"Rusholme, Platt Fields Pk (Stop A)",53.45062,-2.22129,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800EB07781
+1800EB07801,MANADWGJ,"Owens Park, opp Grangethorpe Rd",53.44827,-2.21983,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800EB07801
+1800EB07831,MANADWGP,"Owens Park, nr Old Hall Ln",53.44564,-2.21783,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800EB07831
+1800EB07841,MANADWGT,"Owens Park, Owen's Park (Stop B)",53.44342,-2.21835,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800EB07841
+1800MABS001,MANTMPGT,"Manchester Airport, Manchester Airport The Station",53.36560,-2.27242,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800MABS001
+1800NB04091,MANDJMJD,"Manchester City Centre, Parsonage (Stop NC)",53.48348,-2.24705,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NB04091
+1800NB04431,MANDJMWD,"Manchester City Centre, Victoria Stn Approach (Stop Ny)",53.48716,-2.24285,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NB04431
+1800NC00031,MANWAGTM,"Seddons Farm Estate, nr Freckleton Drive",53.58638,-2.33623,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC00031
+1800NC00201,MANDMDWM,"Ainsworth, opp Cherry Tree Cottages",53.58869,-2.37136,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC00201
+1800NC00221,MANDMDWT,"Ainsworth, o/s Red Bridge",53.58715,-2.37518,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC00221
+1800NC00531,MANDMGDJ,"Elton, nr Victoria St",53.59362,-2.31059,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC00531
+1800NC02151,MANDMJAP,"Seddons Farm Estate, opp Watling St",53.59043,-2.33773,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC02151
+1800NC02291,MANDMJGD,"Prestwich Hospital, o/s Tesco",53.53561,-2.28753,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC02291
+1800NC02891,MANDMJPJ,"Radcliffe, Radcliffe Bus Station (Stop A)",53.55858,-2.32769,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC02891
+1800NC03771,MANDMJWM,"Ainsworth, nr Harley Ave",53.58843,-2.35350,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC03771
+1800NC06041,MANDMTJW,"Whitefield, opp Burnsall Ave",53.54852,-2.30298,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC06041
+1800NC06061,MANDMTMD,"Whitefield, nr Higher Ln",53.54987,-2.29988,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC06061
+1800NC06071,MANDMTMG,"Whitefield, Stand Church (Stop J)",53.55076,-2.29797,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC06071
+1800NC06591,MANDMWMJ,"Besses O Th Barn, Sefton St (Stop E)",53.54495,-2.29143,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC06591
+1800NC06611,MANDMWMT,"Whitefield, opp Moss Ln",53.54815,-2.29401,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC06611
+1800NC06631,MANDMWPA,"Whitefield, Hamilton Rd (Stop D)",53.54996,-2.29525,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC06631
+1800NC06901,MANDPAGP,"Besses O Th Barn, Bury New Rd (Stop A)",53.54143,-2.29012,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC06901
+1800NC09621,MANTPAGJ,"Woodhill, opp New George St",53.59805,-2.31438,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC09621
+1800NC10221,MANTWDJP,"Prestwich, Longfield Centre (Stop D)",53.53272,-2.28529,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC10221
+1800NC20031,MANDPGJA,"Bury, East Lancs Railway (Stop SS)",53.59359,-2.30031,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC20031
+1800NC20051,MANDPGJG,"Bury, Jubilee Way (Stop Rr)",53.59354,-2.30395,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC20051
+1800NC20171,MANDPGJT,"Bury, Tenterden St (Stop Pp)",53.59173,-2.30246,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC20171
+1800NC20751,MANDPJMJ,"Woodhill, nr Redford St",53.59852,-2.31766,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC20751
+1800NC20781,MANDPJMW,"Woodhill, opp St James' Church",53.59988,-2.32233,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC20781
+1800NC20801,MANDPJPD,"Woolfold, nr Chiltern Dr",53.60077,-2.32581,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC20801
+1800NC20831,MANDPJPM,"Walshaw, nr Owlerbarrow Rd",53.59971,-2.33142,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC20831
+1800NC20851,MANDPJPW,"Walshaw, nr War Memorial",53.60116,-2.33902,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC20851
+1800NC22021,MANDPTDM,"Elton, opp Fairy St",53.59292,-2.31413,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22021
+1800NC22041,MANDPTDT,"Elton, o/s Whitehead Park",53.59280,-2.31682,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22041
+1800NC22071,MANDPTGD,"Elton, opp Grange Rd",53.59227,-2.32250,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22071
+1800NC22081,MANDPTGJ,"Elton, opp Greenhill Rd",53.59197,-2.32636,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22081
+1800NC22101,MANDPTGP,"Seddons Farm Estate, opp Chantlers Ave",53.59152,-2.33045,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22101
+1800NC22121,MANDPTGW,"Seddons Farm Estate, nr Wadebridge Dr",53.59112,-2.33371,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22121
+1800NC22161,MANDPTJM,"Starling, opp Rose & Crown",53.58958,-2.34251,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22161
+1800NC22181,MANDPTJT,"Starling, at Cockey Moor Rd",53.58924,-2.34613,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22181
+1800NC22201,MANDPTMA,"Ainsworth, nr Sumner Ave",53.58867,-2.35138,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22201
+1800NC22231,MANDPTMG,"Ainsworth, o/s Old White Horse",53.58799,-2.35742,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22231
+1800NC22251,MANDPTMP,"Ainsworth, nr Ainsworth Hall Rd",53.58776,-2.36197,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22251
+1800NC22271,MANDPTMW,"Ainsworth, opp Arthur Ln",53.58824,-2.36511,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22271
+1800NC22291,MANDPTPD,"Starling, nr Ashington Dr",53.59139,-2.34255,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22291
+1800NC22311,MANDPTPJ,"Starling, o/s Business Park",53.59521,-2.33986,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22311
+1800NC22331,MANDPTPT,"Walshaw, o/s Christ Church",53.59893,-2.33971,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC22331
+1800NC23001,MANDTAGA,"Elton, opp Bury Bridge",53.59538,-2.30968,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23001
+1800NC23151,MANDTAMD,"Seddons Farm Estate, Ainsworth Arms (Stop E)",53.58068,-2.34278,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23151
+1800NC23181,MANDTAMP,"Black Lane, opp Grindsbrook Rd",53.57845,-2.34135,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23181
+1800NC23191,MANDTAMT,"Black Lane, opp Miller St",53.57631,-2.33997,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23191
+1800NC23221,MANDTAPD,"Black Lane, o/s Black Ln P.O.",53.57355,-2.33850,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23221
+1800NC23241,MANDTAPJ,"Black Lane, nr Turks Rd",53.57083,-2.33721,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23241
+1800NC23261,MANDTAPT,"Black Lane, adj Clyde Rd",53.57023,-2.33811,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23261
+1800NC23281,MANDTATA,"Bolton Road Estate, nr Northlands",53.56985,-2.34443,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23281
+1800NC23431,MANDTDAG,"Bolton Road Estate, adj Turks Rd",53.56964,-2.34514,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23431
+1800NC23451,MANDTDAJ,"Bolton Road Estate, nr Westminster Ave",53.56704,-2.34568,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23451
+1800NC23501,MANDTDGA,"Bolton Road Estate, nr Tennyson Ave",53.56578,-2.34408,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23501
+1800NC23521,MANDTDGJ,"Bolton Road Estate, opp Colshaw Cl",53.56562,-2.34132,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23521
+1800NC23541,MANDTDGP,"Black Lane, nr Lowe St",53.56633,-2.33897,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23541
+1800NC23561,MANDTDGW,"Black Lane, nr Lever St",53.56691,-2.33626,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23561
+1800NC23611,MANDTDJP,"Black Lane, adj Belgrave St",53.56574,-2.33449,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23611
+1800NC23621,MANDTDJT,"Radcliffe, nr Water St",53.56428,-2.33341,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC23621
+1800NC24561,MANDTDMA,"Sedgley Park, nr Crescent Ave",53.52152,-2.27431,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC24561
+1800NC33661,MANDTDWD,"Chapel Field, nr Arley St",53.55481,-2.31876,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC33661
+1800NC33681,MANDTDWJ,"Chapel Field, Hollinhurst Rd (NW-bound)",53.55304,-2.31631,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC33681
+1800NC33711,MANDTDWT,"Chapel Field, opp Bay Horse",53.55127,-2.31405,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC33711
+1800NC33721,MANDTGAD,"Chapel Field, o/s Stand Golf Club",53.54948,-2.31200,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC33721
+1800NC33741,MANDTGAJ,"Stand, nr Ringley Rd",53.54770,-2.30915,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC33741
+1800NC35221,MANDTJPT,"Seddons Farm Estate, opp Mile Ln",53.58820,-2.33716,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35221
+1800NC35231,MANDTJPW,"Seddons Farm Estate, adj Ainsworth Rd",53.58929,-2.33825,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35231
+1800NC35251,MANDTJTD,"Seddons Farm Estate, opp Longridge Dr",53.58454,-2.33449,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35251
+1800NC35271,MANDTJTJ,"Seddons Farm Estate, nr Watling St",53.58320,-2.33347,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35271
+1800NC35291,MANDTJTP,"Seddons Farm Estate, opp Arrowhill Rd",53.58176,-2.33902,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35291
+1800NC35441,MANDTMAT,"Radcliffe, nr Lord Raglan",53.56296,-2.32899,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35441
+1800NC35461,MANDTMDA,"Radcliffe, nr Blackburn St",53.56088,-2.32815,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35461
+1800NC35491,MANDTMDM,"Chapel Field, opp Radcliffe Library",53.55810,-2.32350,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35491
+1800NC35501,MANDTMDP,"Chapel Field, nr Edward St",53.55609,-2.32085,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC35501
+1800NC41331,MANDTMGP,"Prestwich Hospital, opp Willow Rd",53.53708,-2.28851,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC41331
+1800NC41581,MANDTMPJ,"Sedgley Park, opp Kings Rd",53.51934,-2.27226,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC41581
+1800NC41601,MANDTMPT,"Sedgley Park, nr Hilton Ln",53.52287,-2.27577,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC41601
+1800NC42151,MANDTPGD,"Prestwich, nr Butterstile Ln",53.52483,-2.27776,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC42151
+1800NC42161,MANDTPGJ,"Prestwich, nr St Ann's Rd",53.52813,-2.28087,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC42161
+1800NC42181,MANDTPGP,"Prestwich, opp Red Lion",53.53138,-2.28402,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NC42181
+1800NE04731,MANDWJTW,"Rochdale, nr Milnrow Rd",53.61369,-2.15226,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE04731
+1800NE12251,MANDWPMD,"Stoneyfield, Prince St (Stop B)",53.60559,-2.14693,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE12251
+1800NE12261,MANDWPMG,"Stoneyfield, opp Woodbine St",53.60684,-2.14742,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE12261
+1800NE12281,MANDWPMJ,"Stoneyfield, nr Crawford St",53.60793,-2.14757,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE12281
+1800NE12311,MANDWPMP,"Stoneyfield, opp Crawford St",53.60870,-2.14812,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE12311
+1800NE17251,MANDWTWP,"Rochdale, adj Milnrow Rd",53.61368,-2.15199,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE17251
+1800NE17271,MANDWTWT,"Rochdale, High Level Rd (Stop D)",53.61209,-2.15068,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE17271
+1800NE17281,MANGADAD,"Rochdale, High Level Rd (Stop C)",53.61179,-2.15062,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE17281
+1800NE17291,MANGADAG,"Rochdale, opp Ainsworth St",53.61016,-2.14929,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE17291
+1800NE17301,MANGADAJ,"Rochdale, nr Ainsworth St",53.61010,-2.14903,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE17301
+1800NE20001,MANGAGDJ,"Stoneyfield, Kingsway (Stop A)",53.60463,-2.14686,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE20001
+1800NE32841,MANGDGWM,"Stoneyfield, Well i'th Ln (Stop D)",53.60354,-2.14793,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32841
+1800NE32871,MANGDJAD,"Stoneyfield, opp Greenfield Ln",53.60303,-2.15027,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32871
+1800NE32881,MANGDJAG,"Stoneyfield, nr Greenfield Ln",53.60312,-2.15050,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32881
+1800NE32891,MANGDJAJ,"Stoneyfield, nr Digby Rd",53.60238,-2.15284,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32891
+1800NE32901,MANGDJAM,"Stoneyfield, nr Darley Rd",53.60198,-2.15344,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32901
+1800NE32911,MANGDJAP,"Stoneyfield, nr Dicken Green Ln",53.60137,-2.15548,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32911
+1800NE32921,MANGDJAT,"Kirkholt, nr Queensway",53.60038,-2.15638,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32921
+1800NE32931,MANGDJAW,"Kirkholt, opp House 47 Daventry Road",53.59908,-2.15626,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32931
+1800NE32941,MANGDJDA,"Kirkholt, o/s House 49 Daventry Road",53.59898,-2.15621,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32941
+1800NE32951,MANGDJDG,"Kirkholt, opp Community Church",53.59790,-2.15754,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32951
+1800NE32961,MANGDJDJ,"Kirkholt, nr Rhodes Cres",53.59715,-2.15767,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32961
+1800NE32971,MANGDJDM,"Kirkholt, nr Hogarth Rd",53.59582,-2.15773,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32971
+1800NE32981,MANGDJDP,"Kirkholt, opp Hogarth Rd",53.59538,-2.15754,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32981
+1800NE32991,MANGDJDT,"Kirkholt, opp The Strand",53.59435,-2.15763,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE32991
+1800NE33001,MANGDJDW,"Kirkholt, nr The Strand",53.59405,-2.15733,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE33001
+1800NE49511,MANGJATW,"Kirkholt, opp Ruskin Rd",53.59201,-2.15965,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49511
+1800NE49531,MANGJAWD,"Kirkholt, opp Devonshire Rd",53.59102,-2.15759,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49531
+1800NE49551,MANGJAWJ,"Kirkholt, opp Kildare Cres",53.59088,-2.15485,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49551
+1800NE49581,MANGJAWT,"Kirkholt, opp Friars Cres",53.59146,-2.15206,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49581
+1800NE49601,MANGJDAG,"Kirkholt, opp Ludgate Rd",53.59239,-2.14839,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49601
+1800NE49621,MANGJDAM,"Kirkholt, nr Melbourne Rd",53.59437,-2.14669,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49621
+1800NE49671,MANGJDGD,"Kirkholt, opp Hill Top Dr",53.59662,-2.14758,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49671
+1800NE49681,MANGJDGJ,"Kirkholt, nr Great Gates Rd",53.59641,-2.15060,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49681
+1800NE49701,MANGJDGP,"Kirkholt, nr Kew Rd",53.59510,-2.15183,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49701
+1800NE49721,MANGJDGW,"Kirkholt, nr Mornington Rd",53.59372,-2.15338,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NE49721
+1800NF03561,MANGJMGD,"Salford, Trinity Church (Stop NE)",53.48505,-2.25009,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF03561
+1800NF03591,MANGJMGP,"Salford, opp Greengate West",53.48743,-2.25494,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF03591
+1800NF04551,MANGJPAG,"Higher Broughton, opp Broom Ln",53.50978,-2.26294,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF04551
+1800NF15261,MANGJPJW,"Broughton Bridge, nr Silk St",53.48932,-2.25837,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF15261
+1800NF40041,MANGPADA,"The Cliff, opp Knoll St",53.50593,-2.26373,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF40041
+1800NF40061,MANGPADJ,"The Cliff, nr Duncan St",53.50447,-2.26513,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF40061
+1800NF40081,MANGPADP,"Higher Broughton, opp Murray St",53.50218,-2.26409,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF40081
+1800NF40091,MANGPADT,"Lower Broughton, adj Gr Cheetham St West",53.50057,-2.26151,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF40091
+1800NF40111,MANGPAGA,"Lower Broughton, nr Camp St",53.49872,-2.25957,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF40111
+1800NF40131,MANGPAGJ,"Lower Broughton, adj Broughton Ln",53.49659,-2.25950,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF40131
+1800NF40161,MANGPAGP,"Lower Broughton, opp Health Ctr",53.49361,-2.25950,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF40161
+1800NF40181,MANGPAGW,"Broughton Bridge, at Mocha Shopping Ctr",53.49182,-2.25961,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF40181
+1800NF41071,MANGPDJD,"Broughton Park, opp Park St",53.51299,-2.26556,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF41071
+1800NF41081,MANGPDJG,"Kersal Bar, nr Moor Ln",53.51537,-2.26957,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF41081
+1800NF41461,MANGPDPW,"Higher Broughton, opp Northumberland St",53.50820,-2.26203,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800NF41461
+1800REBS001,MANGPGJP,"Rochdale, Rochdale Interchange",53.61682,-2.15475,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800REBS001
+1800SB04791,MANGPJDW,"Manchester City Centre, Chinatown (Stop CU)",53.47840,-2.23843,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB04791
+1800SB04911,MANGPJMT,"Manchester City Centre, Oxford Rd Stn (Stop B)",53.47402,-2.24042,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB04911
+1800SB04931,MANGPJPA,"Manchester City Centre, o/s Oxford House",53.47163,-2.23835,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB04931
+1800SB04971,MANGPJPM,"Manchester City Centre, Major St (Stop SL)",53.47711,-2.23960,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB04971
+1800SB05001,MANGPJTA,"Piccadilly Gardens, Piccadilly Gardens (Stop H)",53.48063,-2.23825,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB05001
+1800SB09171,MANGPMJT,"Manchester City Centre, India House (Stop SY)",53.47516,-2.23932,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB09171
+1800SB11511,MANGPTAP,"Woodhouse Park, opp Saltrush Rd",53.37396,-2.26179,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB11511
+1800SB11671,MANGPTGP,"Woodhouse Park, Prinknash Rd (Stop C)",53.37504,-2.25941,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB11671
+1800SB12681,MANGPWDG,"Wythenshawe, Fire Stn (Stop C)",53.38216,-2.25766,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB12681
+1800SB12691,MANGPWDJ,"Wythenshawe, opp Broadoak Rd",53.38151,-2.26162,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB12691
+1800SB12971,MANGPWPA,"Woodhouse Park, opp Oatlands Rd",53.37440,-2.26928,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB12971
+1800SB12981,MANGPWPD,"Woodhouse Park, opp Tayfield Rd",53.37434,-2.26508,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB12981
+1800SB14571,MANGTATP,"Northenden, Northenden Village (Stop D)",53.40819,-2.25737,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB14571
+1800SB14581,MANGTATW,"Northenden, nr Riverside Park",53.41021,-2.25596,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB14581
+1800SB14611,MANGTAWG,"Northenden, Church Inn (Stop F)",53.40658,-2.25469,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB14611
+1800SB14631,MANGTAWM,"Northenden, nr Bucklow Dr",53.40408,-2.25208,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB14631
+1800SB16411,MANGTGMG,"Sharston, nr Leestone Rd",53.39724,-2.25692,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB16411
+1800SB16471,MANGTGMT,"Woodhouse Park, opp Portway",53.37390,-2.27123,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB16471
+1800SB16841,MANGTGTW,"Woodhouse Park, nr Hilary Rd",53.37157,-2.27264,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB16841
+1800SB18191,MANGTJGJ,"Wythenshawe, o/s ASDA",53.37816,-2.26351,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB18191
+1800SB18361,MANTWMJA,"Manchester Royal Infirmary, nr Hathersage Rd",53.45875,-2.22722,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB18361
+1800SB18371,MANGTJPA,"Wythenshawe, Woodend Rd (Stop D)",53.38543,-2.25580,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB18371
+1800SB18391,MANGTJPG,"Benchill, Benchill Metrolink Stop (Stop B)",53.38747,-2.25590,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB18391
+1800SB18431,MANGTJPM,"Benchill, St Luke's (Stop E)",53.38927,-2.25600,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB18431
+1800SB18451,MANGTJPW,"Benchill, opp Woodhouse Ln",53.39327,-2.25669,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB18451
+1800SB18481,MANGTJTD,"Sharston, o/s Sharston Green",53.39536,-2.25691,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB18481
+1800SB30611,MANGTMGM,"Chorlton upon Medlock, o/s Aquatics Ctr",53.46964,-2.23653,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB30611
+1800SB30621,MANGTMGP,"Chorlton upon Medlock, University Shopping Ctr (Stop E)",53.46750,-2.23465,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB30621
+1800SB30671,MANGTMJD,"Chorlton upon Medlock, adj University",53.46371,-2.23089,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB30671
+1800SB30691,MANGTMJM,"Manchester Royal Infirmary, Royal Infirmary (Stop F)",53.46194,-2.22904,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB30691
+1800SB33631,MANGWDPT,"Withington, Withington Library (Stop E)",53.43485,-2.22744,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB33631
+1800SB33871,MANGWGAT,"Didsbury, Palatine Rd (Stop B)",53.42008,-2.24293,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB33871
+1800SB33891,MANGWGDA,"Didsbury, opp Mersey Rd",53.41754,-2.24534,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB33891
+1800SB33901,MANGWGDG,"Didsbury, opp Friday's",53.41503,-2.24793,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB33901
+1800SB33921,MANGWGDM,"Didsbury, o/s Withington Golf Club",53.41371,-2.25013,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB33921
+1800SB33941,MANGWGDT,"Fallowfield, Friendship Inn (Stop F)",53.44076,-2.21916,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB33941
+1800SB33971,MANGWGJA,"Fallowfield, opp Granville Rd",53.43896,-2.22078,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB33971
+1800SB33981,MANGWGJD,"Fallowfield, Mauldeth Rd (Stop C)",53.43639,-2.22439,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB33981
+1800SB34311,MANGWGWM,"West Didsbury, nr Parkfield Rd South",53.42227,-2.24036,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB34311
+1800SB34361,MANGWJAJ,"West Didsbury, Lapwing Ln (Stop C)",53.42613,-2.23565,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB34361
+1800SB34381,MANGWJAP,"West Didsbury, nr Circular Rd",53.42774,-2.23413,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB34381
+1800SB34401,MANGWJAW,"The Christie, The Christie (Stop H)",53.42945,-2.23250,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB34401
+1800SB34421,MANGWJDG,"Withington, Wilmslow Rd (Stop B)",53.43238,-2.22970,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB34421
+1800SB42551,MANGWMTW,"Sharston, nr Harper Rd",53.40058,-2.25416,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SB42551
+1800SG05141,MANJAGDT,"Cheadle, nr Cheadle P.O.",53.39275,-2.21709,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG05141
+1800SG05151,MANJAGDW,"Cheadle, nr Broadway",53.39024,-2.21594,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG05151
+1800SG05171,MANJAGJD,"Cheadle, nr Schools Hill",53.38651,-2.21383,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG05171
+1800SG05241,MANJAGMD,"Cheadle, nr Valley Road",53.38552,-2.20880,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG05241
+1800SG06531,MANJAMPM,"Cale Green, Osborne Rd (Stop D)",53.39746,-2.15483,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG06531
+1800SG06541,MANJAMPT,"Davenport, opp Beech Rd",53.39453,-2.15283,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG06541
+1800SG07211,MANJATAJ,"Davenport, Davenport Stn (Stop A)",53.39106,-2.15351,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07211
+1800SG07251,MANJATAW,"Davenport, nr Wheatcroft",53.39175,-2.15853,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07251
+1800SG07271,MANJATDG,"Davenport, opp Roslyn Rd",53.39114,-2.16154,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07271
+1800SG07281,MANJATDJ,"Davenport, adj Rostrevor Rd",53.39026,-2.16412,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07281
+1800SG07311,MANJATDT,"Adswood, Garners Ln (Stop D)",53.38867,-2.16854,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07311
+1800SG07491,MANJATMG,"Cale Green, nr Lowfield Rd",53.39840,-2.15775,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07491
+1800SG07511,MANJATMP,"Shaw Heath, nr Longshut Ln West",53.40019,-2.15903,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07511
+1800SG07531,MANJATMW,"Shaw Heath, o/s St Thomas' Hospital",53.40174,-2.16083,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07531
+1800SG07551,MANJATPD,"Stockport, Stockport College (Stop UU)",53.40446,-2.15971,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07551
+1800SG07561,MANJATPG,"Stockport, Stockport College (Stop AF)",53.40478,-2.15947,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07561
+1800SG07661,MANJATWP,"Cheadle Heath, opp St Lesmo Rd",53.40374,-2.18531,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07661
+1800SG07671,MANJATWT,"Cheadle Heath, nr Hoylake Rd",53.40278,-2.18849,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07671
+1800SG07691,MANJAWAG,"Cheadle Heath, nr Swythamley Rd",53.40216,-2.19052,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07691
+1800SG07721,MANJAWAP,"Cheadle Heath, opp Farmers Arms",53.40104,-2.19304,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07721
+1800SG07861,MANJAWGP,"Edgeley, nr Worral St",53.40118,-2.16534,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07861
+1800SG07871,MANJAWGT,"Stockport, nr Castle St",53.40216,-2.16333,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG07871
+1800SG08071,MANJAWPG,"Adswood, nr Old Brickworks",53.38709,-2.17291,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG08071
+1800SG08491,MANJDAMW,"Stockport, Heron House (Stop AH)",53.40848,-2.15890,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG08491
+1800SG08501,MANJDAPA,"Stockport, St Peter's Church (Stop AJ)",53.40958,-2.15965,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG08501
+1800SG08651,MANTDTMW,"Davenport, nr Devonshire Park Rd",53.39188,-2.15279,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG08651
+1800SG13091,MANJDMDP,"Stockport, Stopford House (Stop AG)",53.40649,-2.15695,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG13091
+1800SG13131,MANJDMGD,"Stockport, Lord St (Stop PP)",53.40853,-2.16030,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG13131
+1800SG13881,MANJDPTJ,"Cheadle Heath, opp Parkway",53.39908,-2.19676,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG13881
+1800SG14861,MANJDTDT,"Stockport, Grand Central (Stop RR)",53.40712,-2.15975,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG14861
+1800SG16631,MANJDWTG,"Adswood, o/s Cross Keys",53.38671,-2.17821,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG16631
+1800SG16671,MANJDWTP,"Adswood, o/s Micker Brook",53.38752,-2.18450,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG16671
+1800SG19131,MANJGAGW,"Cheadle, Boots (Stop B)",53.39488,-2.21479,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG19131
+1800SG19151,MANJGAJD,"Cheadle, Stockport Rd (Stop D)",53.39525,-2.21202,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG19151
+1800SG46131,MANJMGPD,"Adswood, nr Ladybridge Rd",53.38704,-2.18161,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG46131
+1800SG46151,MANJMGPJ,"Cheadle, nr Hereford Rd",53.38846,-2.18969,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG46151
+1800SG46171,MANJMGPT,"Cheadle, opp Tarvin Rd",53.38981,-2.19307,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG46171
+1800SG46191,MANJMGTA,"Cheadle, opp Post Office",53.39102,-2.19506,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG46191
+1800SG46201,MANJMGTD,"Cheadle, nr Demmings Rd",53.39187,-2.19975,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG46201
+1800SG46341,MANJMGWG,"Cheadle, opp Councillor Ln",53.39618,-2.20323,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG46341
+1800SG46821,MANJMJDJ,"Cheadle, o/s Red Lion",53.39530,-2.20787,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SG46821
+1800SGH0121,,"Edgeley, Grenville St (S-bound, Hail and ride)",53.40175,-2.16978,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SGH0121
+1800SGH0401,,"Stockport, Grenville St (S-bound, Hail and ride)",53.40397,-2.17109,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SGH0401
+1800SGH0571,,"Cheadle Heath, Saint Lesmo Rd (SE-bound, Hail and ride)",53.40346,-2.18359,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SGH0571
+1800SGH1961,,"Cheadle, Demmings Rd (S-bound, Hail and ride)",53.39105,-2.20042,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SGH1961
+1800SGH2311,,"Cheadle, Orrishmere Rd (SW-bound, Hail and ride)",53.38336,-2.20018,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SGH2311
+1800SHIC001,MANTMPGW,"Shudehill, Shudehill Interchange",53.48557,-2.23827,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800SHIC001
+1800STBS001,MANJWDAJ,"Stockport, Stockport Bus Station",53.40910,-2.16293,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800STBS001
+1800WA00021,MANJWDGJ,"Fernhill Gate, opp Harrowby Road",53.55996,-2.46488,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA00021
+1800WA01831,MANJWDPD,"Bolton, at Market Hall",53.58065,-2.43052,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA01831
+1800WA01921,MANJWDPJ,"Bolton, opp Great Moor Street",53.57491,-2.43140,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA01921
+1800WA02531,MANJWDWD,"Bolton, nr Manchester Rd",53.57467,-2.42223,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA02531
+1800WA02711,MANJWGAW,"Castle Hill, Crompton Way (Stop D)",53.59668,-2.41101,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA02711
+1800WA03911,MANJWGPT,"Chequerbent, nr Captain Lees Road",53.54757,-2.50922,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA03911
+1800WA08261,MANJWMDP,"Withins, opp Withins School",53.59042,-2.38797,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA08261
+1800WA08471,MANJWMGT,"Withins, nr Dorchester Avenue",53.58732,-2.39213,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA08471
+1800WA08561,MANJWMJW,"Deane, nr Kirkebrok Road",53.56691,-2.46173,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA08561
+1800WA08871,MANJWMPM,"Bromley Cross, Turton HS (Stop A)",53.61424,-2.41395,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA08871
+1800WA11601,MANJWTJD,"Breightmet, opp Falkland Road",53.57936,-2.37647,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11601
+1800WA11621,MANJWTJM,"Breightmet, opp Torridon Rd",53.58005,-2.38021,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11621
+1800WA11641,MANJWTJT,"Breightmet, opp Breightmet Post Office",53.58100,-2.38570,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11641
+1800WA11651,MANJWTJW,"Breightmet, nr Crompton Avenue",53.58127,-2.38875,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11651
+1800WA11671,MANJWTMD,"Breightmet, nr St James Ave",53.58100,-2.39177,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11671
+1800WA11831,MANJWTWD,"Withins, opp Foster Lane",53.58681,-2.38101,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11831
+1800WA11871,MANJWTWJ,"Withins, nr Winster Drive",53.58757,-2.38224,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11871
+1800WA11891,MANJWTWP,"Withins, opp Withins Shops",53.58982,-2.38412,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11891
+1800WA11911,MANPADAD,"Withins, by Deepdale Road",53.58957,-2.38238,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11911
+1800WA11961,MANPADAW,"Withins, o/s Reformed Church",53.58853,-2.39024,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA11961
+1800WA12361,MANPADTW,"Castle Hill, opp Canon Slade School",53.60042,-2.40878,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA12361
+1800WA12381,MANPADWD,"Bradshaw, opp Oaks Lane",53.60252,-2.40669,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA12381
+1800WA13051,MANPAGMG,"Bromley Cross, Bromley Cross Stn (Stop C)",53.61385,-2.41103,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA13051
+1800WA13791,MANPAJGM,"Bromley Cross, nr Shady Lane",53.61218,-2.41112,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA13791
+1800WA13811,MANPAJGT,"Bradshaw, nr Rigby Lane",53.60921,-2.40831,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA13811
+1800WA13821,MANPAJGW,"Bradshaw, nr Kershaw Street",53.60605,-2.40725,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA13821
+1800WA16011,MANPATMP,"Bolton, opp Shiffnall Street",53.57579,-2.42514,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA16011
+1800WA16361,MANPAWDM,"Bolton, opp Blue Boar",53.57937,-2.43129,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA16361
+1800WA16381,MANPAWDP,"Bolton, nr Knowsley Street",53.58192,-2.43025,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA16381
+1800WA16391,MANPAWDT,"Bolton, opp Bow Street",53.58145,-2.42884,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA16391
+1800WA16511,MANPAWJA,"Gilnow, at University of Bolton",53.57273,-2.43555,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA16511
+1800WA17511,MANPDGMA,"Fernhill Gate, nr St. Helens Road",53.55725,-2.46502,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA17511
+1800WA17521,MANPDGMD,"Deane, nr Winterfield Drive",53.56176,-2.46477,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA17521
+1800WA17541,MANPDGMJ,"Deane, nr Health Centre",53.56304,-2.46471,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA17541
+1800WA17571,MANPDGMW,"Deane, opp Kendrew Road",53.56622,-2.46311,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA17571
+1800WA17981,MANPDJDM,"Willows, nr Bankfield Street",53.56717,-2.44870,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA17981
+1800WA18001,MANPDJDT,"Willows, nr Melbourne Road",53.56707,-2.45377,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18001
+1800WA18031,MANPDJGD,"Willows, nr Hawthorne Road",53.56698,-2.45593,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18031
+1800WA18041,MANPDJGJ,"Deane, nr Pengwern Avenue",53.56716,-2.46025,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18041
+1800WA18421,MANPDJWJ,"Daubhill, nr Willows Lane",53.56627,-2.44514,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18421
+1800WA18441,MANPDJWP,"Daubhill, opp High Street",53.56841,-2.44150,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18441
+1800WA18471,MANPDMAG,"Willows, nr Vickers Street",53.57025,-2.43893,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18471
+1800WA18951,MANPDMPD,"Eagley, nr Hospital Road",53.61807,-2.42622,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18951
+1800WA18981,MANPDMPM,"Eagley, opp Hough Lane",53.61742,-2.42378,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18981
+1800WA18991,MANPDMPT,"Toppings, nr Rose Hill Drive",53.61514,-2.41916,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA18991
+1800WA19251,MANPDPDG,"Bolton, o/s Job Centre",53.57719,-2.43237,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA19251
+1800WA19271,MANPDPDJ,"Tonge Moor, opp Sheriff Street",53.58901,-2.41236,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA19271
+1800WA19281,MANPDPDM,"Mill Hill, opp Turton St.",53.58391,-2.42101,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA19281
+1800WA19301,MANPDPDT,"Mill Hill, nr Turner St.",53.58541,-2.41865,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA19301
+1800WA19331,MANPDPGA,"Tonge Moor, opp Saddle Street",53.59060,-2.41236,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA19331
+1800WA19351,MANPDPGJ,"Tonge Moor, nr Haroldene St.",53.59332,-2.41201,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA19351
+1800WA19621,MANPDPTG,"Mill Hill, nr Goodwin Street",53.58258,-2.42260,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA19621
+1800WA19651,MANPDPTP,"Tonge Moor, nr Scowcroft St",53.58597,-2.41536,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA19651
+1800WA21771,MANPDWJG,"Dobb Brow, nr Dobb Brow Road",53.54397,-2.53505,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA21771
+1800WA21801,MANPDWJT,"Dobb Brow, nr Allenby Grove",53.54372,-2.53055,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA21801
+1800WA21891,MANPDWPA,"Westhoughton, nr Coverdale Road",53.54535,-2.52820,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA21891
+1800WA21911,MANPDWPG,"Westhoughton, Westhoughton Police Station (Stop C)",53.54828,-2.52633,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA21911
+1800WA21931,MANPDWPM,"Westhoughton, Westhoughton Church (Stop D)",53.54899,-2.52464,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA21931
+1800WA21951,MANPDWPW,"Westhoughton, Westhoughton Town Hall (Stop F)",53.54860,-2.52022,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA21951
+1800WA25601,MANPGADP,"Roscow Fold, nr Dorchester Avenue",53.58632,-2.39106,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA25601
+1800WA25621,MANPGADW,"Roscow Fold, opp Withins Grove",53.58524,-2.39080,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA25621
+1800WA25631,MANPGAGA,"Roscow Fold, nr Withins Drive",53.58393,-2.39281,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA25631
+1800WA25661,MANPGAGM,"Roscow Fold, nr Bury Road",53.58124,-2.39363,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA25661
+1800WA33001,MANPGDGD,"Hart Common, nr Peter Street",53.54288,-2.55652,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA33001
+1800WA33011,MANPGDGJ,"Hart Common, opp Fellowship Church",53.54249,-2.55024,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA33011
+1800WA33041,MANPGDGT,"Hart Common, opp Hart Common",53.54189,-2.54507,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA33041
+1800WA33051,MANPGDGW,"Hart Common, nr Bridge Inn",53.54199,-2.54272,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA33051
+1800WA34231,MANPGJAD,"Over Hulton, Rutherford Dr (Stop C)",53.54785,-2.47092,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34231
+1800WA34251,MANPGJAJ,"Over Hulton, opp Newland Dr",53.54792,-2.47417,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34251
+1800WA34261,MANPGJAM,"Over Hulton, opp Dearden's Farm",53.54817,-2.47714,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34261
+1800WA34291,MANPGJAW,"Over Hulton, o/s Ivy Cottage",53.54900,-2.48146,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34291
+1800WA34301,MANPGJDA,"Chequerbent, o/s Backgates Farm",53.54992,-2.48716,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34301
+1800WA34331,MANPGJDM,"Chequerbent, opp Brancker St",53.55032,-2.49421,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34331
+1800WA34341,MANPGJDP,"Chequerbent, nr Molyneux Rd",53.54965,-2.50128,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34341
+1800WA34371,MANPGJGA,"Chequerbent, nr Waters Nook Rd",53.54799,-2.50642,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34371
+1800WA34381,MANPGJGD,"Chequerbent, opp Forest Dr",53.54730,-2.51162,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34381
+1800WA34411,MANPGJGP,"Westhoughton, opp Leigh Rd",53.54728,-2.51657,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34411
+1800WA34931,MANPGMGP,"Hulton Lane Ends, St Helens Road (Stop A)",53.54906,-2.46913,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34931
+1800WA34951,MANPGMGW,"Hulton Lane Ends, St Helens Rd (N-bound)",53.55137,-2.46912,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34951
+1800WA34971,MANPGMJD,"Fernhill Gate, opp Whitegate Farm",53.55370,-2.46969,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34971
+1800WA34991,MANPGMJM,"Fernhill Gate, nr Sonning Dr",53.55627,-2.46717,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA34991
+1800WA43501,MANPJAWG,"Mill Hill, nr Bradford St",53.57620,-2.41794,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43501
+1800WA43511,MANPJAWJ,"Darcy Lever, nr Clarendon Gr",53.57412,-2.41566,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43511
+1800WA43531,MANPJAWP,"Darcy Lever, opp Ashbourne Ave",53.57254,-2.41339,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43531
+1800WA43551,MANPJDAD,"Darcy Lever, nr Kirkwall Dr",53.57167,-2.41071,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43551
+1800WA43581,MANPJDAM,"Darcy Lever, nr Darcy St",53.57189,-2.40692,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43581
+1800WA43591,MANPJDAP,"Darcy Lever, o/s The Lever Bridge",53.57131,-2.40560,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43591
+1800WA43611,MANPJDAW,"Darcy Lever, nr Hacken Ln",53.56866,-2.40177,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43611
+1800WA43651,MANPJDGM,"Darcy Lever, opp French Gr",53.56967,-2.39713,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43651
+1800WA43661,MANPJDGP,"Darcy Lever, adj Radcliffe Rd",53.57045,-2.39561,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43661
+1800WA43671,MANPJDGT,"Leverhulme Park, nr Blenheim Rd",53.57870,-2.39305,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43671
+1800WA43691,MANPJDGW,"Darcy Lever, opp Leverhulme Pk",53.57272,-2.39480,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43691
+1800WA43711,MANPJDJD,"Leverhulme Park, nr Copthorne Dr",53.57526,-2.39386,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43711
+1800WA43751,MANPJDJT,"Breightmet, opp Garstang Ave",53.57654,-2.38955,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43751
+1800WA43771,MANPJDMA,"Breightmet, opp Slaidburn Ave",53.57441,-2.38604,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43771
+1800WA43791,MANPJDMG,"Breightmet, opp Primary Sch",53.57435,-2.38225,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43791
+1800WA43801,MANPJDMJ,"Breightmet, nr Widcombe Dr",53.57255,-2.37996,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43801
+1800WA43821,MANPJDMT,"Breightmet, nr Harpford Dr",53.57220,-2.37684,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43821
+1800WA43841,MANPJDPA,"Breightmet, opp Bideford Dr",53.57403,-2.37549,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43841
+1800WA43861,MANPJDPG,"Breightmet, opp Honiton Dr",53.57668,-2.37462,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WA43861
+1800WAH0751,,"Cox Green, Ramwells Brow (W-bound, Hail and ride)",53.61850,-2.42317,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WAH0751
+1800WAH0761,,"Bromley Cross, Stonesteads Way (W-bound, Hail and ride)",53.61824,-2.41972,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WAH0761
+1800WAH0771,,"Toppings, Lord's Stile Lane (N-bound, Hail and ride)",53.61459,-2.41682,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WAH0771
+1800WAH2411,,"Bromley Cross, Stonesteads Drive (N-bound, Hail and ride)",53.61870,-2.42030,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WAH2411
+1800WAH4231,,"Toppings, The Crescent (NW-bound, Hail and ride)",53.61622,-2.41796,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WAH4231
+1800WAH4241,,"Cox Green, Hospital Road (SW-bound, Hail and ride)",53.61929,-2.42608,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WAH4241
+1800WEIC001,MANTWMAW,"Wythenshawe, Wythenshawe Interchange",53.38038,-2.26414,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WEIC001
+1800WK00501,MANPMGDJ,"Hindley, opp Albert St",53.53518,-2.58061,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00501
+1800WK00531,MANPMGDT,"Stubshaw Cross, o/s St Wilfred's Church",53.49494,-2.62409,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00531
+1800WK00551,MANPMGJA,"Stubshaw Cross, at Stubshaw Cross",53.49683,-2.62148,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00551
+1800WK00571,MANPMGJG,"Stubshaw Cross, opp Conway Rd",53.49867,-2.61889,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00571
+1800WK00591,MANPMGJP,"Stubshaw Cross, opp Riding Ln",53.49989,-2.61715,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00591
+1800WK00611,MANPMGJW,"Bamfurlong, opp Beech Tree Houses",53.50391,-2.61327,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00611
+1800WK00631,MANPMGMD,"Bamfurlong, opp Bryn Hall",53.50625,-2.61236,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00631
+1800WK00641,MANPMGMG,"Bamfurlong, opp Bryn Gates Primary Sch",53.50757,-2.61007,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00641
+1800WK00671,MANPMGMT,"Bamfurlong, opp Bamfurlong PO",53.50950,-2.60628,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00671
+1800WK00681,MANPMGMW,"Bamfurlong, adj Canal Bridge",53.51107,-2.60327,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00681
+1800WK00721,MANPMGPJ,"Platt Bridge, nr Abingdon Drive",53.51453,-2.60083,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00721
+1800WK00851,MANPMGWG,"Platt Bridge, nr Neville St",53.52242,-2.59684,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00851
+1800WK00861,MANPMGWJ,"Platt Bridge, nr Moss Ln",53.52450,-2.59722,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00861
+1800WK00891,MANPMGWT,"Platt Bridge, opp Springbank Ind Est",53.52585,-2.59350,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00891
+1800WK00911,MANPMJAG,"Platt Bridge, nr Crompton St",53.52614,-2.59118,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00911
+1800WK00931,MANPMJAM,"Hindley, opp Longton St",53.52872,-2.58625,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00931
+1800WK00951,MANPMJAT,"Hindley, opp Blackberry Dr",53.53099,-2.58529,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00951
+1800WK00971,MANPMJDA,"Hindley, Bird i'th' Hand (Stop C)",53.53347,-2.58200,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK00971
+1800WK01911,MANPMTAJ,"Ashton-in-Makerfield, Ashton Town Centre (Stop D)",53.48703,-2.63725,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK01911
+1800WK01951,MANPMTAT,"Ashton-in-Makerfield, nr Edward Dr",53.49010,-2.63327,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK01951
+1800WK01971,MANPMTDA,"Ashton-in-Makerfield, opp The Caledonian",53.49145,-2.63094,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK01971
+1800WK01991,MANPMTDJ,"Ashton-in-Makerfield, nr Bryn Rd",53.49285,-2.62852,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK01991
+1800WK03861,MANPTATJ,"Platt Bridge, nr Millers Ln",53.51844,-2.59825,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK03861
+1800WK04031,MANPTDAM,"Platt Bridge, nr Wigan St",53.51605,-2.59941,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK04031
+1800WK04041,MANPTDAP,"Platt Bridge, King William (Stop C)",53.52079,-2.59762,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK04041
+1800WK06511,MANPTPMJ,"Hindley, Bird i'th' Hand (Stop B)",53.53418,-2.58180,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK06511
+1800WK32781,MANTAPAT,"Hindley, o/s St John's Church",53.53676,-2.57680,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK32781
+1800WK32931,MANTAPGM,"Hindley, opp Police Stn",53.53723,-2.57205,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK32931
+1800WK32951,MANTAPGT,"Castle Hill, opp Close St",53.53988,-2.56707,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK32951
+1800WK32971,MANTAPJA,"Castle Hill, o/s Hindley Cemetery",53.54097,-2.56294,http://www.transportdirect.info/web2/journeyplanning/StopInformationLandingPage.aspx?et=si&id=GTDF&ef=m&st=n&sd=1800WK32971
