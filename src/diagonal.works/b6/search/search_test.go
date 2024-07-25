@@ -4,19 +4,9 @@ import (
 	"fmt"
 	"sort"
 	"testing"
-)
 
-func equals(a []int, b []int) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
+	"github.com/google/go-cmp/cmp"
+)
 
 type intValues struct {
 	Comparisons int
@@ -147,8 +137,8 @@ func ValidateAdvance(build iteratorBuilder, t *testing.T) {
 				} else if i.Next() {
 					t.Errorf("[ok=%v,add=%v,advance=%v,next=%v] Expected Next() to return false if Advance() returned false", c.ok, c.add, c.advance, next)
 				}
-				if !equals(result, c.expected) {
-					t.Errorf("[ok=%v,add=%v,advance=%v,next=%v] Expected %v, found %v ", c.ok, c.add, c.advance, next, c.expected, result)
+				if diff := cmp.Diff(c.expected, result); diff != "" {
+					t.Errorf("[ok=%v,add=%v,advance=%v,next=%v] comparison got diff (-want, +got):\n%s", c.ok, c.add, c.advance, next, diff)
 				}
 			})
 		}
@@ -276,8 +266,8 @@ func ValidateSimpleAll(build indexBuilder, t *testing.T) {
 	}
 
 	expected := []int{1, 2, 3, 4, 5}
-	if !equals(result, expected) {
-		t.Errorf("Expected union %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Union got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -302,8 +292,8 @@ func ValidateUnion(build indexBuilder, t *testing.T) {
 	}
 
 	expected := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	if !equals(result, expected) {
-		t.Errorf("Expected union %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Union got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -328,8 +318,8 @@ func ValidateUnionsAreDeduplicated(build indexBuilder, t *testing.T) {
 	}
 
 	expected := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	if !equals(result, expected) {
-		t.Errorf("Expected union %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Union got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -349,8 +339,8 @@ func ValidateUnionsAreDeduplicatedWithSingleElementLists(build indexBuilder, t *
 	}
 
 	expected := []int{1, 2, 3}
-	if !equals(result, expected) {
-		t.Errorf("Expected union %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Union got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -374,8 +364,8 @@ func ValidatePrefix(build indexBuilder, t *testing.T) {
 	}
 
 	expected := []int{1, 3, 5, 6}
-	if !equals(result, expected) {
-		t.Errorf("Expected %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Prefix got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -400,8 +390,8 @@ func ValidateIntersection(build indexBuilder, t *testing.T) {
 	}
 
 	expected := []int{2, 5, 7}
-	if !equals(result, expected) {
-		t.Errorf("Expected intersection %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Intersection got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -421,9 +411,9 @@ func ValidateIntersectionNumberOfComparisons(build indexBuilder, t *testing.T) {
 		result = append(result, i.Value().(int))
 	}
 
-	expectedResult := []int{1023}
-	if !equals(result, expectedResult) {
-		t.Errorf("Expected intersection %v, found %v", expectedResult, result)
+	expected := []int{1023}
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Intersection got diff (-want, +got):\n%s", diff)
 	}
 
 	if values.Comparisons > 100 {
@@ -445,8 +435,8 @@ func ValidateIntersectionOnEmptyUnion(build indexBuilder, t *testing.T) {
 	}
 
 	expected := []int{}
-	if !equals(result, expected) {
-		t.Errorf("Expected %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Intersection got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -479,8 +469,8 @@ func ValidateAdvanceOnIntersectionToPositionThatIsntAnIntersection(build indexBu
 	}
 
 	expected := []int{8, 9}
-	if !equals(result, expected) {
-		t.Errorf("Expected intersection %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Intersection got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -517,9 +507,8 @@ func ValidateKeyRange(build indexBuilder, t *testing.T) {
 		for i.Next() {
 			result = append(result, i.Value().(int))
 		}
-
-		if !equals(result, c.expected) {
-			t.Errorf("Expected %v, found %v with begin: %d, end: %d", c.expected, result, c.begin, c.end)
+		if diff := cmp.Diff(c.expected, result); diff != "" {
+			t.Errorf("[begin=%b,end=%v] Got diff (-want, +got):\n%s", c.begin, c.end, diff)
 		}
 	}
 }
@@ -562,8 +551,8 @@ func ValidateEntriesAreDeduplicated(build indexBuilder, t *testing.T) {
 	}
 
 	expected := []int{1, 2}
-	if !equals(result, expected) {
-		t.Errorf("Expected %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -575,7 +564,7 @@ func TestEmptyUnion(t *testing.T) {
 	}
 
 	if len(result) != 0 {
-		t.Errorf("Expected a union of no lists to be empty")
+		t.Error("Expected a union of no lists to be empty")
 	}
 }
 
