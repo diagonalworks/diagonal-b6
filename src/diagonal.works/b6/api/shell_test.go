@@ -1219,6 +1219,85 @@ func TestSimplifyAndOrQueries(t *testing.T) {
 	}
 }
 
+func TestSimplifyTypedQuery(t *testing.T) {
+	q := &pb.NodeProto{
+		Node: &pb.NodeProto_Call{
+			Call: &pb.CallNodeProto{
+				Function: &pb.NodeProto{
+					Node: &pb.NodeProto_Symbol{
+						Symbol: "typed",
+					},
+				},
+				Args: []*pb.NodeProto{
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_StringValue{
+									StringValue: "area",
+								},
+							},
+						},
+					},
+					{
+						Node: &pb.NodeProto_Literal{
+							Literal: &pb.LiteralNodeProto{
+								Value: &pb.LiteralNodeProto_QueryValue{
+									QueryValue: &pb.QueryProto{
+										Query: &pb.QueryProto_Tagged{
+											Tagged: &pb.TagProto{
+												Key:   "#building",
+												Value: "yes",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	e, err := b6.ExpressionFromProto(q)
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+	simplified := Simplify(e, testFunctionArgCounts{})
+	p, err := simplified.ToProto()
+	if err != nil {
+		t.Fatalf("Expected no error, found: %s", err)
+	}
+
+	expected := &pb.NodeProto{
+		Node: &pb.NodeProto_Literal{
+			Literal: &pb.LiteralNodeProto{
+				Value: &pb.LiteralNodeProto_QueryValue{
+					QueryValue: &pb.QueryProto{
+						Query: &pb.QueryProto_Typed{
+							Typed: &pb.TypedQueryProto{
+								Type: pb.FeatureType_FeatureTypeArea,
+								Query: &pb.QueryProto{
+									Query: &pb.QueryProto_Tagged{
+										Tagged: &pb.TagProto{
+											Key:   "#building",
+											Value: "yes",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if diff := cmp.Diff(expected, p, protocmp.Transform()); diff != "" {
+		t.Errorf("Unexpected (-want, +got): %s", diff)
+	}
+}
+
 func TestSimplifyKeyedQuery(t *testing.T) {
 	q := &pb.NodeProto{
 		Node: &pb.NodeProto_Call{

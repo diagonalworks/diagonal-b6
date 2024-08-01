@@ -25,6 +25,7 @@ LIGHTERMAN_WAY_ID = 427900370
 
 BUILDINGS_IN_GRANARY_SQUARE = 13
 HIGHWAYS_IN_GRANARY_SQUARE = 117
+HIGHWAY_AREAS_IN_GRANARY_SQUARE = 5
 BIKE_PARKING_IN_GRANARY_SQUARE = 11
 FOUNTAINS_IN_GRANARY_SQUARE = 4 # Within the pedestrian square itself defined by WKT below not the entire area
 STABLE_STREET_BRIDGE_NORTH_END_DEGREE = 7 # After it has been connected
@@ -172,6 +173,7 @@ class B6Test(unittest.TestCase):
     def test_count_features(self):
         self.assertEqual(self.connection(b6.find(b6.tagged("#amenity", "bicycle_parking")).count()), BIKE_PARKING_IN_GRANARY_SQUARE)
         self.assertEqual(self.connection(b6.find(b6.typed("path", b6.keyed("#highway"))).count()), HIGHWAYS_IN_GRANARY_SQUARE)
+        self.assertEqual(self.connection(b6.find(b6.typed("area", b6.keyed("#highway"))).count()), HIGHWAY_AREAS_IN_GRANARY_SQUARE)
         self.assertEqual(self.connection(b6.find_areas(b6.keyed("#building")).count()), BUILDINGS_IN_GRANARY_SQUARE)
 
     def test_sum(self):
