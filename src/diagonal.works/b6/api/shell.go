@@ -809,20 +809,16 @@ func simplifyCallBuildingKeyedTaggedQuery(symbol string, call b6.CallExpression)
 }
 
 func simplifyCallBuildingTypedQuery(symbol string, call b6.CallExpression) (b6.AnyExpression, bool) {
-	var qarg b6.QueryExpression
-	var typ string
-	for _, arg := range call.Args {
-		if q, ok := arg.AnyExpression.(b6.QueryExpression); ok {
-			qarg = q
-		} else if t, ok := arg.AnyExpression.(b6.StringExpression); ok {
-			typ = string(t)
+	if symbol == "typed" && len(call.Args) == 2 {
+		t, ok := call.Args[0].AnyExpression.(b6.StringExpression)
+		if ok {
+			q, ok := call.Args[1].AnyExpression.(b6.QueryExpression)
+			if ok {
+				return b6.QueryExpression{
+					Query: b6.Typed{Type: b6.FeatureTypeFromString(string(t)), Query: q.Query},
+				}, true
+			}
 		}
-	}
-	switch symbol {
-	case "typed":
-		return b6.QueryExpression{
-			Query: b6.Typed{Type: b6.FeatureTypeFromString(typ), Query: qarg.Query},
-		}, true
 	}
 	return nil, false
 }

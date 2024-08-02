@@ -216,13 +216,15 @@ func (t Typed) String() string {
 }
 
 func (t Typed) ToProto() (*pb.QueryProto, error) {
+	q, err := t.Query.ToProto()
 	return &pb.QueryProto{
 		Query: &pb.QueryProto_Typed{
 			Typed: &pb.TypedQueryProto{
-				Type: NewProtoFromFeatureType(t.Type),
+				Type:  NewProtoFromFeatureType(t.Type),
+				Query: q,
 			},
 		},
-	}, nil
+	}, err
 }
 
 func (t Typed) Equal(other Query) bool {
