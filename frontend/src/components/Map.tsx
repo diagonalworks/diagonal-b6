@@ -214,6 +214,7 @@ export const Map = ({
             attributionControl={false}
             dragRotate={false}
             boxZoom={false}
+            style={{ width: '100%', height: '100%' }}
         >
             <DeckGLOverlay layers={[geojsonGL, histogramGL]} interleaved />
 
