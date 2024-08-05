@@ -97,7 +97,7 @@ const Item = React.forwardRef<
                     : props.animate
             }
             className={twMerge(
-                'h-full border border-x-graphite-40 border-t-graphite-40 border-t bg-graphite-30 relative',
+                'h-full border border-x-graphite-40 border-b-graphite-40 border-t-graphite-40 border-t bg-graphite-30 relative',
                 side === 'right' &&
                     'border-x-rose-40 border-t-rose-40 bg-rose-30',
                 splitScreen && 'w-1/2 inline-block',
