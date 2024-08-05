@@ -47,7 +47,14 @@
                 ["==", "landuse", "meadow"],
                 ["==", "landuse", "heath"]
             ],
-            "paint": { "fill-color": "#F5DED4" }
+            "paint": {
+                "fill-color": [
+                    "case",
+                    ["has", "colour"],
+                    ["get", "colour"],
+                    ["literal", "#F5DED4"]
+                ]
+            }
         },
         {
             "id": "coastline",
@@ -63,7 +70,14 @@
             "source": "diagonal",
             "source-layer": "landuse",
             "filter": ["any", ["==", "landuse", "forest"]],
-            "paint": { "fill-color": "#F5DED4" }
+            "paint": {
+                "fill-color": [
+                    "case",
+                    ["has", "colour"],
+                    ["get", "colour"],
+                    ["literal", "#F5DED4"]
+                ]
+            }
         },
         {
             "id": "landuse-greenspaces",
@@ -80,7 +94,14 @@
                 ["==", "leisure", "playground"],
                 ["==", "leisure", "natural_reserve"]
             ],
-            "paint": { "fill-color": "#F5DED4" }
+            "paint": {
+                "fill-color": [
+                    "case",
+                    ["has", "colour"],
+                    ["get", "colour"],
+                    ["literal", "#F5DED4"]
+                ]
+            }
         },
         {
             "id": "landuse-urban",
@@ -93,7 +114,14 @@
                 ["==", "landuse", "residential"],
                 ["==", "landuse", "industrial"]
             ],
-            "paint": { "fill-color": "#F5DED4" }
+            "paint": {
+                "fill-color": [
+                    "case",
+                    ["has", "colour"],
+                    ["get", "colour"],
+                    ["literal", "#F5DED4"]
+                ]
+            }
         },
         {
             "id": "road-outline",
@@ -260,7 +288,12 @@
                     "case",
                     ["boolean", ["feature-state", "highlighted"], false],
                     "#914331",
-                    "#FFD9C4"
+                    [
+                        "case",
+                        ["has", "colour"],
+                        ["get", "colour"],
+                        ["literal", "#FFD9C4"]
+                    ]
                 ]
             }
         },
@@ -285,7 +318,12 @@
                     "case",
                     ["boolean", ["feature-state", "highlighted"], false],
                     "#ffae8d",
-                    "rgba(255, 255, 255)"
+                    [
+                        "case",
+                        ["has", "colour"],
+                        ["get", "colour"],
+                        ["literal", "rgba(255, 255, 255)"]
+                    ]
                 ]
             }
         },
