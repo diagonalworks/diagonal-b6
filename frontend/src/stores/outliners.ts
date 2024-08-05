@@ -22,6 +22,7 @@ export interface OutlinerSpec {
             x: number;
             y: number;
         };
+        shellHistory?: string[];
     };
     // The request to fetch data for the outliner
     request?: UIRequestProto;
@@ -86,6 +87,14 @@ interface OutlinersStore {
          * @returns An array of outliner specs
          */
         getByWorld: (world: World['id']) => OutlinerSpec[];
+
+        /**
+         * Add a shell command to the history of an outliner
+         * @param id
+         * @param shell
+         * @returns
+         */
+        addToShellHistory: (id: string, shell: string) => void;
     };
 }
 
@@ -146,6 +155,14 @@ export const createOutlinersStore: ImmerStateCreator<
         setRequest: (id, request) => {
             set((state) => {
                 state.outliners[id].request = request;
+            });
+        },
+        addToShellHistory: (id, shell) => {
+            set((state) => {
+                state.outliners[id].properties.shellHistory = [
+                    ...(state.outliners[id].properties.shellHistory ?? []),
+                    shell,
+                ];
             });
         },
     },
