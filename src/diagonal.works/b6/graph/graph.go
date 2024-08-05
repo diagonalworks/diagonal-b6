@@ -226,6 +226,11 @@ func (w WalkingTimeWeights) Weight(segment b6.Segment) float64 {
 	return weightFromSegment(segment) * w.Speed
 }
 
+const (
+	GTFSPeakTimeTag    = "gtfs:peak"
+	GTFSOffPeakTimeTag = "gtfs:off-peak"
+)
+
 type TransitTimeWeights struct {
 	PeakTraffic bool
 	Weights     Weights
@@ -243,9 +248,9 @@ func (t TransitTimeWeights) Weight(segment b6.Segment) float64 {
 	if strings.HasPrefix(segment.Feature.FeatureID().Namespace.String(), b6.NamespaceGTFS.String()) {
 		var tag string
 		if t.PeakTraffic {
-			tag = "gtfs:peak"
+			tag = GTFSPeakTimeTag
 		} else {
-			tag = "gtfs:off-peak"
+			tag = GTFSOffPeakTimeTag
 		}
 
 		if time := segment.Feature.Get(tag); time.IsValid() {

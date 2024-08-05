@@ -1,0 +1,2 @@
+feed_publisher_name,feed_publisher_url,feed_timezone,feed_lang,feed_valid_from,feed_valid_to,feed_version
+Transport for Greater Manchester,http://www.tfgm.com,Europe/London,en,20200528,20200728,20200528

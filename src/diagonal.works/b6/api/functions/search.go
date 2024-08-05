@@ -180,7 +180,7 @@ func keyed(context *api.Context, key string) (b6.Query, error) {
 
 // Wrap a query to only match features with the given feature type.
 func typed(context *api.Context, typ string, q b6.Query) (b6.Query, error) {
-	return b6.Typed{Type: b6.FeatureTypePath, Query: q}, nil
+	return b6.Typed{Type: b6.FeatureTypeFromString(typ), Query: q}, nil
 }
 
 // Return a query that will match features that match both given queries.

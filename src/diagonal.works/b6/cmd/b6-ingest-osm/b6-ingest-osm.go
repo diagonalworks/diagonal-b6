@@ -18,7 +18,7 @@ import (
 
 func main() {
 	input := flag.String("input", "", "Input filename, OSM PBF format")
-	output := flag.String("output", "tmp/out", "Output filename")
+	output := flag.String("output", "", "Output index filename")
 	cores := flag.Int("cores", runtime.NumCPU(), "Available cores")
 	memory := flag.Bool("memory", true, "Use memory for intermediate data")
 	scratch := flag.String("scratch", ".", "Directory for temporary files, for --memory=false  or writing to cloud")

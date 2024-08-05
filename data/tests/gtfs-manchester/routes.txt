@@ -1,0 +1,8 @@
+route_id,agency_id,route_short_name,route_long_name,route_type
+NOR: 541:I:,NOR, 541,Toppings - Bolton,3
+GOA:  98:O:,GOA,  98,Manchester - Whitefield - Radcliffe - Bury,3
+BPT:   6:C:,BPT,   6,Rochdale - Queensway - Kirkholt circular,3
+GMS:  43:O:,GMS,  43,Manchester - Manchester Airport Night Service,3
+GMS: 309:C:,GMS, 309,Stockport - Cheadle - Cheadle Heath Circular,3
+GTB: 511:O:,GTB, 511,Bury - Walshaw - Ainsworth - Breightmet - Bolton,3
+VBL: 559:I:,VBL, 559,Ashton - Hindley - Westhoughton - Bolton,3

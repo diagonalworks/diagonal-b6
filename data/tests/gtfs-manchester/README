@@ -1,0 +1,5 @@
+GTFS feed for manchester:
+http://odata.tfgm.com/opendata/downloads/TfGMgtfs.zip#gtdf-out
+Downloaded via https://transit.land/feed-registry/operators/o-gcw2-metrolink
+The feed is then downsampled via filter.py to make it small enough to keep
+tests fast.

@@ -1,0 +1,28 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang
+0000,Unknown,http://www.tfgm.com,Europe/London,en
+BPT,The Burnley Bus Company,http://www.tfgm.com,Europe/London,en
+CAL,First Yorkshire West,http://www.tfgm.com,Europe/London,en
+CBL,Cumfy Bus,http://www.tfgm.com,Europe/London,en
+DGC,D & G Bus,http://www.tfgm.com,Europe/London,en
+GCO,G B Coaches,http://www.tfgm.com,Europe/London,en
+GMN,First,http://www.tfgm.com,Europe/London,en
+GMS,Stagecoach Manchester,http://www.tfgm.com,Europe/London,en
+GNV,Stagecoach in Lancashire,http://www.tfgm.com,Europe/London,en
+GOA,Go North West,http://www.tfgm.com,Europe/London,en
+GOO,Go Goodwins,http://www.tfgm.com,Europe/London,en
+GTB,Diamond Bus,http://www.tfgm.com,Europe/London,en
+HAT,Hattons Travel,http://www.tfgm.com,Europe/London,en
+HBC,Yorkshire Tiger,http://www.tfgm.com,Europe/London,en
+HGP,High Peak Buses,http://www.tfgm.com,Europe/London,en
+HTL,HTL Buses,http://www.tfgm.com,Europe/London,en
+LUL,The Blackburn Bus Compan,http://www.tfgm.com,Europe/London,en
+MET,Metrolink,http://www.tfgm.com,Europe/London,en
+NOR,Arriva North West,http://www.tfgm.com,Europe/London,en
+PBS,Preston Bus,http://www.tfgm.com,Europe/London,en
+RCA,Nexus Move,http://www.tfgm.com,Europe/London,en
+RDT,Rosso,http://www.tfgm.com,Europe/London,en
+SPT,South Pennine C.T.,http://www.tfgm.com,Europe/London,en
+STO,Stott's of Oldham,http://www.tfgm.com,Europe/London,en
+TYR,R.S. Tyrer & Sons,http://www.tfgm.com,Europe/London,en
+VBL,Vision Bus,http://www.tfgm.com,Europe/London,en
+WBT,Warrington's Own Buses,http://www.tfgm.com,Europe/London,en
