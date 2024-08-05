@@ -24,6 +24,7 @@ export function Shell({
     functions,
     className,
     placeholder,
+    history,
 }: {
     /** The list of functions that can be executed. */
     functions: FunctionB6[];
@@ -31,8 +32,10 @@ export function Shell({
     onSubmit?: (expression: string) => void;
     className?: string;
     placeholder?: string;
+    history?: string[];
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
+    const [historyIndex, setHistoryIndex] = useState(0);
     const keywordsRef = useRef<HTMLDivElement>(null);
     const [currentWord, setCurrentWord] = useState<{
         word: string;
@@ -103,6 +106,27 @@ export function Shell({
                             'input caret-ultramarine-60 bg-transparent text-transparent focus:outline-none'
                         )}
                         onKeyDown={(evt) => {
+                            if (evt.key === 'ArrowUp') {
+                                if (history && historyIndex < history.length) {
+                                    setInput(
+                                        history![
+                                            history.length - 1 - historyIndex
+                                        ]
+                                    );
+                                    setHistoryIndex(historyIndex + 1);
+                                }
+                            }
+                            if (evt.key === 'ArrowDown') {
+                                if (history && historyIndex > 0) {
+                                    setInput(
+                                        history![history.length - historyIndex]
+                                    );
+                                    setHistoryIndex(historyIndex - 1);
+                                }
+                                if (historyIndex === 0) {
+                                    setInput('');
+                                }
+                            }
                             if (
                                 evt.key === 'Enter' &&
                                 functionResults.length === 0 &&

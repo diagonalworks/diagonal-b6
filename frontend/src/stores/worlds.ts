@@ -16,6 +16,7 @@ export interface World {
     id: string;
     featureId: FeatureIDProto;
     tiles: string;
+    shellHistory?: string[];
 }
 
 export interface WorldsStore {
@@ -47,6 +48,13 @@ export interface WorldsStore {
          * @returns void
          */
         setTiles: (worldId: string, tiles: string) => void;
+        /**
+         * Add a shell command to the history of a world
+         * @param worldId - The id of the world to add the command to
+         * @param shell - The shell command to add
+         * @returns void
+         */
+        addToShellHistory: (worldId: string, shell: string) => void;
     };
 }
 
@@ -73,6 +81,14 @@ export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
         setTiles: (worldId, tiles) => {
             set((state) => {
                 state.worlds[worldId].tiles = tiles;
+            });
+        },
+        addToShellHistory: (worldId, shell) => {
+            set((state) => {
+                state.worlds[worldId].shellHistory = [
+                    ...(state.worlds[worldId].shellHistory ?? []),
+                    shell,
+                ];
             });
         },
     },
