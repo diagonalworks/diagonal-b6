@@ -13,12 +13,14 @@ export const SubstackAdapter = ({
     collapsible = false,
     close,
     show,
+    copy,
     analysisTitle,
 }: {
     substack: SubstackProto;
     collapsible?: boolean;
     close?: boolean;
     show?: boolean;
+    copy?: boolean;
     analysisTitle?: string; // @TODO: remove this, it's a hack to get the analysis title
 }) => {
     const [open, setOpen] = useState(collapsible ? false : true);
@@ -100,6 +102,7 @@ export const SubstackAdapter = ({
                                 actions={{
                                     close: close && i === 0,
                                     show: show && i === 0,
+                                    copy: copy && i === 0,
                                 }}
                             />
                         );

@@ -1,6 +1,7 @@
 import {
     ComponentInstanceIcon,
     ComponentNoneIcon,
+    CopyIcon,
     Cross1Icon,
 } from '@radix-ui/react-icons';
 import React from 'react';
@@ -24,6 +25,7 @@ export const LineAdapter = ({
     actions?: {
         show?: boolean;
         close?: boolean;
+        copy?: boolean;
     };
 }) => {
     const clickable =
@@ -98,40 +100,59 @@ export const LineAdapter = ({
                         </span>
                     )}
                     {line.tags && <Tags tagLine={line.tags} />}
-                    {actions && (actions.show || actions.close) && (
-                        <div className="flex gap-1">
-                            {actions.show && (
-                                <Tooltip content={'Toggle visiblity'}>
+                    {actions &&
+                        (actions.show || actions.close || actions.copy) && (
+                            <div className="flex gap-1">
+                                {actions.copy && (
+                                    <Tooltip content={'Copy to clipboard'}>
+                                        <IconButton
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                navigator.clipboard.writeText(
+                                                    line.value?.atom?.value ??
+                                                        outliner?.request
+                                                            ?.expression ??
+                                                        ''
+                                                );
+                                            }}
+                                        >
+                                            <CopyIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                )}
+                                {actions.show && (
+                                    <Tooltip content={'Toggle visiblity'}>
+                                        <IconButton
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                toggleVisibility();
+                                            }}
+                                        >
+                                            {outliner &&
+                                            outliner.properties.show ? (
+                                                <ComponentInstanceIcon />
+                                            ) : (
+                                                <ComponentNoneIcon />
+                                            )}
+                                        </IconButton>
+                                    </Tooltip>
+                                )}
+                                {actions.close && (
                                     <IconButton
                                         onClick={(e) => {
-                                            e.stopPropagation();
                                             e.preventDefault();
-                                            toggleVisibility();
+                                            e.stopPropagation();
+                                            closeFn();
                                         }}
+                                        className="close"
                                     >
-                                        {outliner &&
-                                        outliner.properties.show ? (
-                                            <ComponentInstanceIcon />
-                                        ) : (
-                                            <ComponentNoneIcon />
-                                        )}
+                                        <Cross1Icon />
                                     </IconButton>
-                                </Tooltip>
-                            )}
-                            {actions.close && (
-                                <IconButton
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        closeFn();
-                                    }}
-                                    className="close"
-                                >
-                                    <Cross1Icon />
-                                </IconButton>
-                            )}
-                        </div>
-                    )}
+                                )}
+                            </div>
+                        )}
                 </Wrapper>
             </Line>
         </LineContextProvider>
