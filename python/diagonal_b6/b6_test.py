@@ -428,6 +428,7 @@ class B6Test(unittest.TestCase):
         }
         ids = self.connection(b6.import_geojson(b6.parse_geojson(json.dumps(g)), "diagonal.works/test"))
         self.assertEqual(len(ids), 1)
+        self.assertEqual(ids[0][1].namespace, "diagonal.works/test")
         self.assertEqual(self.connection(b6.find_feature(ids[0][1]).get_string("name")), "Ruby Violet Truck")
 
     def test_import_geojson_path(self):
