@@ -41,32 +41,32 @@ func (a *AddFeatures) Apply(w MutableWorld) (b6.Collection[b6.FeatureID, b6.Feat
 	return c.Collection(), nil
 }
 
-func (a *AddFeatures) FillFromGeoJSON(g geojson.GeoJSON) {
+func (a *AddFeatures) FillFromGeoJSON(g geojson.GeoJSON, namespace b6.Namespace) {
 	switch g := g.(type) {
 	case *geojson.FeatureCollection:
 		for i, f := range g.Features {
-			a.fillFromFeature(f, uint64(i))
+			a.fillFromFeature(f, namespace, uint64(i))
 		}
 	case *geojson.Feature:
-		a.fillFromFeature(g, 0)
+		a.fillFromFeature(g, namespace, 0)
 	}
 }
 
-func (a *AddFeatures) fillFromFeature(f *geojson.Feature, id uint64) {
+func (a *AddFeatures) fillFromFeature(f *geojson.Feature, namespace b6.Namespace, id uint64) {
 	var feature Feature
 
 	switch geometry := f.Geometry.Coordinates.(type) {
 	case geojson.Point:
-		feature = &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, b6.NamespacePrivate, id}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(geometry.Lat, geometry.Lng))}}}
+		feature = &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePoint, namespace, id}, Tags: []b6.Tag{{Key: b6.PointTag, Value: b6.NewPointExpressionFromLatLng(s2.LatLngFromDegrees(geometry.Lat, geometry.Lng))}}}
 	case geojson.LineString:
-		path := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, b6.NamespacePrivate, id}}
+		path := &GenericFeature{ID: b6.FeatureID{b6.FeatureTypePath, namespace, id}}
 		for j, point := range geometry {
 			path.ModifyOrAddTagAt(b6.Tag{b6.PathTag, b6.NewPointExpressionFromLatLng(point.ToS2LatLng())}, j)
 		}
 		feature = path
 	case geojson.Polygon:
 		area := NewAreaFeature(1)
-		area.AreaID = b6.MakeAreaID(b6.NamespacePrivate, id)
+		area.AreaID = b6.MakeAreaID(namespace, id)
 		loops := make([]*s2.Loop, len(geometry))
 		for j, loop := range geometry {
 			points := make([]s2.Point, len(loop))
@@ -82,7 +82,7 @@ func (a *AddFeatures) fillFromFeature(f *geojson.Feature, id uint64) {
 		feature = area
 	case geojson.MultiPolygon:
 		area := NewAreaFeature(len(geometry))
-		area.AreaID = b6.MakeAreaID(b6.NamespacePrivate, id)
+		area.AreaID = b6.MakeAreaID(namespace, id)
 		for j, polygon := range geometry {
 			loops := make([]*s2.Loop, len(polygon))
 			for k, loop := range polygon {

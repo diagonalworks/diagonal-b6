@@ -103,7 +103,7 @@ func parseGeoJSONFile(c *api.Context, filename string) (geojson.GeoJSON, error) 
 // within the geojson collection (or 0, if a single feature is used).
 func importGeoJSON(c *api.Context, features geojson.GeoJSON, namespace string) (ingest.Change, error) {
 	add := &ingest.AddFeatures{}
-	add.FillFromGeoJSON(features)
+	add.FillFromGeoJSON(features, b6.Namespace(namespace))
 	return add, nil
 }
 
@@ -136,7 +136,7 @@ func importGeoJSONFile(c *api.Context, filename string, namespace string) (inges
 	f.Close()
 
 	add := &ingest.AddFeatures{}
-	add.FillFromGeoJSON(&collection)
+	add.FillFromGeoJSON(&collection, b6.Namespace(namespace))
 	return add, nil
 }
 
