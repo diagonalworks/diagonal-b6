@@ -22,7 +22,7 @@ ARG TARGETOS
 ARG TARGETARCH
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -yq install ca-certificates libgdal33
 COPY --from=b6-build /build/bin/$TARGETOS/$TARGETARCH/* /diagonal/bin/
-COPY --from=b6-build /build/data/camden.connected.index /world/camden.connected.index
+COPY --from=b6-build /build/data/camden.connected.v*.index /world/
 COPY --from=b6-build /build/python/dist/* /diagonal/python/dist/
 COPY --from=b6-build /build/src/diagonal.works/b6/cmd/b6/js/bundle.js /diagonal/js/bundle.js
 COPY --from=b6-build /build/src/diagonal.works/b6/cmd/b6/js/static /diagonal/static
