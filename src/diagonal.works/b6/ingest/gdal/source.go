@@ -121,6 +121,7 @@ func geometryToS2Loop(g gdal.Geometry) *s2.Loop {
 	points := make([]s2.Point, g.PointCount())
 	for i := 0; i < g.PointCount(); i++ {
 		lat, lng, _ := g.Point(i)
+		// Flip clockwise shapefile loops to counter-clockwise S2 loops
 		points[g.PointCount()-i-1] = s2.PointFromLatLng(s2.LatLngFromDegrees(lat, lng))
 	}
 	return s2.LoopFromPoints(points)
@@ -131,7 +132,7 @@ func geometryToS2Polygon(g gdal.Geometry) *s2.Polygon {
 	for i := 0; i < g.GeometryCount(); i++ {
 		loops[i] = geometryToS2Loop(g.Geometry(i))
 	}
-	return s2.PolygonFromLoops(loops)
+	return s2.PolygonFromOrientedLoops(loops)
 }
 
 func geometryToS2MultiPolygon(g gdal.Geometry) geometry.MultiPolygon {
@@ -439,7 +440,6 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 
 	featureIndex := 0
 	for _, layer := range layers {
-		log.Printf("layer: %s", layer.Name())
 		b := batchTransformer{
 			Bounds:           s.Bounds,
 			AddTags:          s.AddTags,
