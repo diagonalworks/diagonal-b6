@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"log"
+	"math"
 	"strconv"
 	"strings"
 	"unicode"
@@ -117,42 +118,65 @@ func geometryToS2Polyline(g gdal.Geometry) *s2.Polyline {
 	return &points
 }
 
-func geometryToS2Loop(g gdal.Geometry) *s2.Loop {
+func geometryToS2Loop(g gdal.Geometry, keepLargeLoops bool) *s2.Loop {
 	points := make([]s2.Point, g.PointCount())
 	for i := 0; i < g.PointCount(); i++ {
 		lat, lng, _ := g.Point(i)
 		// Flip clockwise shapefile loops to counter-clockwise S2 loops
 		points[g.PointCount()-i-1] = s2.PointFromLatLng(s2.LatLngFromDegrees(lat, lng))
 	}
-	return s2.LoopFromPoints(points)
+	filtered := removeClosePointsForLoop(points)
+	loop := s2.LoopFromPoints(filtered)
+	if !keepLargeLoops && loop.Area() > 2.0*math.Pi {
+		loop.Invert()
+	}
+	return loop
 }
 
-func geometryToS2Polygon(g gdal.Geometry) *s2.Polygon {
+func removeClosePointsForLoop(points []s2.Point) []s2.Point {
+	filtered := make([]s2.Point, 0, len(points))
+	epsilon := b6.MetersToAngle(0.0001)
+	for i := 0; i < len(points); i++ {
+		if len(filtered) == 0 || filtered[len(filtered)-1].Distance(points[i]) > epsilon {
+			filtered = append(filtered, points[i])
+		}
+	}
+	if len(filtered) > 1 && filtered[0].Distance(filtered[len(filtered)-1]) < epsilon {
+		filtered = filtered[0 : len(filtered)-1]
+	}
+	return filtered
+}
+
+func geometryToS2Polygon(g gdal.Geometry, keepLargeLoops bool) *s2.Polygon {
 	loops := make([]*s2.Loop, g.GeometryCount())
 	for i := 0; i < g.GeometryCount(); i++ {
-		loops[i] = geometryToS2Loop(g.Geometry(i))
+		loops[i] = geometryToS2Loop(g.Geometry(i), keepLargeLoops)
 	}
-	return s2.PolygonFromOrientedLoops(loops)
+	if keepLargeLoops {
+		return s2.PolygonFromOrientedLoops(loops)
+	} else {
+		return s2.PolygonFromLoops(loops)
+	}
 }
 
-func geometryToS2MultiPolygon(g gdal.Geometry) geometry.MultiPolygon {
+func geometryToS2MultiPolygon(g gdal.Geometry, keepLargeLoops bool) geometry.MultiPolygon {
 	polygons := make(geometry.MultiPolygon, g.GeometryCount())
 	for i := 0; i < g.GeometryCount(); i++ {
-		polygons[i] = geometryToS2Polygon(g.Geometry(i))
+		polygons[i] = geometryToS2Polygon(g.Geometry(i), keepLargeLoops)
 	}
 	return polygons
 }
 
-func geometryToS2Region(g gdal.Geometry) (s2.Region, error) {
+func geometryToS2Region(g gdal.Geometry, keepLargeLoops bool) (s2.Region, error) {
 	switch g.Type() {
 	case gdal.GT_Point, gdal.GT_Point25D:
 		return geometryToS2Point(g), nil
 	case gdal.GT_LineString, gdal.GT_LineString25D:
 		return geometryToS2Polyline(g), nil
 	case gdal.GT_Polygon, gdal.GT_Polygon25D:
-		return geometryToS2Polygon(g), nil
+		return geometryToS2Polygon(g, keepLargeLoops), nil
 	case gdal.GT_MultiPolygon, gdal.GT_MultiPolygon25D:
-		return geometryToS2MultiPolygon(g), nil
+		return geometryToS2MultiPolygon(g, keepLargeLoops), nil
 	}
 	return nil, fmt.Errorf("Can't convert geometry type %s", geometryTypeToString(g.Type()))
 }
@@ -181,6 +205,7 @@ type batchTransformer struct {
 	Goroutines       int
 	Emit             ingest.Emit
 	SpatialReference gdal.SpatialReference
+	KeepLargeLoops   bool
 
 	geometries  gdal.Geometry
 	originalIDs []string
@@ -217,7 +242,7 @@ func (b *batchTransformer) Flush(ctx context.Context) error {
 	b.geometries.TransformTo(wgs84)
 
 	for i := 0; i < b.geometries.GeometryCount(); i++ {
-		region, err := geometryToS2Region(b.geometries.Geometry(i))
+		region, err := geometryToS2Region(b.geometries.Geometry(i), b.KeepLargeLoops)
 		if err == nil {
 			if !intersects(region.RectBound(), b.Bounds) {
 				continue
@@ -253,16 +278,17 @@ type CopyTag struct {
 }
 
 type Source struct {
-	Filename      string
-	Layer         string
-	Bounds        s2.Rect
-	Namespace     b6.Namespace
-	IDField       string
-	IDStrategy    IDStrategy
-	CopyAllFields bool
-	CopyTags      []CopyTag
-	AddTags       []b6.Tag
-	JoinTags      ingest.JoinTags
+	Filename       string
+	Layer          string
+	Bounds         s2.Rect
+	Namespace      b6.Namespace
+	IDField        string
+	IDStrategy     IDStrategy
+	CopyAllFields  bool
+	CopyTags       []CopyTag
+	AddTags        []b6.Tag
+	JoinTags       ingest.JoinTags
+	KeepLargeLoops bool
 }
 
 func newFeatureFromS2Region(r s2.Region) ingest.Feature {
@@ -447,6 +473,7 @@ func (s *Source) Read(options ingest.ReadOptions, emit ingest.Emit, ctx context.
 			Goroutines:       options.Goroutines,
 			Emit:             parallelised,
 			SpatialReference: layer.SpatialReference(),
+			KeepLargeLoops:   s.KeepLargeLoops,
 		}
 
 		if shouldSkip(layer.Type(), &options) {

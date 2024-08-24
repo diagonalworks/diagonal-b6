@@ -1263,18 +1263,56 @@ func (p *PolygonGeometryLatLngs) Polygon() *s2.Polygon {
 	return s2.PolygonFromLoops(loops)
 }
 
-func (p *PolygonGeometryLatLngs) FromS2Polygon(pp *s2.Polygon) {
-	p.Loops = p.Loops[0:0]
-	p.Points = p.Points[0:0]
-	for i := 0; i < pp.NumLoops(); i++ {
-		if i > 0 {
-			p.Loops = append(p.Loops, len(p.Points))
+func FromS2Polygon(p *s2.Polygon, buffer []byte) PolygonGeometryLatLngs {
+	var pp PolygonGeometryLatLngs
+	first := true
+	for i := 0; i < p.NumLoops(); i++ {
+		if !first {
+			pp.Loops = append(pp.Loops, len(pp.Points))
 		}
-		loop := pp.Loop(i)
+		begin := len(pp.Points)
+		loop := p.Loop(i)
 		for j := 0; j < loop.NumVertices(); j++ {
-			p.Points = append(p.Points, LatLngFromS2Point(loop.Vertex(j)))
+			pp.Points = append(pp.Points, LatLngFromS2Point(loop.Vertex(j)))
+		}
+		if pp.lastMarshalledLoopIsValid(begin, loop, buffer) {
+			first = false
+		} else {
+			// In the rare case in which the marshalled geometry of
+			// this loop is invalid (when the original loop isn't),
+			// drop the loop.
+			pp.Points = pp.Points[0:begin]
+			if !first {
+				pp.Loops = pp.Loops[0 : len(pp.Loops)-1]
+			}
 		}
 	}
+	return pp
+}
+
+// Return true if the last loop is still valid when marshalled and then
+// unmarshalled. Marshalling converts S2Points to delta encoded E7
+// lat,lngs resulting in loss of precision that quantises the points
+// onto a different grid. This quantisation can, in rare cases, invalidate
+// the geometry of the loop.
+// Validity is checked via S2Loop.Validate, and by comparing
+// area differences against a tolerance.
+func (p *PolygonGeometryLatLngs) lastMarshalledLoopIsValid(begin int, expected *s2.Loop, buffer []byte) bool {
+	p.Points.Marshal(TypeAndNamespaceInvalid, buffer)
+	var ulls LatLngs
+	ulls.Unmarshal(TypeAndNamespaceInvalid, buffer)
+	ups := make([]s2.Point, 0, len(p.Points)-begin)
+	for j := begin; j < len(ulls); j++ {
+		ups = append(ups, s2.PointFromLatLng(ulls[j].ToS2LatLng()))
+	}
+	ul := s2.LoopFromPoints(ups)
+	err := ul.Validate()
+	const areaTolerance = 0.0001
+	return err == nil && math.Abs(1.0-(ul.Area()/expected.Area())) < areaTolerance
+}
+
+func (p *PolygonGeometryLatLngs) IsValid() bool {
+	return len(p.Points) > 2
 }
 
 func (p *PolygonGeometryLatLngs) Marshal(buffer []byte) int {
@@ -1470,7 +1508,7 @@ func (a *Area) FromOSMRelation(relation *osm.Relation, s *encoding.StringTableBu
 	return true
 }
 
-func (a *Area) FromFeature(f *ingest.AreaFeature, s *encoding.StringTableBuilder, nt *NamespaceTable) {
+func (a *Area) FromFeature(f *ingest.AreaFeature, s *encoding.StringTableBuilder, nt *NamespaceTable, buffer []byte) {
 	a.Tags.FromFeature(f, s, nt)
 	switch GeometryEncodingForArea(f) {
 	case GeometryEncodingReferences:
@@ -1489,23 +1527,29 @@ func (a *Area) FromFeature(f *ingest.AreaFeature, s *encoding.StringTableBuilder
 		a.Polygons = polygons
 	case GeometryEncodingLatLngs:
 		polygons := &AreaGeometryLatLngs{
-			Polygons: make([]PolygonGeometryLatLngs, f.Len()),
+			Polygons: make([]PolygonGeometryLatLngs, 0, f.Len()),
 		}
 		for i := 0; i < f.Len(); i++ {
 			p, _ := f.Polygon(i)
-			polygons.Polygons[i].FromS2Polygon(p)
+			if pp := FromS2Polygon(p, buffer); pp.IsValid() {
+				polygons.Polygons = append(polygons.Polygons, pp)
+			}
 		}
 		a.Polygons = polygons
 	case GeometryEncodingMixed:
 		polygons := &AreaGeometryMixed{
-			Polygons: make([]PolygonGeometryMixed, f.Len()),
+			Polygons: make([]PolygonGeometryMixed, 0, f.Len()),
 		}
 		for i := 0; i < f.Len(); i++ {
 			if paths, ok := f.PathIDs(i); ok {
-				polygons.Polygons[i].References.FromPathIDs(paths, nt)
+				var pp PolygonGeometryMixed
+				pp.References.FromPathIDs(paths, nt)
+				polygons.Polygons = append(polygons.Polygons, pp)
 			} else {
 				p, _ := f.Polygon(i)
-				polygons.Polygons[i].LatLngs.FromS2Polygon(p)
+				if pp := FromS2Polygon(p, buffer); pp.IsValid() {
+					polygons.Polygons = append(polygons.Polygons, PolygonGeometryMixed{LatLngs: pp})
+				}
 			}
 		}
 	}
