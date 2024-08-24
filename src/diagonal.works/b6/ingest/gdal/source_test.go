@@ -3,10 +3,12 @@ package gdal
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/ingest"
+	"diagonal.works/b6/ingest/compact"
 	"diagonal.works/b6/test"
 	"github.com/golang/geo/s2"
 )
@@ -116,5 +118,61 @@ func TestReadFeatureFromWardBoundaryWithHole(t *testing.T) {
 	inside := s2.LatLngFromDegrees(50.85720, -3.40841)
 	if !polygon.ContainsPoint(s2.PointFromLatLng(inside)) {
 		t.Fatalf("expected polygon to contain point")
+	}
+}
+
+func TestReadFeatureFromWardBoundaryWithInvertedLoop(t *testing.T) {
+	// Boundary E05004196 contains both polygons with incorrectly wound
+	// boundaries, but also geometry that becomes invalid during the
+	// compact marshalling process. This test ensures that incorrectly
+	// wound loops are inverted, and the loops that become invalid during
+	// marshalling are dropped.
+	source := Source{
+		Filename:   test.Data("ward-inverted.shp"),
+		AddTags:    []b6.Tag{{Key: "#boundary", Value: b6.NewStringExpression("ward")}},
+		IDField:    "WD22CD",
+		IDStrategy: UKONS2022IDStrategy,
+		Bounds:     s2.FullRect(),
+	}
+
+	options := compact.Options{Goroutines: 2, PointsScratchOutputType: compact.OutputTypeMemory}
+	index, err := compact.BuildInMemory(&source, &options)
+	if err != nil {
+		t.Fatalf("expected no error, found: %s", err)
+	}
+	w := compact.NewWorld()
+	w.Merge(index)
+
+	id := b6.FeatureIDFromUKONSCode("E05004196", 2022, b6.FeatureTypeArea)
+	a := b6.FindAreaByID(id.ToAreaID(), w)
+	if a == nil {
+		t.Fatalf("failed to find expected area")
+	}
+
+	inside := s2.PointFromLatLng(s2.LatLngFromDegrees(51.720359, 0.694137))
+	outside := s2.PointFromLatLng(s2.LatLngFromDegrees(51.722034, 0.707170))
+
+	insideOK := false
+	outsideOK := true
+
+	var total float64
+	for i := 0; i < a.Len(); i++ {
+		p := a.Polygon(i)
+		total += b6.AreaToMeters2(p.Area())
+		insideOK = insideOK || p.ContainsPoint(inside)
+		outsideOK = outsideOK && !p.ContainsPoint(outside)
+	}
+
+	expected := 3450000.0
+	if r := math.Abs(1.0 - (total / expected)); r > 0.01 {
+		t.Errorf("total area outside expected range: ratio %f %f %f", r, total, expected)
+	}
+
+	if !insideOK {
+		t.Errorf("point not found found to be inside area")
+	}
+
+	if !outsideOK {
+		t.Errorf("point not found found to be outside area")
 	}
 }

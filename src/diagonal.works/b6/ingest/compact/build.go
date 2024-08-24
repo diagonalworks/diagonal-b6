@@ -526,8 +526,10 @@ func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *enco
 		goroutines = 1
 	}
 	buffers := make([][]byte, goroutines)
+	scratch := make([][]byte, goroutines)
 	for i := range buffers {
 		buffers[i] = make([]byte, maxEncodedFeatureSize)
+		scratch[i] = make([]byte, maxEncodedFeatureSize)
 	}
 	paths := make([]Path, goroutines)
 	areas := make([]Area, goroutines)
@@ -550,7 +552,7 @@ func emitPathsAreasAndRelations(source ingest.FeatureSource, o *Options, s *enco
 			if n := atomic.AddUint64(&seen.Areas, 1); n%1000000 == 0 {
 				log.Printf("  %d areas", n)
 			}
-			areas[g].FromFeature(feature.(*ingest.AreaFeature), s, nt)
+			areas[g].FromFeature(feature.(*ingest.AreaFeature), s, nt, scratch[g])
 			areas[g].Relations = summary.RelationMembers.FillReferences(areas[g].Relations[0:0], feature.FeatureID(), nt)
 			n := areas[g].Marshal(&osmNamespaces, buffers[g])
 			eid := FeatureID{Namespace: nt.Encode(feature.FeatureID().Namespace), Type: b6.FeatureTypeArea, Value: feature.FeatureID().Value}
