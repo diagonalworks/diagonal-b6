@@ -51,7 +51,7 @@ func nameForType(t reflect.Type) string {
 	} else if t == AnyType {
 		return "Any"
 	} else if t == UntypedCollectionType {
-		return "AnyAnyCollection"
+		return "Collection[Any,Any]"
 	} else if t.Implements(UntypedCollectionType) && t != CollectionFeatureType {
 		return collectionForType(t).Name
 	} else if t.Kind() == reflect.Func {
@@ -77,7 +77,7 @@ func isBuiltin(t reflect.Type) bool {
 func collectionForType(t reflect.Type) Collection {
 	if t == UntypedCollectionType {
 		return Collection{
-			Name:  "AnyAnyCollection",
+			Name:  "Collection[Any,Any]",
 			Key:   "Any",
 			Value: "Any",
 		}
@@ -95,7 +95,7 @@ func collectionForType(t reflect.Type) Collection {
 		panic(fmt.Sprintf("No value for collection %s", t))
 	}
 	return Collection{
-		Name:  fmt.Sprintf("%s%sCollection", strings.Title(nameForType(key.Type.Out(0))), strings.Title(nameForType(value.Type.Out(0)))),
+		Name:  fmt.Sprintf("Collection[%s,%s]", strings.Title(nameForType(key.Type.Out(0))), strings.Title(nameForType(value.Type.Out(0)))),
 		Key:   nameForType(key.Type.Out(0)),
 		Value: nameForType(value.Type.Out(0)),
 	}
