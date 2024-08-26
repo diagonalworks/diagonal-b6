@@ -51,17 +51,34 @@
 
       python = pkgs.python3;
 
+      pyproject-file = (pkgs.runCommand "make-pyproject" { } ''
+        substitute ${./python/pyproject.toml.template} $out \
+          --subst-var-by VERSION ''$(${b6-go}/bin/b6-api --pip-version)
+      '');
+
       pythonProject = pyproject-nix.lib.project.loadPyproject {
         projectRoot = ./python;
+        pyproject = pkgs.lib.importTOML pyproject-file;
       };
 
-      pythonEnv = python.withPackages (ps:
-        pythonProject.renderers.withPackages
+      get-function-docs = pkgs.writeShellScriptBin "get-function-docs" ''
+        ${b6-go}/bin/b6-api --docs --functions | ${pkgs.lib.getExe pkgs.jq} ".Functions[] | select(.Name == \"''$1\")"
+      '';
+
+      b6-py = python.pkgs.buildPythonPackage
+        (pythonProject.renderers.buildPythonPackage
           {
             inherit python;
-          }
-          ps ++
+          } // {
+          patchPhase = ''
+            cat ${pyproject-file} > pyproject.toml
+          '';
+        });
+
+      pythonEnv = python.withPackages (ps:
         [
+          b6-py
+
           # For `make python`
           ps.grpcio-tools
 
@@ -69,15 +86,6 @@
           ps.jupyter
         ]
       );
-
-      get-function-docs = pkgs.writeShellScriptBin "get-function-docs" ''
-        ${b6-go}/bin/b6-api --docs --functions | ${pkgs.lib.getExe pkgs.jq} ".Functions[] | select(.Name == \"''$1\")"
-      '';
-
-      b6-py = python.pkgs.buildPythonPackage
-        (pythonProject.renderers.buildPythonPackage {
-          inherit python;
-        });
 
       # Go setup
       b6-go = with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {

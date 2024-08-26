@@ -94,7 +94,7 @@ python/diagonal_b6/api_generated.py: proto-python b6-api
 	bin/${TARGETPLATFORM}/b6-api --functions | python/diagonal_b6/generate_api.py > $@
 
 python/pyproject.toml: python/pyproject.toml.template python/VERSION
-	sed -e s/VERSION/`cat python/VERSION`/ $< > $@
+	sed -e s/@VERSION@/`cat python/VERSION`/ $< > $@
 
 python/VERSION:
 	bin/${TARGETPLATFORM}/b6-api --pip-version > $@
