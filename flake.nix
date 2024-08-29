@@ -51,6 +51,51 @@
 
       python = pkgs.python3;
 
+      # From <https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/javascript.section.md#pnpm-javascript-pnpm>
+      frontend = pkgs.stdenv.mkDerivation (finalAttrs: {
+        pname = "b6-frontend";
+        version = "0.0.0";
+
+        src = ./frontend;
+
+        nativeBuildInputs = [
+          pkgs.nodejs
+          unstablePkgs.pnpm.configHook
+        ];
+
+        pnpmDeps = unstablePkgs.pnpm.fetchDeps {
+          inherit (finalAttrs) pname version src;
+          hash = "sha256-8Kc8dxchO/Gu/j3QSR52hOf4EnJuxzsaWMy9kMNgOCc=";
+        };
+
+        # Override the phases as there is already a Makefile present, which is
+        # used by Nix by default.
+        buildPhase = ''
+          pnpm build
+        '';
+
+        installPhase = ''
+          rm dist/index-vite.html
+          mv dist/ $out
+        '';
+      });
+
+      b6-js = pkgs.buildNpmPackage {
+        pname = "b6-js";
+        version = "v.0.0.0";
+        src = ./src/diagonal.works/b6/cmd/b6/js;
+        npmDepsHash = "sha256-qzMHjOVRINRZzeTdabz2u+75QrhULS1YzvdeDzWNwLs=";
+
+        buildPhase = ''
+          npm run build
+        '';
+
+        installPhase = ''
+          mkdir $out
+          mv bundle.js $out
+        '';
+      };
+
       pyproject-file = (pkgs.runCommand "make-pyproject" { } ''
         substitute ${./python/pyproject.toml.template} $out \
           --subst-var-by VERSION ''$(${b6-go}/bin/b6-api --pip-version)
@@ -111,6 +156,52 @@
         pwd = ./src/diagonal.works/b6;
       };
 
+      # A derivation to _only_ build the 'b6' program; helps to keep the
+      # docker image small.
+      b6-go-only-b6 = with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
+        name = "b6";
+        src = ./src/diagonal.works/b6;
+        buildInputs = [
+          gdal
+        ];
+        nativeBuildInputs = [
+          pkg-config
+        ];
+        subPackages = [ "cmd/b6" ];
+        doCheck = false;
+        pwd = ./src/diagonal.works/b6;
+      };
+
+      # Run like:
+      # docker run -p 8001:8001 -p 8002:8002 -v data:/data b6 -world /data/camden.index
+      b6-image = pkgs.dockerTools.streamLayeredImage {
+        name = "b6";
+        tag = "latest";
+        created = "now";
+        contents = [
+          pkgs.busybox
+          frontend
+          b6-js
+        ];
+        config = {
+          ExposedPorts = {
+            "8001" = { };
+            "8002" = { };
+          };
+          Entrypoint = [
+            "${b6-go-only-b6}/bin/b6"
+            "-http=0.0.0.0:8001"
+            "-grpc=0.0.0.0:8002"
+            "-js=${b6-js.outPath}"
+            "-enable-v2-ui"
+            "-static-v2=${frontend.outPath}"
+            # Note: We don't specify any '-world' parameter and instead
+            # force people to provide it.
+            # "-world=/world"
+          ];
+        };
+      };
+
       pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
       unstablePkgs = import unstable { inherit system; };
     in
@@ -157,6 +248,12 @@
 
         # Not an application; but can be built `nix build .#python`.
         python = b6-py;
+
+        b6-image = b6-image;
+
+        frontend = frontend;
+
+        b6-js = b6-js;
       };
 
 
