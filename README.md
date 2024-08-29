@@ -227,3 +227,18 @@ The JavaScript projects are all managed by npm; invoked also in the devShell.
 There is a Python project defined which can be built with `nix build
 .#python`; but this is probably only useful as a flake input to another
 project, and not really used here at present.
+
+#### Building the docker image with Nix
+
+You can build the docker image with Nix:
+
+```shell
+nix build .#b6-image
+./result | docker load
+```
+
+This provides the docker image `b6`, which can be run in the typical way:
+
+```shell
+docker run -p 8001:8001 -p 8002:8002 -v data:/data b6 -world /data/camden.index
+```
