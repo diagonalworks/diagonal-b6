@@ -173,14 +173,15 @@
           pkg-config
         ];
 
-        # TODO: Nix can't run the tests because they refer to files that are
-        # outside the nix closure, ultimately. Some potential fixes are:
-        #
-        #   - Fix gomod2nix to allow us to bring these files in somehow
-        #   - Move the files that are for go-tests into a sub-folder of the go source
-        #   - ???
-        #
-        doCheck = false;
+        # Bring in test data to the root directory; this is where it will be
+        # found by the tests (see b6/test/data.go: and the 'testDataDirectory' function)
+        preCheck = ''
+          mkdir data
+          mkdir data/tests
+          cp -r ${./data/tests}/* ./data/tests
+        '';
+
+        doCheck = true;
 
         # Must be added due to bug https://github.com/nix-community/gomod2nix/issues/120
         pwd = ./src/diagonal.works/b6;
@@ -275,6 +276,8 @@
         # Run like `nix run . -- --help` or access all the binaries with
         # `nix build` and look in `./result/bin`.
         default = b6-go;
+
+        go = b6-go;
 
         # Not an application; but can be built `nix build .#python`.
         python = b6-py;
