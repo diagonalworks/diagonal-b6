@@ -211,8 +211,6 @@
         created = "now";
         contents = [
           pkgs.busybox
-          frontend
-          b6-js
         ];
         config = {
           ExposedPorts = {
