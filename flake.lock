@@ -36,6 +36,22 @@
         "type": "github"
       }
     },
+    "gdalNixpkgs": {
+      "locked": {
+        "lastModified": 1692133479,
+        "narHash": "sha256-cWStmnlVelapObXDpOQVpXPmX2UkrEzriXW3InqG70g=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a93ab55b415e8c50f01cb6c9ebd705c458409d57",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a93ab55b415e8c50f01cb6c9ebd705c458409d57",
+        "type": "github"
+      }
+    },
     "gomod2nix": {
       "inputs": {
         "flake-utils": "flake-utils_2",
@@ -174,6 +190,7 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
+        "gdalNixpkgs": "gdalNixpkgs",
         "gomod2nix": "gomod2nix",
         "nixpkgs": "nixpkgs",
         "pyproject-nix": "pyproject-nix",

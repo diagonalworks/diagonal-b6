@@ -2,6 +2,11 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/24.05";
     unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    # Latest 3.7.1 release from nixpkgs
+    # https://github.com/NixOS/nixpkgs/commits/nixpkgs-unstable/pkgs/development/libraries/gdal/default.nix
+    gdalNixpkgs.url = "github:NixOS/nixpkgs/a93ab55b415e8c50f01cb6c9ebd705c458409d57";
+
     gomod2nix = {
       url = "github:nix-community/gomod2nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -20,6 +25,7 @@
     , pyproject-nix
     , flake-utils
     , treefmt-nix
+    , gdalNixpkgs
     , ...
     }:
     flake-utils.lib.eachDefaultSystem (system:
@@ -130,8 +136,8 @@
           cp -r ${./proto} ./proto
           cat ${./Makefile} > some-Makefile
 
-          # Hack: Run the b6-api command outside of the Makefile, using our
-          # version.
+          # Hack: Run the b6-api command outside of the Makefile, using the
+          # Nix version of the binary.
           ${b6-go}/bin/b6-api --functions | python diagonal_b6/generate_api.py > diagonal_b6/api_generated.py
 
           # Hack: Make the directory structure that the Makefile expects,
@@ -159,15 +165,17 @@
 
           # For hacking
           ps.jupyter
-        ]
-      );
+        ]);
+
+      # Use a pinned version of gdal.
+      ourGdal = (import gdalNixpkgs { inherit system; }).gdal;
 
       # Go setup
       b6-go = with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
         name = "b6";
         src = ./src/diagonal.works/b6;
         buildInputs = [
-          gdal
+          ourGdal
         ];
         nativeBuildInputs = [
           pkg-config
@@ -193,7 +201,7 @@
         name = "b6";
         src = ./src/diagonal.works/b6;
         buildInputs = [
-          gdal
+          ourGdal
         ];
         nativeBuildInputs = [
           pkg-config
@@ -242,7 +250,7 @@
           get-function-docs
 
           # Running the Makefile tasks
-          gdal
+          ourGdal
           pkg-config
           protobuf
           protoc-gen-go
