@@ -256,9 +256,6 @@
           protoc-gen-go
           protoc-gen-go-grpc
 
-          # Python hacking
-          pythonEnv
-
           # Go
           go_1_21
           gotools
@@ -277,6 +274,16 @@
         '';
       };
 
+      # Note: We have a separate Python development shell because this _also_
+      # requires the Go package completely built, which makes it quite
+      # inconvenient for actual go hacking (i.e. if you change go.mod and
+      # haven't yet run gomod2nix, for example.)
+      devShells.python = pkgs.mkShell {
+        packages = [
+          # Python hacking
+          pythonEnv
+        ];
+      };
 
       packages = {
         # Run like `nix run . -- --help` or access all the binaries with

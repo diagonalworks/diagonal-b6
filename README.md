@@ -226,7 +226,19 @@ The JavaScript projects are all managed by npm; invoked also in the devShell.
 
 There is a Python project defined which can be built with `nix build
 .#python`; but this is probably only useful as a flake input to another
-project, and not really used here at present.
+project, and not really used here at present (you can jump into a Python
+environment with `nix develop .#python`.)
+
+#### Updating go dependencies
+
+If the go dependencies change, you need to run `gomod2nix`. You can do this
+from the normal devShell:
+
+```shell
+cd src/diagonal.works/b6/
+gomod2nix
+```
+
 
 #### Building the docker image with Nix
 
