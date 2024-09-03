@@ -9,6 +9,7 @@ type FeatureItem = {
 };
 
 const FeatureList: FeatureItem[] = [
+  // TODO: Replace with diagonal features.
   // {
   //   title: 'Easy to Use',
   //   Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,

@@ -5,15 +5,19 @@ sidebar_position: 1
 # b6 API documentation
 ## Functions
 
-  This is documentationed generated from the `b6-api` binary.
+  This is documentation generated from the `b6-api` binary written assuming
+  you are interacting with it via the Python API.
 
   Below are all the functions, with their Python function name, and the
   corresponding argument names and types. Note that the types are the **b6 go**
   type definitions; not the python ones; nevertheless it is indicative of what
-  type to expect to construct on the python side.
+  type to expect to construct on the Python side.
   
 
-### *b6.accessible_all* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,FeatureID]</span>
+### <tt>accessible_all</tt> 
+```python title='Indicative Python type signature'
+def accessible_all(origins, destinations, duration, options) -> FeatureIDFeatureIDCollection
+```
 
 Return the a collection of the features reachable from the given origins, within the given duration in seconds, that match the given query.
 Keys of the collection are origins, values are reachable destinations.
@@ -38,66 +42,81 @@ mode=walk, flip=yes
 
 #### Arguments
 
-- `origins` of type `Collection[Any,Identifiable]`
-- `destinations` of type [`Query`](#query)
+- `origins` of type [AnyIdentifiableCollection](#anyidentifiablecollection)
+- `destinations` of type [Query](#query)
 - `duration` of type `float64`
-- `options` of type `Collection[Any,Any]`
+- `options` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-`Collection[FeatureID,FeatureID]`
+- [FeatureIDFeatureIDCollection](#featureidfeatureidcollection)
 
-### *b6.accessible_routes* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,Route]</span>
+### <tt>accessible_routes</tt> 
+```python title='Indicative Python type signature'
+def accessible_routes(origin, destinations, duration, options) -> FeatureIDRouteCollection
+```
 
 
 #### Arguments
 
-- `origin` of type [`Identifiable`](#identifiable)
-- `destinations` of type [`Query`](#query)
+- `origin` of type [Identifiable](#identifiable)
+- `destinations` of type [Query](#query)
 - `duration` of type `float64`
-- `options` of type `Collection[Any,Any]`
+- `options` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-`Collection[FeatureID,Route]`
+- [FeatureIDRouteCollection](#featureidroutecollection)
 
-### *b6.add* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Number</span>
+### <tt>add</tt> 
+```python title='Indicative Python type signature'
+def add(a, b) -> Number
+```
 
 Return a added to b.
 
 #### Arguments
 
-- `a` of type [`Number`](#number)
-- `b` of type [`Number`](#number)
+- `a` of type [Number](#number)
+- `b` of type [Number](#number)
 
 #### Returns
-[`Number`](#number)
+- [Number](#number)
 
-### *b6.add_collection* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>add_collection</tt> 
+```python title='Indicative Python type signature'
+def add_collection(id, tags, collection) -> Change
+```
 
 Add a collection feature with the given id, tags and items.
 
 #### Arguments
 
-- `id` of type [`CollectionID`](#collectionid)
-- `tags` of type `Collection[Any,Tag]`
-- `collection` of type `Collection[Any,Any]`
+- `id` of type [CollectionID](#collectionid)
+- `tags` of type [AnyTagCollection](#anytagcollection)
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.add_expression* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>add_expression</tt> 
+```python title='Indicative Python type signature'
+def add_expression(id, tags, expresson) -> Change
+```
 
 Add an expression feature with the given id, tags and expression.
 
 #### Arguments
 
-- `id` of type [`FeatureID`](#featureid)
-- `tags` of type `Collection[Any,Tag]`
-- `expresson` of type [`Expression`](#expression)
+- `id` of type [FeatureID](#featureid)
+- `tags` of type [AnyTagCollection](#anytagcollection)
+- `expresson` of type [Expression](#expression)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.add_ints* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>add_ints</tt> 
+```python title='Indicative Python type signature'
+def add_ints(a, b) -> int
+```
 
 Deprecated.
 
@@ -107,47 +126,59 @@ Deprecated.
 - `b` of type `int`
 
 #### Returns
-`int`
+- `int`
 
-### *b6.add_point* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>add_point</tt> 
+```python title='Indicative Python type signature'
+def add_point(point, id, tags) -> Change
+```
 
 Adds a point feature with the given id, tags and members.
 
 #### Arguments
 
-- `point` of type [`Geometry`](#geometry)
-- `id` of type [`FeatureID`](#featureid)
-- `tags` of type `Collection[Any,Tag]`
+- `point` of type [Geometry](#geometry)
+- `id` of type [FeatureID](#featureid)
+- `tags` of type [AnyTagCollection](#anytagcollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.add_relation* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>add_relation</tt> 
+```python title='Indicative Python type signature'
+def add_relation(id, tags, members) -> Change
+```
 
 Add a relation feature with the given id, tags and members.
 
 #### Arguments
 
-- `id` of type [`RelationID`](#relationid)
-- `tags` of type `Collection[Any,Tag]`
-- `members` of type `Collection[Identifiable,String]`
+- `id` of type [RelationID](#relationid)
+- `tags` of type [AnyTagCollection](#anytagcollection)
+- `members` of type [IdentifiableStringCollection](#identifiablestringcollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.add_tag* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>add_tag</tt> 
+```python title='Indicative Python type signature'
+def add_tag(id, tag) -> Change
+```
 
 Add the given tag to the given feature.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
-- `tag` of type [`Tag`](#tag)
+- `id` of type [Identifiable](#identifiable)
+- `tag` of type [Tag](#tag)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.add_tags* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>add_tags</tt> 
+```python title='Indicative Python type signature'
+def add_tags(collection) -> Change
+```
 
 Add the given tags to the given features.
 The keys of the given collection specify the features to change, the
@@ -155,23 +186,29 @@ values provide the tag to be added.
 
 #### Arguments
 
-- `collection` of type `Collection[FeatureID,Tag]`
+- `collection` of type [FeatureIDTagCollection](#featureidtagcollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.add_world_with_change* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,FeatureID]</span>
+### <tt>add_world_with_change</tt> 
+```python title='Indicative Python type signature'
+def add_world_with_change(id, change) -> FeatureIDFeatureIDCollection
+```
 
 
 #### Arguments
 
-- `id` of type [`FeatureID`](#featureid)
-- `change` of type [`Change`](#change)
+- `id` of type [FeatureID](#featureid)
+- `change` of type [Change](#change)
 
 #### Returns
-`Collection[FeatureID,FeatureID]`
+- [FeatureIDFeatureIDCollection](#featureidfeatureidcollection)
 
-### *b6.all* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>all</tt> 
+```python title='Indicative Python type signature'
+def all() -> Query
+```
 
 Return a query that will match any feature.
 
@@ -179,115 +216,145 @@ Return a query that will match any feature.
 
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.all_tags* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,Tag]</span>
+### <tt>all_tags</tt> 
+```python title='Indicative Python type signature'
+def all_tags(id) -> IntTagCollection
+```
 
 Return a collection of all the tags on the given feature.
 Keys are ordered integers from 0, values are tags.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 
 #### Returns
-`Collection[Int,Tag]`
+- [IntTagCollection](#inttagcollection)
 
-### *b6.and* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>and</tt> 
+```python title='Indicative Python type signature'
+def and(a, b) -> Query
+```
 
 Return a query that will match features that match both given queries.
 
 #### Arguments
 
-- `a` of type [`Query`](#query)
-- `b` of type [`Query`](#query)
+- `a` of type [Query](#query)
+- `b` of type [Query](#query)
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.apply_to_area* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Callable</span>
+### <tt>apply_to_area</tt> 
+```python title='Indicative Python type signature'
+def apply_to_area(f) -> Callable
+```
 
 Wrap the given function such that it will only be called when passed an area.
 
 #### Arguments
 
-- `f` of type [`Callable`](#callable)
+- `f` of type [Callable](#callable)
 
 #### Returns
-[`Callable`](#callable)
+- [Callable](#callable)
 
-### *b6.apply_to_path* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Callable</span>
+### <tt>apply_to_path</tt> 
+```python title='Indicative Python type signature'
+def apply_to_path(f) -> Callable
+```
 
 Wrap the given function such that it will only be called when passed a path.
 
 #### Arguments
 
-- `f` of type [`Callable`](#callable)
+- `f` of type [Callable](#callable)
 
 #### Returns
-[`Callable`](#callable)
+- [Callable](#callable)
 
-### *b6.apply_to_point* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Callable</span>
+### <tt>apply_to_point</tt> 
+```python title='Indicative Python type signature'
+def apply_to_point(f) -> Callable
+```
 
 Wrap the given function such that it will only be called when passed a point.
 
 #### Arguments
 
-- `f` of type [`Callable`](#callable)
+- `f` of type [Callable](#callable)
 
 #### Returns
-[`Callable`](#callable)
+- [Callable](#callable)
 
-### *b6.area* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>area</tt> 
+```python title='Indicative Python type signature'
+def area(area) -> float64
+```
 
 Return the area of the given polygon in m².
 
 #### Arguments
 
-- `area` of type [`Area`](#area)
+- `area` of type [Area](#area)
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.building_access* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,FeatureID]</span>
+### <tt>building_access</tt> 
+```python title='Indicative Python type signature'
+def building_access(origins, limit, mode) -> FeatureIDFeatureIDCollection
+```
 
 Deprecated. Use accessible.
 
 #### Arguments
 
-- `origins` of type `Collection[Any,Feature]`
+- `origins` of type [AnyFeatureCollection](#anyfeaturecollection)
 - `limit` of type `float64`
 - `mode` of type `string`
 
 #### Returns
-`Collection[FeatureID,FeatureID]`
+- [FeatureIDFeatureIDCollection](#featureidfeatureidcollection)
 
-### *b6.call* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Any</span>
+### <tt>call</tt> 
+```python title='Indicative Python type signature'
+def call(f, args) -> Any
+```
 
 
 #### Arguments
 
-- `f` of type [`Callable`](#callable)
-- `args` of type [`Any`](#any)
+- `f` of type [Callable](#callable)
+- `args` of type [Any](#any)
 
 #### Returns
-[`Any`](#any)
+- [Any](#any)
 #### Misc
  - [x] Function is _variadic_ (has a variable number of arguments.)
 
-### *b6.cap_polygon* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Area</span>
+### <tt>cap_polygon</tt> 
+```python title='Indicative Python type signature'
+def cap_polygon(center, radius) -> Area
+```
 
 Return a polygon approximating a spherical cap with the given center and radius in meters.
 
 #### Arguments
 
-- `center` of type [`Geometry`](#geometry)
+- `center` of type [Geometry](#geometry)
 - `radius` of type `float64`
 
 #### Returns
-[`Area`](#area)
+- [Area](#area)
 
-### *b6.centroid* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Geometry</span>
+### <tt>centroid</tt> 
+```python title='Indicative Python type signature'
+def centroid(geometry) -> Geometry
+```
 
 Return the centroid of the given geometry.
 For multipolygons, we return the centroid of the convex hull formed from
@@ -295,12 +362,15 @@ the points of those polygons.
 
 #### Arguments
 
-- `geometry` of type [`Geometry`](#geometry)
+- `geometry` of type [Geometry](#geometry)
 
 #### Returns
-[`Geometry`](#geometry)
+- [Geometry](#geometry)
 
-### *b6.changes_from_file* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>changes_from_file</tt> 
+```python title='Indicative Python type signature'
+def changes_from_file(filename) -> Change
+```
 
 Return the changes contained in the given file.
 As the file is read by the b6 server process, the filename it relative
@@ -312,9 +382,12 @@ supported.
 - `filename` of type `string`
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.changes_to_file* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: string</span>
+### <tt>changes_to_file</tt> 
+```python title='Indicative Python type signature'
+def changes_to_file(filename) -> string
+```
 
 Export the changes that have been applied to the world to the given filename as yaml.
 As the file is written by the b6 server process, the filename it relative
@@ -326,9 +399,12 @@ supported.
 - `filename` of type `string`
 
 #### Returns
-`string`
+- `string`
 
-### *b6.clamp* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>clamp</tt> 
+```python title='Indicative Python type signature'
+def clamp(v, low, high) -> int
+```
 
 Return the given value, unless it falls outside the given inclusive bounds, in which case return the boundary.
 
@@ -339,39 +415,48 @@ Return the given value, unless it falls outside the given inclusive bounds, in w
 - `high` of type `int`
 
 #### Returns
-`int`
+- `int`
 
-### *b6.closest* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Feature</span>
+### <tt>closest</tt> 
+```python title='Indicative Python type signature'
+def closest(origin, options, distance, query) -> Feature
+```
 
 Return the closest feature from the given origin via the given mode, within the given distance in meters, matching the given query.
 See accessible-all for options values.
 
 #### Arguments
 
-- `origin` of type [`Feature`](#feature)
-- `options` of type `Collection[Any,Any]`
+- `origin` of type [Feature](#feature)
+- `options` of type [AnyAnyCollection](#anyanycollection)
 - `distance` of type `float64`
-- `query` of type [`Query`](#query)
+- `query` of type [Query](#query)
 
 #### Returns
-[`Feature`](#feature)
+- [Feature](#feature)
 
-### *b6.closest_distance* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>closest_distance</tt> 
+```python title='Indicative Python type signature'
+def closest_distance(origin, options, distance, query) -> float64
+```
 
 Return the distance through the graph of the closest feature from the given origin via the given mode, within the given distance in meters, matching the given query.
 See accessible-all for options values.
 
 #### Arguments
 
-- `origin` of type [`Feature`](#feature)
-- `options` of type `Collection[Any,Any]`
+- `origin` of type [Feature](#feature)
+- `options` of type [AnyAnyCollection](#anyanycollection)
 - `distance` of type `float64`
-- `query` of type [`Query`](#query)
+- `query` of type [Query](#query)
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.collect_areas* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Area</span>
+### <tt>collect_areas</tt> 
+```python title='Indicative Python type signature'
+def collect_areas(areas) -> Area
+```
 
 Return a single area containing all areas from the given collection.
 If areas in the collection overlap, loops within the returned area
@@ -380,37 +465,46 @@ functions.
 
 #### Arguments
 
-- `areas` of type `Collection[Any,Area]`
+- `areas` of type [AnyAreaCollection](#anyareacollection)
 
 #### Returns
-[`Area`](#area)
+- [Area](#area)
 
-### *b6.collection* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>collection</tt> 
+```python title='Indicative Python type signature'
+def collection(pairs) -> AnyAnyCollection
+```
 
 Return a collection of the given key value pairs.
 
 #### Arguments
 
-- `pairs` of type [`Any`](#any)
+- `pairs` of type [Any](#any)
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 #### Misc
  - [x] Function is _variadic_ (has a variable number of arguments.)
 
-### *b6.connect* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>connect</tt> 
+```python title='Indicative Python type signature'
+def connect(a, b) -> Change
+```
 
 Add a path that connects the two given points, if they're not already directly connected.
 
 #### Arguments
 
-- `a` of type [`Feature`](#feature)
-- `b` of type [`Feature`](#feature)
+- `a` of type [Feature](#feature)
+- `b` of type [Feature](#feature)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.connect_to_network* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>connect_to_network</tt> 
+```python title='Indicative Python type signature'
+def connect_to_network(feature) -> Change
+```
 
 Add a path and point to connect given feature to the street network.
 The street network is defined at the set of paths tagged #highway that
@@ -420,12 +514,15 @@ that point is within 4m of an existing path point.
 
 #### Arguments
 
-- `feature` of type [`Feature`](#feature)
+- `feature` of type [Feature](#feature)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.connect_to_network_all* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>connect_to_network_all</tt> 
+```python title='Indicative Python type signature'
+def connect_to_network_all(features) -> Change
+```
 
 Add paths and points to connect the given collection of features to the
 network. See connect-to-network for connection details.
@@ -434,34 +531,43 @@ network is only computed once.
 
 #### Arguments
 
-- `features` of type `Collection[Any,FeatureID]`
+- `features` of type [AnyFeatureIDCollection](#anyfeatureidcollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.containing_areas* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,AreaFeature]</span>
+### <tt>containing_areas</tt> 
+```python title='Indicative Python type signature'
+def containing_areas(points, q) -> FeatureIDAreaFeatureCollection
+```
 
 
 #### Arguments
 
-- `points` of type `Collection[Any,Feature]`
-- `q` of type [`Query`](#query)
+- `points` of type [AnyFeatureCollection](#anyfeaturecollection)
+- `q` of type [Query](#query)
 
 #### Returns
-`Collection[FeatureID,AreaFeature]`
+- [FeatureIDAreaFeatureCollection](#featureidareafeaturecollection)
 
-### *b6.convex_hull* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Area</span>
+### <tt>convex_hull</tt> 
+```python title='Indicative Python type signature'
+def convex_hull(c) -> Area
+```
 
 Return the convex hull of the given geometries.
 
 #### Arguments
 
-- `c` of type `Collection[Any,Geometry]`
+- `c` of type [AnyGeometryCollection](#anygeometrycollection)
 
 #### Returns
-[`Area`](#area)
+- [Area](#area)
 
-### *b6.count* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>count</tt> 
+```python title='Indicative Python type signature'
+def count(collection) -> int
+```
 
 Return the number of items in the given collection.
 The function will not evaluate and traverse the entire collection if it's possible to count
@@ -469,69 +575,87 @@ the collection efficiently.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-`int`
+- `int`
 
-### *b6.count_keys* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Int]</span>
+### <tt>count_keys</tt> 
+```python title='Indicative Python type signature'
+def count_keys(collection) -> AnyIntCollection
+```
 
 Return a collection of the number of occurances of each value in the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-`Collection[Any,Int]`
+- [AnyIntCollection](#anyintcollection)
 
-### *b6.count_tag_value* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Int]</span>
+### <tt>count_tag_value</tt> 
+```python title='Indicative Python type signature'
+def count_tag_value(id, key) -> AnyIntCollection
+```
 
 Deprecated.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 - `key` of type `string`
 
 #### Returns
-`Collection[Any,Int]`
+- [AnyIntCollection](#anyintcollection)
 
-### *b6.count_valid_ids* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>count_valid_ids</tt> 
+```python title='Indicative Python type signature'
+def count_valid_ids(collection) -> int
+```
 
 Return the number of valid feature IDs in the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Identifiable]`
+- `collection` of type [AnyIdentifiableCollection](#anyidentifiablecollection)
 
 #### Returns
-`int`
+- `int`
 
-### *b6.count_valid_keys* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Int]</span>
+### <tt>count_valid_keys</tt> 
+```python title='Indicative Python type signature'
+def count_valid_keys(collection) -> AnyIntCollection
+```
 
 Return a collection of the number of occurances of each valid value in the given collection.
 Invalid values are not counted, but case the key to appear in the output.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-`Collection[Any,Int]`
+- [AnyIntCollection](#anyintcollection)
 
-### *b6.count_values* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Int]</span>
+### <tt>count_values</tt> 
+```python title='Indicative Python type signature'
+def count_values(collection) -> AnyIntCollection
+```
 
 Return a collection of the number of occurances of each value in the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-`Collection[Any,Int]`
+- [AnyIntCollection](#anyintcollection)
 
-### *b6.debug_all_query* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>debug_all_query</tt> 
+```python title='Indicative Python type signature'
+def debug_all_query(token) -> Query
+```
 
 Deprecated.
 
@@ -540,21 +664,27 @@ Deprecated.
 - `token` of type `string`
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.debug_tokens* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,String]</span>
+### <tt>debug_tokens</tt> 
+```python title='Indicative Python type signature'
+def debug_tokens(id) -> IntStringCollection
+```
 
 Return the search index tokens generated for the given feature.
 Intended for debugging use only.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 
 #### Returns
-`Collection[Int,String]`
+- [IntStringCollection](#intstringcollection)
 
-### *b6.degree* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>degree</tt> 
+```python title='Indicative Python type signature'
+def degree(point) -> int
+```
 
 Return the number of paths connected to the given point.
 A single path will be counted twice if the point isn't at one of its
@@ -562,48 +692,60 @@ two ends - once in one direction, and once in the other.
 
 #### Arguments
 
-- `point` of type [`Feature`](#feature)
+- `point` of type [Feature](#feature)
 
 #### Returns
-`int`
+- `int`
 
-### *b6.distance_meters* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>distance_meters</tt> 
+```python title='Indicative Python type signature'
+def distance_meters(a, b) -> float64
+```
 
 Return the distance in meters between the given points.
 
 #### Arguments
 
-- `a` of type [`Geometry`](#geometry)
-- `b` of type [`Geometry`](#geometry)
+- `a` of type [Geometry](#geometry)
+- `b` of type [Geometry](#geometry)
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.distance_to_point_meters* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>distance_to_point_meters</tt> 
+```python title='Indicative Python type signature'
+def distance_to_point_meters(path, point) -> float64
+```
 
 Return the distance in meters between the given path, and the project of the give point onto it.
 
 #### Arguments
 
-- `path` of type [`Geometry`](#geometry)
-- `point` of type [`Geometry`](#geometry)
+- `path` of type [Geometry](#geometry)
+- `point` of type [Geometry](#geometry)
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.divide* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Number</span>
+### <tt>divide</tt> 
+```python title='Indicative Python type signature'
+def divide(a, b) -> Number
+```
 
 Return a divided by b.
 
 #### Arguments
 
-- `a` of type [`Number`](#number)
-- `b` of type [`Number`](#number)
+- `a` of type [Number](#number)
+- `b` of type [Number](#number)
 
 #### Returns
-[`Number`](#number)
+- [Number](#number)
 
-### *b6.divide_int* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>divide_int</tt> 
+```python title='Indicative Python type signature'
+def divide_int(a, b) -> float64
+```
 
 Deprecated.
 
@@ -613,29 +755,38 @@ Deprecated.
 - `b` of type `float64`
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.entrance_approach* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Geometry</span>
-
-
-#### Arguments
-
-- `area` of type [`AreaFeature`](#areafeature)
-
-#### Returns
-[`Geometry`](#geometry)
-
-### *b6.evaluate_feature* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Any</span>
+### <tt>entrance_approach</tt> 
+```python title='Indicative Python type signature'
+def entrance_approach(area) -> Geometry
+```
 
 
 #### Arguments
 
-- `id` of type [`FeatureID`](#featureid)
+- `area` of type [AreaFeature](#areafeature)
 
 #### Returns
-[`Any`](#any)
+- [Geometry](#geometry)
 
-### *b6.export_world* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>evaluate_feature</tt> 
+```python title='Indicative Python type signature'
+def evaluate_feature(id) -> Any
+```
+
+
+#### Arguments
+
+- `id` of type [FeatureID](#featureid)
+
+#### Returns
+- [Any](#any)
+
+### <tt>export_world</tt> 
+```python title='Indicative Python type signature'
+def export_world(filename) -> int
+```
 
 Write the current world to the given filename in the b6 compact index format.
 As the file is written by the b6 server process, the filename it relative
@@ -647,21 +798,27 @@ supported.
 - `filename` of type `string`
 
 #### Returns
-`int`
+- `int`
 
-### *b6.filter* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>filter</tt> 
+```python title='Indicative Python type signature'
+def filter(collection, function) -> AnyAnyCollection
+```
 
 Return a collection of the items of the given collection for which the value of the given function applied to each value is true.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
-- `function` of type [`Callable`](#callable)
+- `collection` of type [AnyAnyCollection](#anyanycollection)
+- `function` of type [Callable](#callable)
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.filter_accessible* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,FeatureID]</span>
+### <tt>filter_accessible</tt> 
+```python title='Indicative Python type signature'
+def filter_accessible(collection, filter) -> FeatureIDFeatureIDCollection
+```
 
 Return a collection containing only the values of the given collection that match the given query.
 If no values for a key match the query, emit a single invalid feature ID
@@ -671,260 +828,326 @@ Keys are taken from the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[FeatureID,FeatureID]`
-- `filter` of type [`Query`](#query)
+- `collection` of type [FeatureIDFeatureIDCollection](#featureidfeatureidcollection)
+- `filter` of type [Query](#query)
 
 #### Returns
-`Collection[FeatureID,FeatureID]`
+- [FeatureIDFeatureIDCollection](#featureidfeatureidcollection)
 
-### *b6.find* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,Feature]</span>
+### <tt>find</tt> 
+```python title='Indicative Python type signature'
+def find(query) -> FeatureIDFeatureCollection
+```
 
 Return a collection of the features present in the world that match the given query.
 Keys are IDs, and values are features.
 
 #### Arguments
 
-- `query` of type [`Query`](#query)
+- `query` of type [Query](#query)
 
 #### Returns
-`Collection[FeatureID,Feature]`
+- [FeatureIDFeatureCollection](#featureidfeaturecollection)
 
-### *b6.find_area* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: AreaFeature</span>
+### <tt>find_area</tt> 
+```python title='Indicative Python type signature'
+def find_area(id) -> AreaFeature
+```
 
 Return the area feature with the given ID.
 
 #### Arguments
 
-- `id` of type [`FeatureID`](#featureid)
+- `id` of type [FeatureID](#featureid)
 
 #### Returns
-[`AreaFeature`](#areafeature)
+- [AreaFeature](#areafeature)
 
-### *b6.find_areas* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,AreaFeature]</span>
+### <tt>find_areas</tt> 
+```python title='Indicative Python type signature'
+def find_areas(query) -> FeatureIDAreaFeatureCollection
+```
 
 Return a collection of the area features present in the world that match the given query.
 Keys are IDs, and values are features.
 
 #### Arguments
 
-- `query` of type [`Query`](#query)
+- `query` of type [Query](#query)
 
 #### Returns
-`Collection[FeatureID,AreaFeature]`
+- [FeatureIDAreaFeatureCollection](#featureidareafeaturecollection)
 
-### *b6.find_collection* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: CollectionFeature</span>
+### <tt>find_collection</tt> 
+```python title='Indicative Python type signature'
+def find_collection(id) -> CollectionFeature
+```
 
 Return the collection feature with the given ID.
 
 #### Arguments
 
-- `id` of type [`FeatureID`](#featureid)
+- `id` of type [FeatureID](#featureid)
 
 #### Returns
-[`CollectionFeature`](#collectionfeature)
+- [CollectionFeature](#collectionfeature)
 
-### *b6.find_feature* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Feature</span>
+### <tt>find_feature</tt> 
+```python title='Indicative Python type signature'
+def find_feature(id) -> Feature
+```
 
 Return the feature with the given ID.
 
 #### Arguments
 
-- `id` of type [`FeatureID`](#featureid)
+- `id` of type [FeatureID](#featureid)
 
 #### Returns
-[`Feature`](#feature)
+- [Feature](#feature)
 
-### *b6.find_relation* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: RelationFeature</span>
+### <tt>find_relation</tt> 
+```python title='Indicative Python type signature'
+def find_relation(id) -> RelationFeature
+```
 
 Return the relation feature with the given ID.
 
 #### Arguments
 
-- `id` of type [`FeatureID`](#featureid)
+- `id` of type [FeatureID](#featureid)
 
 #### Returns
-[`RelationFeature`](#relationfeature)
+- [RelationFeature](#relationfeature)
 
-### *b6.find_relations* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,RelationFeature]</span>
+### <tt>find_relations</tt> 
+```python title='Indicative Python type signature'
+def find_relations(query) -> FeatureIDRelationFeatureCollection
+```
 
 Return a collection of the relation features present in the world that match the given query.
 Keys are IDs, and values are features.
 
 #### Arguments
 
-- `query` of type [`Query`](#query)
+- `query` of type [Query](#query)
 
 #### Returns
-`Collection[FeatureID,RelationFeature]`
+- [FeatureIDRelationFeatureCollection](#featureidrelationfeaturecollection)
 
-### *b6.first* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Any</span>
+### <tt>first</tt> 
+```python title='Indicative Python type signature'
+def first(pair) -> Any
+```
 
 Return the first value of the given pair.
 
 #### Arguments
 
-- `pair` of type [`Pair`](#pair)
+- `pair` of type [Pair](#pair)
 
 #### Returns
-[`Any`](#any)
+- [Any](#any)
 
-### *b6.flatten* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>flatten</tt> 
+```python title='Indicative Python type signature'
+def flatten(collection) -> AnyAnyCollection
+```
 
 Return a collection with keys and values taken from the collections that form the values of the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Collection[Any,Any]]`
+- `collection` of type [AnyAnyAnyCollectionCollection](#anyanyanycollectioncollection)
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.float_value* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>float_value</tt> 
+```python title='Indicative Python type signature'
+def float_value(tag) -> float64
+```
 
 Return the value of the given tag as a float.
 Propagates error if the value isn't a valid float.
 
 #### Arguments
 
-- `tag` of type [`Tag`](#tag)
+- `tag` of type [Tag](#tag)
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.geojson_areas* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,Area]</span>
+### <tt>geojson_areas</tt> 
+```python title='Indicative Python type signature'
+def geojson_areas(g) -> IntAreaCollection
+```
 
 Return the areas present in the given geojson.
 
 #### Arguments
 
-- `g` of type [`GeoJSON`](#geojson)
+- `g` of type [GeoJSON](#geojson)
 
 #### Returns
-`Collection[Int,Area]`
+- [IntAreaCollection](#intareacollection)
 
-### *b6.get* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Tag</span>
+### <tt>get</tt> 
+```python title='Indicative Python type signature'
+def get(id, key) -> Tag
+```
 
 Return the tag with the given key on the given feature.
 Returns a tag. To return the string value of a tag, use get-string.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 - `key` of type `string`
 
 #### Returns
-[`Tag`](#tag)
+- [Tag](#tag)
 
-### *b6.get_float* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>get_float</tt> 
+```python title='Indicative Python type signature'
+def get_float(id, key) -> float64
+```
 
 Return the value of tag with the given key on the given feature as a float.
 Returns error if there isn't a feature with that id, a tag with that key, or if the value isn't a valid float.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 - `key` of type `string`
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.get_int* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>get_int</tt> 
+```python title='Indicative Python type signature'
+def get_int(id, key) -> int
+```
 
 Return the value of tag with the given key on the given feature as an integer.
 Returns error if there isn't a feature with that id, a tag with that key, or if the value isn't a valid integer.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 - `key` of type `string`
 
 #### Returns
-`int`
+- `int`
 
-### *b6.get_string* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: string</span>
+### <tt>get_string</tt> 
+```python title='Indicative Python type signature'
+def get_string(id, key) -> string
+```
 
 Return the value of tag with the given key on the given feature as a string.
 Returns an empty string if there isn't a tag with that key.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 - `key` of type `string`
 
 #### Returns
-`string`
+- `string`
 
-### *b6.gt* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: bool</span>
+### <tt>gt</tt> 
+```python title='Indicative Python type signature'
+def gt(a, b) -> bool
+```
 
 Return true if a is greater than b.
 
 #### Arguments
 
-- `a` of type [`Any`](#any)
-- `b` of type [`Any`](#any)
+- `a` of type [Any](#any)
+- `b` of type [Any](#any)
 
 #### Returns
-[`bool`](#bool)
+- [bool](#bool)
 
-### *b6.histogram* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>histogram</tt> 
+```python title='Indicative Python type signature'
+def histogram(collection) -> Change
+```
 
 Return a change that adds a histogram for the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.histogram_swatch* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>histogram_swatch</tt> 
+```python title='Indicative Python type signature'
+def histogram_swatch(collection) -> Change
+```
 
 Return a change that adds a histogram with only colour swatches for the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.histogram_swatch_with_id* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>histogram_swatch_with_id</tt> 
+```python title='Indicative Python type signature'
+def histogram_swatch_with_id(collection, id) -> Change
+```
 
 Return a change that adds a histogram with only colour swatches for the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
-- `id` of type [`CollectionID`](#collectionid)
+- `collection` of type [AnyAnyCollection](#anyanycollection)
+- `id` of type [CollectionID](#collectionid)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.histogram_with_id* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>histogram_with_id</tt> 
+```python title='Indicative Python type signature'
+def histogram_with_id(collection, id) -> Change
+```
 
 Return a change that adds a histogram for the given collection with the given ID.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
-- `id` of type [`CollectionID`](#collectionid)
+- `collection` of type [AnyAnyCollection](#anyanycollection)
+- `id` of type [CollectionID](#collectionid)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.id_to_relation_id* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: FeatureID</span>
+### <tt>id_to_relation_id</tt> 
+```python title='Indicative Python type signature'
+def id_to_relation_id(namespace, id) -> FeatureID
+```
 
 Deprecated.
 
 #### Arguments
 
 - `namespace` of type `string`
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 
 #### Returns
-[`FeatureID`](#featureid)
+- [FeatureID](#featureid)
 
-### *b6.import_geojson* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>import_geojson</tt> 
+```python title='Indicative Python type signature'
+def import_geojson(features, namespace) -> Change
+```
 
 Add features from the given geojson to the world.
 IDs are formed from the given namespace, and the index of the feature
@@ -932,13 +1155,16 @@ within the geojson collection (or 0, if a single feature is used).
 
 #### Arguments
 
-- `features` of type [`GeoJSON`](#geojson)
+- `features` of type [GeoJSON](#geojson)
 - `namespace` of type `string`
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.import_geojson_file* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>import_geojson_file</tt> 
+```python title='Indicative Python type signature'
+def import_geojson_file(filename, namespace) -> Change
+```
 
 Add features from the given geojson file to the world.
 IDs are formed from the given namespace, and the index of the feature
@@ -953,79 +1179,100 @@ supported.
 - `namespace` of type `string`
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.int_value* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>int_value</tt> 
+```python title='Indicative Python type signature'
+def int_value(tag) -> int
+```
 
 Return the value of the given tag as an integer.
 Propagates error if the value isn't a valid integer.
 
 #### Arguments
 
-- `tag` of type [`Tag`](#tag)
+- `tag` of type [Tag](#tag)
 
 #### Returns
-`int`
+- `int`
 
-### *b6.interpolate* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Geometry</span>
+### <tt>interpolate</tt> 
+```python title='Indicative Python type signature'
+def interpolate(path, fraction) -> Geometry
+```
 
 Return the point at the given fraction along the given path.
 
 #### Arguments
 
-- `path` of type [`Geometry`](#geometry)
+- `path` of type [Geometry](#geometry)
 - `fraction` of type `float64`
 
 #### Returns
-[`Geometry`](#geometry)
+- [Geometry](#geometry)
 
-### *b6.intersecting* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>intersecting</tt> 
+```python title='Indicative Python type signature'
+def intersecting(geometry) -> Query
+```
 
 Return a query that will match features that intersect the given geometry.
 
 #### Arguments
 
-- `geometry` of type [`Geometry`](#geometry)
+- `geometry` of type [Geometry](#geometry)
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.intersecting_cap* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>intersecting_cap</tt> 
+```python title='Indicative Python type signature'
+def intersecting_cap(center, radius) -> Query
+```
 
 Return a query that will match features that intersect a spherical cap centred on the given point, with the given radius in meters.
 
 #### Arguments
 
-- `center` of type [`Geometry`](#geometry)
+- `center` of type [Geometry](#geometry)
 - `radius` of type `float64`
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.join* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Geometry</span>
+### <tt>join</tt> 
+```python title='Indicative Python type signature'
+def join(pathA, pathB) -> Geometry
+```
 
 Return a path formed from the points of the two given paths, in the order they occur in those paths.
 
 #### Arguments
 
-- `pathA` of type [`Geometry`](#geometry)
-- `pathB` of type [`Geometry`](#geometry)
+- `pathA` of type [Geometry](#geometry)
+- `pathB` of type [Geometry](#geometry)
 
 #### Returns
-[`Geometry`](#geometry)
+- [Geometry](#geometry)
 
-### *b6.join_missing* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>join_missing</tt> 
+```python title='Indicative Python type signature'
+def join_missing(base, joined) -> AnyAnyCollection
+```
 
 
 #### Arguments
 
-- `base` of type `Collection[Any,Any]`
-- `joined` of type `Collection[Any,Any]`
+- `base` of type [AnyAnyCollection](#anyanycollection)
+- `joined` of type [AnyAnyCollection](#anyanycollection)
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.keyed* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>keyed</tt> 
+```python title='Indicative Python type signature'
+def keyed(key) -> Query
+```
 
 Return a query that will match features tagged with the given key independent of value.
 
@@ -1034,30 +1281,39 @@ Return a query that will match features tagged with the given key independent of
 - `key` of type `string`
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.length* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>length</tt> 
+```python title='Indicative Python type signature'
+def length(path) -> float64
+```
 
 Return the length of the given path in meters.
 
 #### Arguments
 
-- `path` of type [`Geometry`](#geometry)
+- `path` of type [Geometry](#geometry)
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.list_feature* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>list_feature</tt> 
+```python title='Indicative Python type signature'
+def list_feature(id) -> AnyAnyCollection
+```
 
 
 #### Arguments
 
-- `id` of type [`CollectionID`](#collectionid)
+- `id` of type [CollectionID](#collectionid)
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.ll* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Geometry</span>
+### <tt>ll</tt> 
+```python title='Indicative Python type signature'
+def ll(lat, lng) -> Geometry
+```
 
 Return a point at the given latitude and longitude, specified in degrees.
 
@@ -1067,47 +1323,59 @@ Return a point at the given latitude and longitude, specified in degrees.
 - `lng` of type `float64`
 
 #### Returns
-[`Geometry`](#geometry)
+- [Geometry](#geometry)
 
-### *b6.map* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>map</tt> 
+```python title='Indicative Python type signature'
+def map(collection, function) -> AnyAnyCollection
+```
 
 Return a collection with the result of applying the given function to each value.
 Keys are unmodified.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
-- `function` of type [`Callable`](#callable)
+- `collection` of type [AnyAnyCollection](#anyanycollection)
+- `function` of type [Callable](#callable)
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.map_geometries* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: GeoJSON</span>
+### <tt>map_geometries</tt> 
+```python title='Indicative Python type signature'
+def map_geometries(g, f) -> GeoJSON
+```
 
 Return a geojson representing the result of applying the given function to each geometry in the given geojson.
 
 #### Arguments
 
-- `g` of type [`GeoJSON`](#geojson)
-- `f` of type [`Callable`](#callable)
+- `g` of type [GeoJSON](#geojson)
+- `f` of type [Callable](#callable)
 
 #### Returns
-[`GeoJSON`](#geojson)
+- [GeoJSON](#geojson)
 
-### *b6.map_items* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>map_items</tt> 
+```python title='Indicative Python type signature'
+def map_items(collection, function) -> AnyAnyCollection
+```
 
 Return a collection of the result of applying the given function to each pair(key, value).
 Keys are unmodified.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
-- `function` of type [`Callable`](#callable)
+- `collection` of type [AnyAnyCollection](#anyanycollection)
+- `function` of type [Callable](#callable)
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.map_parallel* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>map_parallel</tt> 
+```python title='Indicative Python type signature'
+def map_parallel(collection, function) -> AnyAnyCollection
+```
 
 Return a collection with the result of applying the given function to each value.
 Keys are unmodified, and function application occurs in parallel, bounded
@@ -1115,25 +1383,31 @@ by the number of CPU cores allocated to b6.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
-- `function` of type [`Callable`](#callable)
+- `collection` of type [AnyAnyCollection](#anyanycollection)
+- `function` of type [Callable](#callable)
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.matches* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: bool</span>
+### <tt>matches</tt> 
+```python title='Indicative Python type signature'
+def matches(id, query) -> bool
+```
 
 Return true if the given feature matches the given query.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
-- `query` of type [`Query`](#query)
+- `id` of type [Identifiable](#identifiable)
+- `query` of type [Query](#query)
 
 #### Returns
-[`bool`](#bool)
+- [bool](#bool)
 
-### *b6.materialise* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>materialise</tt> 
+```python title='Indicative Python type signature'
+def materialise(id, function) -> Change
+```
 
 Return a change that adds a collection feature to the world with the given ID, containing the result of calling the given function.
 The given function isn't passed any arguments.
@@ -1142,25 +1416,31 @@ representing the given function.
 
 #### Arguments
 
-- `id` of type [`CollectionID`](#collectionid)
-- `function` of type [`Callable`](#callable)
+- `id` of type [CollectionID](#collectionid)
+- `function` of type [Callable](#callable)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.materialise_map* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>materialise_map</tt> 
+```python title='Indicative Python type signature'
+def materialise_map(collection, id, function) -> Change
+```
 
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Feature]`
-- `id` of type [`CollectionID`](#collectionid)
-- `function` of type [`Callable`](#callable)
+- `collection` of type [AnyFeatureCollection](#anyfeaturecollection)
+- `id` of type [CollectionID](#collectionid)
+- `function` of type [Callable](#callable)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.merge_changes* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>merge_changes</tt> 
+```python title='Indicative Python type signature'
+def merge_changes(collection) -> Change
+```
 
 Return a change that will apply all the changes in the given collection.
 Changes are applied transactionally. If the application of one change
@@ -1169,24 +1449,30 @@ point), then no changes will be applied.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Change]`
+- `collection` of type [AnyChangeCollection](#anychangecollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.or* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>or</tt> 
+```python title='Indicative Python type signature'
+def or(a, b) -> Query
+```
 
 Return a query that will match features that match either of the given queries.
 
 #### Arguments
 
-- `a` of type [`Query`](#query)
-- `b` of type [`Query`](#query)
+- `a` of type [Query](#query)
+- `b` of type [Query](#query)
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.ordered_join* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Geometry</span>
+### <tt>ordered_join</tt> 
+```python title='Indicative Python type signature'
+def ordered_join(pathA, pathB) -> Geometry
+```
 
 Returns a path formed by joining the two given paths.
 If necessary to maintain consistency, the order of points is reversed,
@@ -1195,25 +1481,31 @@ if no endpoints are shared.
 
 #### Arguments
 
-- `pathA` of type [`Geometry`](#geometry)
-- `pathB` of type [`Geometry`](#geometry)
+- `pathA` of type [Geometry](#geometry)
+- `pathB` of type [Geometry](#geometry)
 
 #### Returns
-[`Geometry`](#geometry)
+- [Geometry](#geometry)
 
-### *b6.pair* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Pair</span>
+### <tt>pair</tt> 
+```python title='Indicative Python type signature'
+def pair(first, second) -> Pair
+```
 
 Return a pair containing the given values.
 
 #### Arguments
 
-- `first` of type [`Any`](#any)
-- `second` of type [`Any`](#any)
+- `first` of type [Any](#any)
+- `second` of type [Any](#any)
 
 #### Returns
-[`Pair`](#pair)
+- [Pair](#pair)
 
-### *b6.parse_geojson* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: GeoJSON</span>
+### <tt>parse_geojson</tt> 
+```python title='Indicative Python type signature'
+def parse_geojson(s) -> GeoJSON
+```
 
 Return the geojson represented by the given string.
 
@@ -1222,9 +1514,12 @@ Return the geojson represented by the given string.
 - `s` of type `string`
 
 #### Returns
-[`GeoJSON`](#geojson)
+- [GeoJSON](#geojson)
 
-### *b6.parse_geojson_file* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: GeoJSON</span>
+### <tt>parse_geojson_file</tt> 
+```python title='Indicative Python type signature'
+def parse_geojson_file(filename) -> GeoJSON
+```
 
 Return the geojson contained in the given file.
 As the file is read by the b6 server process, the filename it relative
@@ -1236,9 +1531,12 @@ supported.
 - `filename` of type `string`
 
 #### Returns
-[`GeoJSON`](#geojson)
+- [GeoJSON](#geojson)
 
-### *b6.paths_to_reach* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,Int]</span>
+### <tt>paths_to_reach</tt> 
+```python title='Indicative Python type signature'
+def paths_to_reach(origin, options, distance, query) -> FeatureIDIntCollection
+```
 
 Return a collection of the paths used to reach all features matching the given query from the given origin via the given mode, within the given distance in meters.
 Keys are the paths used, values are the number of times that path was used during traversal.
@@ -1246,15 +1544,18 @@ See accessible-all for options values.
 
 #### Arguments
 
-- `origin` of type [`Feature`](#feature)
-- `options` of type `Collection[Any,Any]`
+- `origin` of type [Feature](#feature)
+- `options` of type [AnyAnyCollection](#anyanycollection)
 - `distance` of type `float64`
-- `query` of type [`Query`](#query)
+- `query` of type [Query](#query)
 
 #### Returns
-`Collection[FeatureID,Int]`
+- [FeatureIDIntCollection](#featureidintcollection)
 
-### *b6.percentiles* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Float64]</span>
+### <tt>percentiles</tt> 
+```python title='Indicative Python type signature'
+def percentiles(collection) -> AnyFloat64Collection
+```
 
 Return a collection where values represent the perentile of the corresponding value in the given collection.
 The returned collection is ordered by percentile, with keys drawn from the
@@ -1262,12 +1563,15 @@ given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Float64]`
+- `collection` of type [AnyFloat64Collection](#anyfloat64collection)
 
 #### Returns
-`Collection[Any,Float64]`
+- [AnyFloat64Collection](#anyfloat64collection)
 
-### *b6.point_features* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,PhysicalFeature]</span>
+### <tt>point_features</tt> 
+```python title='Indicative Python type signature'
+def point_features(f) -> FeatureIDPhysicalFeatureCollection
+```
 
 Return a collection of the point features referenced by the given feature.
 Keys are ids of the respective value, values are point features. Area
@@ -1275,36 +1579,45 @@ features return the points referenced by their path features.
 
 #### Arguments
 
-- `f` of type [`Feature`](#feature)
+- `f` of type [Feature](#feature)
 
 #### Returns
-`Collection[FeatureID,PhysicalFeature]`
+- [FeatureIDPhysicalFeatureCollection](#featureidphysicalfeaturecollection)
 
-### *b6.point_paths* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,PhysicalFeature]</span>
+### <tt>point_paths</tt> 
+```python title='Indicative Python type signature'
+def point_paths(id) -> FeatureIDPhysicalFeatureCollection
+```
 
 Return a collection of the path features referencing the given point.
 Keys are the ids of the respective paths.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 
 #### Returns
-`Collection[FeatureID,PhysicalFeature]`
+- [FeatureIDPhysicalFeatureCollection](#featureidphysicalfeaturecollection)
 
-### *b6.points* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,Geometry]</span>
+### <tt>points</tt> 
+```python title='Indicative Python type signature'
+def points(geometry) -> IntGeometryCollection
+```
 
 Return a collection of the points of the given geometry.
 Keys are ordered integers from 0, values are points.
 
 #### Arguments
 
-- `geometry` of type [`Geometry`](#geometry)
+- `geometry` of type [Geometry](#geometry)
 
 #### Returns
-`Collection[Int,Geometry]`
+- [IntGeometryCollection](#intgeometrycollection)
 
-### *b6.reachable* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,Feature]</span>
+### <tt>reachable</tt> 
+```python title='Indicative Python type signature'
+def reachable(origin, options, distance, query) -> FeatureIDFeatureCollection
+```
 
 Return the a collection of the features reachable from the given origin via the given mode, within the given distance in meters, that match the given query.
 See accessible-all for options values.
@@ -1312,53 +1625,65 @@ Deprecated. Use accessible-all.
 
 #### Arguments
 
-- `origin` of type [`Feature`](#feature)
-- `options` of type `Collection[Any,Any]`
+- `origin` of type [Feature](#feature)
+- `options` of type [AnyAnyCollection](#anyanycollection)
 - `distance` of type `float64`
-- `query` of type [`Query`](#query)
+- `query` of type [Query](#query)
 
 #### Returns
-`Collection[FeatureID,Feature]`
+- [FeatureIDFeatureCollection](#featureidfeaturecollection)
 
-### *b6.reachable_area* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: float64</span>
+### <tt>reachable_area</tt> 
+```python title='Indicative Python type signature'
+def reachable_area(origin, options, distance) -> float64
+```
 
 Return the area formed by the convex hull of the features matching the given query reachable from the given origin via the given mode specified in options, within the given distance in meters.
 See accessible-all for options values.
 
 #### Arguments
 
-- `origin` of type [`Feature`](#feature)
-- `options` of type `Collection[Any,Any]`
+- `origin` of type [Feature](#feature)
+- `options` of type [AnyAnyCollection](#anyanycollection)
 - `distance` of type `float64`
 
 #### Returns
-`float64`
+- `float64`
 
-### *b6.rectangle_polygon* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Area</span>
+### <tt>rectangle_polygon</tt> 
+```python title='Indicative Python type signature'
+def rectangle_polygon(a, b) -> Area
+```
 
 Return a rectangle polygon with the given top left and bottom right points.
 
 #### Arguments
 
-- `a` of type [`Geometry`](#geometry)
-- `b` of type [`Geometry`](#geometry)
+- `a` of type [Geometry](#geometry)
+- `b` of type [Geometry](#geometry)
 
 #### Returns
-[`Area`](#area)
+- [Area](#area)
 
-### *b6.remove_tag* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>remove_tag</tt> 
+```python title='Indicative Python type signature'
+def remove_tag(id, key) -> Change
+```
 
 Remove the tag with the given key from the given feature.
 
 #### Arguments
 
-- `id` of type [`Identifiable`](#identifiable)
+- `id` of type [Identifiable](#identifiable)
 - `key` of type `string`
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.remove_tags* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Change</span>
+### <tt>remove_tags</tt> 
+```python title='Indicative Python type signature'
+def remove_tags(collection) -> Change
+```
 
 Remove the given tags from the given features.
 The keys of the given collection specify the features to change, the
@@ -1366,12 +1691,15 @@ values provide the key of the tag to be removed.
 
 #### Arguments
 
-- `collection` of type `Collection[FeatureID,String]`
+- `collection` of type [FeatureIDStringCollection](#featureidstringcollection)
 
 #### Returns
-[`Change`](#change)
+- [Change](#change)
 
-### *b6.s2_center* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Geometry</span>
+### <tt>s2_center</tt> 
+```python title='Indicative Python type signature'
+def s2_center(token) -> Geometry
+```
 
 Return a collection the center of the s2 cell with the given token.
 
@@ -1380,47 +1708,59 @@ Return a collection the center of the s2 cell with the given token.
 - `token` of type `string`
 
 #### Returns
-[`Geometry`](#geometry)
+- [Geometry](#geometry)
 
-### *b6.s2_covering* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,String]</span>
+### <tt>s2_covering</tt> 
+```python title='Indicative Python type signature'
+def s2_covering(area, minLevel, maxLevel) -> IntStringCollection
+```
 
 Return a collection of of s2 cells tokens that cover the given area at the given level.
 
 #### Arguments
 
-- `area` of type [`Area`](#area)
+- `area` of type [Area](#area)
 - `minLevel` of type `int`
 - `maxLevel` of type `int`
 
 #### Returns
-`Collection[Int,String]`
+- [IntStringCollection](#intstringcollection)
 
-### *b6.s2_grid* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,String]</span>
+### <tt>s2_grid</tt> 
+```python title='Indicative Python type signature'
+def s2_grid(area, level) -> IntStringCollection
+```
 
 Return a collection of points representing the centroids of s2 cells that cover the given area at the given level.
 
 #### Arguments
 
-- `area` of type [`Area`](#area)
+- `area` of type [Area](#area)
 - `level` of type `int`
 
 #### Returns
-`Collection[Int,String]`
+- [IntStringCollection](#intstringcollection)
 
-### *b6.s2_points* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[String,Geometry]</span>
+### <tt>s2_points</tt> 
+```python title='Indicative Python type signature'
+def s2_points(area, minLevel, maxLevel) -> StringGeometryCollection
+```
 
 Return a collection of points representing the centroids of s2 cells that cover the given area between the given levels.
 
 #### Arguments
 
-- `area` of type [`Area`](#area)
+- `area` of type [Area](#area)
 - `minLevel` of type `int`
 - `maxLevel` of type `int`
 
 #### Returns
-`Collection[String,Geometry]`
+- [StringGeometryCollection](#stringgeometrycollection)
 
-### *b6.s2_polygon* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Area</span>
+### <tt>s2_polygon</tt> 
+```python title='Indicative Python type signature'
+def s2_polygon(token) -> Area
+```
 
 Return the bounding area of the s2 cell with the given token.
 
@@ -1429,94 +1769,118 @@ Return the bounding area of the s2 cell with the given token.
 - `token` of type `string`
 
 #### Returns
-[`Area`](#area)
+- [Area](#area)
 
-### *b6.sample_points* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,Geometry]</span>
+### <tt>sample_points</tt> 
+```python title='Indicative Python type signature'
+def sample_points(path, distanceMeters) -> IntGeometryCollection
+```
 
 Return a collection of points along the given path, with the given distance in meters between them.
 Keys are ordered integers from 0, values are points.
 
 #### Arguments
 
-- `path` of type [`Geometry`](#geometry)
+- `path` of type [Geometry](#geometry)
 - `distanceMeters` of type `float64`
 
 #### Returns
-`Collection[Int,Geometry]`
+- [IntGeometryCollection](#intgeometrycollection)
 
-### *b6.sample_points_along_paths* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,Geometry]</span>
+### <tt>sample_points_along_paths</tt> 
+```python title='Indicative Python type signature'
+def sample_points_along_paths(paths, distanceMeters) -> IntGeometryCollection
+```
 
 Return a collection of points along the given paths, with the given distance in meters between them.
 Keys are the id of the respective path, values are points.
 
 #### Arguments
 
-- `paths` of type `Collection[FeatureID,Geometry]`
+- `paths` of type [FeatureIDGeometryCollection](#featureidgeometrycollection)
 - `distanceMeters` of type `float64`
 
 #### Returns
-`Collection[Int,Geometry]`
+- [IntGeometryCollection](#intgeometrycollection)
 
-### *b6.second* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Any</span>
+### <tt>second</tt> 
+```python title='Indicative Python type signature'
+def second(pair) -> Any
+```
 
 Return the second value of the given pair.
 
 #### Arguments
 
-- `pair` of type [`Pair`](#pair)
+- `pair` of type [Pair](#pair)
 
 #### Returns
-[`Any`](#any)
+- [Any](#any)
 
-### *b6.sightline* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Area</span>
+### <tt>sightline</tt> 
+```python title='Indicative Python type signature'
+def sightline(from, radius) -> Area
+```
 
 
 #### Arguments
 
-- `from` of type [`Geometry`](#geometry)
+- `from` of type [Geometry](#geometry)
 - `radius` of type `float64`
 
 #### Returns
-[`Area`](#area)
+- [Area](#area)
 
-### *b6.snap_area_edges* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Area</span>
+### <tt>snap_area_edges</tt> 
+```python title='Indicative Python type signature'
+def snap_area_edges(area, query, threshold) -> Area
+```
 
 Return an area formed by projecting the edges of the given polygon onto the paths present in the world matching the given query.
 Paths beyond the given threshold in meters are ignored.
 
 #### Arguments
 
-- `area` of type [`Area`](#area)
-- `query` of type [`Query`](#query)
+- `area` of type [Area](#area)
+- `query` of type [Query](#query)
 - `threshold` of type `float64`
 
 #### Returns
-[`Area`](#area)
+- [Area](#area)
 
-### *b6.sum* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: int</span>
+### <tt>sum</tt> 
+```python title='Indicative Python type signature'
+def sum(collection) -> int
+```
 
 Return the sum of all values in a given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Int]`
+- `collection` of type [AnyIntCollection](#anyintcollection)
 
 #### Returns
-`int`
+- `int`
 
-### *b6.sum_by_key* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Int]</span>
+### <tt>sum_by_key</tt> 
+```python title='Indicative Python type signature'
+def sum_by_key(c) -> AnyIntCollection
+```
 
 Return a collection of the result of summing the values of each item with the same key.
 Requires values to be integers.
 
 #### Arguments
 
-- `c` of type `Collection[Any,Int]`
+- `c` of type [AnyIntCollection](#anyintcollection)
 
 #### Returns
-`Collection[Any,Int]`
+- [AnyIntCollection](#anyintcollection)
 
-### *b6.tag* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Tag</span>
+### <tt>tag</tt> 
+```python title='Indicative Python type signature'
+def tag(key, value) -> Tag
+```
 
 Return a tag with the given key and value.
 
@@ -1526,9 +1890,12 @@ Return a tag with the given key and value.
 - `value` of type `string`
 
 #### Returns
-[`Tag`](#tag)
+- [Tag](#tag)
 
-### *b6.tagged* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>tagged</tt> 
+```python title='Indicative Python type signature'
+def tagged(key, value) -> Query
+```
 
 Return a query that will match features tagged with the given key and value.
 
@@ -1538,75 +1905,96 @@ Return a query that will match features tagged with the given key and value.
 - `value` of type `string`
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.take* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>take</tt> 
+```python title='Indicative Python type signature'
+def take(collection, n) -> AnyAnyCollection
+```
 
 Return a collection with the first n entries of the given collection.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 - `n` of type `int`
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.tile_ids* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,Int]</span>
-
-Deprecated
-
-#### Arguments
-
-- `feature` of type [`Feature`](#feature)
-
-#### Returns
-`Collection[FeatureID,Int]`
-
-### *b6.tile_ids_hex* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[FeatureID,String]</span>
+### <tt>tile_ids</tt> 
+```python title='Indicative Python type signature'
+def tile_ids(feature) -> FeatureIDIntCollection
+```
 
 Deprecated
 
 #### Arguments
 
-- `feature` of type [`Feature`](#feature)
+- `feature` of type [Feature](#feature)
 
 #### Returns
-`Collection[FeatureID,String]`
+- [FeatureIDIntCollection](#featureidintcollection)
 
-### *b6.tile_paths* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Int,String]</span>
+### <tt>tile_ids_hex</tt> 
+```python title='Indicative Python type signature'
+def tile_ids_hex(feature) -> FeatureIDStringCollection
+```
+
+Deprecated
+
+#### Arguments
+
+- `feature` of type [Feature](#feature)
+
+#### Returns
+- [FeatureIDStringCollection](#featureidstringcollection)
+
+### <tt>tile_paths</tt> 
+```python title='Indicative Python type signature'
+def tile_paths(geometry, zoom) -> IntStringCollection
+```
 
 Return the URL paths for the tiles containing the given geometry at the given zoom level.
 
 #### Arguments
 
-- `geometry` of type [`Geometry`](#geometry)
+- `geometry` of type [Geometry](#geometry)
 - `zoom` of type `int`
 
 #### Returns
-`Collection[Int,String]`
+- [IntStringCollection](#intstringcollection)
 
-### *b6.to_geojson* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: GeoJSON</span>
-
-
-#### Arguments
-
-- `renderable` of type [`Geometry`](#geometry)
-
-#### Returns
-[`GeoJSON`](#geojson)
-
-### *b6.to_geojson_collection* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: GeoJSON</span>
+### <tt>to_geojson</tt> 
+```python title='Indicative Python type signature'
+def to_geojson(renderable) -> GeoJSON
+```
 
 
 #### Arguments
 
-- `renderables` of type `Collection[Any,Geometry]`
+- `renderable` of type [Geometry](#geometry)
 
 #### Returns
-[`GeoJSON`](#geojson)
+- [GeoJSON](#geojson)
 
-### *b6.to_str* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: string</span>
+### <tt>to_geojson_collection</tt> 
+```python title='Indicative Python type signature'
+def to_geojson_collection(renderables) -> GeoJSON
+```
+
+
+#### Arguments
+
+- `renderables` of type [AnyGeometryCollection](#anygeometrycollection)
+
+#### Returns
+- [GeoJSON](#geojson)
+
+### <tt>to_str</tt> 
+```python title='Indicative Python type signature'
+def to_str(a) -> string
+```
 
 
 #### Arguments
@@ -1614,22 +2002,28 @@ Return the URL paths for the tiles containing the given geometry at the given zo
 - `a` of type `int`
 
 #### Returns
-`string`
+- `string`
 
-### *b6.top* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Collection[Any,Any]</span>
+### <tt>top</tt> 
+```python title='Indicative Python type signature'
+def top(collection, n) -> AnyAnyCollection
+```
 
 Return a collection with the n entries from the given collection with the greatest values.
 Requires the values of the given collection to be integers or floats.
 
 #### Arguments
 
-- `collection` of type `Collection[Any,Any]`
+- `collection` of type [AnyAnyCollection](#anyanycollection)
 - `n` of type `int`
 
 #### Returns
-`Collection[Any,Any]`
+- [AnyAnyCollection](#anyanycollection)
 
-### *b6.type_area* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: QueryProto</span>
+### <tt>type_area</tt> 
+```python title='Indicative Python type signature'
+def type_area() -> QueryProto
+```
 
 Return a query that will match area features.
 
@@ -1637,9 +2031,12 @@ Return a query that will match area features.
 
 
 #### Returns
-[`QueryProto`](#queryproto)
+- [QueryProto](#queryproto)
 
-### *b6.type_path* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: QueryProto</span>
+### <tt>type_path</tt> 
+```python title='Indicative Python type signature'
+def type_path() -> QueryProto
+```
 
 Return a query that will match path features.
 
@@ -1647,9 +2044,12 @@ Return a query that will match path features.
 
 
 #### Returns
-[`QueryProto`](#queryproto)
+- [QueryProto](#queryproto)
 
-### *b6.type_point* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: QueryProto</span>
+### <tt>type_point</tt> 
+```python title='Indicative Python type signature'
+def type_point() -> QueryProto
+```
 
 Return a query that will match point features.
 
@@ -1657,150 +2057,334 @@ Return a query that will match point features.
 
 
 #### Returns
-[`QueryProto`](#queryproto)
+- [QueryProto](#queryproto)
 
-### *b6.typed* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>typed</tt> 
+```python title='Indicative Python type signature'
+def typed(typ, q) -> Query
+```
 
 Wrap a query to only match features with the given feature type.
 
 #### Arguments
 
 - `typ` of type `string`
-- `q` of type [`Query`](#query)
+- `q` of type [Query](#query)
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.value* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: string</span>
+### <tt>value</tt> 
+```python title='Indicative Python type signature'
+def value(tag) -> string
+```
 
 Return the value of the given tag as a string.
 
 #### Arguments
 
-- `tag` of type [`Tag`](#tag)
+- `tag` of type [Tag](#tag)
 
 #### Returns
-`string`
+- `string`
 
-### *b6.with_change* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Any</span>
+### <tt>with_change</tt> 
+```python title='Indicative Python type signature'
+def with_change(change, function) -> Any
+```
 
 Return the result of calling the given function in a world in which the given change has been applied.
 The underlying world used by the server is not modified.
 
 #### Arguments
 
-- `change` of type [`Change`](#change)
+- `change` of type [Change](#change)
 - `function` of type `FunctionAny`
 
 #### Returns
-[`Any`](#any)
+- [Any](#any)
 
-### *b6.within* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>within</tt> 
+```python title='Indicative Python type signature'
+def within(a) -> Query
+```
 
 Return a query that will match features that intersect the given area.
 Deprecated. Use intersecting.
 
 #### Arguments
 
-- `a` of type [`Area`](#area)
+- `a` of type [Area](#area)
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
 
-### *b6.within_cap* <span style={{fontSize: 12 +'px', fontWeight: 'normal'}}>:: Query</span>
+### <tt>within_cap</tt> 
+```python title='Indicative Python type signature'
+def within_cap(point, radius) -> Query
+```
 
 Return a query that will match features that intersect a spherical cap centred on the given point, with the given radius in meters.
 Deprecated. Use intersecting-cap.
 
 #### Arguments
 
-- `point` of type [`Geometry`](#geometry)
+- `point` of type [Geometry](#geometry)
 - `radius` of type `float64`
 
 #### Returns
-[`Query`](#query)
+- [Query](#query)
+## Collections
+
+### <tt>AnyAnyAnyCollectionCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[AnyAnyCollection](#anyanycollection)
+
+### <tt>AnyAnyCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[Any](#any)
+
+### <tt>AnyAnyCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[Any](#any)
+
+### <tt>AnyAreaCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[Area](#area)
+
+### <tt>AnyChangeCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[Change](#change)
+
+### <tt>AnyFeatureCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[Feature](#feature)
+
+### <tt>AnyFeatureIDCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[FeatureID](#featureid)
+
+### <tt>AnyFloat64Collection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|`float64`
+
+### <tt>AnyGeometryCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[Geometry](#geometry)
+
+### <tt>AnyIdentifiableCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[Identifiable](#identifiable)
+
+### <tt>AnyIntCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|`int`
+
+### <tt>AnyTagCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Any](#any)|[Tag](#tag)
+
+### <tt>FeatureIDAreaFeatureCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|[AreaFeature](#areafeature)
+
+### <tt>FeatureIDFeatureCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|[Feature](#feature)
+
+### <tt>FeatureIDFeatureIDCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|[FeatureID](#featureid)
+
+### <tt>FeatureIDGeometryCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|[Geometry](#geometry)
+
+### <tt>FeatureIDIntCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|`int`
+
+### <tt>FeatureIDPhysicalFeatureCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|`PhysicalFeature`
+
+### <tt>FeatureIDRelationFeatureCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|[RelationFeature](#relationfeature)
+
+### <tt>FeatureIDRouteCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|`Route`
+
+### <tt>FeatureIDStringCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|`string`
+
+### <tt>FeatureIDTagCollection</tt>
+
+|Key|Value|
+|---|-----|
+[FeatureID](#featureid)|[Tag](#tag)
+
+### <tt>IdentifiableStringCollection</tt>
+
+|Key|Value|
+|---|-----|
+[Identifiable](#identifiable)|`string`
+
+### <tt>IntAreaCollection</tt>
+
+|Key|Value|
+|---|-----|
+`int`|[Area](#area)
+
+### <tt>IntGeometryCollection</tt>
+
+|Key|Value|
+|---|-----|
+`int`|[Geometry](#geometry)
+
+### <tt>IntStringCollection</tt>
+
+|Key|Value|
+|---|-----|
+`int`|`string`
+
+### <tt>IntTagCollection</tt>
+
+|Key|Value|
+|---|-----|
+`int`|[Tag](#tag)
+
+### <tt>StringGeometryCollection</tt>
+
+|Key|Value|
+|---|-----|
+`string`|[Geometry](#geometry)
 ## Interfaces
 
-### *Any*
+### <tt>Any</tt>
 
 
-### *Area*
+### <tt>Area</tt>
 
 #### Implements
 - [Geometry](#geometry)
 
-### *AreaFeature*
+### <tt>AreaFeature</tt>
 
 #### Implements
 - [Area](#area)
 - [Feature](#feature)
 
-### *Callable*
+### <tt>Callable</tt>
 
 
-### *Change*
+### <tt>Change</tt>
 
 
-### *CollectionFeature*
+### <tt>CollectionFeature</tt>
 
 #### Implements
-- [Collection[Any,Any]](#collection[any,any])
+- [AnyAnyCollection](#anyanycollection)
 - [Feature](#feature)
 
-### *CollectionID*
+### <tt>CollectionID</tt>
 
 #### Implements
 - [Identifiable](#identifiable)
 
-### *Expression*
+### <tt>Expression</tt>
 
 
-### *Feature*
-
-#### Implements
-- [Identifiable](#identifiable)
-
-### *FeatureID*
+### <tt>Feature</tt>
 
 #### Implements
 - [Identifiable](#identifiable)
 
-### *GeoJSON*
+### <tt>FeatureID</tt>
+
+#### Implements
+- [Identifiable](#identifiable)
+
+### <tt>GeoJSON</tt>
 
 
-### *Geometry*
+### <tt>Geometry</tt>
 
 
-### *Identifiable*
+### <tt>Identifiable</tt>
 
 
-### *Number*
+### <tt>Number</tt>
 
 
-### *Pair*
+### <tt>Pair</tt>
 
 
-### *Query*
+### <tt>Query</tt>
 
 
-### *Query*
+### <tt>Query</tt>
 
 
-### *QueryProto*
+### <tt>QueryProto</tt>
 
 
-### *RelationFeature*
+### <tt>RelationFeature</tt>
 
 #### Implements
 - [Feature](#feature)
 
-### *RelationID*
+### <tt>RelationID</tt>
 
 #### Implements
 - [Identifiable](#identifiable)
 
-### *Tag*
+### <tt>Tag</tt>
 
 
-### *bool*
+### <tt>bool</tt>
 

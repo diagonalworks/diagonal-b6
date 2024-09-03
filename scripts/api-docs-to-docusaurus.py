@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+# TODO:
+#
+#   - [ ] Be a bit more precise about the Python types; for this some
+#   inspection/understanding of "generate_api.py" would be required.
+#
 import sys
 import json
 
@@ -14,21 +19,25 @@ sidebar_position: 1
   print("# b6 API documentation")
 
   all_interfaces = [ i["Name"] for i in docs["Interfaces"] ]
+  all_collections = [ i["Name"] for i in docs["Collections"] ]
 
   def maybe_link (typ):
     if typ in all_interfaces:
-      return f"[`{typ}`](#{typ.lower()})"
+      return f"[{typ}](#{typ.lower()})"
+    if typ in all_collections:
+      return f"[{typ}](#{typ.lower()})"
     return f"`{typ}`"
 
   print("## Functions")
 
   print("""
-  This is documentationed generated from the `b6-api` binary.
+  This is documentation generated from the `b6-api` binary written assuming
+  you are interacting with it via the Python API.
 
   Below are all the functions, with their Python function name, and the
   corresponding argument names and types. Note that the types are the **b6 go**
   type definitions; not the python ones; nevertheless it is indicative of what
-  type to expect to construct on the python side.
+  type to expect to construct on the Python side.
   """)
 
   for function in sorted(docs["Functions"], key=lambda f: f["Name"]):
@@ -39,7 +48,19 @@ sidebar_position: 1
     doc = function["Doc"]
     isVariadic = function["IsVariadic"]
     print("")
-    print(f"### *b6.{name}* <span style={{{{fontSize: 12 +'px', fontWeight: 'normal'}}}}>:: {result}</span>")
+    print(f"### <tt>{name}</tt> ")
+
+    # Only show the arg for now; the type can come at a later point when we
+    # can format it correctly, and, moreover, when we can be more precise
+    # about the Python type.
+    args = ", ".join([ f"{arg}" for (arg, _) in zip(argNames, argTypes) ])
+
+    func_def = f"def {name}({args}) -> {result}"
+
+    print("```python title='Indicative Python type signature'")
+    print(f"{func_def}")
+    print("```")
+
     print("")
     print(doc)
     print("#### Arguments")
@@ -54,7 +75,7 @@ sidebar_position: 1
 
     print("")
     print("#### Returns")
-    print(f"{maybe_link(result)}")
+    print(f"- {maybe_link(result)}")
 
     misc_items = []
 
@@ -66,13 +87,25 @@ sidebar_position: 1
       for i in misc_items:
         print(i)
 
+  print("## Collections")
+  for collection in sorted(docs["Collections"], key=lambda i: i["Name"]):
+    name = collection["Name"]
+    key = collection["Key"]
+    value = collection["Value"]
+    print("")
+    print(f"### <tt>{name}</tt>")
+    print("")
+    print("|Key|Value|")
+    print("|---|-----|")
+    print(f"{maybe_link(key)}|{maybe_link(value)}")
+
 
   print("## Interfaces")
 
   for interface in sorted(docs["Interfaces"], key=lambda i: i["Name"]):
     name = interface["Name"]
     print("")
-    print(f"### *{name}*")
+    print(f"### <tt>{name}</tt>")
     print("")
 
     if interface["Implements"]:
