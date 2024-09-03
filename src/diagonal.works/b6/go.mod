@@ -1,14 +1,16 @@
 module diagonal.works/b6
 
-go 1.21
+go 1.22
+
+toolchain go1.22.0
 
 require (
 	github.com/apache/beam v2.32.0+incompatible
 	github.com/golang/geo v0.0.0-20190916061304-5b978397cfec
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
-	github.com/google/go-cmp v0.5.9
-	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
-	golang.org/x/mod v0.10.0
+	github.com/google/go-cmp v0.6.0
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
+	golang.org/x/mod v0.20.0
 	golang.org/x/sync v0.1.0
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
@@ -32,9 +34,10 @@ require (
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
+	gonum.org/v1/gonum v0.15.1 // indirect
 	google.golang.org/api v0.118.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230403163135-c38d8f061ccd // indirect

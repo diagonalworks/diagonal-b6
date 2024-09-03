@@ -44,6 +44,7 @@ func main() {
 	boundingBoxFlag := flag.String("bounding-box", "", "lat,lng,lat,lng bounding box to crop points outside")
 	joinFlag := flag.String("join", "", "Join tag values from a CSV")
 	keepLargeLoopsFlag := flag.Bool("keep-large-loops", false, "Keep loops that cover more than half of the earth's surface (ie don't invert large loops)")
+	colourAreasFlag := flag.Bool("colour-areas", false, "Add a b6:colour tag to areas, such that adjacent areas don't have the same colour")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	scratch := flag.String("scratch", ".", "Directory for temporary files, for --memory=false or writing to cloud")
 	flag.Parse()
@@ -111,9 +112,9 @@ func main() {
 		}
 	}
 
-	source := make(ingest.MergedFeatureSource, len(inputs))
+	merged := make(ingest.MergedFeatureSource, len(inputs))
 	for i, ii := range inputs {
-		source[i] = &gdal.Source{
+		merged[i] = &gdal.Source{
 			Filename:       ii,
 			Layer:          *layerFlag,
 			Namespace:      b6.Namespace(*namespaceFlag),
@@ -125,6 +126,14 @@ func main() {
 			JoinTags:       joinTags,
 			Bounds:         bounds,
 			KeepLargeLoops: *keepLargeLoopsFlag,
+		}
+	}
+	source := ingest.FeatureSource(merged)
+
+	if *colourAreasFlag {
+		if source, err = ingest.ColourAreas(source, *coresFlag); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
 		}
 	}
 
