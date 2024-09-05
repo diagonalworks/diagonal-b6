@@ -90,7 +90,7 @@
         pname = "b6-js";
         version = "v.0.0.0";
         src = ./src/diagonal.works/b6/cmd/b6/js;
-        npmDepsHash = "sha256-qzMHjOVRINRZzeTdabz2u+75QrhULS1YzvdeDzWNwLs=";
+        npmDepsHash = "sha256-w332KqVpqdZSoNjwRxAaB4PZKaMfnM0MHl3lcpkmmQU=";
 
         buildPhase = ''
           npm run build
