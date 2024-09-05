@@ -748,6 +748,8 @@ const (
 	PointTag      = "point"
 	PathTag       = "path"
 	ExpressionTag = "expression"
+
+	ColourTag = "b6:colour"
 )
 
 func (t *Tags) GeometryType() GeometryType {

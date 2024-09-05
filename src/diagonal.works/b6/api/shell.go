@@ -1011,7 +1011,7 @@ func unparsePipelinedCall(call b6.CallExpression, top bool) (string, bool) {
 }
 
 func unparseCall(call b6.CallExpression, top bool) (string, bool) {
-	if len(call.Args) == 0 {
+	if len(call.Args) == 0 && top {
 		return unparseExpression(call.Function, top)
 	}
 	parts := []string{}

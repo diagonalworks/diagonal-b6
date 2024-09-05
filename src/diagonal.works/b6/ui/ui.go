@@ -197,6 +197,12 @@ func RegisterTiles(root *http.ServeMux, options *Options) {
 		histogram = options.InstrumentHandler(histogram, "tiles_histogram")
 	}
 	root.Handle("/tiles/histogram/", histogram)
+	collection := http.Handler(lockHandler(&renderer.TileHandler{Renderer: renderer.NewCollectionRenderer(rules, options.Worlds)}, options.Lock))
+	if options.InstrumentHandler != nil {
+		histogram = options.InstrumentHandler(histogram, "tiles_collection")
+	}
+	root.Handle("/tiles/collection/", collection)
+
 }
 
 type StartupRequest struct {

@@ -62,6 +62,10 @@ func (t *Tile) RectBound() s2.Rect {
 	return rect.AddPoint(projection.ToLatLng(r2.Point{float64(t.X + 1), float64(t.Y + 1)}))
 }
 
+func (t *Tile) CapBound() s2.Cap {
+	return t.RectBound().CapBound()
+}
+
 // PolygonBound returns an s2.Polygon that marks the boundary of this tile. As
 // tiles operate in lat,lng space, the bounds aren't guaranteed to exactly
 // match the tile, but will be reasonable enough for rendering use cases.

@@ -2001,7 +2001,7 @@ function newOverlayStyle(state, styles) {
     });
 
     return function (feature, resolution) {
-        if (feature.get('layer') == 'query') {
+        if (feature.get('layer') == 'query' || feature.get('layer') == 'collection') {
             const id = idKeyFromFeature(feature);
             const highlighted = state.highlighted[id];
             switch (feature.getGeometry().getType()) {
