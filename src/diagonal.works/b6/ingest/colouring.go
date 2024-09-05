@@ -184,8 +184,6 @@ type AreaColourer struct {
 
 const colouringS2Level = 21 // Roughly 3m sides
 
-const AreaColourTag = "b6:colour"
-
 func ColourAreas(source FeatureSource, cores int) (FeatureSource, error) {
 	var lock sync.Mutex
 	idsByCell := make(map[s2.CellID][]b6.FeatureID)
@@ -253,9 +251,9 @@ func (a *areaColouringSource) Read(options ReadOptions, emit Emit, ctx context.C
 		if f.FeatureID().Type == b6.FeatureTypeArea {
 			if id, ok := a.graph.ID(f.FeatureID()); ok {
 				v := b6.NewStringExpression(strconv.Itoa(a.colours[int64(id)]))
-				f.AddTag(b6.Tag{Key: AreaColourTag, Value: v})
+				f.AddTag(b6.Tag{Key: b6.ColourTag, Value: v})
 			} else {
-				f.AddTag(b6.Tag{Key: AreaColourTag, Value: b6.NewStringExpression("0")})
+				f.AddTag(b6.Tag{Key: b6.ColourTag, Value: b6.NewStringExpression("0")})
 			}
 		}
 		return emit(f, goroutine)

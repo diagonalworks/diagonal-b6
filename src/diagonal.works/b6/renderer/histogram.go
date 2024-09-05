@@ -69,13 +69,7 @@ func (r *HistogramRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error) 
 	for features.Next() {
 		if value, ok := findBucket(features.FeatureID(), values); ok {
 			f := features.Feature()
-			tags = tags[0:0]
-			for _, rule := range r.rules {
-				if t := f.Get(rule.Tag.Key); t.IsValid() && t.Value == rule.Tag.Value {
-					tags = append(tags, b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value})
-					break
-				}
-			}
+			tags = r.rules.AddTags(f, tags[0:0])
 			tags = append(tags, b6.Tag{Key: "bucket", Value: b6.NewStringExpression(strconv.Itoa(value))})
 			rendered = FillFeaturesFromFeature(features.Feature(), tags, rendered, &RenderRule{Label: true}, w)
 		}
