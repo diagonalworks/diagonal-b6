@@ -112,10 +112,6 @@
         pyproject = pkgs.lib.importTOML pyproject-file;
       };
 
-      get-function-docs = pkgs.writeShellScriptBin "get-function-docs" ''
-        ${b6-go}/bin/b6-api --docs --functions | ${pkgs.lib.getExe pkgs.jq} ".Functions[] | select(.Name == \"''$1\")"
-      '';
-
       renderedPyProject = pythonProject.renderers.buildPythonPackage {
         inherit python;
       };
@@ -246,9 +242,6 @@
       # Development shells for hacking/building with the Makefile
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
-          # Misc tools
-          get-function-docs
-
           # Running the Makefile tasks
           ourGdal
           pkg-config
