@@ -155,6 +155,16 @@ func (rs RenderRules) IsRendered(tag b6.Tag) bool {
 	return false
 }
 
+func (rs RenderRules) AddTags(f b6.Feature, tags []b6.Tag) []b6.Tag {
+	for _, rule := range rs {
+		if t := f.Get(rule.Tag.Key); t.IsValid() && t.Value == rule.Tag.Value {
+			tags = append(tags, b6.Tag{Key: rule.Tag.Key[1:], Value: t.Value})
+			break
+		}
+	}
+	return tags
+}
+
 var BasemapRenderRules = RenderRules{
 	{Tag: b6.Tag{Key: "#building", Value: b6.NewStringExpression("train_station")}, MinZoom: 12, Layer: BasemapLayerBuilding},
 	{Tag: b6.Tag{Key: "#building"}, MinZoom: 14, Layer: BasemapLayerBuilding},
@@ -365,22 +375,23 @@ var gradient = Gradient{
 	{Value: 1.00, Colour: ColourFromHexString("#f96c53")},
 }
 
-// DiagonalColour is the tag key used to explicitly set the colour of features
-const DiagonalColour = "diagonal:colour"
-
 func colourFromTagValue(v string) string {
 	if len(v) == 7 && v[0] == '#' {
 		return ColourFromHexString(v).ToHexString() // Roundtrip to sanitise
+	} else if _, err := strconv.Atoi(v); err == nil {
+		// An integer index into a colour palette
+		return v
 	} else if point, err := strconv.ParseFloat(v, 64); err == nil {
+		// A floating point point along a predefined gradient
 		return gradient.Interpolate(point).ToHexString()
 	}
 	return ""
 }
 
 func fillColourFromFeature(tf *Feature, f b6.Taggable) {
-	if colour := f.Get(DiagonalColour); colour.IsValid() {
+	if colour := f.Get(b6.ColourTag); colour.IsValid() {
 		if converted := colourFromTagValue(colour.Value.String()); converted != "" {
-			tf.Tags["colour"] = converted
+			tf.Tags[b6.ColourTag] = converted
 		}
 	}
 }

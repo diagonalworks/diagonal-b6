@@ -18,19 +18,20 @@ func TestFillColourFromFeature(t *testing.T) {
 		ok            bool
 		tileColour    string
 	}{
-		{"#ff0000", true, "#ff0000"},
+		{"#ff0000", true, "#ff0000"}, // RGB literal
 		{"#ff000011", false, ""},
 		{"#gg000011", false, ""},
-		{"0.75", true, "#f87f51"},
-		{"red", false, ""},
+		{"0.75", true, "#f87f51"}, // Gradient point
+		{"4", true, "4"},          // Colour palette index
+		{"red", false, ""},        // Invalid
 	}
 	for _, test := range tests {
-		tags := b6.Tags{{Key: "diagonal:colour", Value: b6.NewStringExpression(test.featureColour)}}
+		tags := b6.Tags{{Key: "b6:colour", Value: b6.NewStringExpression(test.featureColour)}}
 		feature := NewFeature(&Point{})
 		fillColourFromFeature(feature, tags)
-		tileColour, ok := feature.Tags["colour"]
+		tileColour, ok := feature.Tags["b6:colour"]
 		if ok != test.ok {
-			t.Errorf("Expected ok %v, found %v", test.ok, ok)
+			t.Errorf("Expected ok %v, found %v for feature colour %q", test.ok, ok, test.featureColour)
 		} else if ok && tileColour != test.tileColour {
 			t.Errorf("Expected tile colour %q, found %q", test.tileColour, tileColour)
 		}

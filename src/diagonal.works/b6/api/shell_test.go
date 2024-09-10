@@ -1555,6 +1555,7 @@ func TestUnparseExpression(t *testing.T) {
 		"area (find-feature /a/427900370)",
 		"find-feature /a/427900370 | area",
 		"find [#place=uprn] | filter {u -> gt (all-tags u | count) 1}",
+		"add-collection /collection/test/0 (collection) (find [#boundary=ward])",
 	}
 	for _, test := range tests {
 		if e, err := ParseExpression(test); err == nil {

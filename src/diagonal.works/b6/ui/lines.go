@@ -168,13 +168,13 @@ func fillSubstackFromExpression(lines *pb.SubstackProto, expression b6.Expressio
 func fillSubstackFromCollection(substack *pb.SubstackProto, c b6.UntypedCollection, response *pb.UIResponseProto, w b6.World) error {
 	// TODO: Set collection title based on collection contents
 	if count, ok := c.Count(); ok {
-		line := leftRightValueLineFromValues("Collection", count, w)
+		line := leftRightValueLineFromValues("Members", count, w)
 		substack.Lines = append(substack.Lines, line)
 	} else {
 		substack.Lines = append(substack.Lines, &pb.LineProto{
 			Line: &pb.LineProto_Value{
 				Value: &pb.ValueLineProto{
-					Atom: AtomFromString("Collection"),
+					Atom: AtomFromString("Members"),
 				},
 			},
 		})
@@ -453,6 +453,21 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 			substack.Lines = append(substack.Lines, ValueLineFromValue(fmt.Sprintf("%d more", n), w))
 		}
 		substacks = append(substacks, substack)
+	}
+
+	if collection, ok := f.(b6.CollectionFeature); ok {
+		p := (*pb.UIResponseProto)(response.Proto)
+		substack := &pb.SubstackProto{}
+		if err := fillSubstackFromCollection(substack, collection, p, w); err == nil {
+			substacks = append(substacks, substack)
+		}
+		if b6.CanAdaptCollection[any, b6.Identifiable](collection) {
+			p.Layers = append(p.Layers, &pb.MapLayerProto{
+				Path:   "collection",
+				Q:      f.FeatureID().String(),
+				Before: pb.MapLayerPosition_MapLayerPositionEnd,
+			})
+		}
 	}
 
 	relations := b6.AllRelations(w.FindRelationsByFeature(f.FeatureID()))
