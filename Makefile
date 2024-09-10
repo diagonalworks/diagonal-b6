@@ -5,7 +5,7 @@ TARGETOS ?= $(shell uname -s | tr A-Z a-z)
 # Sets TARGETPLATFORM to something like linux/x86_64 or darwin/arm64
 export TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
 
-all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-ingest-gb-uprn b6-ingest-gb-codepoint b6-connect b6-api python
+all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-ingest-gb-uprn b6-ingest-gb-codepoint b6-connect b6-api python docs
 
 .git/hooks/pre-commit: etc/pre-commit
 	cp $< $@
@@ -119,6 +119,14 @@ docker-b6-ci: docker/Dockerfile.b6-ci
 	docker build -t europe-docker.pkg.dev/diagonal-public/b6/b6-ci -f docker/Dockerfile.b6-ci .
 	docker push europe-docker.pkg.dev/diagonal-public/b6/b6-ci
 
+clean-api-docs:
+	rm docs/docs/b6-api-documentation.md
+
+docs: docs/docs/b6-api-documentation.md
+
+docs/docs/b6-api-documentation.md: clean-api-docs
+	bin/${TARGETPLATFORM}/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py >docs/docs/b6-api-documentation.md
+
 clean:
 	cd src/diagonal.works/b6; go clean
 	rm -f src/diagonal.works/b6/proto/*.pb.go
@@ -126,4 +134,4 @@ clean:
 	rm -f python/diagonal_b6/*_pb2.py
 	rm -f python/diagonal_b6/*_pb2_grpc.py
 
-.PHONY: python proto proto-go proto-python docker b6-frontend
+.PHONY: python proto proto-go proto-python docker b6-frontend clean-api-docs docs
