@@ -323,7 +323,7 @@
           });
         in
         fmt.config.build.wrapper;
-      });
+    });
 
   nixConfig = {
     extra-substituters = [
