@@ -108,12 +108,9 @@ directory:
 docker run -v /path/with/data:/world -p 8001:8001 -p 8002:8002 europe-docker.pkg.dev/diagonal-public/b6/b6
 ```
 
-For larger datasets, or datasets in formats other than OSM PBF, you'll need to
-use one of the [ingestion tools](src/diagonal.works/b6/cmd) from either the
-docker image. These tools convert source data into a compact representation for
-efficient reading by the backend, that we call an index. `b6-ingest-osm`
-produces an index for OpenStreetMap data in PBF format, while `b6-ingest-gdal`
-will produce an index for anything the GDAL library can read. We typically use the `.index` extension for ingested data.
+![The Ingest Pipeline](python/docs/b6-ingest.png)
+
+ For larger datasets, or datasets in formats other than OSM PBF, you'll need to use one of the [ingestion tools](src/diagonal.works/b6/cmd) from the docker image. These tools convert source data into a compact world representation for efficient reading by the backend, that we call an index. `b6-ingest-osm` produces an index for OpenStreetMap data in PBF format, while `b6-ingest-gdal` will produce an index for anything the GDAL library can read. As part of this conversion process, we often require some intermediary format that allows us to easily map necessary source data information to our world features, like e.g. extracting relational information for osm cycle paths.
 
 To ingest an OSM PBF file `granary-square.osm.pbf`, use:
 
@@ -197,5 +194,14 @@ make docker/Dockerfile.b6
 docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile.b6 .
 ```
 
+## World Structure
 
 
+![The World Structure](python/docs/b6-world.png)
+
+Data in the world is organised in identifiable features, which can represent anything from a point to an analysis result, with information encoded via tag key/values pairs - e.g. a path mapping to a list of lat/lngs representing the points that belong to it. The initial loaded world is in a compact format encoding, to enable fast search, but, any change done to the world, be it adding a new feature, or editting an existing one, by e.g. adding a tag to it, or changing its ID, is applied in an overlay layer, that is not compact. 
+
+
+![The Compact World](python/docs/b6-compact-world.png)
+
+ The compact form of the world enables fast search by minimising memory consumption of data that needs to be available for fetching results. This is done via custom binary encodings, that account for underlying data types. In addition to the feature lookup table, there are mapping tables that optimise general search - one handling string encodings (e.g. "highway"), and one optimising token (e.g. "highway=primary") lookup.
