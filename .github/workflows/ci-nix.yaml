@@ -18,7 +18,7 @@ jobs:
     - name: "Checkout repository"
       uses: actions/checkout@v4
 
-    - name: "❄ Prepare nix"
+    - name: "Prepare nix"
       uses: cachix/install-nix-action@V27
       with:
         extra_nix_config: |
@@ -29,7 +29,12 @@ jobs:
       run:
         git fetch --tags --force
 
-    - name: "Test"
-      run:
-        nix develop --command make all-tests
+    - name: "Build the Nix packages"
+      run: |
+        nix build .
+        nix build .#python
+        nix build .#b6-image
 
+    - name: "Test the Makefile inside the combined devShell"
+      run: |
+        nix develop .#combined --command make all-tests

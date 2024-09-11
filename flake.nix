@@ -238,7 +238,7 @@
       pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
       unstablePkgs = import unstable { inherit system; };
     in
-    {
+    rec {
       # Development shells for hacking/building with the Makefile
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
@@ -278,6 +278,25 @@
         ];
       };
 
+      # Finally, we have a combined devShell for building everything at once
+      # (i.e. if you want to run `make all-tests`).
+      devShells.combined = pkgs.mkShell {
+        inputsFrom = with devShells; [
+          default
+        ];
+
+        packages = [
+          pythonEnv
+        ];
+
+        shellHook = ''
+          export PYTHONPATH=''$(pwd)/python
+          echo "Welcome to the combined shell :)"
+          echo "  python=''$(which python)"
+          echo "  python3=''$(which python3)"
+        '';
+      };
+
       packages = {
         # Run like `nix run . -- --help` or access all the binaries with
         # `nix build` and look in `./result/bin`.
@@ -295,7 +314,6 @@
         b6-js = b6-js;
       };
 
-
       # Run via `nix fmt`
       formatter =
         let
@@ -305,5 +323,14 @@
           });
         in
         fmt.config.build.wrapper;
-    });
+      });
+
+  nixConfig = {
+    extra-substituters = [
+      "https://diagonalworks.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "diagonalworks.cachix.org-1:7U834B3foDCfa1EeV6xpyOz9JhdfUXj2yxRv0rAdYMk="
+    ];
+  };
 }
