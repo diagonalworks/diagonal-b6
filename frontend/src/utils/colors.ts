@@ -32,3 +32,15 @@ export const colorToRgbArray = (c: string, alpha: number = 255) => {
     if (!rgbColor) return [0, 0, 0, 0] as Color;
     return [rgbColor.r, rgbColor.g, rgbColor.b, alpha] as Color;
 };
+
+/**
+ * Check if a string is a hex color string.
+ * @param color The color string.
+ * @returns Whether the string is a hex color string.
+ * @example
+ * isColorHex('#646ac3') = true
+ * isColorHex('646ac3') = false
+ */
+export const isColorHex = (color: string) => {
+    return /^#[0-9A-F]{6}$/i.test(color);
+};

@@ -18,12 +18,12 @@ import { useMapStore } from '@/stores/map';
 import { useViewStore } from '@/stores/view';
 import { World } from '@/stores/worlds';
 import colors from '@/tokens/colors.json';
-import { colorToRgbArray } from '@/utils/colors';
+import { colorToRgbArray, isColorHex } from '@/utils/colors';
 import { changeMapStyleSource, getTileSource } from '@/utils/map';
 
 const INITIAL_CENTER = { lat: 515361156 / 1e7, lng: -1255161 / 1e7 };
 
-const areasColorScale = scaleOrdinal<string, string>({
+const COLLECTION_COLOR_SCALE = scaleOrdinal<string, string>({
     domain: Array.from({ length: 4 }, (_, i) => i.toString()),
     range: [
         colors.ice[30],
@@ -32,10 +32,6 @@ const areasColorScale = scaleOrdinal<string, string>({
         colors.green[10],
     ],
 });
-
-const isColorHex = (color: string) => {
-    return /^#[0-9A-F]{6}$/i.test(color);
-};
 
 export const Map = ({
     children,
@@ -120,7 +116,9 @@ export const Map = ({
                                 );
                             }
                             return colorToRgbArray(
-                                areasColorScale(f.properties['b6:colour'])
+                                COLLECTION_COLOR_SCALE(
+                                    f.properties['b6:colour']
+                                )
                             );
                         }
                         return [0, 0, 0, 0];
