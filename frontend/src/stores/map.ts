@@ -1,6 +1,7 @@
 import { ScaleOrdinal } from 'd3-scale';
 import { GeoJsonObject } from 'geojson';
 import { MapGeoJSONFeature } from 'maplibre-gl';
+import { match } from 'ts-pattern';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
@@ -155,9 +156,7 @@ export interface MapStore {
 export const createMapStore: ImmerStateCreator<MapStore, MapStore> = (set) => ({
     layers: {
         geojson: {},
-        histogram: {},
         highlight: {},
-        collection: {},
         tiles: {},
     },
     actions: {
@@ -168,22 +167,20 @@ export const createMapStore: ImmerStateCreator<MapStore, MapStore> = (set) => ({
         },
         setHistogramBucket: (id, bucket) => {
             set((state) => {
-                if (
-                    state.layers.tiles[id] &&
-                    state.layers.tiles[id].type === 'histogram'
-                ) {
-                    state.layers.tiles[id].spec.selected = bucket;
-                }
+                match(state.layers.tiles[id])
+                    .with({ type: 'histogram' }, (l) => {
+                        l.spec.selected = bucket;
+                    })
+                    .otherwise(() => {});
             });
         },
         setHistogramScale: (id, scale) => {
             set((state) => {
-                if (
-                    state.layers.tiles[id] &&
-                    state.layers.tiles[id].type === 'histogram'
-                ) {
-                    state.layers.tiles[id].spec.colorScale = scale;
-                }
+                match(state.layers.tiles[id])
+                    .with({ type: 'histogram' }, (l) => {
+                        l.spec.colorScale = scale;
+                    })
+                    .otherwise(() => {});
             });
         },
         removeGeoJsonLayer: (id) => {
