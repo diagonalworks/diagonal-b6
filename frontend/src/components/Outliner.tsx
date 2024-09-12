@@ -99,6 +99,7 @@ function Outliner({
             mapActions.showOutlinerLayers(outliner.id);
         } else {
             mapActions.hideOutlinerLayers(outliner.id);
+            mapActions.removeGeoJsonLayer(outliner.id);
         }
     }, [outliner.properties.show, mapActions, outliner.id]);
 
