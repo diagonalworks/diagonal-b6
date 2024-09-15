@@ -30,9 +30,9 @@ func (r *CollectionRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error)
 	rendered := make([]*Feature, 0, 4)
 	if collection != nil {
 		bounds := b6.NewIntersectsCap(tile.CapBound())
-		features := b6.AdaptCollection[any, b6.Identifiable](collection)
 		tags := make([]b6.Tag, 0, 4)
-		i := features.Begin()
+		features := make(map[b6.FeatureID]struct{})
+		i := collection.BeginUntyped()
 		for {
 			ok, err := i.Next()
 			if err != nil {
@@ -40,7 +40,16 @@ func (r *CollectionRenderer) Render(tile b6.Tile, args *TileArgs) (*Tile, error)
 			} else if !ok {
 				break
 			}
-			if f := w.FindFeatureByID(i.Value().FeatureID()); f != nil {
+			if key, ok := i.Key().(b6.Identifiable); ok {
+				features[key.FeatureID()] = struct{}{}
+			}
+			if value, ok := i.Value().(b6.Identifiable); ok {
+				features[value.FeatureID()] = struct{}{}
+			}
+		}
+
+		for id := range features {
+			if f := w.FindFeatureByID(id); f != nil {
 				if bounds.Matches(f, w) {
 					tags = r.rules.AddTags(f, tags[0:0])
 					rendered = FillFeaturesFromFeature(f, tags, rendered, &RenderRule{Label: true}, w)
