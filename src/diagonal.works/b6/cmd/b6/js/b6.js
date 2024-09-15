@@ -871,30 +871,30 @@ class LeftRightValueLineRenderer {
         }
         values.push(line.datum().leftRightValue.right);
 
-        let atoms = line
-            .selectAll('.line-leftrightvalue-atom')
+        console.log("left right");
+        console.log(values);
+        let containers = line
+            .selectAll('.line-left-right-value-container')
             .data(values)
             .join('span')
-            .attr('class', 'line-leftrightvalue-atom');
-        renderFromProto(
-            atoms.datum((d) => d.atom),
-            'atom',
-            stack,
-        );
+            .attr('class', 'line-left-right-value-container');
+        let atoms = containers
+            .selectAll('.line-left-right-value-container-atom')
+            .data((d) => [d.atom])
+            .join('span')
+            .attr('class', 'line-left-right-value-container-atom');
+        renderFromProto(atoms, 'atom', 'stack');
 
-        const clickables = atoms
-            .datum((d) => d.clickExpression)
-            .filter((d) => d);
-        clickables.classed('clickable', true);
-        clickables.on('mousedown', (e, d) => {
+        containers.on('mousedown', (e, d) => {
+            console.log("click");
             e.stopPropagation();
-            if (d) {
+            if (d.clickExpression) {
                 const clickHandler = () => {
-                    stack.evaluateExpressionProto(d, EventTypeOutlinerClick);
+                    stack.evaluateExpressionProto(d.clickExpression, EventTypeOutlinerClick);
                 };
                 stack.handleDragStart(e, clickHandler);
             }
-        });
+        })
     }
 }
 
