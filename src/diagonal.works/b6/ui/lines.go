@@ -461,7 +461,7 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 		if err := fillSubstackFromCollection(substack, collection, p, w); err == nil {
 			substacks = append(substacks, substack)
 		}
-		if b6.CanAdaptCollection[any, b6.Identifiable](collection) {
+		if b6.CanAdaptCollection[any, b6.Identifiable](collection) || b6.CanAdaptCollection[b6.Identifiable, any](collection) {
 			p.Layers = append(p.Layers, &pb.MapLayerProto{
 				Path:   "collection",
 				Q:      f.FeatureID().String(),
