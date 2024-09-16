@@ -1,17 +1,41 @@
 import { ScaleOrdinal } from 'd3-scale';
 import { GeoJsonObject } from 'geojson';
 import { MapGeoJSONFeature } from 'maplibre-gl';
+import { match } from 'ts-pattern';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 import { ImmerStateCreator } from '@/lib/zustand';
 import { World } from '@/stores/worlds';
 
-type HistogramLayerSpec = {
+import { OutlinerSpec } from './outliners';
+
+export type HistogramLayerSpec = {
     tiles: string;
     selected: string | undefined;
     colorScale?: ScaleOrdinal<string, string, never>;
     showOnMap?: boolean;
+};
+
+export type Layer = {
+    world: World['id'];
+    outliner: OutlinerSpec['id'];
+    type: 'histogram' | 'collection';
+};
+
+export type HistogramLayer = Layer & {
+    spec: HistogramLayerSpec;
+    type: 'histogram';
+};
+
+export type CollectionLayerSpec = {
+    tiles: string;
+    showOnMap?: boolean;
+};
+
+export type CollectionLayer = Layer & {
+    spec: CollectionLayerSpec;
+    type: 'collection';
 };
 
 export type FeatureHighlight = {
@@ -28,13 +52,7 @@ export interface MapStore {
                 world: World['id'];
             }
         >;
-        histogram: Record<
-            string,
-            {
-                spec: HistogramLayerSpec;
-                world: World['id'];
-            }
-        >;
+        tiles: Record<string, CollectionLayer | HistogramLayer>;
         highlight: Record<
             string,
             {
@@ -64,19 +82,6 @@ export interface MapStore {
          */
         removeGeoJsonLayer: (id: string) => void;
         /**
-         * Set a histogram layer on the map
-         * @param id - The unique identifier for the layer
-         * @param histogram - An object containing the histogram spec and the world the layer is in
-         * @returns void
-         */
-        setHistogramLayer: (
-            id: string,
-            histogram: {
-                spec: HistogramLayerSpec;
-                world: World['id'];
-            }
-        ) => void;
-        /**
          * Set the selected bucket for a histogram layer
          * @param id - The unique identifier for the layer
          * @param bucket - The selected bucket
@@ -92,12 +97,6 @@ export interface MapStore {
             id: string,
             scale: ScaleOrdinal<string, string, never>
         ) => void;
-        /**
-         * Remove a histogram layer from the map
-         * @param id - The unique identifier for the layer
-         * @returns void
-         */
-        removeHistogramLayer: (id: string) => void;
         /**
          * Set a highlight layer on the map
          * @param id - The unique identifier for the layer
@@ -117,14 +116,48 @@ export interface MapStore {
          * @returns void
          */
         removeHighlightLayer: (id: string) => void;
+        /**
+         * Set a tile layer on the map
+         * @param id - The unique identifier for the layer
+         * @param layer - An object containing the tile layer spec and the world the layer is in
+         * @returns void
+         */
+        setTileLayer: (
+            id: string,
+            layer: CollectionLayer | HistogramLayer
+        ) => void;
+        /**
+         * Remove a tile layer from the map
+         * @param id - The unique identifier for the layer
+         * @returns void
+         */
+        removeTileLayer: (id: string) => void;
+        /**
+         * Remove all tile layers of a specific outliner
+         * @param outliner - The outliner ID
+         * @returns void
+         */
+        removeOutlinerLayers: (outliner: string) => void;
+        /**
+         * Hide all tile layers of a specific outliner
+         * @param outliner - The outliner ID
+         * @returns void
+         */
+        hideOutlinerLayers: (outliner: string) => void;
+        /**
+         * Show all tile layers of a specific outliner
+         * @param outliner - The outliner ID
+         * @returns void
+         */
+        showOutlinerLayers: (outliner: string) => void;
     };
 }
 
 export const createMapStore: ImmerStateCreator<MapStore, MapStore> = (set) => ({
     layers: {
         geojson: {},
-        histogram: {},
         highlight: {},
+        tiles: {},
     },
     actions: {
         setGeoJsonLayer: (id, geojson) => {
@@ -132,33 +165,27 @@ export const createMapStore: ImmerStateCreator<MapStore, MapStore> = (set) => ({
                 state.layers.geojson[id] = geojson;
             });
         },
-        setHistogramLayer: (id, spec) => {
-            set((state) => {
-                state.layers.histogram[id] = spec;
-            });
-        },
         setHistogramBucket: (id, bucket) => {
             set((state) => {
-                if (state.layers.histogram[id]) {
-                    state.layers.histogram[id].spec.selected = bucket;
-                }
+                match(state.layers.tiles[id])
+                    .with({ type: 'histogram' }, (l) => {
+                        l.spec.selected = bucket;
+                    })
+                    .otherwise(() => {});
             });
         },
         setHistogramScale: (id, scale) => {
             set((state) => {
-                if (state.layers.histogram[id]) {
-                    state.layers.histogram[id].spec.colorScale = scale;
-                }
+                match(state.layers.tiles[id])
+                    .with({ type: 'histogram' }, (l) => {
+                        l.spec.colorScale = scale;
+                    })
+                    .otherwise(() => {});
             });
         },
         removeGeoJsonLayer: (id) => {
             set((state) => {
                 delete state.layers.geojson[id];
-            });
-        },
-        removeHistogramLayer: (id) => {
-            set((state) => {
-                delete state.layers.histogram[id];
             });
         },
         setHighlightLayer: (id, highlight) => {
@@ -169,6 +196,43 @@ export const createMapStore: ImmerStateCreator<MapStore, MapStore> = (set) => ({
         removeHighlightLayer: (id) => {
             set((state) => {
                 delete state.layers.highlight[id];
+            });
+        },
+        setTileLayer: (id, layer) => {
+            set((state) => {
+                state.layers.tiles[id] = layer;
+            });
+        },
+        removeTileLayer: (id) => {
+            set((state) => {
+                delete state.layers.tiles[id];
+            });
+        },
+        removeOutlinerLayers: (outliner) => {
+            set((state) => {
+                for (const [key, value] of Object.entries(state.layers.tiles)) {
+                    if (value.outliner === outliner) {
+                        delete state.layers.tiles[key];
+                    }
+                }
+            });
+        },
+        hideOutlinerLayers: (outliner) => {
+            set((state) => {
+                for (const [key, value] of Object.entries(state.layers.tiles)) {
+                    if (value.outliner === outliner) {
+                        state.layers.tiles[key].spec.showOnMap = false;
+                    }
+                }
+            });
+        },
+        showOutlinerLayers: (outliner) => {
+            set((state) => {
+                for (const [key, value] of Object.entries(state.layers.tiles)) {
+                    if (value.outliner === outliner) {
+                        state.layers.tiles[key].spec.showOnMap = true;
+                    }
+                }
             });
         },
     },

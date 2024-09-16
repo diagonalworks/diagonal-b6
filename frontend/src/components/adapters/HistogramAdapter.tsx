@@ -6,7 +6,6 @@ import { match } from 'ts-pattern';
 import { Histogram } from '@/components/system/Histogram';
 import { useStackContext } from '@/lib/context/stack';
 import { useMapStore } from '@/stores/map';
-import { useWorldStore } from '@/stores/worlds';
 import colors from '@/tokens/colors.json';
 import { HistogramBarLineProto, SwatchLineProto } from '@/types/generated/ui';
 
@@ -47,40 +46,17 @@ export const HistogramAdaptor = ({
     };
     chartLabel?: string;
 }) => {
-    const { outliner, data: outlinerData } = useStackContext();
-    const world = useWorldStore((state) =>
-        outliner ? state.worlds[outliner.world] : state.worlds.baseline
-    );
+    const { outliner } = useStackContext();
     const mapActions = useMapStore((state) => state.actions);
-    const histogram = useMapStore((state) =>
-        outliner ? state.layers.histogram[outliner.id] : null
-    );
+    const histogram = useMapStore((state) => {
+        if (!outliner) return;
+        const layer = state.layers.tiles[`${outliner.id}-histogram`];
+        if (!layer) return;
+        return match(layer)
+            .with({ type: 'histogram' }, (l) => l)
+            .otherwise(() => undefined);
+    });
     const scale = histogram?.spec.colorScale;
-
-    useEffect(() => {
-        const histogramLayer = outlinerData?.proto.layers?.find(
-            (l) => l.path === 'histogram'
-        );
-
-        if (histogramLayer && outliner) {
-            mapActions.setHistogramLayer(outliner.id, {
-                world: outliner.world,
-                spec: {
-                    tiles: `/tiles/${histogramLayer.path}/{z}/{x}/{y}.mvt?q=${histogramLayer.q}&r=collection/${world.featureId.namespace}/${world.featureId.value}`,
-                    selected: undefined,
-                    showOnMap: outliner.properties.show,
-                },
-            });
-        }
-    }, [outlinerData, outliner, mapActions]);
-
-    useEffect(() => {
-        return () => {
-            if (outliner) {
-                mapActions.removeHistogramLayer(outliner.id);
-            }
-        };
-    }, []);
 
     const data = useMemo(() => {
         return match(type)
@@ -131,13 +107,16 @@ export const HistogramAdaptor = ({
                           ),
                       ],
         });
-        mapActions.setHistogramScale(outliner.id, scale);
-    }, [data, outliner, mapActions]);
+        mapActions.setHistogramScale(`${outliner.id}-histogram`, scale);
+    }, [data, outliner, mapActions, outliner?.properties.show]);
 
     const handleSelect = useCallback(
         (d: HistogramData | null) => {
             if (!outliner) return;
-            mapActions.setHistogramBucket(outliner.id, d?.index.toString());
+            mapActions.setHistogramBucket(
+                `${outliner.id}-histogram`,
+                d?.index.toString()
+            );
         },
         [mapActions, outliner]
     );

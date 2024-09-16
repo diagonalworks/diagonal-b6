@@ -1,4 +1,5 @@
 import { MinusIcon, PlusIcon } from '@radix-ui/react-icons';
+import { scaleOrdinal } from '@visx/scale';
 import { color } from 'd3-color';
 import { GeoJsonLayer, MVTLayer } from 'deck.gl/typed';
 import { Feature, MapLayerMouseEvent, StyleSpecification } from 'maplibre-gl';
@@ -6,6 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { PropsWithChildren, useCallback, useMemo, useState } from 'react';
 import { Map as MapLibre, useMap as useMapLibre } from 'react-map-gl/maplibre';
 import { twMerge } from 'tailwind-merge';
+import { P, match } from 'ts-pattern';
 
 import basemapStyleRose from '@/assets/map/diagonal-map-style-rose.json';
 import basemapStyle from '@/assets/map/diagonal-map-style.json';
@@ -15,10 +17,21 @@ import { useMap } from '@/hooks/useMap';
 import { useMapStore } from '@/stores/map';
 import { useViewStore } from '@/stores/view';
 import { World } from '@/stores/worlds';
-import { colorToRgbArray } from '@/utils/colors';
+import colors from '@/tokens/colors.json';
+import { colorToRgbArray, isColorHex } from '@/utils/colors';
 import { changeMapStyleSource, getTileSource } from '@/utils/map';
 
 const INITIAL_CENTER = { lat: 515361156 / 1e7, lng: -1255161 / 1e7 };
+
+const COLLECTION_COLOR_SCALE = scaleOrdinal<string, string>({
+    domain: Array.from({ length: 4 }, (_, i) => i.toString()),
+    range: [
+        colors.ice[30],
+        colors.teal[20],
+        colors.emerald[20],
+        colors.green[10],
+    ],
+});
 
 export const Map = ({
     children,
@@ -35,9 +48,7 @@ export const Map = ({
     const [cursor, setCursor] = useState<'grab' | 'pointer'>('grab');
     const { [world]: maplibre } = useMapLibre();
     const [actions] = useMap({ id: world });
-    const { geojson, histogram, highlight } = useMapStore(
-        (state) => state.layers
-    );
+    const { geojson, highlight, tiles } = useMapStore((state) => state.layers);
 
     const mapStyle = useMemo(() => {
         const tileSource = getTileSource(root);
@@ -83,11 +94,70 @@ export const Map = ({
         });
     }, [geojson, side, world]);
 
+    const collectionData = useMemo(() => {
+        return Object.values(tiles)
+            .filter((c) => c.world === world && c.type == 'collection')
+            .map((c) => c.spec);
+    }, [tiles, world]);
+
+    const collectionGL = useMemo(() => {
+        return collectionData.flatMap((collection) => {
+            if (!collection.showOnMap) return [];
+            return [
+                new MVTLayer({
+                    data: [collection.tiles],
+                    beforeId: 'contour',
+                    id: `${world}-${collection.tiles}-bg`,
+                    getFillColor: (f: Feature) => {
+                        if (f.properties['b6:colour']) {
+                            if (isColorHex(f.properties['b6:colour'])) {
+                                return colorToRgbArray(
+                                    f.properties['b6:colour']
+                                );
+                            }
+                            return colorToRgbArray(
+                                COLLECTION_COLOR_SCALE(
+                                    f.properties['b6:colour']
+                                )
+                            );
+                        }
+                        return [0, 0, 0, 0];
+                    },
+                    getLineColor: [0, 0, 0, 0],
+                    updateTriggers: {
+                        getFillColor: [collection.tiles],
+                    },
+                }),
+                new MVTLayer({
+                    data: [collection.tiles],
+                    beforeId: 'road-label',
+                    id: `${world}-${collection.tiles}-stroke`,
+                    getFillColor: [0, 0, 0, 0],
+                    getLineWidth: 4,
+                    getLineColor: (f: Feature) => {
+                        if (f.properties['b6:colour']) {
+                            return colorToRgbArray(colors.graphite[70]);
+                        }
+                        return [0, 0, 0, 0];
+                    },
+                    updateTriggers: {
+                        getLineColor: [collection.tiles],
+                    },
+                }),
+            ];
+        });
+    }, [collectionData, world]);
+
     const histogramData = useMemo(() => {
-        return Object.values(histogram)
-            .filter((h) => h.world === world)
-            .map((h) => h.spec);
-    }, [histogram, world]);
+        const histogramLayers = Object.values(tiles).filter(
+            (h) => h.world === world && h.type == 'histogram'
+        );
+        return match(histogramLayers)
+            .with(P.array({ type: 'histogram' as const }), (hl) =>
+                hl.map((h) => h.spec)
+            )
+            .otherwise(() => []);
+    }, [tiles, world]);
 
     const histogramGL = useMemo(() => {
         const highlighted = Object.values(highlight)
@@ -216,7 +286,10 @@ export const Map = ({
             boxZoom={false}
             style={{ width: '100%', height: '100%' }}
         >
-            <DeckGLOverlay layers={[geojsonGL, histogramGL]} interleaved />
+            <DeckGLOverlay
+                layers={[geojsonGL, histogramGL, collectionGL]}
+                interleaved
+            />
 
             <MapControls
                 className={twMerge(side === 'right' && 'right-0 left-auto')}
