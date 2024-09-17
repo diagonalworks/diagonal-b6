@@ -2134,6 +2134,218 @@ Deprecated. Use intersecting-cap.
 
 #### Returns
 - [Query](#query)
+
+## Functions by Return Type
+### <tt>Any</tt>
+ - <tt>[call](#call)</tt>
+ - <tt>[evaluate_feature](#evaluate_feature)</tt>
+ - <tt>[first](#first)</tt>
+ - <tt>[second](#second)</tt>
+ - <tt>[with_change](#with_change)</tt>
+
+### <tt>AnyAnyCollection</tt>
+ - <tt>[collection](#collection)</tt>
+ - <tt>[filter](#filter)</tt>
+ - <tt>[flatten](#flatten)</tt>
+ - <tt>[join_missing](#join_missing)</tt>
+ - <tt>[list_feature](#list_feature)</tt>
+ - <tt>[map](#map)</tt>
+ - <tt>[map_items](#map_items)</tt>
+ - <tt>[map_parallel](#map_parallel)</tt>
+ - <tt>[take](#take)</tt>
+ - <tt>[top](#top)</tt>
+
+### <tt>AnyFloat64Collection</tt>
+ - <tt>[percentiles](#percentiles)</tt>
+
+### <tt>AnyIntCollection</tt>
+ - <tt>[count_keys](#count_keys)</tt>
+ - <tt>[count_tag_value](#count_tag_value)</tt>
+ - <tt>[count_valid_keys](#count_valid_keys)</tt>
+ - <tt>[count_values](#count_values)</tt>
+ - <tt>[sum_by_key](#sum_by_key)</tt>
+
+### <tt>Area</tt>
+ - <tt>[cap_polygon](#cap_polygon)</tt>
+ - <tt>[collect_areas](#collect_areas)</tt>
+ - <tt>[convex_hull](#convex_hull)</tt>
+ - <tt>[rectangle_polygon](#rectangle_polygon)</tt>
+ - <tt>[s2_polygon](#s2_polygon)</tt>
+ - <tt>[sightline](#sightline)</tt>
+ - <tt>[snap_area_edges](#snap_area_edges)</tt>
+
+### <tt>AreaFeature</tt>
+ - <tt>[find_area](#find_area)</tt>
+
+### <tt>Callable</tt>
+ - <tt>[apply_to_area](#apply_to_area)</tt>
+ - <tt>[apply_to_path](#apply_to_path)</tt>
+ - <tt>[apply_to_point](#apply_to_point)</tt>
+
+### <tt>Change</tt>
+ - <tt>[add_collection](#add_collection)</tt>
+ - <tt>[add_expression](#add_expression)</tt>
+ - <tt>[add_point](#add_point)</tt>
+ - <tt>[add_relation](#add_relation)</tt>
+ - <tt>[add_tag](#add_tag)</tt>
+ - <tt>[add_tags](#add_tags)</tt>
+ - <tt>[changes_from_file](#changes_from_file)</tt>
+ - <tt>[connect](#connect)</tt>
+ - <tt>[connect_to_network](#connect_to_network)</tt>
+ - <tt>[connect_to_network_all](#connect_to_network_all)</tt>
+ - <tt>[histogram](#histogram)</tt>
+ - <tt>[histogram_swatch](#histogram_swatch)</tt>
+ - <tt>[histogram_swatch_with_id](#histogram_swatch_with_id)</tt>
+ - <tt>[histogram_with_id](#histogram_with_id)</tt>
+ - <tt>[import_geojson](#import_geojson)</tt>
+ - <tt>[import_geojson_file](#import_geojson_file)</tt>
+ - <tt>[materialise](#materialise)</tt>
+ - <tt>[materialise_map](#materialise_map)</tt>
+ - <tt>[merge_changes](#merge_changes)</tt>
+ - <tt>[remove_tag](#remove_tag)</tt>
+ - <tt>[remove_tags](#remove_tags)</tt>
+
+### <tt>CollectionFeature</tt>
+ - <tt>[find_collection](#find_collection)</tt>
+
+### <tt>Feature</tt>
+ - <tt>[closest](#closest)</tt>
+ - <tt>[find_feature](#find_feature)</tt>
+
+### <tt>FeatureID</tt>
+ - <tt>[id_to_relation_id](#id_to_relation_id)</tt>
+
+### <tt>FeatureIDAreaFeatureCollection</tt>
+ - <tt>[containing_areas](#containing_areas)</tt>
+ - <tt>[find_areas](#find_areas)</tt>
+
+### <tt>FeatureIDFeatureCollection</tt>
+ - <tt>[find](#find)</tt>
+ - <tt>[reachable](#reachable)</tt>
+
+### <tt>FeatureIDFeatureIDCollection</tt>
+ - <tt>[accessible_all](#accessible_all)</tt>
+ - <tt>[add_world_with_change](#add_world_with_change)</tt>
+ - <tt>[building_access](#building_access)</tt>
+ - <tt>[filter_accessible](#filter_accessible)</tt>
+
+### <tt>FeatureIDIntCollection</tt>
+ - <tt>[paths_to_reach](#paths_to_reach)</tt>
+ - <tt>[tile_ids](#tile_ids)</tt>
+
+### <tt>FeatureIDPhysicalFeatureCollection</tt>
+ - <tt>[point_features](#point_features)</tt>
+ - <tt>[point_paths](#point_paths)</tt>
+
+### <tt>FeatureIDRelationFeatureCollection</tt>
+ - <tt>[find_relations](#find_relations)</tt>
+
+### <tt>FeatureIDRouteCollection</tt>
+ - <tt>[accessible_routes](#accessible_routes)</tt>
+
+### <tt>FeatureIDStringCollection</tt>
+ - <tt>[tile_ids_hex](#tile_ids_hex)</tt>
+
+### <tt>GeoJSON</tt>
+ - <tt>[map_geometries](#map_geometries)</tt>
+ - <tt>[parse_geojson](#parse_geojson)</tt>
+ - <tt>[parse_geojson_file](#parse_geojson_file)</tt>
+ - <tt>[to_geojson](#to_geojson)</tt>
+ - <tt>[to_geojson_collection](#to_geojson_collection)</tt>
+
+### <tt>Geometry</tt>
+ - <tt>[centroid](#centroid)</tt>
+ - <tt>[entrance_approach](#entrance_approach)</tt>
+ - <tt>[interpolate](#interpolate)</tt>
+ - <tt>[join](#join)</tt>
+ - <tt>[ll](#ll)</tt>
+ - <tt>[ordered_join](#ordered_join)</tt>
+ - <tt>[s2_center](#s2_center)</tt>
+
+### <tt>IntAreaCollection</tt>
+ - <tt>[geojson_areas](#geojson_areas)</tt>
+
+### <tt>IntGeometryCollection</tt>
+ - <tt>[points](#points)</tt>
+ - <tt>[sample_points](#sample_points)</tt>
+ - <tt>[sample_points_along_paths](#sample_points_along_paths)</tt>
+
+### <tt>IntStringCollection</tt>
+ - <tt>[debug_tokens](#debug_tokens)</tt>
+ - <tt>[s2_covering](#s2_covering)</tt>
+ - <tt>[s2_grid](#s2_grid)</tt>
+ - <tt>[tile_paths](#tile_paths)</tt>
+
+### <tt>IntTagCollection</tt>
+ - <tt>[all_tags](#all_tags)</tt>
+
+### <tt>Number</tt>
+ - <tt>[add](#add)</tt>
+ - <tt>[divide](#divide)</tt>
+
+### <tt>Pair</tt>
+ - <tt>[pair](#pair)</tt>
+
+### <tt>Query</tt>
+ - <tt>[all](#all)</tt>
+ - <tt>[and](#and)</tt>
+ - <tt>[debug_all_query](#debug_all_query)</tt>
+ - <tt>[intersecting](#intersecting)</tt>
+ - <tt>[intersecting_cap](#intersecting_cap)</tt>
+ - <tt>[keyed](#keyed)</tt>
+ - <tt>[or](#or)</tt>
+ - <tt>[tagged](#tagged)</tt>
+ - <tt>[typed](#typed)</tt>
+ - <tt>[within](#within)</tt>
+ - <tt>[within_cap](#within_cap)</tt>
+
+### <tt>QueryProto</tt>
+ - <tt>[type_area](#type_area)</tt>
+ - <tt>[type_path](#type_path)</tt>
+ - <tt>[type_point](#type_point)</tt>
+
+### <tt>RelationFeature</tt>
+ - <tt>[find_relation](#find_relation)</tt>
+
+### <tt>StringGeometryCollection</tt>
+ - <tt>[s2_points](#s2_points)</tt>
+
+### <tt>Tag</tt>
+ - <tt>[get](#get)</tt>
+ - <tt>[tag](#tag)</tt>
+
+### <tt>bool</tt>
+ - <tt>[gt](#gt)</tt>
+ - <tt>[matches](#matches)</tt>
+
+### <tt>float64</tt>
+ - <tt>[area](#area)</tt>
+ - <tt>[closest_distance](#closest_distance)</tt>
+ - <tt>[distance_meters](#distance_meters)</tt>
+ - <tt>[distance_to_point_meters](#distance_to_point_meters)</tt>
+ - <tt>[divide_int](#divide_int)</tt>
+ - <tt>[float_value](#float_value)</tt>
+ - <tt>[get_float](#get_float)</tt>
+ - <tt>[length](#length)</tt>
+ - <tt>[reachable_area](#reachable_area)</tt>
+
+### <tt>int</tt>
+ - <tt>[add_ints](#add_ints)</tt>
+ - <tt>[clamp](#clamp)</tt>
+ - <tt>[count](#count)</tt>
+ - <tt>[count_valid_ids](#count_valid_ids)</tt>
+ - <tt>[degree](#degree)</tt>
+ - <tt>[export_world](#export_world)</tt>
+ - <tt>[get_int](#get_int)</tt>
+ - <tt>[int_value](#int_value)</tt>
+ - <tt>[sum](#sum)</tt>
+
+### <tt>string</tt>
+ - <tt>[changes_to_file](#changes_to_file)</tt>
+ - <tt>[get_string](#get_string)</tt>
+ - <tt>[to_str](#to_str)</tt>
+ - <tt>[value](#value)</tt>
+
 ## Collections
 
 ### <tt>AnyAnyAnyCollectionCollection</tt>

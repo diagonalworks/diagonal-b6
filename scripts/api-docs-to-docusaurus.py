@@ -7,6 +7,7 @@
 #
 import sys
 import json
+import itertools
 
 if __name__ == "__main__":
   docs = json.loads(sys.stdin.read())
@@ -86,6 +87,16 @@ sidebar_position: 1
       print("#### Misc")
       for i in misc_items:
         print(i)
+
+  print("")
+  print("## Functions by Return Type")
+  sorted_by_type = sorted(docs["Functions"], key=lambda f: f["Result"])
+  for group, funcs in itertools.groupby(sorted_by_type, key=lambda f: f["Result"]):
+    print(f"### <tt>{group}</tt>")
+    for function in sorted(funcs, key=lambda f: f["Name"]):
+      name = function["Name"].replace("-", "_")
+      print(f" - <tt>[{name}](#{name})</tt>")
+    print("")
 
   print("## Collections")
   for collection in sorted(docs["Collections"], key=lambda i: i["Name"]):
