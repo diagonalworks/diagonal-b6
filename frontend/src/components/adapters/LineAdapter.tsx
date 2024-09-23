@@ -10,6 +10,7 @@ import { twMerge } from 'tailwind-merge';
 import { AtomAdapter } from '@/components/adapters/AtomAdapter';
 import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
 import { ShellAdapter } from '@/components/adapters/ShellAdapter';
+import { ClickableAtom } from '@/components/system/ClickableAtom';
 import { IconButton } from '@/components/system/IconButton';
 import { Line } from '@/components/system/Line';
 import { Tooltip, TooltipOverflow } from '@/components/system/Tooltip';
@@ -70,19 +71,17 @@ export const LineAdapter = ({
                         <div className="justify-between flex items-center w-full">
                             <div className="flex items-center gap-2 w-11/12 flex-grow-0">
                                 {line.leftRightValue.left?.map(
-                                    ({ atom }, i) => {
+                                    ({ atom, clickExpression }, i) => {
                                         if (!atom) return null;
                                         return (
-                                            <AtomAdapter key={i} atom={atom} />
-                                        );
+                                            <ClickableAtom atom={atom} clickExpression={clickExpression} key={i}/>
+                                        )
                                     }
                                 )}
                             </div>
                             {line.leftRightValue.right?.atom && (
                                 <div className="flex items-center gap-1 text-ultramarine-50">
-                                    <AtomAdapter
-                                        atom={line.leftRightValue.right.atom}
-                                    />
+                                    <ClickableAtom atom={line.leftRightValue.right?.atom} clickExpression={line.leftRightValue.right?.clickExpression}/>
                                 </div>
                             )}
                         </div>
