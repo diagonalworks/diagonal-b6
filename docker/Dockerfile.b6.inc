@@ -10,6 +10,7 @@ COPY frontend /build/frontend
 COPY Makefile /build/Makefile
 COPY proto /build/proto
 COPY python /build/python
+COPY scripts /build/scripts
 COPY src /build/src
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build
 RUN TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH make -C /build test
