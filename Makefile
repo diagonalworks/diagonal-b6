@@ -125,6 +125,7 @@ clean-api-docs:
 docs: docs/docs/b6-api-documentation.md
 
 docs/docs/b6-api-documentation.md: clean-api-docs
+	mkdir -p docs/docs
 	bin/${TARGETPLATFORM}/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py > docs/docs/b6-api-documentation.md
 
 clean:
