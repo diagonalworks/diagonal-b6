@@ -120,12 +120,12 @@ docker-b6-ci: docker/Dockerfile.b6-ci
 	docker push europe-docker.pkg.dev/diagonal-public/b6/b6-ci
 
 clean-api-docs:
-	rm docs/docs/b6-api-documentation.md
+	rm -f docs/docs/b6-api-documentation.md
 
 docs: docs/docs/b6-api-documentation.md
 
 docs/docs/b6-api-documentation.md: clean-api-docs
-	bin/${TARGETPLATFORM}/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py >docs/docs/b6-api-documentation.md
+	bin/${TARGETPLATFORM}/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py > docs/docs/b6-api-documentation.md
 
 clean:
 	cd src/diagonal.works/b6; go clean
