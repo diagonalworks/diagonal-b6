@@ -57,8 +57,20 @@
 
       python = pkgs.python3;
 
+      # TODO: Come up with a neater way to enable/disable vite features as
+      # deriviations.
+      frontend = mkFrontend {
+        # Note: Because of the way the JS code checks for the value of the
+        # flag, this has to be the _string_ "true".
+        VITE_FEATURES_SCENARIOS = "true";
+      };
+
+      frontendNoFeaturesScenarios = mkFrontend {
+        VITE_FEATURES_SCENARIOS = false;
+      };
+
       # From <https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/javascript.section.md#pnpm-javascript-pnpm>
-      frontend = pkgs.stdenv.mkDerivation (finalAttrs: {
+      mkFrontend = envVars: pkgs.stdenv.mkDerivation (finalAttrs: {
         pname = "b6-frontend";
         version = "0.0.0";
 
@@ -77,7 +89,7 @@
         # Override the phases as there is already a Makefile present, which is
         # used by Nix by default.
         buildPhase = ''
-          pnpm build
+          ${pkgs.lib.strings.toShellVars envVars} pnpm build
         '';
 
         installPhase = ''
@@ -307,11 +319,12 @@
         # Not an application; but can be built `nix build .#python`.
         python = b6-py;
 
-        b6-image = b6-image;
-
-        frontend = frontend;
-
-        b6-js = b6-js;
+        inherit
+          b6-image
+          b6-js
+          frontend
+          frontendNoFeaturesScenarios
+        ;
       };
 
       # Run via `nix fmt`
