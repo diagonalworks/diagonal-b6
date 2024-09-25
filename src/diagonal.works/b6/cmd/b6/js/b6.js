@@ -871,8 +871,6 @@ class LeftRightValueLineRenderer {
         }
         values.push(line.datum().leftRightValue.right);
 
-        console.log("left right");
-        console.log(values);
         let containers = line
             .selectAll('.line-left-right-value-container')
             .data(values)
@@ -886,7 +884,6 @@ class LeftRightValueLineRenderer {
         renderFromProto(atoms, 'atom', 'stack');
 
         containers.on('mousedown', (e, d) => {
-            console.log("click");
             e.stopPropagation();
             if (d.clickExpression) {
                 const clickHandler = () => {

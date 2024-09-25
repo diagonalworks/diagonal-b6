@@ -480,6 +480,18 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 		}
 		substacks = append(substacks, substack)
 	}
+
+	collections := b6.AllCollections(w.FindCollectionsByFeature(f.FeatureID()))
+	if len(collections) > 0 {
+		substack := &pb.SubstackProto{Collapsable: true}
+		line := leftRightValueLineFromValues("Collections", len(collections), w)
+		substack.Lines = append(substack.Lines, line)
+		for _, c := range collections {
+			substack.Lines = append(substack.Lines, ValueLineFromValue(c, w))
+		}
+		substacks = append(substacks, substack)
+	}
+
 	return substacks
 }
 

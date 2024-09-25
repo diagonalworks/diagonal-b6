@@ -1544,6 +1544,16 @@ func (EmptyCollectionFeatures) Next() bool {
 	return false
 }
 
+func AllCollections(c CollectionFeatures) []CollectionFeature {
+	features := make([]CollectionFeature, 0, 8)
+	if c != nil {
+		for c.Next() {
+			features = append(features, c.Feature())
+		}
+	}
+	return features
+}
+
 func FindCollectionByID(id CollectionID, features FeaturesByID) CollectionFeature {
 	if collection := features.FindFeatureByID(id.FeatureID()); collection != nil {
 		return collection.(CollectionFeature)
