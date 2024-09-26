@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
+import { OUTLINER_SPAWN_ORIGIN } from '@/components/OutlinersLayer';
 import { ImmerStateCreator } from '@/lib/zustand';
 import { World } from '@/stores/worlds';
 import { UIRequestProto } from '@/types/generated/ui';
@@ -125,10 +126,11 @@ export const createOutlinersStore: ImmerStateCreator<
         move: (id, dx, dy) => {
             set((state) => {
                 const { coordinates } = state.outliners[id].properties;
-                if (!coordinates) return;
+                console.log(coordinates);
+
                 state.outliners[id].properties.coordinates = {
-                    x: coordinates.x + dx,
-                    y: coordinates.y + dy,
+                    x: (coordinates?.x ?? OUTLINER_SPAWN_ORIGIN.x) + dx,
+                    y: (coordinates?.y ?? OUTLINER_SPAWN_ORIGIN.y) + dy,
                 };
             });
         },

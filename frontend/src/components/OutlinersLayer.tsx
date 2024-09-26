@@ -22,6 +22,11 @@ import { popOpen } from '@/utils/animations';
 
 import Outliner from './Outliner';
 
+export const OUTLINER_SPAWN_ORIGIN = {
+    x: 8,
+    y: 480,
+};
+
 const useOutlinerSensors = () => {
     const pointerSensor = useSensor(PointerSensor, {
         activationConstraint: {
@@ -155,8 +160,8 @@ const DraggableOutliner = ({
                           left: outliner.properties.coordinates.x + 4,
                       }
                     : {
-                          top: 280,
-                          left: 8,
+                          top: OUTLINER_SPAWN_ORIGIN.y,
+                          left: OUTLINER_SPAWN_ORIGIN.x,
                       }),
                 position: 'absolute',
             }}

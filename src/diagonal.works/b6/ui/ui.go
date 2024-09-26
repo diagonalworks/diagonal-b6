@@ -580,6 +580,11 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 		fillSubstackFromAtom(&substack, AtomFromString(r))
 		p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 	case b6.Feature:
+		if title := r.Get("b6:title"); title.IsValid() {
+			var substack pb.SubstackProto
+			fillSubstackFromAtom(&substack, AtomFromString(title.Value.String()))
+			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
+		}
 		switch r.FeatureID().Type {
 		case b6.FeatureTypeExpression:
 			// This is not perfect, as it makes original expression that

@@ -161,7 +161,7 @@ function Outliner({
                                 collapsible={firstSubstack.collapsable}
                                 close={!outliner.properties.docked}
                                 show={!outliner.properties.docked}
-                                copy
+                                copy={!outliner.properties.docked}
                             />
                         </Stack.Trigger>
                     )}

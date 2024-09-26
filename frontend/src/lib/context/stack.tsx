@@ -8,6 +8,7 @@ import {
 
 import { useStack } from '@/api/stack';
 import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
+import { useWorldStore } from '@/stores/worlds';
 import { Event } from '@/types/events';
 import { NodeProto } from '@/types/generated/api';
 import { UIResponseProto } from '@/types/generated/ui';
@@ -63,6 +64,7 @@ export const StackContextProvider = ({
     origin,
 }: { outliner: OutlinerSpec; origin?: OutlinerSpec } & PropsWithChildren) => {
     const actions = useOutlinersStore((state) => state.actions);
+    const world = useWorldStore((state) => state.worlds[outliner.world]);
 
     const data = useStack(outliner.world, outliner.request, outliner.data);
 
@@ -91,8 +93,8 @@ export const StackContextProvider = ({
 
     const evaluateNode = useCallback(
         (node: NodeProto) => {
-            if (!outliner.request) return;
             const event: Event = 'oc';
+            const root = outliner.request?.root ?? world.featureId;
 
             actions.add({
                 id: `${outliner.id}-${event}-${JSON.stringify(node)}`,
@@ -105,12 +107,12 @@ export const StackContextProvider = ({
                     show: true,
                 },
                 request: {
-                    root: outliner.request.root,
+                    root,
                     node,
                     locked: true,
                     logEvent: event,
-                    logMapCenter: outliner.request.logMapCenter,
-                    logMapZoom: outliner.request.logMapZoom,
+                    logMapCenter: outliner.request?.logMapCenter,
+                    logMapZoom: outliner.request?.logMapZoom,
                     expression: '',
                 },
             });
