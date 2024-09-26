@@ -1,7 +1,6 @@
 import React from 'react';
-import { AtomAdapter } from '@/components/adapters/AtomAdapter';
-import { Line } from '@/components/system/Line';
 
+import { AtomAdapter } from '@/components/adapters/AtomAdapter';
 import { useStackContext } from '@/lib/context/stack';
 import { NodeProto } from '@/types/generated/api';
 import { AtomProto } from '@/types/generated/ui';
@@ -12,19 +11,15 @@ import { AtomProto } from '@/types/generated/ui';
 export const ClickableAtom = ({
     atom,
     clickExpression,
-    key
+    key,
 }: {
-    atom: AtomProto,
-    clickExpression: NodeProto | undefined,
-    key?: number
-}
+    atom: AtomProto;
+    clickExpression: NodeProto | undefined;
+    key?: number;
+}) => {
+    const { evaluateNode } = useStackContext();
 
-) => {
-    const {
-        evaluateNode,
-    } = useStackContext();
-
-    const Wrapper = clickExpression ? Line.Button : React.Fragment;
+    const Wrapper = clickExpression ? 'button' : React.Fragment;
 
     return (
         <Wrapper
@@ -38,5 +33,5 @@ export const ClickableAtom = ({
         >
             <AtomAdapter key={key} atom={atom} />
         </Wrapper>
-    )
-}
+    );
+};
