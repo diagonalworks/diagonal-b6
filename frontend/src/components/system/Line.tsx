@@ -22,7 +22,7 @@ const Value = React.forwardRef<
             <span
                 {...props}
                 className={twMerge(
-                    'text-graphite-100 text-base text-right',
+                    'text-graphite-100 text-base text-left',
                     className
                 )}
                 ref={forwardedRef}

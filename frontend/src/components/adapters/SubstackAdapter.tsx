@@ -82,10 +82,7 @@ export const SubstackAdapter = ({
                         open ? 'border-b-0' : ''
                     )}
                 >
-                    <LineAdapter
-                        line={substack.lines[0]}
-                        //changeable={changeable}
-                    />
+                    <LineAdapter line={substack.lines[0]} />
                 </Stack.Trigger>
             )}
 
