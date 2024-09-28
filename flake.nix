@@ -57,17 +57,36 @@
 
       python = pkgs.python3;
 
-      # TODO: Come up with a neater way to enable/disable vite features as
-      # deriviations.
+      # The default frontend configuration.
       frontend = mkFrontend {
         # Note: Because of the way the JS code checks for the value of the
         # flag, this has to be the _string_ "true".
-        VITE_FEATURES_SCENARIOS = "true";
-      };
-
-      frontendNoFeaturesScenarios = mkFrontend {
         VITE_FEATURES_SCENARIOS = false;
       };
+
+      frontend-feature-matrix = {
+        "frontend-scenarios=false" = mkFrontend {
+          VITE_FEATURES_SCENARIOS = false;
+        };
+        "frontend-scenarios=true" = mkFrontend {
+          VITE_FEATURES_SCENARIOS = "true";
+        };
+      };
+
+      # TODO: One could use something like this to compute the feature-matrix
+      # above, automatically instead of manually..
+      # Note: We obtain a list of all the "features" (i.e. the folders on this
+      # specific directory) and use that to construct a set of derivations
+      # that turn on/off every feature combination.
+      # frontendFeatures =
+      #   let
+      #     allPaths = builtins.readDir ./frontend/src/features;
+      #     onlyDirs = pkgs.lib.attrsets.filterAttrs (_: v: v == "directory") allPaths;
+      #     featureNames = builtins.attrNames onlyDirs;
+      #     viteEnvVars = map (x: "VITE_FEATURES_${pkgs.lib.toUpper x}") featureNames;
+      #   in
+      #     viteEnvVars;
+
 
       # From <https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/javascript.section.md#pnpm-javascript-pnpm>
       mkFrontend = envVars: pkgs.stdenv.mkDerivation (finalAttrs: {
@@ -323,9 +342,8 @@
           b6-image
           b6-js
           frontend
-          frontendNoFeaturesScenarios
-        ;
-      };
+          ;
+      } // frontend-feature-matrix;
 
       # Run via `nix fmt`
       formatter =
