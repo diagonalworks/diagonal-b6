@@ -59,34 +59,70 @@
 
       # The default frontend configuration.
       frontend = mkFrontend {
-        # Note: Because of the way the JS code checks for the value of the
-        # flag, this has to be the _string_ "true".
         VITE_FEATURES_SCENARIOS = false;
       };
 
-      frontend-feature-matrix = {
-        "frontend-scenarios=false" = mkFrontend {
-          VITE_FEATURES_SCENARIOS = false;
-        };
-        "frontend-scenarios=true" = mkFrontend {
-          VITE_FEATURES_SCENARIOS = "true";
-        };
-      };
-
-      # TODO: One could use something like this to compute the feature-matrix
-      # above, automatically instead of manually..
       # Note: We obtain a list of all the "features" (i.e. the folders on this
       # specific directory) and use that to construct a set of derivations
       # that turn on/off every feature combination.
-      # frontendFeatures =
-      #   let
-      #     allPaths = builtins.readDir ./frontend/src/features;
-      #     onlyDirs = pkgs.lib.attrsets.filterAttrs (_: v: v == "directory") allPaths;
-      #     featureNames = builtins.attrNames onlyDirs;
-      #     viteEnvVars = map (x: "VITE_FEATURES_${pkgs.lib.toUpper x}") featureNames;
-      #   in
-      #     viteEnvVars;
+      #
+      # Example:
+      #
+      #   nix build .#frontend-with-scenarios=false
+      #   nix build .#frontend-with-scenarios=true
+      #
+      frontend-feature-matrix =
+        let
+          allPaths = builtins.readDir ./frontend/src/features;
+          onlyDirs = pkgs.lib.attrsets.filterAttrs (_: v: v == "directory") allPaths;
 
+          # [ scenarios ... ]
+          featureNames = builtins.attrNames onlyDirs;
+
+          # [ ABC, XYZ, ... ]
+          viteEnvVars = map (x: "VITE_FEATURES_${pkgs.lib.toUpper x}") featureNames;
+
+          # { ABC = [ "true" false ];
+          #   XYZ = [ "true" false ];
+          #   ...
+          # }
+          # Note: Because of the way the JS code checks for the value of the
+          # flag, this has to be the _string_ "true".
+          allOptions = builtins.listToAttrs (map (x: { name = x; value = [ "true" false ]; }) viteEnvVars);
+
+          # [ { ABC = "true"; XYZ = "true" }
+          # , { ABC = "true"; XYZ = false  }
+          # , ...
+          # ]
+          configurations = pkgs.lib.cartesianProduct
+            allOptions
+          ;
+
+          # { "abc=true,xyz=true"  = mkFrontend { ABC = "true"; XYZ = "true" };
+          # , "abc=true,xyz=false" = mkFrontend { ABC = "true"; XYZ = false  };
+          # , ...
+          # }
+          matrix =
+            let
+              nameFor = k: v:
+                let
+                  featName = builtins.substring 14 (-1) (pkgs.lib.toLower k);
+                  val = if v == false then "false" else toString v;
+                in
+                "${featName}=${val}";
+              elements = map
+                (c: {
+                  # "abc=true,xyz=true" ...
+                  name =
+                    let conf = pkgs.lib.strings.concatStringsSep "," (pkgs.lib.mapAttrsToList nameFor c);
+                    in "frontend-with-${conf}";
+                  value = mkFrontend c;
+                })
+                configurations;
+            in
+            builtins.listToAttrs elements;
+        in
+        matrix;
 
       # From <https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/javascript.section.md#pnpm-javascript-pnpm>
       mkFrontend = envVars: pkgs.stdenv.mkDerivation (finalAttrs: {
