@@ -1,0 +1,35 @@
+name: Build release docker image
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release-artifacts:
+    runs-on: ubuntu-latest
+    name: "Build and publish b6 docker image"
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: "Build and publish docker image"
+      run: |
+        nix build .#b6-image
+        export TARBALL_TAG="$(nix eval --raw .#b6-image.imageName):$(nix eval --raw .#b6-image.imageTag)"
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+        ./result | docker load
+        docker tag "$TARBALL_TAG" ghcr.io/diagonalworks/diagonal-b6:latest
+        docker push ghcr.io/diagonalworks/diagonal-b6:latest

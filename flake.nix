@@ -285,12 +285,16 @@
             pkgs.busybox
           ];
           config = {
+            Labels = {
+              "org.opencontainers.image.source" = "https://github.com/diagonalworks/diagonal-b6";
+              "org.opencontainers.image.description" = "b6";
+            };
             ExposedPorts = {
               "8001" = { };
               "8002" = { };
             };
             Entrypoint = [
-              "${b6-go-only-b6}/bin/b6"
+              "${b6-go}/bin/b6"
               "-http=0.0.0.0:8001"
               "-grpc=0.0.0.0:8002"
               "-js=${b6-js.outPath}"
