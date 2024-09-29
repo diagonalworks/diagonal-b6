@@ -36,6 +36,12 @@ jobs:
         nix build .#frontend-with-scenarios=false
         nix build .#frontend-with-scenarios=true
 
+    - name: "Test that the nix template works"
+      run: |
+        export DIR=$(mktemp -d)
+        nix flake new $DIR --template .
+        nix develop $DIR
+
     - name: "Test the Makefile inside the combined devShell"
       run: |
         nix develop .#combined --command make all-tests
