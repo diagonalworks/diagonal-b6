@@ -32,6 +32,9 @@ jobs:
         nix build .
         nix build .#python
         nix build .#b6-image
+        nix build .#frontend
+        nix build .#frontend-with-scenarios=false
+        nix build .#frontend-with-scenarios=true
 
     - name: "Test the Makefile inside the combined devShell"
       run: |
