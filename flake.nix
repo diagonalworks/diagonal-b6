@@ -259,21 +259,45 @@
           pwd = ./src/diagonal.works/b6;
         };
 
-        # A derivation to _only_ build the 'b6' program; helps to keep the
-        # docker image small.
-        b6-go-only-b6 = with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
-          name = "b6";
-          src = ./src/diagonal.works/b6;
-          buildInputs = [
-            ourGdal
-          ];
-          nativeBuildInputs = [
-            pkg-config
-          ];
-          subPackages = [ "cmd/b6" ];
-          doCheck = false;
-          pwd = ./src/diagonal.works/b6;
-        };
+        # A collection of derivations for each go cmd; can be useful to keep
+        # closures small, if for example you only want to depend on a specific
+        # binary.
+        go-executables =
+          let
+            allPaths = builtins.readDir ./src/diagonal.works/b6/cmd;
+            onlyDirs = pkgs.lib.attrsets.filterAttrs (_: v: v == "directory") allPaths;
+            cmds = builtins.attrNames onlyDirs;
+            mkGoApp = cmd: with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
+              name = "b6";
+              src = ./src/diagonal.works/b6;
+              pwd = ./src/diagonal.works/b6;
+              buildInputs = [
+                ourGdal
+              ];
+              nativeBuildInputs = [
+                pkg-config
+              ];
+              subPackages = [ "cmd/${cmd}" ];
+              # Don't run the tests now; they've been tested by the main
+              # derivation.
+              doCheck = false;
+            };
+          in
+          builtins.listToAttrs (map (n: { name = n; value = mkGoApp n; }) cmds);
+
+        # b6-go-only-b6 = with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
+        #   name = "b6";
+        #   src = ./src/diagonal.works/b6;
+        #   buildInputs = [
+        #     ourGdal
+        #   ];
+        #   nativeBuildInputs = [
+        #     pkg-config
+        #   ];
+        #   subPackages = [ "cmd/b6" ];
+        #   doCheck = false;
+        #   pwd = ./src/diagonal.works/b6;
+        # };
 
         # Run like:
         # > docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 -world /data/camden.index
@@ -425,8 +449,6 @@
           # `nix build` and look in `./result/bin`.
           default = b6-go;
 
-          go = b6-go;
-
           # Not an application; but can be built `nix build .#python`.
           python = b6-py;
 
@@ -435,7 +457,9 @@
             b6-js
             frontend
             ;
-        } // frontend-feature-matrix;
+        } // frontend-feature-matrix
+        // go-executables
+        ;
 
         # Run via `nix fmt`
         formatter =
