@@ -42,7 +42,7 @@
         let b6 = diagonal-b6.packages.${system};
         in
         pkgs.writeShellScriptBin "b6" ''
-          ${b6.go}/bin/b6 \
+          ${b6.b6}/bin/b6 \
             -http=0.0.0.0:8001 \
             -grpc=0.0.0.0:8002 \
             -js=${b6.b6-js.outPath} \
