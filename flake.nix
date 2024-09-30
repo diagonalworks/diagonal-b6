@@ -449,6 +449,9 @@
           # `nix build` and look in `./result/bin`.
           default = b6-go;
 
+          # Add an explicit 'go' entrypoint for the full go build+test.
+          go = b6-go;
+
           # Not an application; but can be built `nix build .#python`.
           python = b6-py;
 
