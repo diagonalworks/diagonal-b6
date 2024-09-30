@@ -45,3 +45,27 @@ jobs:
     - name: "Test the Makefile inside the combined devShell"
       run: |
         nix develop .#combined --command make all-tests
+
+    - name: "Test that the docker image can ingest and run"
+      run: |
+        nix build .#b6-image
+        ./result | docker load
+
+        docker run \
+          -v ./data:/data \
+          --entrypoint b6-ingest-osm \
+          b6 \
+          --input data/tests/camden.osm.pdf \
+          --output data/camden.index
+
+        docker run \
+          -d \
+          -v ./data:/data \
+          -p 8001:8001 \
+          -p 8002:8002 \
+          b6 \
+          -world data/camden.index
+
+        sleep 3
+
+        curl --head localhost:8001
