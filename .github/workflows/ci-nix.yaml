@@ -18,6 +18,8 @@ jobs:
     - name: "Checkout repository"
       uses: actions/checkout@v4
       with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
         fetch-depth: 0
 
     - name: "Prepare nix"

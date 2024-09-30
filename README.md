@@ -212,7 +212,7 @@ nix develop
 
 You can build the go binaries with `nix build` and run the `b6` binary with
 `nix run . -- --help`. You can find the rest of the binaries in `./result/bin`
-(if you have called `nix build`.)
+(if you have ran `nix build`.)
 
 The go application is built with [gomod2nix](https://github.com/nix-community/gomod2nix/).
 
@@ -239,7 +239,6 @@ cd src/diagonal.works/b6/
 gomod2nix
 ```
 
-
 #### Building the docker image with Nix
 
 You can build the docker image with Nix:
@@ -252,5 +251,28 @@ nix build .#b6-image
 This provides the docker image `b6`, which can be run in the typical way:
 
 ```shell
-docker run -p 8001:8001 -p 8002:8002 -v data:/data b6 -world /data/camden.index
+docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 -world /data/camden.index
 ```
+
+See the [flake.nix](flake.nix) file for more information.
+
+
+#### Flake template
+
+There is a flake template to demonstrate how to make a b6 "client" project;
+i.e. something that comes with the b6 Python library installed. You can use it
+like so:
+
+
+```shell
+mkdir some-project
+cd some-project
+nix flake init --template github:diagonalworks/diagonal-b6/
+nix develop
+```
+
+Within here you will have a `b6` binary to run a local b6, and also the
+`diagonal_b6` python package available.
+
+You can read more about the template here:
+[nix/python-client/flake.nix](./nix/python-client/flake.nix)
