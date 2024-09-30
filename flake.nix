@@ -276,36 +276,71 @@
         };
 
         # Run like:
-        # docker run -p 8001:8001 -p 8002:8002 -v data:/data b6 -world /data/camden.index
-        b6-image = pkgs.dockerTools.streamLayeredImage {
-          name = "b6";
-          tag = "latest";
-          created = "now";
-          contents = [
-            pkgs.busybox
-          ];
-          config = {
-            Labels = {
-              "org.opencontainers.image.source" = "https://github.com/diagonalworks/diagonal-b6";
-              "org.opencontainers.image.description" = "b6";
+        # > docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 -world /data/camden.index
+        #
+        # or:
+        #
+        # > docker run -e \
+        #     FRONTEND_CONFIGURATION="frontend-with-scenarios=true" \
+        #     -p 8001:8001 \
+        #     -p 8002:8002 \
+        #     -v ./data:/data \
+        #     b6 \
+        #     -world /data/camden.index
+        #
+        # to enable a specific frontend configuration.
+        #
+        b6-image =
+          let
+            # Note: We don't specify any '-world' parameter and instead
+            # force people to provide it.
+            # "-world=/world"
+            #
+            # Note: For now these are manually defined; but we could imagine
+            # computing them from the `frontend-feature-matrix`, if we wished.
+            launch-script = pkgs.writeShellScriptBin "launch-b6" ''
+              case "''${FRONTEND_CONFIGURATION}" in
+                "frontend-with-scenarios=true")
+                  STATIC_ARG=${frontend-feature-matrix."frontend-with-scenarios=true".outPath} ;;
+                "frontend-with-scenarios=false")
+                  STATIC_ARG=${frontend-feature-matrix."frontend-with-scenarios=false".outPath} ;;
+                *)
+                  STATIC_ARG=${frontend.outPath} ;;
+              esac
+
+              ${b6-go}/bin/b6 \
+                -http=0.0.0.0:8001 \
+                -grpc=0.0.0.0:8002 \
+                -js=${b6-js.outPath} \
+                -enable-v2-ui \
+                -static-v2=''$STATIC_ARG \
+                "$@"
+            '';
+          in
+          pkgs.dockerTools.streamLayeredImage {
+            name = "b6";
+            tag = "latest";
+            created = "now";
+            contents = [
+              # For navigating around/debugging, if necessary
+              pkgs.busybox
+
+              # Include all the frontend feature configurations, as we will
+              # pick the correct one via the launch script and an environment
+              # variable.
+            ] ++ builtins.attrValues frontend-feature-matrix;
+            config = {
+              Labels = {
+                "org.opencontainers.image.source" = "https://github.com/diagonalworks/diagonal-b6";
+                "org.opencontainers.image.description" = "b6";
+              };
+              ExposedPorts = {
+                "8001" = { };
+                "8002" = { };
+              };
+              Entrypoint = [ "${launch-script}/bin/launch-b6" ];
             };
-            ExposedPorts = {
-              "8001" = { };
-              "8002" = { };
-            };
-            Entrypoint = [
-              "${b6-go}/bin/b6"
-              "-http=0.0.0.0:8001"
-              "-grpc=0.0.0.0:8002"
-              "-js=${b6-js.outPath}"
-              "-enable-v2-ui"
-              "-static-v2=${frontend.outPath}"
-              # Note: We don't specify any '-world' parameter and instead
-              # force people to provide it.
-              # "-world=/world"
-            ];
           };
-        };
 
         pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
         unstablePkgs = import unstable { inherit system; };
