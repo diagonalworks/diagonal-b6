@@ -31,7 +31,12 @@
     flake-utils.lib.eachDefaultSystem
       (system:
       let
+        pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
+        unstablePkgs = import unstable { inherit system; };
+
         # Python setup
+        python = pkgs.python3;
+
         overlay = _: prev: {
           python3 = prev.python3.override {
             packageOverrides = _: p: {
@@ -45,6 +50,8 @@
                 propagatedBuildInputs = with p.pythonPackages; [
                   future
                 ];
+                # The original repo <https://github.com/sidewalklabs/s2sphere>
+                # is archived, so this refers to a fork.
                 src = pkgs.fetchFromGitHub {
                   owner = "silky";
                   repo = "s2sphere";
@@ -56,7 +63,69 @@
           };
         };
 
-        python = pkgs.python3;
+        # We have to write the version into here from the output of the go
+        # binary.
+        pyproject-file = (pkgs.runCommand "make-pyproject" { } ''
+          substitute ${./python/pyproject.toml.template} $out \
+            --subst-var-by VERSION ''$(${b6-go}/bin/b6-api --pip-version)
+        '');
+
+        pythonProject = pyproject-nix.lib.project.loadPyproject {
+          projectRoot = ./python;
+          pyproject = pkgs.lib.importTOML pyproject-file;
+        };
+
+        renderedPyProject = pythonProject.renderers.buildPythonPackage {
+          inherit python;
+        };
+
+        b6-py = python.pkgs.buildPythonPackage (renderedPyProject // {
+          # Set the pyproject to be the one we computed via our b6 binary.
+          patchPhase = ''
+            cat ${pyproject-file} > pyproject.toml
+          '';
+
+          nativeBuildInputs = renderedPyProject.nativeBuildInputs ++ [
+            python.pkgs.grpcio-tools
+          ];
+
+          # A couple of hacks necessary to build the proto files and the API.
+          preBuild = ''
+            # Bring in the necessary proto files and the Makefile
+            cp -r ${./proto} ./proto
+            cat ${./Makefile} > some-Makefile
+
+            # Hack: Run the b6-api command outside of the Makefile, using the
+            # Nix version of the binary.
+            ${b6-go}/bin/b6-api --functions | python diagonal_b6/generate_api.py > diagonal_b6/api_generated.py
+
+            # Hack: Make the directory structure that the Makefile expects,
+            # then move things to where we want them
+            mkdir python
+            mkdir python/diagonal_b6
+
+            make proto-python -f some-Makefile
+
+            # Cleanup
+            mv python/diagonal_b6/* ./diagonal_b6
+            rm -rf python/diagonal_b6
+          '';
+
+          pythonImportsCheck = [ "diagonal_b6" ];
+        });
+
+
+        pythonEnv = python.withPackages (ps:
+          [
+            b6-py
+
+            # For `make python`
+            ps.grpcio-tools
+
+            # For hacking
+            ps.jupyter
+          ]);
+
 
         # The default frontend configuration.
         frontend = mkFrontend {
@@ -170,67 +239,6 @@
           '';
         };
 
-        pyproject-file = (pkgs.runCommand "make-pyproject" { } ''
-          substitute ${./python/pyproject.toml.template} $out \
-            --subst-var-by VERSION ''$(${b6-go}/bin/b6-api --pip-version)
-        '');
-
-        pythonProject = pyproject-nix.lib.project.loadPyproject {
-          projectRoot = ./python;
-          pyproject = pkgs.lib.importTOML pyproject-file;
-        };
-
-        renderedPyProject = pythonProject.renderers.buildPythonPackage {
-          inherit python;
-        };
-
-        b6-py = python.pkgs.buildPythonPackage (renderedPyProject // {
-          # Set the pyproject to be the one we computed via our b6 binary.
-          patchPhase = ''
-            cat ${pyproject-file} > pyproject.toml
-          '';
-
-          nativeBuildInputs = renderedPyProject.nativeBuildInputs ++ [
-            python.pkgs.grpcio-tools
-          ];
-
-          # A couple of hacks necessary to build the proto files and the API.
-          preBuild = ''
-            # Bring in the necessary proto files and the Makefile
-            cp -r ${./proto} ./proto
-            cat ${./Makefile} > some-Makefile
-
-            # Hack: Run the b6-api command outside of the Makefile, using the
-            # Nix version of the binary.
-            ${b6-go}/bin/b6-api --functions | python diagonal_b6/generate_api.py > diagonal_b6/api_generated.py
-
-            # Hack: Make the directory structure that the Makefile expects,
-            # then move things to where we want them
-            mkdir python
-            mkdir python/diagonal_b6
-
-            make proto-python -f some-Makefile
-
-            # Cleanup
-            mv python/diagonal_b6/* ./diagonal_b6
-            rm -rf python/diagonal_b6
-          '';
-
-          pythonImportsCheck = [ "diagonal_b6" ];
-        });
-
-
-        pythonEnv = python.withPackages (ps:
-          [
-            b6-py
-
-            # For `make python`
-            ps.grpcio-tools
-
-            # For hacking
-            ps.jupyter
-          ]);
-
         # Use a pinned version of gdal.
         ourGdal = (import gdalNixpkgs { inherit system; }).gdal;
 
@@ -285,19 +293,6 @@
           in
           builtins.listToAttrs (map (n: { name = n; value = mkGoApp n; }) cmds);
 
-        # b6-go-only-b6 = with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
-        #   name = "b6";
-        #   src = ./src/diagonal.works/b6;
-        #   buildInputs = [
-        #     ourGdal
-        #   ];
-        #   nativeBuildInputs = [
-        #     pkg-config
-        #   ];
-        #   subPackages = [ "cmd/b6" ];
-        #   doCheck = false;
-        #   pwd = ./src/diagonal.works/b6;
-        # };
 
         # Run like:
         # > docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 -world /data/camden.index
@@ -381,12 +376,17 @@
               Entrypoint = [ "${launch-script}/bin/launch-b6" ];
             };
           };
-
-        pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
-        unstablePkgs = import unstable { inherit system; };
       in
       rec {
-        # Development shells for hacking/building with the Makefile
+        # Development shells for hacking/building with the Makefile. Note
+        # that, importantly, this shell does _not_ contain the Python
+        # derivations; so can't be used to run any 'Makefile' tasks relevant
+        # to Python.
+        #
+        # If you need both, use the 'combined' shell:
+        #
+        # > nix develop .#combined
+        #
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             # Running the Makefile tasks
@@ -414,10 +414,10 @@
           '';
         };
 
-        # Note: We have a separate Python development shell because this _also_
-        # requires the Go package completely built, which makes it quite
-        # inconvenient for actual go hacking (i.e. if you change go.mod and
-        # haven't yet run gomod2nix, for example.)
+        # Note: We have a separate Python development shell because this
+        # _also_ requires the Go package completely built, which makes it
+        # quite inconvenient for actual go hacking (i.e. if you change go.mod
+        # and haven't yet run gomod2nix, for example, the shell will fail.)
         devShells.python = pkgs.mkShell {
           packages = [
             # Python hacking
@@ -438,9 +438,6 @@
 
           shellHook = ''
             export PYTHONPATH=''$(pwd)/python
-            echo "Welcome to the combined shell :)"
-            echo "  python=''$(which python)"
-            echo "  python3=''$(which python3)"
           '';
         };
 
@@ -455,6 +452,7 @@
           # Not an application; but can be built `nix build .#python`.
           python = b6-py;
 
+          # Docker images
           b6-image = b6-image "b6" b6-go;
           b6-minimal-image = b6-image "b6-minimal" go-executables.b6;
 
@@ -462,7 +460,10 @@
             b6-js
             frontend
             ;
-        } // frontend-feature-matrix
+        }
+        # All the frontend feature configurations
+        // frontend-feature-matrix
+        # All the explicit go executables
         // go-executables
         ;
 
@@ -477,6 +478,8 @@
           fmt.config.build.wrapper;
       }
       ) // {
+
+      # Nix templates
       templates = {
         default = {
           path = ./nix/python-client;
