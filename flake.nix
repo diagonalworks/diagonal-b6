@@ -314,7 +314,7 @@
         #
         # to enable a specific frontend configuration.
         #
-        b6-image =
+        b6-image = name: b6-drv:
           let
             # The main entrypoint.
             #
@@ -345,7 +345,7 @@
               }
               trap _term INT
 
-              ${b6-go}/bin/b6 \
+              ${b6-drv}/bin/b6 \
                 -http=0.0.0.0:8001 \
                 -grpc=0.0.0.0:8002 \
                 -js=${b6-js.outPath} \
@@ -358,7 +358,7 @@
             '';
           in
           pkgs.dockerTools.streamLayeredImage {
-            name = "b6";
+            name = "${name}";
             tag = "latest";
             created = "now";
             contents = [
@@ -372,7 +372,7 @@
               };
               Env = [
                 # Make sure all the b6 binaries are in the path.
-                "PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:${b6-go}/bin"
+                "PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:${b6-drv}/bin"
               ];
               ExposedPorts = {
                 "8001" = { };
@@ -455,8 +455,10 @@
           # Not an application; but can be built `nix build .#python`.
           python = b6-py;
 
+          b6-image = b6-image "b6" b6-go;
+          b6-minimal-image = b6-image "b6-minimal" go-executables.b6;
+
           inherit
-            b6-image
             b6-js
             frontend
             ;

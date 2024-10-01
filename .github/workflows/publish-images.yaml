@@ -14,8 +14,12 @@ permissions:
 
 jobs:
   release-artifacts:
-    runs-on: ubuntu-latest
     name: "Build and publish b6 docker image"
+    runs-on: ubuntu-latest
+
+    strategy:
+      image-name: ["b6", "b6-minimal"]
+
     steps:
     - uses: actions/checkout@v4
       with:
@@ -29,14 +33,14 @@ jobs:
           log-lines = 1000
 
     # Note: We don't tag this build as "latest"; we will leave that to
-    # always be pinned to the main branch.
+    # always be pinned to the main branch by the other workflow file.
     - name: "Build and publish docker image"
       env:
         RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.release_tag }}
       run: |
-        nix build .#b6-image
-        export TARBALL_TAG="$(nix eval --raw .#b6-image.imageName):$(nix eval --raw .#b6-image.imageTag)"
+        nix build .#${{ matrix.image-name }}-image
+        export TARBALL_TAG="$(nix eval --raw .#${{ matrix.image-name }}-image.imageName):$(nix eval --raw .#${{ matrix.image_name }}-image.imageTag)"
         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
         ./result | docker load
-        docker tag "$TARBALL_TAG" ghcr.io/diagonalworks/diagonal-b6:$RELEASE_TAG
-        docker push ghcr.io/diagonalworks/diagonal-b6:$RELEASE_TAG
+        docker tag "$TARBALL_TAG" ghcr.io/diagonalworks/diagonal-${{ matrix.image-name }}:$RELEASE_TAG
+        docker push ghcr.io/diagonalworks/diagonal-${{ matrix.image-name }}:$RELEASE_TAG
