@@ -45,29 +45,45 @@ jobs:
         nix flake new $DIR --template .
         nix develop $DIR
 
+    - name: "Test a few common entrypoints"
+      run: |
+        nix run .#b6 -- --help
+        nix run .#b6-ingest-osm -- --help
+        nix run .#b6-connect -- --help
+
     - name: "Test the Makefile inside the combined devShell"
       run: |
         nix develop .#combined --command make all-tests
 
-    - name: "Test that the docker image can ingest and run"
+    - name: "Test that the docker image can ingest, connect and run"
       run: |
         nix build .#b6-image
         ./result | docker load
 
+        # Ingest
         docker run \
           -v ./data:/data \
           --entrypoint b6-ingest-osm \
           b6 \
-          --input data/tests/camden.osm.pdf \
-          --output data/camden.index
+          --input /data/tests/camden.osm.pdf \
+          --output /data/camden.index
 
+        # Connect
+        docker run \
+          -v ./data:/data \
+          --entrypoint b6-connect \
+          b6 \
+          --input /data/camden.index \
+          --output /data/camden.connected.index
+
+        # Run
         docker run \
           -d \
           -v ./data:/data \
           -p 8001:8001 \
           -p 8002:8002 \
           b6 \
-          -world data/camden.index
+          -world /data/camden.connected.index
 
         sleep 3
 

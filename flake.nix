@@ -270,13 +270,20 @@
         # A collection of derivations for each go cmd; can be useful to keep
         # closures small, if for example you only want to depend on a specific
         # binary.
+        #
+        # Examples:
+        #
+        # > nix run .#b6
+        # > nix run .#b6-connect
+        # > nix run .#b6-ingest-osm
+        #
         go-executables =
           let
             allPaths = builtins.readDir ./src/diagonal.works/b6/cmd;
             onlyDirs = pkgs.lib.attrsets.filterAttrs (_: v: v == "directory") allPaths;
             cmds = builtins.attrNames onlyDirs;
             mkGoApp = cmd: with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
-              name = "b6";
+              name = "${cmd}";
               src = ./src/diagonal.works/b6;
               pwd = ./src/diagonal.works/b6;
               buildInputs = [

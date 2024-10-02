@@ -229,6 +229,18 @@ There is a Python project defined which can be built with `nix build
 project, and not really used here at present (you can jump into a Python
 environment with `nix develop .#python`.)
 
+#### Running with Nix
+
+It is also possible to run the go binaries directly with nix:
+
+```shell
+> nix run github:diagonalworks/diagonal-b6/#b6
+
+# or
+
+> nix run github:diagonalworks/diagonal-b6/#b6-ingest-osm
+```
+
 #### Updating go dependencies
 
 If the go dependencies change, you need to run `gomod2nix`. You can do this
