@@ -6,3 +6,7 @@ bin
 **/*_grpc.py
 **/__pycache__
 VERSION
+
+# Nix
+result*
+.direnv/

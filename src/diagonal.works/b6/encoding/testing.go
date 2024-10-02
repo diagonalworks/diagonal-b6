@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"diagonal.works/b6/osm"
+	"diagonal.works/b6/test"
 )
 
 func loadGranarySquareForTests(t *testing.T) (map[osm.NodeID]string, map[osm.NodeID]string) {
@@ -26,7 +27,7 @@ func loadGranarySquareForTests(t *testing.T) (map[osm.NodeID]string, map[osm.Nod
 		}
 		return nil
 	}
-	input, err := os.Open("../../../../data/tests/granary-square.osm.pbf")
+	input, err := os.Open(test.Data(test.GranarySquarePBF))
 	if err != nil {
 		t.Fatalf("Failed to open test data: %s", err)
 	}

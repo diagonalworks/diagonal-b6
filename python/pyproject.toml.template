@@ -7,7 +7,7 @@ name = "diagonal_b6"
 description = "A Python client library for b6, Diagonal's geospatial analysis engine."
 readme = "README.md"
 license = {text = "Apache License"}
-version = "VERSION"
+version = "@VERSION@"
 authors = [
   {name="Diagonal Works", email="hello@diagonal.works"},
 ]

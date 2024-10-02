@@ -68,7 +68,7 @@ this the b6 shell. The shell lets you enter a b6 function to run on the value
 shown in the result window. For example, clicking a point on the map to show
 the lat, lng and entering `sightline 300` will show an estimated viewshed
 polygon from that point, with a cutoff of 300m. The Python client library and
-the shell provide the same set of functions. 
+the shell provide the same set of functions.
 
 Pressing backtick will slide open a b6 shell that's not associated with a
 result. This is a good starting point for jumping to new locations and finding
@@ -198,4 +198,81 @@ docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/D
 ```
 
 
+### Building with Nix
 
+A [Nix](https://nixos.org/) [flake](https://nixos.wiki/wiki/flakes) is
+provided to build the binaries and/or do development.
+
+If you use [direnv](https://direnv.net/) you will get a development shell
+automatically, and otherwise you can get one with:
+
+```shell
+nix develop
+```
+
+You can build the go binaries with `nix build` and run the `b6` binary with
+`nix run . -- --help`. You can find the rest of the binaries in `./result/bin`
+(if you have ran `nix build`.)
+
+The go application is built with [gomod2nix](https://github.com/nix-community/gomod2nix/).
+
+For day-to-day development, it is convenient to use the Makefile; so you can
+run `make b6`, or any other make target, from the Nix shell and it should work
+fine. Note that the resulting binaries are placed in the `./bin` folder; but
+they should (!) be identical to the ones built by Nix; or at least, they are
+built from the same source!
+
+The JavaScript projects are all managed by npm; invoked also in the devShell.
+
+There is a Python project defined which can be built with `nix build
+.#python`; but this is probably only useful as a flake input to another
+project, and not really used here at present (you can jump into a Python
+environment with `nix develop .#python`.)
+
+#### Updating go dependencies
+
+If the go dependencies change, you need to run `gomod2nix`. You can do this
+from the normal devShell:
+
+```shell
+cd src/diagonal.works/b6/
+gomod2nix
+```
+
+#### Building the docker image with Nix
+
+You can build the docker image with Nix:
+
+```shell
+nix build .#b6-image
+./result | docker load
+```
+
+This provides the docker image `b6`, which can be run in the typical way:
+
+```shell
+docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 -world /data/camden.index
+```
+
+See the [flake.nix](flake.nix) file for more information.
+
+
+#### Flake template
+
+There is a flake template to demonstrate how to make a b6 "client" project;
+i.e. something that comes with the b6 Python library installed. You can use it
+like so:
+
+
+```shell
+mkdir some-project
+cd some-project
+nix flake init --template github:diagonalworks/diagonal-b6/
+nix develop
+```
+
+Within here you will have a `b6` binary to run a local b6, and also the
+`diagonal_b6` python package available.
+
+You can read more about the template here:
+[nix/python-client/flake.nix](./nix/python-client/flake.nix)

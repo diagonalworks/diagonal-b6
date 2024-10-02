@@ -3,11 +3,12 @@ package transit
 import (
 	"testing"
 
+	"diagonal.works/b6/test"
 	"github.com/golang/geo/s2"
 )
 
 func TestParseGTFSWithManchesterData(t *testing.T) {
-	network, err := ReadGTFS("../../../../../data/tests/gtfs-manchester/")
+	network, err := ReadGTFS(test.Data("gtfs-manchester/"))
 	if err != nil {
 		t.Errorf("Expected no error, found %v", err)
 	}

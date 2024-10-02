@@ -8,22 +8,21 @@ import (
 	"diagonal.works/b6"
 	"diagonal.works/b6/graph"
 	"diagonal.works/b6/ingest"
+	"diagonal.works/b6/test"
 )
 
 const cores = 2
 const operator = ""
 
 func TestGTFSWorldMissingData(t *testing.T) {
-	_, err := newWorldFromGTFSFiles("../../../../../data/tests/gtfs-gala/", operator, cores)
+	_, err := newWorldFromGTFSFiles(test.Data("gtfs-gala/"), operator, cores)
 	if !strings.Contains(err.Error(), "routes.txt: no such file or directory") {
 		t.Errorf("Expected missing files error, got %s", err.Error())
 	}
 }
 
-const gtfsDataSource = "../../../../../data/tests/gtfs-manchester/"
-
 func TestGTFSWorldPoint(t *testing.T) {
-	w, err := newWorldFromGTFSFiles(gtfsDataSource, operator, cores)
+	w, err := newWorldFromGTFSFiles(test.Data("gtfs-manchester/"), operator, cores)
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err.Error())
 	}
@@ -45,7 +44,7 @@ func TestGTFSWorldPoint(t *testing.T) {
 }
 
 func TestGTFSWorldPath(t *testing.T) {
-	w, err := newWorldFromGTFSFiles(gtfsDataSource, operator, cores)
+	w, err := newWorldFromGTFSFiles(test.Data("gtfs-manchester/"), operator, cores)
 	if err != nil {
 		t.Errorf("Failed to build world: %s", err.Error())
 	}

@@ -1,0 +1,74 @@
+name: "CI"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-test:
+    name: "Build & Test"
+    runs-on: ubuntu-latest
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: "Build the Nix packages"
+      run: |
+        nix build .
+        nix build .#python
+        nix build .#b6-image
+        nix build .#b6-minimal-image
+        nix build .#frontend
+        nix build .#frontend-with-scenarios=false
+        nix build .#frontend-with-scenarios=true
+
+    - name: "Test that the nix template works"
+      run: |
+        export DIR=$(mktemp -d)
+        nix flake new $DIR --template .
+        nix develop $DIR
+
+    - name: "Test the Makefile inside the combined devShell"
+      run: |
+        nix develop .#combined --command make all-tests
+
+    - name: "Test that the docker image can ingest and run"
+      run: |
+        nix build .#b6-image
+        ./result | docker load
+
+        docker run \
+          -v ./data:/data \
+          --entrypoint b6-ingest-osm \
+          b6 \
+          --input data/tests/camden.osm.pdf \
+          --output data/camden.index
+
+        docker run \
+          -d \
+          -v ./data:/data \
+          -p 8001:8001 \
+          -p 8002:8002 \
+          b6 \
+          -world data/camden.index
+
+        sleep 3
+
+        curl --head localhost:8001

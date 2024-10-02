@@ -5,13 +5,12 @@ import (
 	"os"
 	"testing"
 
+	"diagonal.works/b6/test"
 	"github.com/golang/geo/s2"
 )
 
-const GranarySquarePBF = "../../../../data/tests/granary-square.osm.pbf"
-
 func TestParsePBF(t *testing.T) {
-	f, err := os.Open(GranarySquarePBF)
+	f, err := os.Open(test.Data(test.GranarySquarePBF))
 	if err != nil {
 		t.Fatalf("Open(GranarySquarePBF) failed with: %v", err)
 	}
@@ -86,7 +85,7 @@ func TestParsePBF(t *testing.T) {
 }
 
 func TestParsePBFSkippingTags(t *testing.T) {
-	f, err := os.Open(GranarySquarePBF)
+	f, err := os.Open(test.Data(test.GranarySquarePBF))
 	if err != nil {
 		t.Fatalf("Failed to open test data: %s", err)
 	}
@@ -113,7 +112,7 @@ func TestParsePBFSkippingTags(t *testing.T) {
 }
 
 func TestWritePBF(t *testing.T) {
-	f, err := os.Open(GranarySquarePBF)
+	f, err := os.Open(test.Data(test.GranarySquarePBF))
 	if err != nil {
 		t.Fatalf("Failed to open test data: %s", err)
 	}

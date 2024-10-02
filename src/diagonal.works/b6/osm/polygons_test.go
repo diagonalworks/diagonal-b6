@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"diagonal.works/b6/units"
+	"diagonal.works/b6/test"
 	"github.com/golang/geo/s2"
 )
 
@@ -48,7 +49,7 @@ func readPBF(filename string) (nodeMap, WayMap, relationMap, error) {
 
 // TODO: somehow class this as a larger style test? Load the test data once across all tests?
 func TestBoundaryRelationToPolygon(t *testing.T) {
-	nodes, ways, relations, err := readPBF("../../../../data/tests/london-boundaries.osm.pbf")
+	nodes, ways, relations, err := readPBF(test.Data("london-boundaries.osm.pbf"))
 	if err != nil {
 		t.Fatalf("Failed to read test data: %s", err)
 	}
@@ -280,7 +281,7 @@ func TestRelationToPolygonWithASingleClosedWay(t *testing.T) {
 
 // TODO: Move to geo? Needs test data too.
 func TestSimplifyBoundaryPolygon(t *testing.T) {
-	nodes, ways, relations, err := readPBF("../../../../data/tests/london-boundaries.osm.pbf")
+	nodes, ways, relations, err := readPBF(test.Data("london-boundaries.osm.pbf"))
 	if err != nil {
 		t.Fatalf("Failed to read test data: %s", err)
 	}
