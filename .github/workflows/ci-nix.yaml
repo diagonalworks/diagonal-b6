@@ -40,11 +40,13 @@ jobs:
         nix build .#frontend-with-scenarios=false
         nix build .#frontend-with-scenarios=true
 
-    - name: "Test that the nix template works"
-      run: |
-        export DIR=$(mktemp -d)
-        nix flake new $DIR --template .
-        nix develop $DIR
+    # Note: Removed this for now, as it will definitely _not_ work if it
+    # requires features that are only available on the branch.
+    # - name: "Test that the nix template works"
+    #   run: |
+    #     export DIR=$(mktemp -d)
+    #     nix flake new $DIR --template .
+    #     nix develop $DIR
 
     - name: "Test a few common entrypoints"
       run: |
