@@ -65,7 +65,7 @@ jobs:
           -v ./data:/data \
           --entrypoint b6-ingest-osm \
           b6 \
-          --input /data/tests/camden.osm.pdf \
+          --input /data/tests/camden.osm.pbf \
           --output /data/camden.index
 
         # Connect
