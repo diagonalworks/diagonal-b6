@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      image-name: ["b6", "b6-minimal"]
+      matrix:
+        image-name: ["b6", "b6-minimal"]
 
     steps:
     - uses: actions/checkout@v4

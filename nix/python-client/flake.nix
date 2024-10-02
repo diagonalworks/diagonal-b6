@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/24.05";
     flake-utils.url = "github:numtide/flake-utils";
-    diagonal-b6.url = "github:silky/diagonal-b6/add-nix";
+    diagonal-b6.url = "github:diagonalworks/diagonal-b6";
   };
 
 
