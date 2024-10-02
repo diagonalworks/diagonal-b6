@@ -4,6 +4,7 @@ FROM ubuntu:mantic AS b6-build
 ARG TARGETOS
 ARG TARGETARCH
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -yq install git make ca-certificates curl npm protobuf-compiler gdal-bin libgdal-dev python3-full
+RUN npm install -g pnpm
 RUN curl -L -O https://go.dev/dl/go1.21.6.$TARGETOS-$TARGETARCH.tar.gz
 RUN tar -C /usr/local -xzf go1.21.6.$TARGETOS-$TARGETARCH.tar.gz && rm go1.21.6.$TARGETOS-$TARGETARCH.tar.gz
 RUN mkdir /go-cache

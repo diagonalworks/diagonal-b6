@@ -1,7 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/24.05";
-    unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     # Latest 3.7.1 release from nixpkgs
     # https://github.com/NixOS/nixpkgs/commits/nixpkgs-unstable/pkgs/development/libraries/gdal/default.nix
@@ -11,6 +10,7 @@
       url = "github:nix-community/gomod2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
     pyproject-nix.url = "github:nix-community/pyproject.nix";
     flake-utils.url = "github:numtide/flake-utils";
     treefmt-nix.url = "github:numtide/treefmt-nix";
@@ -21,7 +21,6 @@
     { self
     , nixpkgs
     , gomod2nix
-    , unstable
     , pyproject-nix
     , flake-utils
     , treefmt-nix
@@ -32,14 +31,29 @@
       (system:
       let
         pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
-        unstablePkgs = import unstable { inherit system; };
 
         # Python setup
-        python = pkgs.python3;
+        python = pkgs.python312;
 
         overlay = _: prev: {
-          python3 = prev.python3.override {
+          python312 = prev.python312.override {
             packageOverrides = _: p: {
+              # Note: We have to refer to a spceific version here to make sure
+              # grpcio _and_ grpcio-tools match.
+              #
+              # At present on unstable they are at _different_ versions, and
+              # this causes a warning. This can be removed if we pin to a
+              # newer version of a stable nixpkgs, or when unstable has these
+              # two packages at the same version.
+              grpcio = p.grpcio.overridePythonAttrs(old: rec {
+                version = "1.65.1";
+                src =  pkgs.fetchPypi {
+                  pname = "grpcio";
+                  inherit version;
+                  hash = "sha256-PEkjAZiM1yDNFF2E4XMY1FrzQuKe+TFBIo+c1zIiNos=";
+                };
+              });
+
               s2sphere = p.buildPythonPackage rec {
                 version = "0.2.5";
                 pname = "s2sphere";
@@ -203,10 +217,10 @@
 
           nativeBuildInputs = [
             pkgs.nodejs
-            unstablePkgs.pnpm.configHook
+            pkgs.pnpm.configHook
           ];
 
-          pnpmDeps = unstablePkgs.pnpm.fetchDeps {
+          pnpmDeps = pkgs.pnpm.fetchDeps {
             inherit (finalAttrs) pname version src;
             hash = "sha256-8Kc8dxchO/Gu/j3QSR52hOf4EnJuxzsaWMy9kMNgOCc=";
           };
@@ -270,13 +284,20 @@
         # A collection of derivations for each go cmd; can be useful to keep
         # closures small, if for example you only want to depend on a specific
         # binary.
+        #
+        # Examples:
+        #
+        # > nix run .#b6
+        # > nix run .#b6-connect
+        # > nix run .#b6-ingest-osm
+        #
         go-executables =
           let
             allPaths = builtins.readDir ./src/diagonal.works/b6/cmd;
             onlyDirs = pkgs.lib.attrsets.filterAttrs (_: v: v == "directory") allPaths;
             cmds = builtins.attrNames onlyDirs;
             mkGoApp = cmd: with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
-              name = "b6";
+              name = "${cmd}";
               src = ./src/diagonal.works/b6;
               pwd = ./src/diagonal.works/b6;
               buildInputs = [
@@ -403,7 +424,7 @@
 
             # JavaScript (docs/front-end)
             nodejs
-            unstablePkgs.pnpm # Need version 9
+            pnpm # Need version 9
 
             # Other
             osmium-tool # Extract OSM files
@@ -449,8 +470,10 @@
           # Add an explicit 'go' entrypoint for the full go build+test.
           go = b6-go;
 
-          # Not an application; but can be built `nix build .#python`.
-          python = b6-py;
+          # Not an application; but can be built `nix build .#python312`.
+          python312 = b6-py;
+          # TODO:
+          # python311 = ...;
 
           # Docker images
           b6-image = b6-image "b6" b6-go;
@@ -482,7 +505,7 @@
       # Nix templates
       templates = {
         default = {
-          path = ./nix/python-client;
+          path = ./nix-templates/python-client;
         };
       };
     };

@@ -1,4 +1,5 @@
-name: "CI"
+# Run the CI making use of nix to do all the building/testing.
+name: "CI (nix)"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -29,45 +30,65 @@ jobs:
           accept-flake-config = true
           log-lines = 1000
 
+    - name: Setup Cachix cache
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
     - name: "Build the Nix packages"
       run: |
         nix build .
-        nix build .#python
+        nix build .#python312
         nix build .#b6-image
         nix build .#b6-minimal-image
         nix build .#frontend
         nix build .#frontend-with-scenarios=false
         nix build .#frontend-with-scenarios=true
 
-    - name: "Test that the nix template works"
-      run: |
-        export DIR=$(mktemp -d)
-        nix flake new $DIR --template .
-        nix develop $DIR
+    # Note: Removed this for now, as it will definitely _not_ work if it
+    # requires features that are only available on the branch.
+    # - name: "Test that the nix template works"
+    #   run: |
+    #     export DIR=$(mktemp -d)
+    #     nix flake new $DIR --template .
+    #     nix develop $DIR
 
-    - name: "Test the Makefile inside the combined devShell"
+    - name: "Test a few common entrypoints"
       run: |
-        nix develop .#combined --command make all-tests
+        nix run .#b6 -- --help
+        nix run .#b6-ingest-osm -- --help
+        nix run .#b6-connect -- --help
 
-    - name: "Test that the docker image can ingest and run"
+    - name: "Test that the docker image can ingest, connect and run"
       run: |
         nix build .#b6-image
         ./result | docker load
 
+        # Ingest
         docker run \
           -v ./data:/data \
           --entrypoint b6-ingest-osm \
           b6 \
-          --input data/tests/camden.osm.pdf \
-          --output data/camden.index
+          --input /data/tests/camden.osm.pbf \
+          --output /data/camden.index
 
+        # Connect
+        docker run \
+          -v ./data:/data \
+          --entrypoint b6-connect \
+          b6 \
+          --input /data/camden.index \
+          --output /data/camden.connected.index
+
+        # Run
         docker run \
           -d \
           -v ./data:/data \
           -p 8001:8001 \
           -p 8002:8002 \
           b6 \
-          -world data/camden.index
+          -world /data/camden.connected.index
 
         sleep 3
 
