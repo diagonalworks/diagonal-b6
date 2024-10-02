@@ -1,4 +1,5 @@
-name: "CI"
+# Run the CI making use of nix to do all the building/testing.
+name: "CI (nix)"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -50,10 +51,6 @@ jobs:
         nix run .#b6 -- --help
         nix run .#b6-ingest-osm -- --help
         nix run .#b6-connect -- --help
-
-    - name: "Test the Makefile inside the combined devShell"
-      run: |
-        nix develop .#combined --command make all-tests
 
     - name: "Test that the docker image can ingest, connect and run"
       run: |

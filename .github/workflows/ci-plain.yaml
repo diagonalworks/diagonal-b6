@@ -1,0 +1,50 @@
+# Check that the 'non-nix' build steps still work; notably running all the
+# tests via the Makefile, and building the nightly image.
+#
+# Note that Nix is still used here to get an environment, but we run the other
+# commands "normally", as if that environment were already present.
+name: "CI (plain)"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-test:
+    name: "Build & Test"
+    runs-on: ubuntu-latest
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: "Test the Makefile inside the combined devShell"
+      run: |
+        nix develop .#combined --command make all-tests
+
+    - name: "Test the nightly docker build works"
+      run: |
+        nix develop .#combined --command make docker/Dockerfile.b6
+
+        # Taken directly from ./etc/cloudbuild.nightly.yaml
+        docker build \
+          --build-arg TARGETOS=linux \
+          --build-arg TARGETARCH=amd64 \
+          -f docker/Dockerfile.b6 \
+          .
