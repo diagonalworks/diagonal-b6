@@ -24,10 +24,15 @@
       # Here we depend on the b6 python library, as well as any additional
       # libraries we might like to use.
       py-env = pkgs.python3.withPackages (ps: with ps; [
+        # The b6 python library
+        diagonal-b6.packages."${system}".python
+        # Additional python deps:
+        geopandas
         jupyter
+        more-itertools
+        pandas
         # Note: Here is where you would add extra Python libraries
         # ex: numpy
-        diagonal-b6.packages."${system}".python
       ]);
 
 

@@ -489,7 +489,7 @@
       # Nix templates
       templates = {
         default = {
-          path = ./nix/python-client;
+          path = ./nix-templates/python-client;
         };
       };
     };
