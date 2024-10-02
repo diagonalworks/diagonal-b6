@@ -225,9 +225,13 @@ built from the same source!
 The JavaScript projects are all managed by npm; invoked also in the devShell.
 
 There is a Python project defined which can be built with `nix build
-.#python`; but this is probably only useful as a flake input to another
+.#python312`; but this is probably only useful as a flake input to another
 project, and not really used here at present (you can jump into a Python
-environment with `nix develop .#python`.)
+environment with `nix develop .#python312`.)
+
+> [!Important]
+> The version of Python you use must match when you bring in the library; i.e.
+> if you python312 you need to use the `.#python312` derivation.
 
 #### Running with Nix
 

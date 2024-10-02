@@ -33,7 +33,7 @@ jobs:
     - name: "Build the Nix packages"
       run: |
         nix build .
-        nix build .#python
+        nix build .#python312
         nix build .#b6-image
         nix build .#b6-minimal-image
         nix build .#frontend
