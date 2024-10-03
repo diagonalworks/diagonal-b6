@@ -1,4 +1,4 @@
-package b6 
+package b6
 
 import (
 	"sort"

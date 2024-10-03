@@ -11,7 +11,10 @@ import (
 	"runtime"
 	rpprof "runtime/pprof"
 	"sync"
+	"strings"
+	"errors"
 
+	"diagonal.works/b6"
 	"diagonal.works/b6/api"
 	b6grpc "diagonal.works/b6/grpc"
 	"diagonal.works/b6/ingest"
@@ -41,6 +44,22 @@ func main() {
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	fileIOFlag := flag.Bool("file-io", true, "Is file IO allowed from the API?")
 
+	additionalWorlds := make(map[b6.FeatureID]b6.World)
+		flag.Func("add-world", "Additional worlds; specify like \"<feature_id> <world-arguments>\"", func(s string) error {
+			featureIdStr, worldStr, found := strings.Cut(s, " ")
+			if (found) {
+				world, err := compact.ReadWorld(worldStr, &ingest.BuildOptions{Cores: *coresFlag})
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err.Error())
+					return err
+				}
+				featureId := b6.FeatureIDFromString(featureIdStr)
+				additionalWorlds[featureId] = world
+				return nil
+			}
+			return errors.New(fmt.Sprintf("Couldn't load additional world; bad string; expected one space: %s", s))
+	})
+
 	flag.Parse()
 
 	if *worldFlag == "" {
@@ -54,11 +73,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	additionalMutableWorlds := make(map[b6.FeatureID]ingest.MutableWorld)
+	for featureId, world := range additionalWorlds {
+		log.Printf("Adding new world at %s", featureId)
+		additionalMutableWorlds[featureId] = ingest.NewMutableOverlayWorld(ingest.NewOverlayWorld(world, base))
+	}
+
 	var worlds ingest.Worlds
 	if *readOnlyFlag {
 		worlds = ingest.ReadOnlyWorlds{Base: base}
 	} else {
-		worlds = &ingest.MutableWorlds{Base: base}
+		worlds = &ingest.MutableWorlds{Base: base, Mutable: additionalMutableWorlds}
 	}
 
 	apiOptions := api.Options{
