@@ -43,8 +43,8 @@ jobs:
         nix build .#b6-image
         nix build .#b6-minimal-image
         nix build .#frontend
-        nix build .#frontend-with-scenarios=false
-        nix build .#frontend-with-scenarios=true
+        nix build .#frontend-with-scenarios=false,shell=false
+        nix build .#frontend-with-scenarios=true,shell=true
 
     # Note: Removed this for now, as it will definitely _not_ work if it
     # requires features that are only available on the branch.

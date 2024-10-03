@@ -233,7 +233,7 @@
           # or:
           #
           # > docker run -e \
-          #     FRONTEND_CONFIGURATION="frontend-with-scenarios=true" \
+          #     FRONTEND_CONFIGURATION="frontend-with-scenarios=true,shell=false" \
           #     -p 8001:8001 \
           #     -p 8002:8002 \
           #     -v ./data:/data \
@@ -265,8 +265,8 @@
         # Examples:
         #
         #   nix build .#b6-js
-        #   nix build .#frontend-with-scenarios=false
-        #   nix build .#frontend-with-scenarios=true
+        #   nix build .#frontend-with-scenarios=false,shell=true
+        #   nix build .#frontend-with-scenarios=true,shell=false
         #
         // (b6-js-packages pkgs)
         ;

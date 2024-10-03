@@ -19,10 +19,14 @@ let
       # computing them from the `frontend-feature-matrix`, if we wished.
       launch-script = pkgs.writeShellScriptBin "launch-b6" ''
         case "''${FRONTEND_CONFIGURATION}" in
-          "frontend-with-scenarios=true")
-            STATIC_ARG=${b6-js-packages."frontend-with-scenarios=true".outPath} ;;
-          "frontend-with-scenarios=false")
-            STATIC_ARG=${b6-js-packages."frontend-with-scenarios=false".outPath} ;;
+          "frontend-with-scenarios=true,shell=true")
+            STATIC_ARG=${b6-js-packages."frontend-with-scenarios=true,shell=true".outPath} ;;
+          "frontend-with-scenarios=true,shell=false")
+            STATIC_ARG=${b6-js-packages."frontend-with-scenarios=true,shell=false".outPath} ;;
+          "frontend-with-scenarios=false,shell=true")
+            STATIC_ARG=${b6-js-packages."frontend-with-scenarios=false,shell=true".outPath} ;;
+          "frontend-with-scenarios=false,shell=false")
+            STATIC_ARG=${b6-js-packages."frontend-with-scenarios=false,shell=false".outPath} ;;
           *)
             STATIC_ARG=${b6-js-packages.frontend.outPath} ;;
         esac

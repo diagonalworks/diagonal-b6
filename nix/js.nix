@@ -43,9 +43,7 @@ let
       # , { ABC = "true"; XYZ = false  }
       # , ...
       # ]
-      configurations = pkgs.lib.cartesianProduct
-        allOptions
-      ;
+      configurations = pkgs.lib.cartesianProduct allOptions;
 
       # { "abc=true,xyz=true"  = make-frontend { ABC = "true"; XYZ = "true" };
       # , "abc=true,xyz=false" = make-frontend { ABC = "true"; XYZ = false  };
@@ -93,7 +91,7 @@ let
     # Override the phases as there is already a Makefile present, which is
     # used by Nix by default.
     buildPhase = ''
-      ${pkgs.lib.strings.toShellVars envVars} pnpm build
+      ${pkgs.lib.strings.stringAsChars (x: if x == "\n" then " " else x) (pkgs.lib.strings.toShellVars envVars)} pnpm build
     '';
 
     installPhase = ''
@@ -104,7 +102,9 @@ let
 
   # The default frontend configuration.
   frontend = make-frontend {
+    # Note: If you want something to be true it must equal "true".
     VITE_FEATURES_SCENARIOS = false;
+    VITE_FEATURES_SHELL = false;
   };
 in
 {

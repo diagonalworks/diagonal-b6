@@ -20,8 +20,15 @@ export interface World {
 }
 
 export interface WorldsStore {
+    isShellEnabled: boolean;
     worlds: Record<string, World>;
     actions: {
+        /**
+         * Set whether or not to show the shell.
+         * @param enabled - Should it be enabled everywhere?
+         * @returns void
+         */
+        setShellEnabled: (enabled: boolean) => void;
         /**
          * Create a new world in the store
          * @param world - The world to create
@@ -61,8 +68,14 @@ export interface WorldsStore {
 export const createWorldStore: ImmerStateCreator<WorldsStore, WorldsStore> = (
     set
 ) => ({
+    isShellEnabled: false,
     worlds: {},
     actions: {
+        setShellEnabled: (enabled) => {
+          set((state) => {
+            state.isShellEnabled = enabled;
+          });
+        },
         createWorld: (world) => {
             set((state) => {
                 state.worlds[world.id] = world;

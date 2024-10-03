@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { Shell as ShellComponent } from '@/components/system/Shell';
+import { Shell as ShellComponent } from '@/features/shell/components/Shell';
 
 type Story = StoryObj<typeof ShellComponent>;
 
