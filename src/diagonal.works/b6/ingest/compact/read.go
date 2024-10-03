@@ -1,6 +1,7 @@
 package compact
 
 import (
+	"os"
 	"bytes"
 	"context"
 	"fmt"
@@ -93,6 +94,13 @@ func (t *toRead) Read(w *World, status chan<- string, o *ingest.BuildOptions, ct
 }
 
 func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
+	// Run the new function but with no additional world inputs.
+	additional := make(map[b6.FeatureID]string)
+	w, _, err := ReadWorldAndAdditionals(input, o, additional)
+	return w, err
+}
+
+func ReadWorldAndAdditionals(input string, o *ingest.BuildOptions, additionals map[b6.FeatureID]string) (b6.World, map[b6.FeatureID]ingest.MutableWorld, error) {
 	ctx := context.Background()
 	sources := strings.Split(input, ",")
 	trs := make([]*toRead, 0)
@@ -108,7 +116,7 @@ func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 		}
 		fs, err := filesystem.New(ctx, s)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		toClose[i] = fs
 		var children []string
@@ -121,7 +129,7 @@ func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 			}
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		sort.Strings(children)
 		for _, child := range children {
@@ -143,6 +151,7 @@ func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 		}
 	}
 
+
 	cw := NewWorld()
 	status := make(chan string)
 
@@ -162,7 +171,7 @@ func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 	err := g.Wait()
 	close(status)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	overlay := b6.World(cw)
@@ -180,7 +189,7 @@ func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 			changed = true
 			log.Printf("Apply %s", tr.Filename)
 			if _, err := tr.Change.Apply(m); err != nil {
-				return nil, fmt.Errorf("%s: %w", tr.Filename, err)
+				return nil, nil, fmt.Errorf("%s: %w", tr.Filename, err)
 			}
 			tr.Change = nil
 			runtime.GC()
@@ -191,9 +200,33 @@ func ReadWorld(input string, o *ingest.BuildOptions) (b6.World, error) {
 		c.Close()
 	}
 
+	additionalMutableWorlds := make(map[b6.FeatureID]ingest.MutableWorld)
+
+	mkAdditionals := func (w b6.World) error {
+		for featureId, worldStr := range additionals {
+			world, nil := ReadWorld(worldStr, o)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				return err
+			}
+			log.Printf("Adding new world at %s", featureId)
+			additionalMutableWorlds[featureId] = ingest.NewMutableOverlayWorld(ingest.NewOverlayWorld(world, m))
+		}
+
+		return nil
+	}
+
 	if changed {
-		return m, nil
+		err = mkAdditionals(m)
+		if err != nil {
+			return nil, nil, err
+		}
+		return m, additionalMutableWorlds, nil
 	} else {
-		return overlay, nil
+		err = mkAdditionals(overlay)
+		if err != nil {
+			return nil, nil, err
+		}
+		return overlay, additionalMutableWorlds, nil
 	}
 }
