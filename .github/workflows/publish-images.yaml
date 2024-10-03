@@ -48,7 +48,7 @@ jobs:
         nix build .#${{ matrix.image-name }}-image
         ./result | docker load
 
-        export TARBALL_TAG="$(nix eval --raw .#${{ matrix.image-name }}-image.imageName):$(nix eval --raw .#${{ matrix.image_name }}-image.imageTag)"
+        export TARBALL_TAG="$(nix eval --raw .#${{ matrix.image-name }}-image.imageName):$(nix eval --raw .#${{ matrix.image-name }}-image.imageTag)"
         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
 
         docker tag "$TARBALL_TAG" ghcr.io/diagonalworks/diagonal-${{ matrix.image-name }}:$RELEASE_TAG
