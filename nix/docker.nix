@@ -1,7 +1,5 @@
 { pkgs
-, frontend-feature-matrix
-, frontend
-, b6-js
+, b6-js-packages
 }:
 let
   make-b6-image = name: b6-drv:
@@ -22,11 +20,11 @@ let
       launch-script = pkgs.writeShellScriptBin "launch-b6" ''
         case "''${FRONTEND_CONFIGURATION}" in
           "frontend-with-scenarios=true")
-            STATIC_ARG=${frontend-feature-matrix."frontend-with-scenarios=true".outPath} ;;
+            STATIC_ARG=${b6-js-packages."frontend-with-scenarios=true".outPath} ;;
           "frontend-with-scenarios=false")
-            STATIC_ARG=${frontend-feature-matrix."frontend-with-scenarios=false".outPath} ;;
+            STATIC_ARG=${b6-js-packages."frontend-with-scenarios=false".outPath} ;;
           *)
-            STATIC_ARG=${frontend.outPath} ;;
+            STATIC_ARG=${b6-js-packages.frontend.outPath} ;;
         esac
 
         # So we can kill it with Ctrl-C
@@ -38,7 +36,7 @@ let
         ${b6-drv}/bin/b6 \
           -http=0.0.0.0:8001 \
           -grpc=0.0.0.0:8002 \
-          -js=${b6-js.outPath} \
+          -js=${b6-js-packages.b6-js.outPath} \
           -enable-v2-ui \
           -static-v2=''$STATIC_ARG \
           "$@" &

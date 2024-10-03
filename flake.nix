@@ -33,7 +33,6 @@
         pkgs = import nixpkgs {
           inherit system;
           overlays = [ overlay ];
-          # crossSystem.config = "aarch64-linux";
         };
 
         aarch64Pkgs = import nixpkgs {
@@ -88,18 +87,18 @@
           };
         };
 
-        b6-py = import ./nix/python.nix {
+        b6-py = ourGdal: pkgs: import ./nix/python.nix {
           inherit
             pkgs
             python
-            b6-go-packages
             pyproject-nix
             ;
+          b6-go-packages = b6-go-packages ourGdal pkgs;
         };
 
         pythonEnv = python.withPackages (ps:
           [
-            b6-py
+            (b6-py ourGdal pkgs)
 
             # For `make python`
             ps.grpcio-tools
@@ -111,14 +110,18 @@
 
         # Use a pinned version of gdal.
         ourGdal = (import gdalNixpkgs { inherit system; }).gdal;
+        ourGdal-aarch64-linux = (import gdalNixpkgs {
+          inherit system;
+          crossSystem.config = "aarch64-linux";
+        }).gdal;
 
-        b6-js-packages = import ./nix/js.nix {
+        b6-js-packages = pkgs: import ./nix/js.nix {
           inherit
             pkgs
             ;
         };
 
-        b6-go-packages = import ./nix/go.nix {
+        b6-go-packages = ourGdal: pkgs: import ./nix/go.nix {
           inherit
             pkgs
             system
@@ -127,12 +130,17 @@
             ;
         };
 
-        make-b6-image = import ./nix/docker.nix
-          {
-            inherit
-              pkgs
-              ;
-          } // b6-js-packages;
+        make-b6-image = pkgs_: import ./nix/docker.nix {
+          pkgs = pkgs_;
+          # Note: Minor hack; we don't build the js stuff with anything other
+          # than the system nixpkgs, as pnpm is broken on aarch64
+          b6-js-packages = b6-js-packages pkgs;
+        };
+
+        b6-image = (make-b6-image pkgs) "b6" (b6-go-packages ourGdal pkgs).everything;
+        b6-minimal-image = (make-b6-image pkgs) "b6-minimal" (b6-go-packages ourGdal pkgs).go-executables.b6;
+
+        b6-image-aarch64 = (make-b6-image aarch64Pkgs) "b6-aarch64" (b6-go-packages ourGdal-aarch64-linux aarch64Pkgs).everything;
       in
       rec {
         # Development shells for hacking/building with the Makefile. Note
@@ -201,15 +209,16 @@
         packages = {
           # Run like `nix run . -- --help` or access all the binaries with
           # `nix build` and look in `./result/bin`.
-          default = b6-go-packages.everything;
+          default = (b6-go-packages ourGdal pkgs).everything;
 
           # Add an explicit 'go' entrypoint for the full go build+test.
-          go = b6-go-packages.everything;
+          go = (b6-go-packages ourGdal pkgs).everything;
 
           # Not an application; but can be built `nix build .#python312`.
-          python312 = b6-py;
+          python312 = (b6-py ourGdal pkgs);
           # TODO:
           # python311 = ...;
+
 
           # Docker images
           #
@@ -232,8 +241,13 @@
           #     -world /data/camden.index
           #
           # to enable a specific frontend configuration.
-          b6-image = make-b6-image "b6" b6-go-packages.everything;
-          b6-minimal-image = make-b6-image "b6-minimal" b6-go-packages.go-executables.b6;
+          inherit
+            b6-image
+            b6-minimal-image
+            # TODO: This has a build error with pnpm, and/or with hdf5
+            # Needs to be investigated a bit.
+            # b6-image-aarch64
+            ;
         }
         # All the explicit go executables
         #
@@ -244,7 +258,7 @@
         # > nix run .#b6-ingest-osm
         #
         #
-        // b6-go-packages.go-executables
+        // (b6-go-packages ourGdal pkgs).go-executables
 
         # All the frontend packages
         #
@@ -254,7 +268,7 @@
         #   nix build .#frontend-with-scenarios=false
         #   nix build .#frontend-with-scenarios=true
         #
-        // b6-js-packages
+        // (b6-js-packages pkgs)
         ;
 
         # Run via `nix fmt`
