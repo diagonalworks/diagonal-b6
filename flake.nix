@@ -30,13 +30,23 @@
     flake-utils.lib.eachDefaultSystem
       (system:
       let
-        pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ overlay ];
+        };
+
+        aarch64Pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ overlay ];
+          crossSystem.config = "aarch64-linux";
+        };
 
         # Python setup
-        python = pkgs.python312;
+        python-version = "python312";
+        python = pkgs.${python-version};
 
         overlay = _: prev: {
-          python312 = prev.python312.override {
+          ${python-version} = prev.${python-version}.override {
             packageOverrides = _: p: {
               # Note: We have to refer to a spceific version here to make sure
               # grpcio _and_ grpcio-tools match.
@@ -45,9 +55,9 @@
               # this causes a warning. This can be removed if we pin to a
               # newer version of a stable nixpkgs, or when unstable has these
               # two packages at the same version.
-              grpcio = p.grpcio.overridePythonAttrs(old: rec {
+              grpcio = p.grpcio.overridePythonAttrs (old: rec {
                 version = "1.65.1";
-                src =  pkgs.fetchPypi {
+                src = pkgs.fetchPypi {
                   pname = "grpcio";
                   inherit version;
                   hash = "sha256-PEkjAZiM1yDNFF2E4XMY1FrzQuKe+TFBIo+c1zIiNos=";
@@ -77,61 +87,18 @@
           };
         };
 
-        # We have to write the version into here from the output of the go
-        # binary.
-        pyproject-file = (pkgs.runCommand "make-pyproject" { } ''
-          substitute ${./python/pyproject.toml.template} $out \
-            --subst-var-by VERSION ''$(${b6-go}/bin/b6-api --pip-version)
-        '');
-
-        pythonProject = pyproject-nix.lib.project.loadPyproject {
-          projectRoot = ./python;
-          pyproject = pkgs.lib.importTOML pyproject-file;
+        b6-py = ourGdal: pkgs: import ./nix/python.nix {
+          inherit
+            pkgs
+            python
+            pyproject-nix
+            ;
+          b6-go-packages = b6-go-packages ourGdal pkgs;
         };
-
-        renderedPyProject = pythonProject.renderers.buildPythonPackage {
-          inherit python;
-        };
-
-        b6-py = python.pkgs.buildPythonPackage (renderedPyProject // {
-          # Set the pyproject to be the one we computed via our b6 binary.
-          patchPhase = ''
-            cat ${pyproject-file} > pyproject.toml
-          '';
-
-          nativeBuildInputs = renderedPyProject.nativeBuildInputs ++ [
-            python.pkgs.grpcio-tools
-          ];
-
-          # A couple of hacks necessary to build the proto files and the API.
-          preBuild = ''
-            # Bring in the necessary proto files and the Makefile
-            cp -r ${./proto} ./proto
-            cat ${./Makefile} > some-Makefile
-
-            # Hack: Run the b6-api command outside of the Makefile, using the
-            # Nix version of the binary.
-            ${b6-go}/bin/b6-api --functions | python diagonal_b6/generate_api.py > diagonal_b6/api_generated.py
-
-            # Hack: Make the directory structure that the Makefile expects,
-            # then move things to where we want them
-            mkdir python
-            mkdir python/diagonal_b6
-
-            make proto-python -f some-Makefile
-
-            # Cleanup
-            mv python/diagonal_b6/* ./diagonal_b6
-            rm -rf python/diagonal_b6
-          '';
-
-          pythonImportsCheck = [ "diagonal_b6" ];
-        });
-
 
         pythonEnv = python.withPackages (ps:
           [
-            b6-py
+            (b6-py ourGdal pkgs)
 
             # For `make python`
             ps.grpcio-tools
@@ -141,262 +108,39 @@
           ]);
 
 
-        # The default frontend configuration.
-        frontend = mkFrontend {
-          VITE_FEATURES_SCENARIOS = false;
-        };
-
-        # Note: We obtain a list of all the "features" (i.e. the folders on this
-        # specific directory) and use that to construct a set of derivations
-        # that turn on/off every feature combination.
-        #
-        # Example:
-        #
-        #   nix build .#frontend-with-scenarios=false
-        #   nix build .#frontend-with-scenarios=true
-        #
-        frontend-feature-matrix =
-          let
-            allPaths = builtins.readDir ./frontend/src/features;
-            onlyDirs = pkgs.lib.attrsets.filterAttrs (_: v: v == "directory") allPaths;
-
-            # [ scenarios ... ]
-            featureNames = builtins.attrNames onlyDirs;
-
-            # [ ABC, XYZ, ... ]
-            viteEnvVars = map (x: "VITE_FEATURES_${pkgs.lib.toUpper x}") featureNames;
-
-            # { ABC = [ "true" false ];
-            #   XYZ = [ "true" false ];
-            #   ...
-            # }
-            # Note: Because of the way the JS code checks for the value of the
-            # flag, this has to be the _string_ "true".
-            allOptions = builtins.listToAttrs (map (x: { name = x; value = [ "true" false ]; }) viteEnvVars);
-
-            # [ { ABC = "true"; XYZ = "true" }
-            # , { ABC = "true"; XYZ = false  }
-            # , ...
-            # ]
-            configurations = pkgs.lib.cartesianProduct
-              allOptions
-            ;
-
-            # { "abc=true,xyz=true"  = mkFrontend { ABC = "true"; XYZ = "true" };
-            # , "abc=true,xyz=false" = mkFrontend { ABC = "true"; XYZ = false  };
-            # , ...
-            # }
-            matrix =
-              let
-                nameFor = k: v:
-                  let
-                    featName = builtins.substring 14 (-1) (pkgs.lib.toLower k);
-                    val = if v == false then "false" else toString v;
-                  in
-                  "${featName}=${val}";
-                elements = map
-                  (c: {
-                    # "abc=true,xyz=true" ...
-                    name =
-                      let conf = pkgs.lib.strings.concatStringsSep "," (pkgs.lib.mapAttrsToList nameFor c);
-                      in "frontend-with-${conf}";
-                    value = mkFrontend c;
-                  })
-                  configurations;
-              in
-              builtins.listToAttrs elements;
-          in
-          matrix;
-
-        # From <https://github.com/NixOS/nixpkgs/blob/master/doc/languages-frameworks/javascript.section.md#pnpm-javascript-pnpm>
-        mkFrontend = envVars: pkgs.stdenv.mkDerivation (finalAttrs: {
-          pname = "b6-frontend";
-          version = "0.0.0";
-
-          src = ./frontend;
-
-          nativeBuildInputs = [
-            pkgs.nodejs
-            pkgs.pnpm.configHook
-          ];
-
-          pnpmDeps = pkgs.pnpm.fetchDeps {
-            inherit (finalAttrs) pname version src;
-            hash = "sha256-8Kc8dxchO/Gu/j3QSR52hOf4EnJuxzsaWMy9kMNgOCc=";
-          };
-
-          # Override the phases as there is already a Makefile present, which is
-          # used by Nix by default.
-          buildPhase = ''
-            ${pkgs.lib.strings.toShellVars envVars} pnpm build
-          '';
-
-          installPhase = ''
-            rm dist/index-vite.html
-            mv dist/ $out
-          '';
-        });
-
-        b6-js = pkgs.buildNpmPackage {
-          pname = "b6-js";
-          version = "v.0.0.0";
-          src = ./src/diagonal.works/b6/cmd/b6/js;
-          npmDepsHash = "sha256-w332KqVpqdZSoNjwRxAaB4PZKaMfnM0MHl3lcpkmmQU=";
-
-          buildPhase = ''
-            npm run build
-          '';
-
-          installPhase = ''
-            mkdir $out
-            mv bundle.js $out
-          '';
-        };
-
         # Use a pinned version of gdal.
         ourGdal = (import gdalNixpkgs { inherit system; }).gdal;
+        ourGdal-aarch64-linux = (import gdalNixpkgs {
+          inherit system;
+          crossSystem.config = "aarch64-linux";
+        }).gdal;
 
-        # Go setup
-        b6-go = with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
-          name = "b6";
-          src = ./src/diagonal.works/b6;
-          buildInputs = [
-            ourGdal
-          ];
-          nativeBuildInputs = [
-            pkg-config
-          ];
-
-          # Bring in test data to the root directory; this is where it will be
-          # found by the tests (see b6/test/data.go: and the 'testDataDirectory' function)
-          preCheck = ''
-            mkdir data
-            mkdir data/tests
-            cp -r ${./data/tests}/* ./data/tests
-          '';
-
-          doCheck = true;
-
-          # Must be added due to bug https://github.com/nix-community/gomod2nix/issues/120
-          pwd = ./src/diagonal.works/b6;
+        b6-js-packages = pkgs: import ./nix/js.nix {
+          inherit
+            pkgs
+            ;
         };
 
-        # A collection of derivations for each go cmd; can be useful to keep
-        # closures small, if for example you only want to depend on a specific
-        # binary.
-        #
-        # Examples:
-        #
-        # > nix run .#b6
-        # > nix run .#b6-connect
-        # > nix run .#b6-ingest-osm
-        #
-        go-executables =
-          let
-            allPaths = builtins.readDir ./src/diagonal.works/b6/cmd;
-            onlyDirs = pkgs.lib.attrsets.filterAttrs (_: v: v == "directory") allPaths;
-            cmds = builtins.attrNames onlyDirs;
-            mkGoApp = cmd: with pkgs; gomod2nix.legacyPackages.${system}.buildGoApplication {
-              name = "${cmd}";
-              src = ./src/diagonal.works/b6;
-              pwd = ./src/diagonal.works/b6;
-              buildInputs = [
-                ourGdal
-              ];
-              nativeBuildInputs = [
-                pkg-config
-              ];
-              subPackages = [ "cmd/${cmd}" ];
-              # Don't run the tests now; they've been tested by the main
-              # derivation.
-              doCheck = false;
-            };
-          in
-          builtins.listToAttrs (map (n: { name = n; value = mkGoApp n; }) cmds);
+        b6-go-packages = ourGdal: pkgs: import ./nix/go.nix {
+          inherit
+            pkgs
+            system
+            ourGdal
+            gomod2nix
+            ;
+        };
 
+        make-b6-image = pkgs_: import ./nix/docker.nix {
+          pkgs = pkgs_;
+          # Note: Minor hack; we don't build the js stuff with anything other
+          # than the system nixpkgs, as pnpm is broken on aarch64
+          b6-js-packages = b6-js-packages pkgs;
+        };
 
-        # Run like:
-        # > docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 -world /data/camden.index
-        #
-        # or:
-        #
-        # > docker run -e \
-        #     FRONTEND_CONFIGURATION="frontend-with-scenarios=true" \
-        #     -p 8001:8001 \
-        #     -p 8002:8002 \
-        #     -v ./data:/data \
-        #     b6 \
-        #     -world /data/camden.index
-        #
-        # to enable a specific frontend configuration.
-        #
-        b6-image = name: b6-drv:
-          let
-            # The main entrypoint.
-            #
-            # Note: We don't specify any '-world' parameter and instead
-            # force people to provide it.
-            # "-world=/world"
-            #
-            # Note:
-            #
-            # We look to an environment variable, `FRONTEND_CONFIGURATION`, to
-            # decide which frontend JavaScript build to depend on.
-            #
-            # For now these are manually defined; but we could imagine
-            # computing them from the `frontend-feature-matrix`, if we wished.
-            launch-script = pkgs.writeShellScriptBin "launch-b6" ''
-              case "''${FRONTEND_CONFIGURATION}" in
-                "frontend-with-scenarios=true")
-                  STATIC_ARG=${frontend-feature-matrix."frontend-with-scenarios=true".outPath} ;;
-                "frontend-with-scenarios=false")
-                  STATIC_ARG=${frontend-feature-matrix."frontend-with-scenarios=false".outPath} ;;
-                *)
-                  STATIC_ARG=${frontend.outPath} ;;
-              esac
+        b6-image = (make-b6-image pkgs) "b6" (b6-go-packages ourGdal pkgs).everything;
+        b6-minimal-image = (make-b6-image pkgs) "b6-minimal" (b6-go-packages ourGdal pkgs).go-executables.b6;
 
-              # So we can kill it with Ctrl-C
-              _term() {
-                kill "$child" 2>/dev/null
-              }
-              trap _term INT
-
-              ${b6-drv}/bin/b6 \
-                -http=0.0.0.0:8001 \
-                -grpc=0.0.0.0:8002 \
-                -js=${b6-js.outPath} \
-                -enable-v2-ui \
-                -static-v2=''$STATIC_ARG \
-                "$@" &
-
-              child=$!
-              wait "$child"
-            '';
-          in
-          pkgs.dockerTools.streamLayeredImage {
-            name = "${name}";
-            tag = "latest";
-            created = "now";
-            contents = [
-              # For navigating around/debugging, if necessary
-              pkgs.busybox
-            ];
-            config = {
-              Labels = {
-                "org.opencontainers.image.source" = "https://github.com/diagonalworks/diagonal-b6";
-                "org.opencontainers.image.description" = "b6";
-              };
-              Env = [
-                # Make sure all the b6 binaries are in the path.
-                "PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:${b6-drv}/bin"
-              ];
-              ExposedPorts = {
-                "8001" = { };
-                "8002" = { };
-              };
-              Entrypoint = [ "${launch-script}/bin/launch-b6" ];
-            };
-          };
+        b6-image-aarch64 = (make-b6-image aarch64Pkgs) "b6-aarch64" (b6-go-packages ourGdal-aarch64-linux aarch64Pkgs).everything;
       in
       rec {
         # Development shells for hacking/building with the Makefile. Note
@@ -465,29 +209,66 @@
         packages = {
           # Run like `nix run . -- --help` or access all the binaries with
           # `nix build` and look in `./result/bin`.
-          default = b6-go;
+          default = (b6-go-packages ourGdal pkgs).everything;
 
           # Add an explicit 'go' entrypoint for the full go build+test.
-          go = b6-go;
+          go = (b6-go-packages ourGdal pkgs).everything;
 
           # Not an application; but can be built `nix build .#python312`.
-          python312 = b6-py;
+          python312 = (b6-py ourGdal pkgs);
           # TODO:
           # python311 = ...;
 
-          # Docker images
-          b6-image = b6-image "b6" b6-go;
-          b6-minimal-image = b6-image "b6-minimal" go-executables.b6;
 
+          # Docker images
+          #
+          # To build/load the resulting image:
+          #
+          # > nix build .#b6-image
+          # > ./result | docker load
+          #
+          # To run:
+          # > docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 -world /data/camden.index
+          #
+          # or:
+          #
+          # > docker run -e \
+          #     FRONTEND_CONFIGURATION="frontend-with-scenarios=true" \
+          #     -p 8001:8001 \
+          #     -p 8002:8002 \
+          #     -v ./data:/data \
+          #     b6 \
+          #     -world /data/camden.index
+          #
+          # to enable a specific frontend configuration.
           inherit
-            b6-js
-            frontend
+            b6-image
+            b6-minimal-image
+            # TODO: This has a build error with pnpm, and/or with hdf5
+            # Needs to be investigated a bit.
+            # b6-image-aarch64
             ;
         }
-        # All the frontend feature configurations
-        // frontend-feature-matrix
         # All the explicit go executables
-        // go-executables
+        #
+        # Examples:
+        #
+        # > nix run .#b6
+        # > nix run .#b6-connect
+        # > nix run .#b6-ingest-osm
+        #
+        #
+        // (b6-go-packages ourGdal pkgs).go-executables
+
+        # All the frontend packages
+        #
+        # Examples:
+        #
+        #   nix build .#b6-js
+        #   nix build .#frontend-with-scenarios=false
+        #   nix build .#frontend-with-scenarios=true
+        #
+        // (b6-js-packages pkgs)
         ;
 
         # Run via `nix fmt`
@@ -505,7 +286,7 @@
       # Nix templates
       templates = {
         default = {
-          path = ./nix-templates/python-client;
+          path = ./nix/templates/python-client;
         };
       };
     };

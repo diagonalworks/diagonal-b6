@@ -33,6 +33,12 @@ jobs:
           accept-flake-config = true
           log-lines = 1000
 
+    - name: Setup Cachix cache
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
     # Note: We don't tag this build as "latest"; we will leave that to
     # always be pinned to the main branch by the other workflow file.
     - name: "Build and publish docker image"
@@ -40,8 +46,10 @@ jobs:
         RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.release_tag }}
       run: |
         nix build .#${{ matrix.image-name }}-image
+        ./result | docker load
+
         export TARBALL_TAG="$(nix eval --raw .#${{ matrix.image-name }}-image.imageName):$(nix eval --raw .#${{ matrix.image_name }}-image.imageTag)"
         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
-        ./result | docker load
+
         docker tag "$TARBALL_TAG" ghcr.io/diagonalworks/diagonal-${{ matrix.image-name }}:$RELEASE_TAG
         docker push ghcr.io/diagonalworks/diagonal-${{ matrix.image-name }}:$RELEASE_TAG
