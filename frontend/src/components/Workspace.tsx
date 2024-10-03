@@ -35,7 +35,7 @@ export default function Workspace() {
     useWorldURLStorage();
     useTabsURLStorage();
 
-    const worlds = useWorldStore((state) => state.worlds);
+    const [worlds, setShellEnabled] = useWorldStore((state) => [state.worlds, state.actions.setShellEnabled]);
     const root = useWorkspaceStore((state) => state.root);
     const rootWorld = worlds?.[root || 'baseline'];
 
@@ -46,6 +46,9 @@ export default function Workspace() {
 
     const isInIframe = window.self !== window.top;
     const isScenariosEnabled = useFeatureFlag('scenarios');
+    const isShellEnabled = useFeatureFlag('shell');
+
+    setShellEnabled(isShellEnabled);
 
     const startup = useStartup();
 

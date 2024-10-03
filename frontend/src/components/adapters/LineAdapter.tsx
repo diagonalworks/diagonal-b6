@@ -9,7 +9,7 @@ import { twMerge } from 'tailwind-merge';
 
 import { AtomAdapter } from '@/components/adapters/AtomAdapter';
 import { HeaderAdapter } from '@/components/adapters/HeaderAdapter';
-import { ShellAdapter } from '@/components/adapters/ShellAdapter';
+import { ShellAdapter } from '@/features/shell/adapters/ShellAdapter';
 import { ClickableAtom } from '@/components/system/ClickableAtom';
 import { IconButton } from '@/components/system/IconButton';
 import { Line } from '@/components/system/Line';
@@ -17,6 +17,7 @@ import { Tooltip, TooltipOverflow } from '@/components/system/Tooltip';
 import { LineContextProvider } from '@/lib/context/line';
 import { useStackContext } from '@/lib/context/stack';
 import { LineProto, TagsLineProto } from '@/types/generated/ui';
+import { useWorldStore } from '@/stores/worlds';
 
 export const LineAdapter = ({
     line,
@@ -43,6 +44,8 @@ export const LineAdapter = ({
         if (!clickable) return;
         evaluateNode(clickable);
     };
+
+    const isShellEnabled = useWorldStore((state) => state.isShellEnabled);
 
     return (
         <LineContextProvider line={line}>
@@ -86,7 +89,7 @@ export const LineAdapter = ({
                             )}
                         </div>
                     )}
-                    {line.shell && <ShellAdapter shell={line.shell} />}
+                    {isShellEnabled && line.shell && <ShellAdapter shell={line.shell} />}
                     {line.expression && (
                         <span className="expression ">
                             {line.expression.expression}

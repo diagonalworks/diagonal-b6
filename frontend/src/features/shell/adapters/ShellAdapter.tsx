@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Shell } from '@/components/system/Shell';
+import { Shell } from '@/features/shell/components/Shell';
 import { useMap } from '@/hooks/useMap';
 import { useStackContext } from '@/lib/context/stack';
 import { useOutlinersStore } from '@/stores/outliners';

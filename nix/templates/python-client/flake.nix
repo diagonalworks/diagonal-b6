@@ -52,7 +52,7 @@
             -grpc=0.0.0.0:8002 \
             -js=${b6.b6-js.outPath} \
             -enable-v2-ui \
-            -static-v2=${b6."frontend-with-scenarios=true".outPath} \
+            -static-v2=${b6."frontend".outPath} \
             "$@"
         '';
     in

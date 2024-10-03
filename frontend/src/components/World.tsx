@@ -9,7 +9,7 @@ import { World as WorldT, useWorldStore } from '@/stores/worlds';
 
 import GeoJsonLayer from './GeoJsonLayer';
 import OutlinersLayer from './OutlinersLayer';
-import { WorldShellAdapter } from './adapters/ShellAdapter';
+import { WorldShellAdapter } from '@/features/shell/adapters/ShellAdapter';
 
 /**
  * A world, renders the respective map and the associated outliners.
@@ -28,7 +28,7 @@ export default function World({
         setShowWorldShell((prev) => !prev);
     });
 
-    const world = useWorldStore((state) => state.worlds[id]);
+    const [world, isShellEnabled] = useWorldStore((state) => [state.worlds[id], state.isShellEnabled]);
     const change = useChangesStore((state) => state.changes?.[id]);
 
     if (!world) return null;
@@ -36,7 +36,7 @@ export default function World({
     return (
         <div className=" w-full h-full absolute top-0 left-0">
             <Map root={world.tiles} side={side} world={id}>
-                <GlobalShell show={showWorldShell} mapId={id} />
+                <GlobalShell show={isShellEnabled && showWorldShell} mapId={id} />
                 <OutlinersLayer world={id} side={side} />
                 <GeoJsonLayer world={id} side={side} />
             </Map>
