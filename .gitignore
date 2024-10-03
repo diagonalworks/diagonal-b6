@@ -10,3 +10,6 @@ VERSION
 # Nix
 result*
 .direnv/
+
+# Data
+data/*.index
