@@ -44,17 +44,16 @@ func main() {
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
 	fileIOFlag := flag.Bool("file-io", true, "Is file IO allowed from the API?")
 
-	additionalWorlds := make(map[b6.FeatureID]b6.World)
+	additionalWorlds := make(map[b6.FeatureID]string)
 		flag.Func("add-world", "Additional worlds; specify like \"<feature_id> <world-arguments>\"", func(s string) error {
 			featureIdStr, worldStr, found := strings.Cut(s, " ")
 			if (found) {
-				world, err := compact.ReadWorld(worldStr, &ingest.BuildOptions{Cores: *coresFlag})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err.Error())
-					return err
-				}
 				featureId := b6.FeatureIDFromString(featureIdStr)
-				additionalWorlds[featureId] = world
+				if featureId.IsValid() {
+					additionalWorlds[featureId] = worldStr
+				} else {
+					return errors.New(fmt.Sprintf("Invalid feature id: %s", featureIdStr))
+				}
 				return nil
 			}
 			return errors.New(fmt.Sprintf("Couldn't load additional world; bad string; expected one space: %s", s))
@@ -74,7 +73,12 @@ func main() {
 	}
 
 	additionalMutableWorlds := make(map[b6.FeatureID]ingest.MutableWorld)
-	for featureId, world := range additionalWorlds {
+	for featureId, worldStr := range additionalWorlds {
+		world, err := compact.ReadWorld(worldStr, &ingest.BuildOptions{Cores: *coresFlag})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
 		log.Printf("Adding new world at %s", featureId)
 		additionalMutableWorlds[featureId] = ingest.NewMutableOverlayWorld(ingest.NewOverlayWorld(world, base))
 	}
