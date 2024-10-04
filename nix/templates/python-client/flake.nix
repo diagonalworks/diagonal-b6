@@ -1,6 +1,4 @@
 {
-  description = "A local setup for b6: python client + local b6 executable";
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
