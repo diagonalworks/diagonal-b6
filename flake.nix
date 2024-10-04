@@ -287,6 +287,7 @@
       templates = {
         default = {
           path = ./nix/templates/python-client;
+          description = "A local setup for b6: python client + local b6 executable";
         };
       };
     };
