@@ -50,8 +50,8 @@
             "paint": {
                 "fill-color": [
                     "case",
-                    ["has", "colour"],
-                    ["get", "colour"],
+                    ["has", "b6:colour"],
+                    ["get", "b6:colour"],
                     ["literal", "#dbdeeb"]
                 ]
             }
@@ -73,8 +73,8 @@
             "paint": {
                 "fill-color": [
                     "case",
-                    ["has", "colour"],
-                    ["get", "colour"],
+                    ["has", "b6:colour"],
+                    ["get", "b6:colour"],
                     ["literal", "#c5cadd"]
                 ]
             }
@@ -97,8 +97,8 @@
             "paint": {
                 "fill-color": [
                     "case",
-                    ["has", "colour"],
-                    ["get", "colour"],
+                    ["has", "b6:colour"],
+                    ["get", "b6:colour"],
                     ["literal", "#e1e1ee"]
                 ]
             }
@@ -117,8 +117,8 @@
             "paint": {
                 "fill-color": [
                     "case",
-                    ["has", "colour"],
-                    ["get", "colour"],
+                    ["has", "b6:colour"],
+                    ["get", "b6:colour"],
                     ["literal", "#c5cadd"]
                 ]
             }
@@ -290,8 +290,8 @@
                     "#37589f",
                     [
                         "case",
-                        ["has", "colour"],
-                        ["get", "colour"],
+                        ["has", "b6:colour"],
+                        ["get", "b6:colour"],
                         ["literal", "#e1e1ee"]
                     ]
                 ]
@@ -320,8 +320,8 @@
                     "#b1c5fd",
                     [
                         "case",
-                        ["has", "colour"],
-                        ["get", "colour"],
+                        ["has", "b6:colour"],
+                        ["get", "b6:colour"],
                         ["literal", "rgba(255, 255, 255)"]
                     ]
                 ]
