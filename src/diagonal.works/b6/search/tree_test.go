@@ -3,6 +3,8 @@ package search
 import (
 	"sort"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestTreeListAdvanceFromIteratorAtRoot(t *testing.T) {
@@ -52,8 +54,8 @@ func TestTreeListRebalancing(t *testing.T) {
 			result = append(result, i.Value().(int))
 		}
 
-		if !equals(result, expected) {
-			t.Errorf("Expected %v, found %v for case %v", expected, result, c)
+		if diff := cmp.Diff(expected, result); diff != "" {
+			t.Errorf("[case %v] Got diff (-want, +got):\n%s", c, diff)
 		}
 	}
 }
@@ -76,8 +78,8 @@ func TestTreeListReplaceItem(t *testing.T) {
 	}
 
 	expected := []int{5, 10, 15, 20}
-	if !equals(result, expected) {
-		t.Errorf("Expected %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -122,8 +124,8 @@ func TestTreeListDelete(t *testing.T) {
 			}
 		}
 		sort.Ints(expected)
-		if !equals(result, expected) {
-			t.Errorf("Expected %v, found %v input: %v delete: %v", expected, result, c.input, c.delete)
+		if diff := cmp.Diff(expected, result); diff != "" {
+			t.Errorf("[input: %v, delete: %v] Got diff (-want, +got):\n%s", c.input, c.delete, diff)
 		}
 	}
 }
@@ -147,7 +149,7 @@ func TestTreeListNextOnDeletedIterator(t *testing.T) {
 	}
 
 	if !i.Next() {
-		t.Fatalf("Expected to be able to call Next() on a deleted iterator")
+		t.Fatal("Expected to be able to call Next() on a deleted iterator")
 	}
 	expected := 10
 	if i.Value() != expected {
@@ -201,8 +203,8 @@ func TestTreeListAdvanceOnDeletedIterator(t *testing.T) {
 				for i.Next() {
 					result = append(result, i.Value().(int))
 				}
-				if !equals(result, c.expected) {
-					t.Errorf("Expected %v, found %v with delete: %d advance: %d", c.expected, result, c.delete, c.advance)
+				if diff := cmp.Diff(c.expected, result); diff != "" {
+					t.Errorf("[delete: %d, advance: %d] Got diff (-want, +got):\n%s", c.delete, c.advance, diff)
 				}
 			} else if i.Next() {
 				t.Error("Expected Next() to return false if Advance() returned false")
@@ -247,7 +249,7 @@ func TestTreeListLookup(t *testing.T) {
 
 	found, ok := tree.Lookup(42)
 	if ok || found != nil {
-		t.Errorf("Expected not to find value")
+		t.Error("Expected not to find value")
 	}
 }
 
@@ -264,8 +266,8 @@ func TestTreeIndexAdd(t *testing.T) {
 	}
 
 	expected := []int{1, 3}
-	if !equals(result, expected) {
-		t.Errorf("Expected %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Got diff (-want, +got):\n%s", diff)
 	}
 
 	tree.Add(2, []string{"0", "2"})
@@ -277,8 +279,8 @@ func TestTreeIndexAdd(t *testing.T) {
 	}
 
 	expected = []int{1, 2, 3}
-	if !equals(result, expected) {
-		t.Errorf("Expected %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -305,8 +307,8 @@ func TestTreeIndexRemove(t *testing.T) {
 			result = append(result, i.Value().(int))
 		}
 
-		if !equals(result, c.expected) {
-			t.Errorf("Expected %v, found %v", c.expected, result)
+		if diff := cmp.Diff(c.expected, result); diff != "" {
+			t.Errorf("Got diff (-want, +got):\n%s", diff)
 		}
 	}
 }
@@ -327,8 +329,8 @@ func TestTreeIndexDeleteWhileIterating(t *testing.T) {
 	}
 
 	expected := []int{4, 5, 6, 10, 12, 15, 16}
-	if !equals(result, expected) {
-		t.Errorf("Expected %v, found %v", expected, result)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("Got diff (-want, +got):\n%s", diff)
 	}
 }
 
@@ -353,8 +355,8 @@ func TestTreeIndexDeleteAndInsertWhileIterating(t *testing.T) {
 			}
 
 			expected := []int{4, 5, 6, 10, 12, 13, 15, 16}
-			if !equals(result, expected) {
-				t.Errorf("Expected %v, found %v with delete %d at %d", expected, result, delete, at)
+			if diff := cmp.Diff(expected, result); diff != "" {
+				t.Errorf("[delete %d at %d] Got diff (-want, +got):\n%s", delete, at, diff)
 			}
 		}
 	}
