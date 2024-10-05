@@ -46,13 +46,20 @@ jobs:
         nix build .#frontend-with-scenarios=false,shell=false
         nix build .#frontend-with-scenarios=true,shell=true
 
-    # Note: Removed this for now, as it will definitely _not_ work if it
-    # requires features that are only available on the branch.
-    # - name: "Test that the nix template works"
-    #   run: |
-    #     export DIR=$(mktemp -d)
-    #     nix flake new $DIR --template .
-    #     nix develop $DIR
+    - name: "Test that the nix template works"
+      env:
+        BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        REPO: ${{ github.repository }}
+      run: |
+        export DIR=$(mktemp -d)
+
+        # Update branch reference in the flake, so it depends on the present
+        # PR/main version.
+        sed -i "s|.*diagonal-b6.url = .*|diagonal-b6.url = \"github:$REPO/$BRANCH_NAME\";|g" \
+                nix/templates/python-client/flake.nix
+
+        nix flake new $DIR --template .
+        nix develop $DIR
 
     - name: "Test a few common entrypoints"
       run: |
