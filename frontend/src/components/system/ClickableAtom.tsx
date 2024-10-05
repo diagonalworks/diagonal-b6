@@ -11,11 +11,11 @@ import { AtomProto } from '@/types/generated/ui';
 export const ClickableAtom = ({
     atom,
     clickExpression,
-    key,
+    key_,
 }: {
     atom: AtomProto;
     clickExpression: NodeProto | undefined;
-    key?: number;
+    key_?: number;
 }) => {
     const { evaluateNode } = useStackContext();
 
@@ -31,7 +31,7 @@ export const ClickableAtom = ({
                 },
             })}
         >
-            <AtomAdapter key={key} atom={atom} />
+            <AtomAdapter key={key_} atom={atom} />
         </Wrapper>
     );
 };

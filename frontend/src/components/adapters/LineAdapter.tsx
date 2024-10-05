@@ -77,7 +77,7 @@ export const LineAdapter = ({
                                     ({ atom, clickExpression }, i) => {
                                         if (!atom) return null;
                                         return (
-                                            <ClickableAtom atom={atom} clickExpression={clickExpression} key={i}/>
+                                            <ClickableAtom atom={atom} clickExpression={clickExpression} key={i} key_={i}/>
                                         )
                                     }
                                 )}
