@@ -286,9 +286,9 @@ const (
 	FeatureTypePath
 	FeatureTypeArea
 	FeatureTypeRelation
-	FeatureTypeInvalid
 	FeatureTypeCollection
 	FeatureTypeExpression
+	FeatureTypeInvalid
 
 	FeatureTypeBegin = FeatureTypePoint
 	FeatureTypeEnd   = FeatureTypeInvalid
@@ -315,7 +315,7 @@ func (f FeatureType) String() string {
 }
 
 func FeatureTypeFromString(s string) FeatureType {
-	for t := FeatureTypeBegin; t <= FeatureTypeExpression; t++ { // TODO(mari): move down invalid index
+	for t := FeatureTypeBegin; t < FeatureTypeEnd; t++ {
 		if s == t.String() {
 			return t
 		}
