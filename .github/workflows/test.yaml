@@ -1,0 +1,40 @@
+name: aarch64 runner test
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+
+jobs:
+  release-artifacts:
+    name: "Build and publish b6 docker image"
+    runs-on: aarch64
+
+    strategy:
+      matrix:
+        image-name: ["b6", "b6-minimal"]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: Setup Cachix cache
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    - name: "Build and publish docker image"
+      run: |
+        nix build .#${{ matrix.image-name }}-image
+        ./result | docker load
