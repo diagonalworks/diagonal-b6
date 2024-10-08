@@ -12,11 +12,13 @@ permissions:
 jobs:
   release-artifacts:
     name: "Build and publish b6 docker image"
-    runs-on: ubuntu-latest
 
     strategy:
       matrix:
         image-name: ["b6", "b6-minimal"]
+        os: [ "aarch64", "ubuntu-latest" ]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
@@ -37,6 +39,8 @@ jobs:
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     - name: "Build and publish docker image"
+      env:
+        IMAGE_NAME: ${{ matrix.os == 'ubuntu-latest' && matrix.image-name || format('{0}-{1}', matrix.image-name, matrix.os) }}
       run: |
         nix build .#${{ matrix.image-name }}-image
         ./result | docker load
@@ -44,5 +48,5 @@ jobs:
         export TARBALL_TAG="$(nix eval --raw .#${{ matrix.image-name }}-image.imageName):$(nix eval --raw .#${{ matrix.image-name }}-image.imageTag)"
         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
 
-        docker tag "$TARBALL_TAG" ghcr.io/diagonalworks/diagonal-${{ matrix.image-name }}:latest
-        docker push ghcr.io/diagonalworks/diagonal-${{ matrix.image-name }}:latest
+        docker tag "$TARBALL_TAG" ghcr.io/diagonalworks/diagonal-$IMAGE_NAME:latest
+        docker push ghcr.io/diagonalworks/diagonal-$IMAGE_NAME:latest
