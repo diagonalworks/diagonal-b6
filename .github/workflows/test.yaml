@@ -21,6 +21,6 @@ jobs:
     steps:
     - name: "Build and publish docker image"
       env:
-        ARCH_LABEL: ${{ matrix.os == 'ubuntu-latest' && 'x86_64' || matrix.os }}
+        ARCH_LABEL: ${{ matrix.os == 'ubuntu-latest' && '""' || matrix.os }}
       run: |
         echo "arch_label=$ARCH_LABEL"
