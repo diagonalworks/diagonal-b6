@@ -417,7 +417,7 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 	w := o.Worlds.FindOrCreateWorld(request.Root.FeatureID())
 	if root := b6.FindCollectionByID(request.Root, w); root != nil {
 		response.Locked = root.Get("locked").String() == "yes"
-		c := b6.AdaptCollection[string, b6.FeatureID](root)
+		c := b6.AdaptCollection[string, any](root)
 		i := c.Begin()
 		for {
 			ok, err := i.Next()
@@ -427,24 +427,50 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 				break
 			}
 			if i.Key() == "centroid" {
-				if centroid := w.FindFeatureByID(i.Value()); centroid != nil {
-					if p, ok := centroid.(b6.PhysicalFeature); ok {
-						ll := s2.LatLngFromPoint(p.Point())
+				switch v := i.Value().(type) {
+					// Read a raw point from the yaml:
+					//
+					// collection:
+					//  - - centroid
+					//		- point: 55.9480999,-3.2000552
+					//
+					// Can be constructed, in Python, from the function `b6.ll`, like:
+					// >>> b6.ll(55.948, -3.2)
+					//
+					case b6.Geo:
+						ll := s2.LatLngFromPoint(v.Point())
 						response.MapCenter = &LatLngJSON{
 							LatE7: int(ll.Lat.E7()),
 							LngE7: int(ll.Lng.E7()),
 						}
 						response.MapZoom = DefaultMapZoom
+
+					// Tt was a FeatureID (of a point), so look it up.
+					// Note: This fails silently for non-point features.
+					case b6.FeatureID:
+						if centroid := w.FindFeatureByID(v); centroid != nil {
+							if p, ok := centroid.(b6.PhysicalFeature); ok {
+								ll := s2.LatLngFromPoint(p.Point())
+								response.MapCenter = &LatLngJSON{
+									LatE7: int(ll.Lat.E7()),
+									LngE7: int(ll.Lng.E7()),
+								}
+								response.MapZoom = DefaultMapZoom
+							}
+						}
+					default:
+						return fmt.Errorf("Couldn't interpret centroid in world %s of type %T", request.Root, i.Value())
 					}
-				}
 			} else if i.Key() == "docked" {
-				if docked := w.FindFeatureByID(i.Value()); docked != nil {
-					uiResponse := NewUIResponseJSON()
-					if err := ui.Render(uiResponse, docked, request.Root, true, ui); err == nil {
-						stripShellLinesFromResponse(uiResponse)
-						response.Docked = append(response.Docked, uiResponse)
-					} else {
-						return fmt.Errorf("%s: %w", i.Value(), err)
+				if featureId, ok := i.Value().(b6.FeatureID); ok {
+					if docked := w.FindFeatureByID(featureId); docked != nil {
+						uiResponse := NewUIResponseJSON()
+						if err := ui.Render(uiResponse, docked, request.Root, true, ui); err == nil {
+							stripShellLinesFromResponse(uiResponse)
+							response.Docked = append(response.Docked, uiResponse)
+						} else {
+							return fmt.Errorf("%s: %w", i.Value(), err)
+						}
 					}
 				}
 			}
