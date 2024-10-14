@@ -13,9 +13,8 @@ const config: Config = {
 
 	// GitHub pages deployment config.
 	// If you aren't using GitHub pages, you don't need these.
-	organizationName: "diagonalworks", // Usually your GitHub org/user name.
-	projectName: "diagonal-b6", // Usually your repo name.
-
+	organizationName: "diagonalworks",
+	projectName: "diagonal-b6",
 	onBrokenLinks: "throw",
 	onBrokenMarkdownLinks: "warn",
 
@@ -50,53 +49,58 @@ const config: Config = {
 			} satisfies Preset.Options,
 		],
 	],
-
-	themeConfig: {
-		navbar: {
-			title: "b6",
-			items: [
-				{
-					type: "docSidebar",
-					sidebarId: "tutorialSidebar",
-					position: "left",
-					label: "Docs",
-				},
-				{
-					href: "https://github.com/diagonal/diagonal-b6",
-					label: "GitHub",
-					position: "right",
-				},
-			],
-		},
-		footer: {
-			style: "light",
-			links: [
-				{
-					title: "Docs",
-					items: [
-						{
-							label: "API documentation",
-							to: "/docs/b6-api-documentation",
-						},
-					],
-				},
-				{
-					title: "More",
-					items: [
-						{
-							label: "GitHub",
-							href: "https://github.com/diagonalworks/diagonal-b6",
-						},
-					],
-				},
-			],
-			copyright: `Copyright © ${new Date().getFullYear()} diagonal.works.`,
-		},
-		prism: {
-			theme: prismThemes.github,
-			darkTheme: prismThemes.dracula,
-		},
-	} satisfies Preset.ThemeConfig,
+  themeConfig: {
+    navbar: {
+      title: 'b6',
+      items: [
+        {
+          type: 'docSidebar',
+          sidebarId: 'docsSidebar',
+          position: 'left',
+          label: 'Documentation',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'apiSidebar',
+          position: 'left',
+          label: 'API',
+        },
+        {
+          href: 'https://github.com/diagonal/diagonal-b6',
+          label: 'GitHub',
+          position: 'right',
+        },
+      ],
+    },
+    footer: {
+      style: 'light',
+      links: [
+        {
+          title: 'Docs',
+          items: [
+            {
+              label: 'API documentation',
+              to: '/docs/b6-api-documentation',
+            },
+          ],
+        },
+        {
+          title: 'More',
+          items: [
+            {
+              label: 'GitHub',
+              href: 'https://github.com/diagonalworks/diagonal-b6',
+            },
+          ],
+        },
+      ],
+      copyright: `Copyright © ${new Date().getFullYear()} diagonal.works.`,
+    },
+    prism: {
+      theme: prismThemes.github,
+      darkTheme: prismThemes.dracula,
+    },
+  } satisfies Preset.ThemeConfig,
 };
 
 export default config;
