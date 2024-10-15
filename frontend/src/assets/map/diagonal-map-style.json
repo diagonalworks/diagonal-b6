@@ -62,7 +62,7 @@
             "source": "diagonal",
             "source-layer": "boundary",
             "filter": ["all", ["==", "natural", "coastline"]],
-            "paint": { "line-color": "#4f5a7d", "line-width": 0.3 }
+            "paint": { "line-color": "#4f5a7d", "line-width": 2.3 }
         },
         {
             "id": "landuse-forest",
