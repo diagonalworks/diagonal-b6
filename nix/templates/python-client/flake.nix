@@ -1,8 +1,11 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     flake-utils.url = "github:numtide/flake-utils";
     diagonal-b6.url = "github:diagonalworks/diagonal-b6";
+    # TODO: Don't depend on it here; make sure it is imported with a specific
+    # nixpkgs that is provided via an import ... statement.
+    diagonal-b6.inputs.nixpkgs.follows = "nixpkgs";
   };
 
 
@@ -24,7 +27,7 @@
       py-env = pkgs.python312.withPackages (ps: with ps; [
         # The b6 python library
         diagonal-b6.packages."${system}".python312
-        # Additional python deps:
+        # Additional python dependencies
         geopandas
         jupyter
         more-itertools
