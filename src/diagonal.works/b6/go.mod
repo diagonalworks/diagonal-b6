@@ -2,7 +2,7 @@ module diagonal.works/b6
 
 go 1.22
 
-toolchain go1.22.0
+toolchain go1.22.6
 
 require (
 	github.com/apache/beam v2.32.0+incompatible
