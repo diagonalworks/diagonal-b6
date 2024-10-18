@@ -61,6 +61,9 @@ jobs:
         nix flake new $DIR --template .
         nix develop $DIR
 
+        # We should be able to import b6 in the devShell
+        python -c "import diagonal_b6"
+
     - name: "Test a few common entrypoints"
       run: |
         nix run .#b6 -- --help

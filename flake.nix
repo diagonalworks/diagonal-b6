@@ -1,6 +1,9 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Note: We're pinned to 24.05 here as unstable doesn't contain the version
+    # of go we are using; we'd need to upgrade the go dependency to be able to
+    # move to unstable fully (or just use an old version of nixpkgs for go.)
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
 
     # Latest 3.7.1 release from nixpkgs
     # https://github.com/NixOS/nixpkgs/commits/nixpkgs-unstable/pkgs/development/libraries/gdal/default.nix
@@ -58,6 +61,25 @@
                 };
               });
 
+              # Note: This is just a copy of the configuration from unstable,
+              # which works, to override the settings in 24.05, which doesn't
+              # work.
+              ipython-genutils = p.ipython-genutils.overridePythonAttrs (old: rec {
+                disabled = false;
+
+                patches = [
+                  (pkgs.fetchpatch {
+                    name = "ipython_genutils-denose.patch";
+                    url = "https://build.opensuse.org/public/source/devel:languages:python:jupyter/python-ipython_genutils/denose.patch?rev=9";
+                    hash = "sha256-At0aq6rLw/L64Own069m0p/WQm7iDa24fm0SPLLRBdE=";
+                  })
+                ];
+
+                preCheck = "";
+                nativeBuildInputs = [ p.setuptools ];
+                nativeCheckInputs = [ p.pytestCheckHook ];
+              });
+
               s2sphere = p.buildPythonPackage rec {
                 version = "0.2.5";
                 pname = "s2sphere";
@@ -71,7 +93,7 @@
                 # The original repo <https://github.com/sidewalklabs/s2sphere>
                 # is archived, so this refers to a fork.
                 src = pkgs.fetchFromGitHub {
-                  owner = "silky";
+                  owner = "diagonalworks";
                   repo = "s2sphere";
                   rev = "d1d067e8c06e5fbaf0cc0158bade947b4a03a438";
                   sha256 = "sha256-6hNIuyLTcGcXpLflw2ajCOjel0IaZSFRlPFi81Z5LUo=";
@@ -84,7 +106,6 @@
         b6-py = ourGdal: import ./nix/python.nix {
           inherit
             pkgs
-            python
             pyproject-nix
             ;
           b6-go-packages = b6-go-packages ourGdal;
@@ -92,7 +113,7 @@
 
         pythonEnv = python.withPackages (ps:
           [
-            (b6-py ourGdal)
+            (b6-py ourGdal python)
 
             # For `make python`
             ps.grpcio-tools
@@ -154,7 +175,8 @@
             protoc-gen-go-grpc
 
             # Go
-            go_1_21
+            # Note: The vesion here should match the one in `go.mod`.
+            go
             gotools
             gomod2nix.packages.${system}.default # gomod2nix CLI
 
@@ -207,10 +229,7 @@
           go = (b6-go-packages ourGdal).everything;
 
           # Not an application; but can be built `nix build .#python312`.
-          python312 = b6-py ourGdal;
-          # TODO:
-          # python311 = ...;
-
+          python312 = b6-py ourGdal python;
 
           # Docker images
           #
