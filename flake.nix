@@ -1,11 +1,8 @@
 {
   inputs = {
-    # Note: We're pinned to 24.05 here as unstable doesn't contain the version
-    # of go we are using; we'd need to upgrade the go dependency to be able to
-    # move to unstable fully (or just use an old version of nixpkgs for go.)
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # We're pinned to 1.22.6 for now.
+    # We're pinned to go version 1.22.6 for now.
     goNixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
 
     # Latest 3.7.1 release from nixpkgs

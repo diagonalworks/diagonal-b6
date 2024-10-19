@@ -3,9 +3,6 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     diagonal-b6.url = "github:diagonalworks/diagonal-b6";
-    # TODO: Don't depend on it here; make sure it is imported with a specific
-    # nixpkgs that is provided via an import ... statement.
-    # diagonal-b6.inputs.nixpkgs.follows = "nixpkgs";
   };
 
 
