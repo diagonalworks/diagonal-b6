@@ -24,7 +24,7 @@
       py-env = pkgs.python312.withPackages (ps: with ps; [
         # The b6 python library
         diagonal-b6.packages."${system}".python312
-        # Additional python deps:
+        # Additional python dependencies
         geopandas
         jupyter
         more-itertools

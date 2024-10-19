@@ -1,5 +1,4 @@
 { pkgs
-, python
 , b6-go-packages
 , pyproject-nix
 }:
@@ -16,17 +15,19 @@ let
     pyproject = pkgs.lib.importTOML pyproject-file;
   };
 
-  renderedPyProject = pythonProject.renderers.buildPythonPackage {
+  renderedPyProject = python: pythonProject.renderers.buildPythonPackage {
     inherit python;
   };
 
-  b6-py = python.pkgs.buildPythonPackage (renderedPyProject // {
+  # Note: This library can only be included on the `python` that is provided
+  # here.
+  b6-py = python: python.pkgs.buildPythonPackage ((renderedPyProject python) // {
     # Set the pyproject to be the one we computed via our b6 binary.
     patchPhase = ''
       cat ${pyproject-file} > pyproject.toml
     '';
 
-    nativeBuildInputs = renderedPyProject.nativeBuildInputs ++ [
+    nativeBuildInputs = [
       python.pkgs.grpcio-tools
     ];
 
