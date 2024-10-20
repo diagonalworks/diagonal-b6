@@ -35,7 +35,7 @@ The `combined` devShell is necessary for certain tasks, in particular it is
 required for running the Python tests
 
 ```sh
-make docks
+make all-tests
 ```
 
 To enter the shell, use:
