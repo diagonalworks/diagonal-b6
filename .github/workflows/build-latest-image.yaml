@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         image-name: ["b6", "b6-minimal"]
-        os: [ "aarch64", "ubuntu-latest" ]
+        os: [ "ubuntu-latest" ]
 
     runs-on: ${{ matrix.os }}
 

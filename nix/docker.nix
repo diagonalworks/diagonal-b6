@@ -56,6 +56,7 @@ let
       contents = [
         # For navigating around/debugging, if necessary
         pkgs.busybox
+        pkgs.dockerTools.caCertificates
       ];
       config = {
         Labels = {
