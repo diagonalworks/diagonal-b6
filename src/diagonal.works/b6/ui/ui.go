@@ -426,7 +426,9 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 			} else if !ok {
 				break
 			}
-			if i.Key() == "centroid" {
+
+			switch i.Key() {
+			case "centroid":
 				switch v := i.Value().(type) {
 				// Read a raw point from the yaml:
 				//
@@ -461,7 +463,9 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 				default:
 					return fmt.Errorf("Couldn't interpret centroid in world %s of type %T", request.Root, i.Value())
 				}
-			} else if i.Key() == "docked" {
+			case "tag-ordering":
+				log.Printf("About to consider tag-sorting-method %s", i.Value())
+			case "docked":
 				if featureId, ok := i.Value().(b6.FeatureID); ok {
 					if docked := w.FindFeatureByID(featureId); docked != nil {
 						uiResponse := NewUIResponseJSON()

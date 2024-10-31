@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -223,7 +225,7 @@ func lineFromTags(tags []b6.Tag, f b6.Feature) *pb.LineProto {
 		Tags: make([]*pb.TagAtomProto, len(tags)),
 	}
 	for i, tag := range tags {
-		if strings.HasPrefix(tag.Key, "#") || strings.HasPrefix(tag.Key, "#") {
+		if strings.HasPrefix(tag.Key, "#") {
 			tl.Tags[i] = &pb.TagAtomProto{Prefix: tag.Key[0:1], Key: tag.Key[1:], Value: tag.Value.String()}
 		} else {
 			tl.Tags[i] = &pb.TagAtomProto{Prefix: "", Key: tag.Key, Value: tag.Value.String()}
@@ -434,6 +436,9 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 	if tags := f.AllTags(); len(tags) > 0 {
 		substack := &pb.SubstackProto{Collapsable: true}
 		line := leftRightValueLineFromValues("Tags", len(tags), w)
+		// TODO: Work out which one to call here
+		// sortTagsAlphabetically(tags)
+		// sortTagsReverseAlphabetically(tags)
 		substack.Lines = append(substack.Lines, line, lineFromTags(tags, f))
 		substacks = append(substacks, substack)
 	}
@@ -632,4 +637,49 @@ func sortableKeyForString(s string) string {
 		return fmt.Sprintf("%010d", i)
 	}
 	return s
+}
+
+// Sort tags alphabetically by the key, but also ignore the "#" if it is in
+// front of the tag name; i.e. "c, #b, a" should result in "a, #b, c".
+func sortTagsAlphabetically(tags []b6.Tag) {
+	slices.SortFunc(tags, func(a, b b6.Tag) int {
+		var aa, bb string
+		if strings.HasPrefix(a.Key, "#") {
+			aa = a.Key[1:]
+		} else {
+			aa = a.Key
+		}
+		if strings.HasPrefix(b.Key, "#") {
+			bb = b.Key[1:]
+		} else {
+			bb = b.Key
+		}
+		return cmp.Compare(aa, bb)
+	})
+}
+
+func sortTagsReverseAlphabetically(tags []b6.Tag) {
+	sortTagsAlphabetically(tags)
+	slices.Reverse(tags)
+}
+
+func removeAtIndex[E any](slice []E, s int) []E {
+	return append(slice[:s], slice[s+1:]...)
+}
+
+// Given the provided sorted list, bump the ones in the 'priority' to the top
+// of the list, in the order provided in that list.
+func withPriorityItems(priority []string, tags []b6.Tag) []b6.Tag {
+	tmp := make([]b6.Tag, len(tags))
+	copy(tmp, tags)
+	result := make([]b6.Tag, 0)
+	for _, tagName := range priority {
+		idx := slices.IndexFunc(tmp, func(t b6.Tag) bool { return t.Key == tagName })
+		if idx >= 0 {
+			tag := tmp[idx]
+			tmp = removeAtIndex(tmp, idx)
+			result = append(result, tag)
+		}
+	}
+	return append(result, tmp...)
 }

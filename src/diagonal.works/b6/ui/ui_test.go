@@ -405,3 +405,47 @@ func TestEqualiseBars(t *testing.T) {
 		t.Errorf("Expected no difference, found: %s", diff)
 	}
 }
+
+func TestSortingTags(t *testing.T) {
+	a := b6.Tag{Key: "a"}
+	b := b6.Tag{Key: "#b"}
+	c := b6.Tag{Key: "c"}
+
+	input := []b6.Tag{b, a, c}
+
+	// Alphabetical first:
+	expected := []b6.Tag{a, b, c}
+	sortTagsAlphabetically(input)
+
+	if diff := cmp.Diff(input, expected); diff != "" {
+		t.Errorf("Expected no difference, found: %s", diff)
+	}
+
+	// Then the other way around
+	expected = []b6.Tag{c, b, a}
+	sortTagsReverseAlphabetically(input)
+
+	if diff := cmp.Diff(input, expected); diff != "" {
+		t.Errorf("Expected no difference, found: %s", diff)
+	}
+
+	// Now with a fixed list at the top
+	priorityList := []string{"#b", "x"}
+	sortTagsAlphabetically(input)
+	result := withPriorityItems(priorityList, input)
+	expected = []b6.Tag{b, a, c}
+
+	if diff := cmp.Diff(result, expected); diff != "" {
+		t.Errorf("Expected no difference, found: %s", diff)
+	}
+
+	// Another other scenario
+	priorityList = []string{"#b", "c"}
+	sortTagsAlphabetically(input)
+	result = withPriorityItems(priorityList, input)
+	expected = []b6.Tag{b, c, a}
+
+	if diff := cmp.Diff(result, expected); diff != "" {
+		t.Errorf("Expected no difference, found: %s", diff)
+	}
+}
