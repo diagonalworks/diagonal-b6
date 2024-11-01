@@ -659,14 +659,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")
     parser.add_argument("--grpc-port", default="10081", help="Host and port on which to serve GRPC")
-    parser.add_argument("--platform", default=None, help="Current platform, eg darwin/x86_64")
     parser.add_argument("tests", type=str, nargs="*")
     args = parser.parse_args()
     http_address = "localhost:%d" % int(args.http_port)
     grpc_address = "localhost:%d" % int(args.grpc_port)
-    platform = args.platform or os.environ.get("TARGETPLATFORM", None) or ("%s/%s" % (os.uname().sysname.lower(), os.uname().machine))
     p = subprocess.Popen([
-        "bin/%s/b6" % platform,
+        "bin/b6",
         "--http=%s" % http_address,
         "--grpc=%s" % grpc_address,
         "--world=data/tests/granary-square.index"

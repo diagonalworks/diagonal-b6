@@ -106,6 +106,7 @@
 
             # For hacking
             ps.jupyter
+            ps.pandas
           ]);
 
 
@@ -225,7 +226,7 @@
           # > ./result | docker load
           #
           # To run:
-          # > docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 -world /data/camden.index
+          # > docker run -p 8001:8001 -p 8002:8002 -v ./data:/data b6 --world /data/camden.index
           #
           # or:
           #

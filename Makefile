@@ -1,10 +1,3 @@
-# Sets TARGETARCH to something like x86_64 or arm64
-TARGETARCH ?= $(shell uname -m | tr A-Z a-z)
-# Sets TARGETOS to something like linux or darwin
-TARGETOS ?= $(shell uname -s | tr A-Z a-z)
-# Sets TARGETPLATFORM to something like linux/x86_64 or darwin/arm64
-export TARGETPLATFORM ?= ${TARGETOS}/${TARGETARCH}
-
 all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-ingest-gb-uprn b6-ingest-gb-codepoint b6-connect b6-api python docs
 
 .git/hooks/pre-commit: etc/pre-commit
@@ -17,37 +10,37 @@ b6-frontend:
 	make -C frontend
 
 VERSION: b6-api
-	bin/${TARGETPLATFORM}/b6-api --version > $@
+	bin/b6-api --version > $@
 
 b6-backend: proto-go src/diagonal.works/b6/api/y.go VERSION
-	cd src/diagonal.works/b6/cmd/b6; go build -o ../../../../../bin/${TARGETPLATFORM}/b6 -ldflags "-X=diagonal.works/b6.BackendVersion=`cat ../../../../../VERSION`"
+	cd src/diagonal.works/b6/cmd/b6; go build -o ../../../../../bin/b6 -ldflags "-X=diagonal.works/b6.BackendVersion=`cat ../../../../../VERSION`"
 
 b6-ingest-osm:
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
 
 b6-ingest-gdal:
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
 
 b6-ingest-gtfs:
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
 
 b6-ingest-terrain:
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
 
 b6-ingest-gb-uprn:
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
 
 b6-ingest-gb-codepoint:
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
 
 b6-connect:
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
 
 b6-api:
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
-	bin/${TARGETPLATFORM}/b6-api --docs > src/diagonal.works/b6/api/functions/docs.generated
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
+	bin/b6-api --docs > src/diagonal.works/b6/api/functions/docs.generated
 	mv src/diagonal.works/b6/api/functions/docs.generated src/diagonal.works/b6/api/functions/docs.go
-	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/${TARGETPLATFORM}/$@
+	cd src/diagonal.works/b6/cmd/$@; go build -o ../../../../../bin/$@
 
 proto: proto-go proto-python
 
@@ -91,17 +84,17 @@ python/diagonal_b6/%_pb2_grpc.py: proto/%.proto
 	mv $@.modified $@
 
 python/diagonal_b6/api_generated.py: proto-python b6-api
-	bin/${TARGETPLATFORM}/b6-api --functions | python/diagonal_b6/generate_api.py > $@
+	bin/b6-api --functions | python/diagonal_b6/generate_api.py > $@
 
 python/pyproject.toml: python/pyproject.toml.template python/VERSION
 	sed -e s/@VERSION@/`cat python/VERSION`/ $< > $@
 
 python/VERSION:
-	bin/${TARGETPLATFORM}/b6-api --pip-version > $@
+	bin/b6-api --pip-version > $@
 
 python-test: python b6-backend b6-ingest-osm
-	bin/${TARGETPLATFORM}/b6-ingest-osm --input=data/tests/granary-square.osm.pbf --output=data/tests/granary-square.index
-	PYTHONPATH=python TARGETPLATFORM=${TARGETPLATFORM} python3 python/diagonal_b6/b6_test.py
+	bin/b6-ingest-osm --input=data/tests/granary-square.osm.pbf --output=data/tests/granary-square.index
+	PYTHONPATH=python python3 python/diagonal_b6/b6_test.py
 
 test: proto-go src/diagonal.works/b6/api/y.go
 	cd src/diagonal.works/b6; go test diagonal.works/b6/...
@@ -126,7 +119,7 @@ docs: docs/docs/b6-api-documentation.md
 
 docs/docs/b6-api-documentation.md: clean-api-docs
 	mkdir -p docs/docs
-	bin/${TARGETPLATFORM}/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py > docs/docs/b6-api-documentation.md
+	bin/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py > docs/docs/b6-api-documentation.md
 
 all-tests: test python-test
 

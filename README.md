@@ -1,10 +1,10 @@
 # b6
 
 Bedrock, or [b6](https://diagonal.works/b6), is Diagonal's geospatial analysis
-engine. It reads a compact representation of the world into memory, and
-makes it available for analysis, for example from a Python script or iPython
-notebook. It also provides a simple web interface for exploring data. Communication between Python and b6 happens over
-[GRPC](https://grpc.io).
+engine. It reads a compact representation of the world into memory, and makes
+it available for analysis, for example from a Python script or iPython
+notebook. It also provides a simple web interface for exploring data.
+Communication between Python and b6 happens over [gRPC](https://grpc.io).
 
 We use b6 for the analysis behind our
 [work for clients](http://diagonal.works/journal). We use the web interface
@@ -31,17 +31,42 @@ about what you're up to](mailto:hello@diagonal.works).
 
 The simplest way to try b6 is with the docker package we provide:
 
-```
-docker run -p 8001:8001 -p 8002:8002 europe-docker.pkg.dev/diagonal-public/b6/b6
+```sh
+# Clone the repo
+git clone https://github.com/diagonalworks/diagonal-b6.git
+
+# Run the docker image and point it to some test data
+docker run \
+  -p 8001:8001 \
+  -p 8002:8002 \
+  -v ./data:/data \
+  -e FRONTEND_CONFIGURATION="frontend-with-scenarios=false,shell=true" \
+  ghcr.io/diagonalworks/diagonal-b6:latest \
+  --world /data/tests/camden.osm.pbf
 ```
 
+> [!note]
+> We provide a specific environment variable, `FRONTEND_CONFIGURATION`, to
+> select the features we want to enable; in this case we want the _shell_
+> feature to be on, but the _scenarios_ feature off. You can read more above
+> these in the <./nix/js.nix> file and <./nix/docker.nix>.
+
 This starts an instance of b6, with a web interface on port 8001, and
-a GRPC interface for analysis from Python on port 8002, hosting a small amount
+a gRPC interface for analysis from Python on port 8002, hosting a small amount
 of data from OpenStreetMap for the area of London around
 [Diagonal's spiritual home](https://www.dishoom.com/kings-cross/). Viewing
 [localhost:8001](http://localhost:8001) should show you a map.
 
-To try out analysis, you'll need to install the Python client library, via:
+You can also run b6 directly via Nix:
+
+```sh
+nix run github:diagonalworks/diagonal-b6#b6 \
+  -- \
+  --world data/tests/camden.osm.pbf
+```
+
+To try out analysis, you'll need the Python client library. For the omment,
+the most convenient way is through the Nix shell, or via a
 
 ```
 python -m pip install diagonal_b6
@@ -194,7 +219,7 @@ bin/linux/x86_64/b6 --world=data/camden.index
 You can run the entire build inside a docker container with:
 ```
 make docker/Dockerfile.b6
-docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile.b6 .
+docker build -f docker/Dockerfile.b6 .
 ```
 
 

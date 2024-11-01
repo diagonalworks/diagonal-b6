@@ -50,7 +50,5 @@ jobs:
 
         # Taken directly from ./etc/cloudbuild.nightly.yaml
         docker build \
-          --build-arg TARGETOS=linux \
-          --build-arg TARGETARCH=amd64 \
           -f docker/Dockerfile.b6 \
           .
