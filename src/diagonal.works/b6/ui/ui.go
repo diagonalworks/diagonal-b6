@@ -38,7 +38,6 @@ type Options struct {
 	JavaScriptPath    string
 	StaticV2Path      string
 	StorybookPath     string
-	EnableV2UI        bool
 	EnableVite        bool
 	EnableStorybook   bool
 	BasemapRules      renderer.RenderRules
@@ -76,23 +75,6 @@ func (m MergedFilesystem) Open(filename string) (http.File, error) {
 func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	staticPaths := strings.Split(options.StaticPath, ",")
 
-	v1Path := "/"
-	v2Path := "/v2.html"
-	if options.EnableV2UI {
-		v1Path = "/v1.html"
-		v2Path = "/"
-	}
-
-	if len(staticPaths) > 0 {
-		if v1Path == "/" {
-			root.Handle("/", http.FileServer(MergedFilesystem(staticPaths)))
-		} else {
-			root.Handle(v1Path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				http.ServeFile(w, r, filepath.Join(staticPaths[0], "index.html"))
-			}))
-		}
-	}
-
 	root.Handle("/b6.css", http.FileServer(MergedFilesystem(staticPaths)))
 
 	root.Handle("/bundle.js", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -103,11 +85,11 @@ func RegisterWebInterface(root *http.ServeMux, options *Options) error {
 	root.Handle("/assets/", http.FileServer(MergedFilesystem(staticV2Paths)))
 	if len(staticV2Paths) > 0 {
 		if options.EnableVite {
-			root.Handle(v2Path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			root.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.ServeFile(w, r, filepath.Join(staticV2Paths[0], "index-vite.html"))
 			}))
 		} else {
-			root.Handle(v2Path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			root.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.ServeFile(w, r, filepath.Join(staticV2Paths[0], "index.html"))
 			}))
 		}

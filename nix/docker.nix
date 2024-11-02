@@ -40,8 +40,6 @@ let
         ${b6-drv}/bin/b6 \
           -http=0.0.0.0:8001 \
           -grpc=0.0.0.0:8002 \
-          -js=${b6-js-packages.b6-js.outPath} \
-          -enable-v2-ui \
           -static-v2=''$STATIC_ARG \
           "$@" &
 

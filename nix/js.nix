@@ -1,22 +1,6 @@
 { pkgs
 }:
 let
-  b6-js = pkgs.buildNpmPackage {
-    pname = "b6-js";
-    version = "v.0.0.0";
-    src = ./../src/diagonal.works/b6/cmd/b6/js;
-    npmDepsHash = "sha256-w332KqVpqdZSoNjwRxAaB4PZKaMfnM0MHl3lcpkmmQU=";
-
-    buildPhase = ''
-      npm run build
-    '';
-
-    installPhase = ''
-      mkdir $out
-      mv bundle.js $out
-    '';
-  };
-
   # Note: We obtain a list of all the "features" (i.e. the folders on this
   # specific directory) and use that to construct a set of derivations
   # that turn on/off every feature combination.
@@ -109,7 +93,6 @@ let
 in
 {
   inherit
-    b6-js
     frontend
     ;
 } // frontend-feature-matrix

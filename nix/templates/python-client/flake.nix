@@ -48,8 +48,6 @@
           ${b6.b6}/bin/b6 \
             -http=0.0.0.0:8001 \
             -grpc=0.0.0.0:8002 \
-            -js=${b6.b6-js.outPath} \
-            -enable-v2-ui \
             -static-v2=${b6."frontend".outPath} \
             "$@"
         '';

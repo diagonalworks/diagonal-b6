@@ -4,7 +4,6 @@ all: .git/hooks/pre-commit b6 b6-ingest-osm b6-ingest-gdal b6-ingest-terrain b6-
 	cp $< $@
 
 b6: b6-backend b6-frontend
-	make -C src/diagonal.works/b6/cmd/b6/js
 
 b6-frontend:
 	make -C frontend

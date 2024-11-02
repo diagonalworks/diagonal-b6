@@ -260,7 +260,6 @@
         #
         # Examples:
         #
-        #   nix build .#b6-js
         #   nix build .#frontend-with-scenarios=false,shell=true
         #   nix build .#frontend-with-scenarios=true,shell=false
         #

@@ -34,11 +34,9 @@ func main() {
 	grpcSizeFlag := flag.Int("grpc-size", 16*1024*1024, "Maximum size for GRPC messages")
 	worldFlag := flag.String("world", "", "World to load")
 	readOnlyFlag := flag.Bool("read-only", false, "Prevent changes to the world")
-	staticFlag := flag.String("static", "src/diagonal.works/b6/cmd/b6/js/static", "Path to static content")
 	jsFlag := flag.String("js", "src/diagonal.works/b6/cmd/b6/js", "Path to JS bundle")
 	staticV2Flag := flag.String("static-v2", "frontend/dist", "Path to V2 static content")
 	storybookFlag := flag.String("storybook", "frontend/dist-storybook", "Path to V2 static content")
-	enableV2UIFlag := flag.Bool("enable-v2-ui", false, "Use the V2 UI by default")
 	enableStorybookFlag := flag.Bool("enable-storybook", false, "Serve storybook on /storybook")
 	enableViteFlag := flag.Bool("enable-vite", false, "Serve javascript from a development vite server")
 	coresFlag := flag.Int("cores", runtime.NumCPU(), "Number of cores available")
@@ -98,11 +96,9 @@ func main() {
 	var lock sync.RWMutex
 
 	options := ui.Options{
-		StaticPath:      *staticFlag,
 		JavaScriptPath:  *jsFlag,
 		StaticV2Path:    *staticV2Flag,
 		StorybookPath:   *storybookFlag,
-		EnableV2UI:      *enableV2UIFlag,
 		EnableVite:      *enableViteFlag,
 		EnableStorybook: *enableStorybookFlag,
 		Worlds:          worlds,
