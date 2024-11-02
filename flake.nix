@@ -107,6 +107,7 @@
             # For hacking
             ps.jupyter
             ps.pandas
+            ps.matplotlib
           ]);
 
 
