@@ -69,7 +69,7 @@ jobs:
         nix run .#b6-ingest-osm -- --help
         nix run .#b6-connect -- --help
 
-    - name: "Test that the docker image can ingest, connect, run and the notebook example works"
+    - name: "Test that the docker image can ingest, connect and run"
       run: |
         nix build .#b6-image
         ./result | docker load
@@ -103,5 +103,9 @@ jobs:
 
         curl --head localhost:8001
 
-        # Let's also test the example notebook
-        nix develop .#combined -c "ipython -c '%run ./python/docs/01_Search.ipynb'"
+    - name: "Test the notebook runs"
+      run: |
+        # Note: This depends on the docker image above running
+
+        nix develop .#python \
+          -c ipython -c "%run ./python/docs/01_Search.ipynb"
