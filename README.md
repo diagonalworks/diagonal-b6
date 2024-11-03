@@ -1,10 +1,10 @@
 # b6
 
 Bedrock, or [b6](https://diagonal.works/b6), is Diagonal's geospatial analysis
-engine. It reads a compact representation of the world into memory, and
-makes it available for analysis, for example from a Python script or iPython
-notebook. It also provides a simple web interface for exploring data. Communication between Python and b6 happens over
-[GRPC](https://grpc.io).
+engine. It reads a compact representation of the world into memory, and makes
+it available for analysis, for example from a Python script or iPython
+notebook. It also provides a simple web interface for exploring data.
+Communication between Python and b6 happens over [gRPC](https://grpc.io).
 
 We use b6 for the analysis behind our
 [work for clients](http://diagonal.works/journal). We use the web interface
@@ -29,23 +29,54 @@ about what you're up to](mailto:hello@diagonal.works).
 
 ## Quickstart
 
-The simplest way to try b6 is with the docker package we provide:
+The simplest way to try b6 is with the docker image we provide:
 
+```sh
+# Clone the repo
+git clone https://github.com/diagonalworks/diagonal-b6.git
+
+# Run the docker image and point it to some test data
+docker run \
+  -p 8001:8001 \
+  -p 8002:8002 \
+  -v ./data:/data \
+  -e FRONTEND_CONFIGURATION="frontend-with-scenarios=false,shell=true" \
+  ghcr.io/diagonalworks/diagonal-b6:latest \
+  --world /data/tests/camden.osm.pbf
 ```
-docker run -p 8001:8001 -p 8002:8002 europe-docker.pkg.dev/diagonal-public/b6/b6
-```
+
+> [!note]
+> We provide a specific environment variable, `FRONTEND_CONFIGURATION`, to
+> select the features we want to enable; in this case we want the _shell_
+> feature to be on, but the _scenarios_ feature off. You can read more above
+> these in the <./nix/js.nix> file and <./nix/docker.nix>.
 
 This starts an instance of b6, with a web interface on port 8001, and
-a GRPC interface for analysis from Python on port 8002, hosting a small amount
+a gRPC interface for analysis from Python on port 8002, hosting a small amount
 of data from OpenStreetMap for the area of London around
 [Diagonal's spiritual home](https://www.dishoom.com/kings-cross/). Viewing
 [localhost:8001](http://localhost:8001) should show you a map.
 
-To try out analysis, you'll need to install the Python client library, via:
+You can also run b6 directly via Nix:
+
+```sh
+nix run github:diagonalworks/diagonal-b6#b6 \
+  -- \
+  --world data/tests/camden.osm.pbf
+```
+
+<!--
+
+TODO: Get this package deployed again; and/or update instructions on how to
+use with the Nix template.
+
+To try out analysis, you'll need the Python client library. For the omment,
+the most convenient way is through the Nix shell, or via a
 
 ```
 python -m pip install diagonal_b6
 ```
+-->
 
 There's a [Python notebook](python/docs/01_Search.ipynb) that introduces the
 client library, and an overview b6 concepts in our
@@ -100,105 +131,81 @@ window.
 ## Ingesting data
 
 If you have a small amount of data you'd like to work with, in OSM PBF format,
-you can read it directly by putting it in a directory by itself and replacing
-the `/world` directory in the image. b6 tries to read all files in that
-directory:
+you can read it directly by putting it in a directory by itself and making
+sure that directory is readable. Via docker:
 
-```
-docker run -v /path/with/data:/world -p 8001:8001 -p 8002:8002 europe-docker.pkg.dev/diagonal-public/b6/b6
+```sh
+# Run the docker image and point it to some test data
+docker run \
+  -p 8001:8001 \
+  -p 8002:8002 \
+  -v ./data:/data \
+  -e FRONTEND_CONFIGURATION="frontend-with-scenarios=false,shell=true" \
+  ghcr.io/diagonalworks/diagonal-b6:latest \
+  --world /data
 ```
 
 For larger datasets, or datasets in formats other than OSM PBF, you'll need to
-use one of the [ingestion tools](src/diagonal.works/b6/cmd) from either the
-docker image. These tools convert source data into a compact representation for
-efficient reading by the backend, that we call an index. `b6-ingest-osm`
-produces an index for OpenStreetMap data in PBF format, while `b6-ingest-gdal`
-will produce an index for anything the GDAL library can read. We typically use the `.index` extension for ingested data.
+use one of the [ingestion tools](src/diagonal.works/b6/cmd). These tools
+convert source data into a compact representation for efficient reading by the
+backend, that we call an index. `b6-ingest-osm` produces an index for
+OpenStreetMap data in PBF format, while `b6-ingest-gdal` will produce an index
+for shp or geojson files read via the GDAL library. We typically use the
+`.index` extension for ingested data.
 
 To ingest an OSM PBF file `granary-square.osm.pbf`, use:
 
-```
-b6-ingest-osm --input=granary-square.osm.pbf --output=granary-square.index
-```
+```sh
+# Docker
+docker run \
+  -v ./data:/data \
+  --entrypoint b6-ingest-osm \
+  ghcr.io/diagonalworks/diagonal-b6:latest \
+  --input data/tests/granary-square.osm.pbf --output data/granary-square.index
 
-You can find binaries for our ingest tools for Linux in our [release assets](https://github.com/diagonalworks/diagonal-b6/releases). We provide binaries for [amd64](https://github.com/diagonalworks/diagonal-b6/releases/download/v0.0.3/diagonal-linux-amd64-0.0.3.tar.gz) and [arm64](https://github.com/diagonalworks/diagonal-b6/releases/download/v0.0.3/diagonal-linux-arm64-0.0.3.tar.gz). We don't think the project is mature enough yet to provide packages for
-`apt` or `brew`. You can also run the ingest tools within docker, for example:
-
-```
-docker run --rm -v ${PWD}:/data europe-docker.pkg.dev/diagonal-public/b6/b6 /diagonal/bin/b6-ingest-osm --input=/data/granary-square.osm.pbf --output=/data/granary-square.index
+# Nix
+nix run .#b6-ingest-osm -- --input data/tests/granary-square.osm.pbf --output granary-square.index
 ```
 
 To ingest a shapefile via GDAL, use something like:
 
 ```
-b6-ingest-gdal --input=SG_DataZone_Bdry_2011.shp --output=data/region/scottish-borders/data-zones-2011.index --namespace=maps.scot.gov/data-zone-2011 --id=DataZone --id-strategy=strip "--add-tags=#boundary=datazone" --copy-tags=name=Name,code=DataZone,population:2011=TotPop2011
+b6-ingest-gdal \
+    --input SG_DataZone_Bdry_2011.shp \
+    --output data/region/scottish-borders/data-zones-2011.index \
+    --namespace maps.scot.gov/data-zone-2011 \
+    --id DataZone \
+    --id-strategy strip
+    --add-tags "#boundary=datazone"
+    --copy-tags "name=Name,code=DataZone,population:2011=TotPop2011"
 ```
 
 In this example:
 
   * `--input` is the name of the GDAL readable file to ingest.
   * `--namespace` is the namespace to use when generating IDs for features.
-  * `--id=DataZone --id-strategy=strip` uses the value of the `DataZone` field
+  * `--id DataZone --id-strategy strip` uses the value of the `DataZone` field
      as the integer part of the feature's identifier, stripping non-numeric
      characters from the field's value. Another common option is
      `--id=Code --id-strategy=hash`, which hashes the value of the `Code`
     field. If `--id-strategy` isn't supplied, an ID is generated by
     incrementing an integer for each ingested feature.
-  * `--copy-tags=name=Name` copies the `Name` field into the feature as a
+  * `--copy-tags "name=Name"` copies the `Name` field into the feature as a
     tag named `name`.
-  * `--add-tags=#boundary=datazone` adds the tag `#boundary=datazone` to all
+  * `--add-tags "#boundary=datazone"` adds the tag `#boundary=datazone` to all
     features.
 
-Indexing large inputs takes time and memory, but results in a reasonably
-sized index file. For example, indexing a 10Gb planet extract for
-the UK takes ~20 minutes on a machine with 8 cores, and uses ~40Gb RAM. The
-resulting index is around 10Gb. As the index is mapped directly into memory,
-the size of the file is the upper bound on the amount of memory b6 will use
-to read the index. We normally ingest large datasets on cloud VMs, but
-use the index on our own machines.
-
+Indexing large inputs takes time and memory, but results in a reasonably sized
+index file. For example, indexing a 10Gb planet extract for the UK takes ~20
+minutes on a machine with 8 cores, and uses ~40Gb RAM. The resulting index is
+around 10Gb. As the index is mapped directly into memory, the size of the file
+is the upper bound on the amount of memory b6 will use to read the index. We
+normally ingest large datasets on cloud VMs, but use the index on our own
+machines.
 
 ## Building and running from source
 
-You only need to build b6 from source if you're planning to change it. We
-depend on the [protocol buffer](https://protobuf.dev/) compiler, and
-[npm](https://www.npmjs.com/) at build time. To ingest and reproject data from
-shapefiles, we depend on [gdal](https://gdal.org/), though it's not required
-when working with OpenStreetMap, and we don't use it at run time. To install these on an Ubuntu based system, for example:
-```
-apt-get install npm protobuf-compiler gdal-bin libgdal-dev
-```
-or on OSX, using [brew](http://brew.sh):
-```
-brew install protobuf gdal
-```
-We also require Python >= 3.10 and Go >= 1.20.
-
-To build all binaries, including data ingestion with gdal:
-```
-make
-```
-
-To build just the b6 backend, and OpenStreetMap ingestion, without gdal:
-```
-make b6 b6-ingest-osm
-```
-To generate the sample world data included in the docker image (replace the platform as appropriate):
-```
-bin/linux/x86_64/b6-ingest-osm --input=data/tests/camden.osm.pbf --output=data/camden.index
-```
-To start the backend:
-```
-bin/linux/x86_64/b6 --world=data/camden.index
-```
-You can run the entire build inside a docker container with:
-```
-make docker/Dockerfile.b6
-docker build --build-arg=TARGETOS=linux --build-arg=TARGETARCH=amd64 -f docker/Dockerfile.b6 .
-```
-
-
-### Building with Nix
+The best way to build the project locally is via the Nix development shells.
 
 A [Nix](https://nixos.org/) [flake](https://nixos.wiki/wiki/flakes) is
 provided to build the binaries and/or do development.
@@ -210,24 +217,39 @@ automatically, and otherwise you can get one with:
 nix develop
 ```
 
-You can build the go binaries with `nix build` and run the `b6` binary with
-`nix run . -- --help`. You can find the rest of the binaries in `./result/bin`
-(if you have ran `nix build`.)
+You can build all the go binaries with `nix build` and run specific binaries,
+such as `b6` or `b6-ingest-gdal` like so:
 
-The go application is built with [gomod2nix](https://github.com/nix-community/gomod2nix/).
+```sh
+nix run .#b6 -- --help
+nix run .#b6-ingest-gdal -- --help
+```
+
+The go application is built with
+[gomod2nix](https://github.com/nix-community/gomod2nix/).
 
 For day-to-day development, it is convenient to use the Makefile; so you can
-run `make b6`, or any other make target, from the Nix shell and it should work
-fine. Note that the resulting binaries are placed in the `./bin` folder; but
-they should (!) be identical to the ones built by Nix; or at least, they are
-built from the same source!
+run `make b6`, or any other make target, from the Nix shell. Note that the
+resulting binaries are placed in the `./bin` folder.
 
-The JavaScript projects are all managed by npm; invoked also in the devShell.
+Because the Python library depends on _running_ the Go binaries, we have
+provided a special `combined` shell that can be used to run both:
+
+```sh
+nix develop .#combined
+```
+
+This is useful for running the Python _and_ Go tests via the Makefile:
+
+```sh
+> nix develop .#combined
+> make all-tests
+```
 
 There is a Python project defined which can be built with `nix build
-.#python312`; but this is probably only useful as a flake input to another
-project, and not really used here at present (you can jump into a Python
-environment with `nix develop .#python312`.)
+.#python312`; but this is only useful as a flake input to another project, and
+it used for the flake template (see below). You can jump into a Python
+environment with `nix develop .#python`.
 
 > [!Important]
 > The version of Python you use must match when you bring in the library; i.e.
