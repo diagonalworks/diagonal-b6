@@ -99,19 +99,6 @@ python-test: python b6-backend b6-ingest-osm
 test: proto-go src/diagonal.works/b6/api/y.go
 	cd src/diagonal.works/b6; go test diagonal.works/b6/...
 
-docker: docker/Dockerfile.b6 docker/Dockerfile.b6-ci
-
-docker/Dockerfile.b6: docker/Dockerfile.b6-build.inc docker/Dockerfile.b6.inc
-
-docker/Dockerfile.b6-ci: docker/Dockerfile.b6-build.inc docker/Dockerfile.b6-ci.inc
-
-docker/Dockerfile.%:
-	cat $^ > $@
-
-docker-b6-ci: docker/Dockerfile.b6-ci
-	docker build -t europe-docker.pkg.dev/diagonal-public/b6/b6-ci -f docker/Dockerfile.b6-ci .
-	docker push europe-docker.pkg.dev/diagonal-public/b6/b6-ci
-
 clean-api-docs:
 	rm -f docs/docs/b6-api-documentation.md
 
@@ -130,4 +117,4 @@ clean:
 	rm -f python/diagonal_b6/*_pb2.py
 	rm -f python/diagonal_b6/*_pb2_grpc.py
 
-.PHONY: python proto proto-go proto-python docker b6-frontend clean-api-docs docs
+.PHONY: python proto proto-go proto-python b6-frontend clean-api-docs docs
