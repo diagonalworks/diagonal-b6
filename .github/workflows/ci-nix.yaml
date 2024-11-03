@@ -123,3 +123,23 @@ jobs:
 
         nix develop .#python \
           -c ipython -c "%run ./python/docs/01_Search.ipynb"
+
+    - name: "Build wheel"
+      run: |
+        nix develop .#combined -c make python
+
+        cd python
+
+        # Build a wheel
+        nix develop .#python -c python -m build
+
+    - name: "Set up Python"
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: "Install wheel into ubuntu Python"
+      run: |
+        cd python
+
+        pip install dist/*.whl

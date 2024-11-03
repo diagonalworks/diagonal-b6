@@ -106,6 +106,9 @@
             ps.jupyter
             ps.pandas
             ps.matplotlib
+
+            # For packaging into a wheel
+            ps.build
           ]);
 
 
