@@ -32,27 +32,6 @@
         # Note: Here is where you would add extra Python libraries
         # ex: numpy
       ]);
-
-
-      # b6 executable
-      #
-      # Note: We define a wrapped version of the b6 executable, using a
-      # particular build of the frontend, for easy invocation, such as:
-      #
-      # > b6 -world data
-      #
-      b6-wrapped =
-        let b6 = diagonal-b6.packages.${system};
-        in
-        pkgs.writeShellScriptBin "b6" ''
-          ${b6.b6}/bin/b6 \
-            -http=0.0.0.0:8001 \
-            -grpc=0.0.0.0:8002 \
-            -js=${b6.b6-js.outPath} \
-            -enable-v2-ui \
-            -static-v2=${b6."frontend".outPath} \
-            "$@"
-        '';
     in
     {
       # Development shell
@@ -64,10 +43,10 @@
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
           py-env
-          b6-wrapped
+          diagonal-b6.packages.${system}.run-b6
           # We'll also take a whole bunch of b6-ingest-* executables, in case
           # we would like to run any ad-hoc data ingestions.
-          diagonal-b6.packages."${system}".go
+          diagonal-b6.packages.${system}.go
         ];
       };
     });
