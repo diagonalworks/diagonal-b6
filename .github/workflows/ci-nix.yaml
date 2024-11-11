@@ -102,3 +102,10 @@ jobs:
         sleep 3
 
         curl --head localhost:8001
+
+    - name: "Test the notebook runs"
+      run: |
+        # Note: This depends on the docker image above running
+
+        nix develop .#python \
+          -c ipython -c "%run ./python/docs/01_Search.ipynb"

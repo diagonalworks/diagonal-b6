@@ -1,3 +1,0 @@
-#!/bin/sh
-git diff --quiet --exit-code proto/*.proto || make proto
-git diff --quiet --exit-code src/diagonal.works/b6/api/shell.y || make src/diagonal.works/b6/api/y.go

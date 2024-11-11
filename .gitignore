@@ -6,6 +6,7 @@ bin
 **/*_grpc.py
 **/__pycache__
 VERSION
+python/docs/.ipynb_checkpoints/
 
 # Nix
 result*
