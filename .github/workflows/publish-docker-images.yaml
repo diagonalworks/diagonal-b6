@@ -83,4 +83,4 @@ jobs:
 
     - name: "Push to the registry"
       run: |
-        docker push -a ${IMAGE_LABEL}
+        docker push ${IMAGE_LABEL}
