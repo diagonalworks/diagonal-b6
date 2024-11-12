@@ -56,7 +56,7 @@ jobs:
         BUILDING_TAG=${{ github.ref_type == 'tag' }}
         VERSION_NAME=latest
 
-        IMAGE_LABEL=ghcr.io/diagonalworks/diagonal-b6/diagonal-${IMAGE_NAME}:${VERSION_NAME}
+        IMAGE_LABEL=ghcr.io/diagonalworks/diagonal-${IMAGE_NAME}:${VERSION_NAME}
 
         # If we're building a tag, the version name is the tag name.
         [[ ${BUILDING_TAG} = true ]] && \
