@@ -72,7 +72,7 @@ jobs:
         docker images
         docker inspect ${IMAGE_LABEL}
 
-        echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+        echo "IMAGE_LABEL=${IMAGE_LABEL}" >> $GITHUB_ENV
 
     - name: "Login to GitHub container registry"
       uses: docker/login-action@v3
@@ -83,4 +83,4 @@ jobs:
 
     - name: "Push to the registry"
       run: |
-        docker push -a ${IMAGE_NAME}
+        docker push -a ${IMAGE_LABEL}
