@@ -40,7 +40,7 @@ docker run \
   -p 8001:8001 \
   -p 8002:8002 \
   -v ./data:/data \
-  -e FRONTEND_CONFIGURATION="frontend-with-scenarios=false,shell=true" \
+  -e FRONTEND_CONFIGURATION="frontend-dev" \
   ghcr.io/diagonalworks/diagonal-b6:latest \
   --world /data/tests/camden.osm.pbf
 ```
@@ -49,7 +49,8 @@ docker run \
 > We provide a specific environment variable, `FRONTEND_CONFIGURATION`, to
 > select the features we want to enable; in this case we want the _shell_
 > feature to be on, but the _scenarios_ feature off. You can read more above
-> these in the <./nix/js.nix> file and <./nix/docker.nix>.
+> these in the [/nix/js.nix](./nix/js.nix) file and
+> [/nix/docker.nix](./nix/docker.nix).
 
 This starts an instance of b6, with a web interface on port 8001, and
 a gRPC interface for analysis from Python on port 8002, hosting a small amount
@@ -60,7 +61,7 @@ of data from OpenStreetMap for the area of London around
 You can also run b6 directly via Nix:
 
 ```sh
-nix run github:diagonalworks/diagonal-b6#b6 \
+nix run github:diagonalworks/diagonal-b6#run-b6 \
   -- \
   --world data/tests/camden.osm.pbf
 ```
@@ -164,7 +165,9 @@ docker run \
   --input data/tests/granary-square.osm.pbf --output data/granary-square.index
 
 # Nix
-nix run .#b6-ingest-osm -- --input data/tests/granary-square.osm.pbf --output granary-square.index
+nix run .#b6-ingest-osm -- \
+      --input data/tests/granary-square.osm.pbf \
+      --output granary-square.index
 ```
 
 To ingest a shapefile via GDAL, use something like:
@@ -175,8 +178,8 @@ b6-ingest-gdal \
     --output data/region/scottish-borders/data-zones-2011.index \
     --namespace maps.scot.gov/data-zone-2011 \
     --id DataZone \
-    --id-strategy strip
-    --add-tags "#boundary=datazone"
+    --id-strategy strip \
+    --add-tags "#boundary=datazone" \
     --copy-tags "name=Name,code=DataZone,population:2011=TotPop2011"
 ```
 
@@ -225,6 +228,11 @@ nix run .#b6 -- --help
 nix run .#b6-ingest-gdal -- --help
 ```
 
+> [!note]
+> We provide a helpful nix package, `nix run .#run-b6` that pre-defines a few
+> of a common command-line options so you don't need to set them explicitly.
+> See the [flake.nix](./flake.nix) for more information.
+
 The go application is built with
 [gomod2nix](https://github.com/nix-community/gomod2nix/).
 
@@ -253,7 +261,7 @@ environment with `nix develop .#python`.
 
 > [!Important]
 > The version of Python you use must match when you bring in the library; i.e.
-> if you python312 you need to use the `.#python312` derivation.
+> if you python312 you need to use the `python312` package.
 
 #### Running with Nix
 

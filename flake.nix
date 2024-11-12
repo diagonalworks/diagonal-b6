@@ -213,6 +213,19 @@
           # `nix build` and look in `./result/bin`.
           default = (b6-go-packages ourGdal).everything;
 
+          # We define a wrapped version of the b6 executable, using a particular
+          # build of the frontend, for easy invocation, such as:
+          #
+          # > nix run .#run-b6 -- -world data
+          run-b6 = pkgs.writeShellScriptBin "run-b6" ''
+              ${packages.b6}/bin/b6 \
+                -http=0.0.0.0:8001 \
+                -grpc=0.0.0.0:8002 \
+                -enable-v2-ui \
+                -static-v2=${packages.frontend-dev.outPath} \
+                "$@"
+              '';
+
           # Add an explicit 'go' entrypoint for the full go build+test.
           go = (b6-go-packages ourGdal).everything;
 
@@ -260,9 +273,9 @@
         #
         # Examples:
         #
-        #   nix build .#b6-js
         #   nix build .#frontend-with-scenarios=false,shell=true
         #   nix build .#frontend-with-scenarios=true,shell=false
+        #   nix build .#b6-js # Old v1 UI
         #
         // b6-js-packages
         ;

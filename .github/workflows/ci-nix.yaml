@@ -65,6 +65,7 @@ jobs:
 
     - name: "Test a few common entrypoints"
       run: |
+        nix run .#run-b6 -- --help
         nix run .#b6 -- --help
         nix run .#b6-ingest-osm -- --help
         nix run .#b6-connect -- --help
