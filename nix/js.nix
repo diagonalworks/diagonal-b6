@@ -106,10 +106,17 @@ let
     VITE_FEATURES_SCENARIOS = false;
     VITE_FEATURES_SHELL = false;
   };
+
+  # A frontend for development; shell is on, scenarios are off.
+  frontend-dev = make-frontend {
+    VITE_FEATURES_SCENARIOS = false;
+    VITE_FEATURES_SHELL = "true";
+  };
 in
 {
   inherit
     b6-js
     frontend
+    frontend-dev
     ;
 } // frontend-feature-matrix

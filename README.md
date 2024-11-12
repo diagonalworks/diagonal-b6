@@ -40,7 +40,7 @@ docker run \
   -p 8001:8001 \
   -p 8002:8002 \
   -v ./data:/data \
-  -e FRONTEND_CONFIGURATION="frontend-with-scenarios=false,shell=true" \
+  -e FRONTEND_CONFIGURATION="frontend-dev" \
   ghcr.io/diagonalworks/diagonal-b6:latest \
   --world /data/tests/camden.osm.pbf
 ```

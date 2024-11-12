@@ -27,6 +27,8 @@ let
             STATIC_ARG=${b6-js-packages."frontend-with-scenarios=false,shell=true".outPath} ;;
           "frontend-with-scenarios=false,shell=false")
             STATIC_ARG=${b6-js-packages."frontend-with-scenarios=false,shell=false".outPath} ;;
+          "frontend-dev")
+            STATIC_ARG=${b6-js-packages.frontend-dev.outPath} ;;
           *)
             STATIC_ARG=${b6-js-packages.frontend.outPath} ;;
         esac

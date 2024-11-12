@@ -213,7 +213,6 @@
           # `nix build` and look in `./result/bin`.
           default = (b6-go-packages ourGdal).everything;
 
-
           # We define a wrapped version of the b6 executable, using a particular
           # build of the frontend, for easy invocation, such as:
           #
@@ -223,7 +222,7 @@
                 -http=0.0.0.0:8001 \
                 -grpc=0.0.0.0:8002 \
                 -enable-v2-ui \
-                -static-v2=${packages."frontend".outPath} \
+                -static-v2=${packages.frontend-dev.outPath} \
                 "$@"
               '';
 
