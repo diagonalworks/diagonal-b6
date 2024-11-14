@@ -56,11 +56,11 @@ jobs:
         BUILDING_TAG=${{ github.ref_type == 'tag' }}
         VERSION_NAME=latest
 
-        IMAGE_LABEL=ghcr.io/diagonalworks/diagonal-${IMAGE_NAME}:${VERSION_NAME}
-
         # If we're building a tag, the version name is the tag name.
         [[ ${BUILDING_TAG} = true ]] && \
           VERSION_NAME=${{ github.ref_name }}
+
+        IMAGE_LABEL=ghcr.io/diagonalworks/diagonal-${IMAGE_NAME}:${VERSION_NAME}
 
         # Set image things
         echo "FROM ${{ matrix.image }}" | docker build \
