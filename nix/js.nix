@@ -1,4 +1,5 @@
 { pkgs
+, pnpm
 }:
 let
   b6-js = pkgs.buildNpmPackage {
@@ -80,10 +81,10 @@ let
 
     nativeBuildInputs = [
       pkgs.nodejs
-      pkgs.pnpm.configHook
+      pnpm.configHook
     ];
 
-    pnpmDeps = pkgs.pnpm.fetchDeps {
+    pnpmDeps = pnpm.fetchDeps {
       inherit (finalAttrs) pname version src;
       hash = "sha256-8Kc8dxchO/Gu/j3QSR52hOf4EnJuxzsaWMy9kMNgOCc=";
     };
