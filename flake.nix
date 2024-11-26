@@ -1,9 +1,14 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
 
     # We're pinned to go version 1.22.6 for now.
     goNixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+
+    # Pin to pnpm to 9.7.0, as there is an issue using the latest version of
+    # pnpm in this project.
+    # TODO: Consider upgrading this at some point.
+    pnpmNixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
 
     # Latest 3.7.1 release from nixpkgs
     # https://github.com/NixOS/nixpkgs/commits/nixpkgs-unstable/pkgs/development/libraries/gdal/default.nix
@@ -14,7 +19,11 @@
       inputs.nixpkgs.follows = "goNixpkgs";
     };
 
-    pyproject-nix.url = "github:nix-community/pyproject.nix";
+    pyproject-nix = {
+      url = "github:nix-community/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     flake-utils.url = "github:numtide/flake-utils";
     treefmt-nix.url = "github:numtide/treefmt-nix";
   };
@@ -29,6 +38,7 @@
     , treefmt-nix
     , gdalNixpkgs
     , goNixpkgs
+    , pnpmNixpkgs
     , ...
     }:
     flake-utils.lib.eachDefaultSystem
@@ -43,6 +53,10 @@
           inherit system;
         };
 
+        pnpmpkgs = import pnpmNixpkgs {
+          inherit system;
+        };
+
         # Python setup
         python-version = "python312";
         python = pkgs.${python-version};
@@ -50,22 +64,6 @@
         overlay = _: prev: {
           ${python-version} = prev.${python-version}.override {
             packageOverrides = _: p: {
-              # Note: We have to refer to a spceific version here to make sure
-              # grpcio _and_ grpcio-tools match.
-              #
-              # At present on unstable they are at _different_ versions, and
-              # this causes a warning. This can be removed if we pin to a
-              # newer version of a stable nixpkgs, or when unstable has these
-              # two packages at the same version.
-              grpcio = p.grpcio.overridePythonAttrs (old: rec {
-                version = "1.66.1";
-                src = pkgs.fetchPypi {
-                  pname = "grpcio";
-                  inherit version;
-                  hash = "sha256-NTNPnJdFrdPjV+M3J1b9MtklvVLEHal/Tf2vveC/DuI=";
-                };
-              });
-
               s2sphere = p.buildPythonPackage rec {
                 version = "0.2.5";
                 pname = "s2sphere";
@@ -113,15 +111,14 @@
 
         # Use a pinned version of gdal.
         ourGdal = (import gdalNixpkgs { inherit system; }).gdal;
-        ourGdal-aarch64-linux = (import gdalNixpkgs {
-          inherit system;
-          crossSystem.config = "aarch64-linux";
-        }).gdal;
 
         b6-js-packages = import ./nix/js.nix {
           inherit
             pkgs
             ;
+
+          # Pin the version of pnpm
+          pnpm = pnpmpkgs.pnpm;
         };
 
         b6-go-packages = ourGdal: import ./nix/go.nix {

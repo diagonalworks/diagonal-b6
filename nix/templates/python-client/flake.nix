@@ -1,8 +1,15 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Note: This _must_ match the one coming from the version in diagonal-b6.
+    # TODO: Work out how to do this a bit more cleanly.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+
     flake-utils.url = "github:numtide/flake-utils";
+
+    # Note: This has to stay as a single expression as we use sed to replace
+    # it in the 'ci-nix' CI task.
     diagonal-b6.url = "github:diagonalworks/diagonal-b6";
+    diagonal-b6.inputs.nixpkgs.follows = "nixpkgs";
   };
 
 
@@ -31,6 +38,42 @@
         pandas
         # Note: Here is where you would add extra Python libraries
         # ex: numpy
+        #
+        # If you want to specify a library from, say, GitHub, it will look
+        # something like this:
+        #
+        # (
+        #   buildPythonPackage rec {
+        #     version = "1.3";
+        #     pname = "altair-nx";
+        #
+        #     # Hack: So that the runtime dependency check doesn't fail.
+        #     propagatedBuildInputs = [
+        #       altair
+        #       networkx
+        #       pandas
+        #     ];
+        #
+        #     # This has to be determined by either trial-and-error, or
+        #     investigating the pyproject.toml or setup.py of the relevant
+        #     project. It's a bit annoying.
+        #
+        #     format = "pyproject";
+        #     nativeBuildInputs = [
+        #       hatchling
+        #       hatch-vcs
+        #     ];
+        #
+        #     # This is the easy part; the GitHub details:
+        #     src = pkgs.fetchFromGitHub {
+        #       owner = "T-Flet";
+        #       repo = "altair-nx";
+        #       rev = "master";
+        #       hash = "sha256-AlZuFqq1GaZeW6xfvxvAPIXABAm3ipJuTASqce7AD+s=";
+        #     };
+        #   }
+        # )
+        #
       ]);
     in
     {
