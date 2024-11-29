@@ -170,6 +170,8 @@ message AllQueryProto {}
 
 message EmptyQueryProto {}
 
+message IsValidQueryProto {}
+
 message CapProto {
     geometry.PointProto center = 1;
     double radiusMeters = 2;
@@ -195,6 +197,7 @@ message QueryProto {
         geometry.MultiPolygonProto intersectsMultiPolygon = 12;
         S2CellIDsProto intersectsCells = 13;
         S2CellIDsProto mightIntersect = 14;
+        IsValidQueryProto isValid = 15;
     }
 }
 
