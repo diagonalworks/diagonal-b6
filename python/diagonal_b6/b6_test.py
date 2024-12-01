@@ -665,6 +665,12 @@ class B6Test(unittest.TestCase):
       #   n < m
       self.assertLess(n, m)
 
+    def test_get_centroid(self):
+      f = b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID))
+      ll = self.connection(b6.distance_meters(f.get_centroid(), f.get_centroid()))
+      # Distance to itself is 0.0.
+      self.assertEqual(ll, 0.0)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")
