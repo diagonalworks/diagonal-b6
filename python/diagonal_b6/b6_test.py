@@ -655,6 +655,16 @@ class B6Test(unittest.TestCase):
         self.connection(add)
         self.assertEqual(self.connection(b6.call(b6.evaluate_feature(id), 20)), 30)
 
+    def test_filter_invalid(self):
+      c = b6.keyed("#building")
+      o = [b6.find_feature(b6.osm_node_id(STABLE_STREET_BRIDGE_NORTH_END_ID))]
+      q = b6.accessible_all(o, c, 10.0, {"mode": "walk"})
+      m = len(self.connection(q))
+      n = len(self.connection(q.filter(lambda f: b6.matches(f, b6.is_valid()))))
+      # Should've filtered away the invalid item; i.e.
+      #   n < m
+      self.assertLess(n, m)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--http-port", default="10080", help="Host and port on which to serve HTTP")
