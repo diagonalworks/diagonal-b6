@@ -26,6 +26,7 @@ type Query interface {
 	String() string
 }
 
+// -
 type Empty struct {
 	search.Empty
 }
@@ -50,6 +51,31 @@ func (Empty) ToProto() (*pb.QueryProto, error) {
 
 func (Empty) Equal(other Query) bool {
 	_, ok := other.(Empty)
+	return ok
+}
+
+type IsValid struct{}
+
+func (IsValid) Matches(f Feature, w World) bool {
+	return f.FeatureID().IsValid()
+}
+
+func (IsValid) Compile(i FeatureIndex, w World) search.Iterator {
+	return search.NewEmptyIterator()
+}
+
+func (IsValid) String() string {
+	return "(isValid)"
+}
+
+func (IsValid) ToProto() (*pb.QueryProto, error) {
+	return &pb.QueryProto{
+		Query: &pb.QueryProto_IsValid{},
+	}, nil
+}
+
+func (IsValid) Equal(other Query) bool {
+	_, ok := other.(IsValid)
 	return ok
 }
 

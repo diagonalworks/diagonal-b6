@@ -108,6 +108,11 @@ func intersectingCap(context *api.Context, center b6.Geometry, radius float64) (
 	return b6.NewIntersectsCap(s2.CapFromCenterAngle(center.Point(), b6.MetersToAngle(radius))), nil
 }
 
+// Keep only those features that are valid.
+func isValid(context *api.Context) (b6.Query, error) {
+	return b6.IsValid{}, nil
+}
+
 // Return a query that will match point features.
 func typePoint(context *api.Context) (*pb.QueryProto, error) {
 	return &pb.QueryProto{

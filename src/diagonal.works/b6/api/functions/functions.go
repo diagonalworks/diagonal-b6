@@ -60,6 +60,7 @@ var functions = api.FunctionSymbols{
 	"and":              and,
 	"or":               or,
 	"all":              all,
+	"is-valid":         isValid,
 	"type-point":       typePoint,
 	"type-path":        typePath,
 	"type-area":        typeArea,
@@ -88,6 +89,7 @@ var functions = api.FunctionSymbols{
 	"ordered-join":              orderedJoin,
 	"evaluate-feature":          evaluateFeature,
 	"call":                      call,
+	"get-centroid":              getCentroid,
 	// s2
 	"s2-points":   s2Points,
 	"s2-covering": s2Covering,

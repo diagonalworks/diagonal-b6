@@ -135,6 +135,17 @@ func get(context *api.Context, id b6.Identifiable, key string) (b6.Tag, error) {
 	return b6.InvalidTag(), nil
 }
 
+// Return the centroid of the given feature.
+// Returns either the centroid of an invalid geometry.
+func getCentroid(context *api.Context, id b6.Identifiable) (b6.Geometry, error) {
+	if f := api.Resolve(id, context.World); f != nil {
+		if f, ok := f.(b6.PhysicalFeature); ok {
+			return centroid(context, f)
+		}
+	}
+	return b6.InvalidGeometry{}, nil
+}
+
 // Return the value of tag with the given key on the given feature as a string.
 // Returns an empty string if there isn't a tag with that key.
 func getString(context *api.Context, id b6.Identifiable, key string) (string, error) {

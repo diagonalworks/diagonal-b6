@@ -158,6 +158,7 @@
             protobuf
             protoc-gen-go
             protoc-gen-go-grpc
+            ( python.withPackages (ps: [ps.grpcio-tools]) )
 
             # Go
             # Note: The vesion here should match the one in `go.mod`.
