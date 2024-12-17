@@ -389,10 +389,10 @@ func fillSubstackFromError(substack *pb.SubstackProto, err error) {
 	})
 }
 
-func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.SubstackProto, f b6.Feature, w b6.World) []*pb.SubstackProto {
+func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.SubstackProto, f b6.Feature, w b6.World, closeable bool) []*pb.SubstackProto {
 	substack := &pb.SubstackProto{}
 
-	// Only allow targetting (The Microscope icon) if it's a thing we can
+	// Only allow targetting (the Search icon) if it's a thing we can
 	// compute a centroid for; i.e. a point, path, or area.
 	allowTargeting := false
 	switch f.FeatureID().Type {
@@ -408,7 +408,7 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 		Line: &pb.LineProto_Header{
 			Header: &pb.HeaderLineProto{
 				Title:  AtomFromValue(f, w),
-				Close:  true,
+				Close:  closeable,
 				Target: allowTargeting,
 			},
 		},
