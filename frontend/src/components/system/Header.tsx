@@ -1,4 +1,4 @@
-import { Cross1Icon, Link2Icon } from '@radix-ui/react-icons';
+import { Cross1Icon, Link2Icon, MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { omit } from 'lodash';
 import React, { HtmlHTMLAttributes, useEffect } from 'react';
@@ -55,6 +55,7 @@ const Actions = React.forwardRef<
     HTMLDivElement,
     Omit<HtmlHTMLAttributes<HTMLDivElement>, 'children'> & {
         share?: boolean;
+        target?: boolean;
         close?: boolean;
         slotProps?: {
             share?: React.HTMLAttributes<HTMLButtonElement> & {
@@ -65,11 +66,12 @@ const Actions = React.forwardRef<
                 };
             };
             close?: React.HTMLAttributes<HTMLButtonElement>;
+            target?: React.HTMLAttributes<HTMLButtonElement>;
         };
     }
 >(
     (
-        { className, close = false, share = false, slotProps, ...props },
+        { className, close = false, share = false, target = false, slotProps, ...props },
         forwardedRef
     ) => {
         useEffect(() => {
@@ -107,6 +109,11 @@ const Actions = React.forwardRef<
                             </TooltipContent>
                         </PopoverPrimitive.Content>
                     </PopoverPrimitive.Root>
+                )}
+                {target && (
+                    <IconButton {...slotProps?.target}>
+                        <MagnifyingGlassIcon />
+                    </IconButton>
                 )}
                 {close && (
                     <IconButton {...slotProps?.close}>

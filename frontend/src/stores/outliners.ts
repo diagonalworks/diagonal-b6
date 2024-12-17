@@ -18,12 +18,14 @@ export interface OutlinerSpec {
         docked: boolean;
         transient: boolean;
         show: boolean;
+        showOutliner?: boolean;
         type: 'core' | 'comparison';
         coordinates?: {
             x: number;
             y: number;
         };
         shellHistory?: string[];
+        magicNumber?: number;
     };
     // The request to fetch data for the outliner
     request?: UIRequestProto;
@@ -107,6 +109,26 @@ export const createOutlinersStore: ImmerStateCreator<
     actions: {
         add: (spec) => {
             set((state) => {
+                // If we already have this open somewhere, don't add it again.
+                //
+                // TODO: This doesn't quite work; it seems that because it
+                // doesn't trigger a re-render it doesn't trigger the map
+                // position update (via api/stack.ts). So we need to let this
+                // re-update the spec, _even though_ it is "already" present,
+                // ultimately (actually, it's slightly different, as the
+                // "magicNumber" field will have changed; hence breaking the
+                // cache.)
+                //
+                // In any case, this is an area to revisit.
+                //
+                //
+                // TODO: Uncomment once the above is resolved in a different
+                // way.
+                //
+                // if (state.outliners.hasOwnProperty(spec.id)) {
+                //   return;
+                // }
+
                 for (const id in state.outliners) {
                     if (
                         state.outliners[id].properties.transient &&
@@ -126,7 +148,6 @@ export const createOutlinersStore: ImmerStateCreator<
         move: (id, dx, dy) => {
             set((state) => {
                 const { coordinates } = state.outliners[id].properties;
-                console.log(coordinates);
 
                 state.outliners[id].properties.coordinates = {
                     x: (coordinates?.x ?? OUTLINER_SPAWN_ORIGIN.x) + dx,

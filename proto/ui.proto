@@ -133,6 +133,7 @@ message HeaderLineProto {
     AtomProto title = 1;
     bool close = 2;
     bool share = 3;
+    bool target = 4;
 }
 
 message ErrorLineProto {

@@ -172,6 +172,7 @@
 
             # Other
             osmium-tool # Extract OSM files
+            svu # semantic version helper tool
           ];
 
           shellHook = ''
@@ -217,10 +218,20 @@
           # > nix run .#run-b6 -- -world data
           run-b6 = pkgs.writeShellScriptBin "run-b6" ''
               ${packages.b6}/bin/b6 \
-                -http=0.0.0.0:8001 \
-                -grpc=0.0.0.0:8002 \
+                -http 0.0.0.0:8001 \
+                -grpc 0.0.0.0:8002 \
                 -enable-v2-ui \
-                -static-v2=${packages.frontend-dev.outPath} \
+                -static-v2 ${packages.frontend-dev.outPath} \
+                "$@"
+              '';
+
+          run-b6-dev = pkgs.writeShellScriptBin "run-b6-dev" ''
+              ${packages.b6}/bin/b6 \
+                -http 0.0.0.0:8001 \
+                -grpc 0.0.0.0:8002 \
+                -enable-v2-ui \
+                -static-v2 ./frontend/dist \
+                -enable-vite \
                 "$@"
               '';
 

@@ -45,6 +45,7 @@ function Outliner({
 
         if (outliner.properties.show && stackData.data?.proto.layers) {
             for (const layer of stackData.data.proto.layers) {
+                // TODO: What is this condition about?
                 if (tileLayers[`${outliner.id}-${layer.path}`]) {
                     continue;
                 }

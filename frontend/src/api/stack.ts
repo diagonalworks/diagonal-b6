@@ -13,7 +13,8 @@ const getStack = (request: UIRequestProto): Promise<StackResponse> => {
 
 const stackQueryParams = (
     request?: UIRequestProto,
-    fallback?: StackResponse
+    fallback?: StackResponse,
+    magicNumber?: number
 ) => {
     return {
         queryKey: [
@@ -23,6 +24,10 @@ const stackQueryParams = (
             JSON.stringify(request?.root),
             JSON.stringify(request?.node),
             JSON.stringify(fallback?.proto),
+            // Note: Using `magicNumber` here is a bit of a hack; we shouldn't
+            // require it to re-force this query to resolve, but it turns out to
+            // be useful at the moment.
+            magicNumber,
         ],
         queryFn: () =>
             request ? getStack(request) : Promise.resolve(fallback),
@@ -32,13 +37,16 @@ const stackQueryParams = (
 export const useStack = (
     world: World['id'],
     request?: UIRequestProto,
-    fallback?: StackResponse
+    fallback?: StackResponse,
+    magicNumber?: number
 ) => {
-    const query = useQuery(stackQueryParams(request, fallback));
+    const query = useQuery(stackQueryParams(request, fallback, magicNumber));
     const view = useViewStore((state) => state.view);
     const viewActions = useViewStore((state) => state.actions);
     const { [world]: maplibre } = useMapLibre();
 
+    // Center the map at the point of the new data, supposing it isn't
+    // presently already visible in the map bounds.
     useEffect(() => {
         if (query.data) {
             const newCenter =

@@ -428,39 +428,39 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 			}
 			if i.Key() == "centroid" {
 				switch v := i.Value().(type) {
-					// Read a raw point from the yaml:
-					//
-					// collection:
-					//  - - centroid
-					//		- point: 55.9480999,-3.2000552
-					//
-					// Can be constructed, in Python, from the function `b6.ll`, like:
-					// >>> b6.ll(55.948, -3.2)
-					//
-					case b6.Geo:
-						ll := s2.LatLngFromPoint(v.Point())
-						response.MapCenter = &LatLngJSON{
-							LatE7: int(ll.Lat.E7()),
-							LngE7: int(ll.Lng.E7()),
-						}
-						response.MapZoom = DefaultMapZoom
-
-					// Tt was a FeatureID (of a point), so look it up.
-					// Note: This fails silently for non-point features.
-					case b6.FeatureID:
-						if centroid := w.FindFeatureByID(v); centroid != nil {
-							if p, ok := centroid.(b6.PhysicalFeature); ok {
-								ll := s2.LatLngFromPoint(p.Point())
-								response.MapCenter = &LatLngJSON{
-									LatE7: int(ll.Lat.E7()),
-									LngE7: int(ll.Lng.E7()),
-								}
-								response.MapZoom = DefaultMapZoom
-							}
-						}
-					default:
-						return fmt.Errorf("Couldn't interpret centroid in world %s of type %T", request.Root, i.Value())
+				// Read a raw point from the yaml:
+				//
+				// collection:
+				//  - - centroid
+				//		- point: 55.9480999,-3.2000552
+				//
+				// Can be constructed, in Python, from the function `b6.ll`, like:
+				// >>> b6.ll(55.948, -3.2)
+				//
+				case b6.Geo:
+					ll := s2.LatLngFromPoint(v.Point())
+					response.MapCenter = &LatLngJSON{
+						LatE7: int(ll.Lat.E7()),
+						LngE7: int(ll.Lng.E7()),
 					}
+					response.MapZoom = DefaultMapZoom
+
+				// It was a FeatureID (of a point), so look it up.
+				// Note: This fails silently for non-point features.
+				case b6.FeatureID:
+					if centroid := w.FindFeatureByID(v); centroid != nil {
+						if p, ok := centroid.(b6.PhysicalFeature); ok {
+							ll := s2.LatLngFromPoint(p.Point())
+							response.MapCenter = &LatLngJSON{
+								LatE7: int(ll.Lat.E7()),
+								LngE7: int(ll.Lng.E7()),
+							}
+							response.MapZoom = DefaultMapZoom
+						}
+					}
+				default:
+					return fmt.Errorf("Couldn't interpret centroid in world %s of type %T", request.Root, i.Value())
+				}
 			} else if i.Key() == "docked" {
 				if featureId, ok := i.Value().(b6.FeatureID); ok {
 					if docked := w.FindFeatureByID(featureId); docked != nil {
