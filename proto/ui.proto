@@ -134,6 +134,8 @@ message HeaderLineProto {
     bool close = 2;
     bool share = 3;
     bool target = 4;
+    bool copy = 5;
+    bool toggleVisible = 6;
 }
 
 message ErrorLineProto {

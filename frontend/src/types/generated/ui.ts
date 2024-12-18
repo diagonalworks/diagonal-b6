@@ -173,6 +173,8 @@ export interface HeaderLineProto {
   close?: boolean | undefined;
   share?: boolean | undefined;
   target?: boolean | undefined;
+  copy?: boolean | undefined;
+  toggleVisible?: boolean | undefined;
 }
 
 export interface ErrorLineProto {
@@ -2087,7 +2089,7 @@ export const ChoiceProto = {
 };
 
 function createBaseHeaderLineProto(): HeaderLineProto {
-  return { title: undefined, close: false, share: false, target: false };
+  return { title: undefined, close: false, share: false, target: false, copy: false, toggleVisible: false };
 }
 
 export const HeaderLineProto = {
@@ -2103,6 +2105,12 @@ export const HeaderLineProto = {
     }
     if (message.target !== undefined && message.target !== false) {
       writer.uint32(32).bool(message.target);
+    }
+    if (message.copy !== undefined && message.copy !== false) {
+      writer.uint32(40).bool(message.copy);
+    }
+    if (message.toggleVisible !== undefined && message.toggleVisible !== false) {
+      writer.uint32(48).bool(message.toggleVisible);
     }
     return writer;
   },
@@ -2142,6 +2150,20 @@ export const HeaderLineProto = {
 
           message.target = reader.bool();
           continue;
+        case 5:
+          if (tag !== 40) {
+            break;
+          }
+
+          message.copy = reader.bool();
+          continue;
+        case 6:
+          if (tag !== 48) {
+            break;
+          }
+
+          message.toggleVisible = reader.bool();
+          continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -2157,6 +2179,8 @@ export const HeaderLineProto = {
       close: isSet(object.close) ? globalThis.Boolean(object.close) : false,
       share: isSet(object.share) ? globalThis.Boolean(object.share) : false,
       target: isSet(object.target) ? globalThis.Boolean(object.target) : false,
+      copy: isSet(object.copy) ? globalThis.Boolean(object.copy) : false,
+      toggleVisible: isSet(object.toggleVisible) ? globalThis.Boolean(object.toggleVisible) : false,
     };
   },
 
@@ -2174,6 +2198,12 @@ export const HeaderLineProto = {
     if (message.target !== undefined && message.target !== false) {
       obj.target = message.target;
     }
+    if (message.copy !== undefined && message.copy !== false) {
+      obj.copy = message.copy;
+    }
+    if (message.toggleVisible !== undefined && message.toggleVisible !== false) {
+      obj.toggleVisible = message.toggleVisible;
+    }
     return obj;
   },
 
@@ -2188,6 +2218,8 @@ export const HeaderLineProto = {
     message.close = object.close ?? false;
     message.share = object.share ?? false;
     message.target = object.target ?? false;
+    message.copy = object.copy ?? false;
+    message.toggleVisible = object.toggleVisible ?? false;
     return message;
   },
 };

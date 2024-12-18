@@ -407,9 +407,11 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 	headerLine := &pb.LineProto{
 		Line: &pb.LineProto_Header{
 			Header: &pb.HeaderLineProto{
-				Title:  AtomFromValue(f, w),
-				Close:  closeable,
-				Target: allowTargeting,
+				Title:         AtomFromValue(f, w),
+				Close:         closeable,
+				Copy:          true,
+				Target:        allowTargeting,
+				ToggleVisible: allowTargeting,
 			},
 		},
 	}
