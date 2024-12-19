@@ -395,13 +395,19 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 	// Only allow targetting (the Search icon) if it's a thing we can
 	// compute a centroid for; i.e. a point, path, or area.
 	allowTargeting := false
+	allowToggleVisible := false
 	switch f.FeatureID().Type {
 	case b6.FeatureTypePoint:
 		allowTargeting = true
+		allowToggleVisible = true
 	case b6.FeatureTypePath:
 		allowTargeting = true
+		allowToggleVisible = true
 	case b6.FeatureTypeArea:
 		allowTargeting = true
+		allowToggleVisible = true
+	case b6.FeatureTypeCollection:
+		allowToggleVisible = true
 	}
 
 	headerLine := &pb.LineProto{
@@ -411,7 +417,7 @@ func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.Substack
 				Close:         closeable,
 				Copy:          true,
 				Target:        allowTargeting,
-				ToggleVisible: allowTargeting,
+				ToggleVisible: allowToggleVisible,
 			},
 		},
 	}
