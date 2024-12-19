@@ -71,7 +71,7 @@ export const Header: Story = {
         <div className=" border border-graphite-30 border-dashed w-fit p-2">
             <HeaderComponent>
                 <HeaderComponent.Label>Header</HeaderComponent.Label>
-                <HeaderComponent.Actions share close />
+                <HeaderComponent.Actions share target copy toggleVisible close />
             </HeaderComponent>
         </div>
     ),

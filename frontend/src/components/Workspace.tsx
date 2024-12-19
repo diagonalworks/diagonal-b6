@@ -47,10 +47,11 @@ export default function Workspace() {
     const isInIframe = window.self !== window.top;
     const isScenariosEnabled = useFeatureFlag('scenarios');
     const isShellEnabled = useFeatureFlag('shell');
-
-    setShellEnabled(isShellEnabled);
-
     const startup = useStartup();
+
+    useEffect(() => {
+        setShellEnabled(isShellEnabled);
+    }, [isShellEnabled])
 
     useEffect(() => {
         if (startup.data) {

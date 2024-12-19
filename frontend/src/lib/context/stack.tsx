@@ -6,6 +6,7 @@ import {
     useMemo,
 } from 'react';
 
+import { isUndefined } from 'lodash';
 import { useStack } from '@/api/stack';
 import { OutlinerSpec, useOutlinersStore } from '@/stores/outliners';
 import { useWorldStore } from '@/stores/worlds';
@@ -38,7 +39,7 @@ type StoreContext = {
      * @param node - The node to evaluate
      * @returns void
      */
-    evaluateNode: (node: NodeProto) => void;
+    evaluateNode: (node: NodeProto, shouldShowOutliner?: boolean, bustCache?: boolean) => void;
     /**
      * Evaluate an expression in the outliner.
      * @param expression - The expression to evaluate
@@ -66,7 +67,7 @@ export const StackContextProvider = ({
     const actions = useOutlinersStore((state) => state.actions);
     const world = useWorldStore((state) => state.worlds[outliner.world]);
 
-    const data = useStack(outliner.world, outliner.request, outliner.data);
+    const data = useStack(outliner.world, outliner.request, outliner.data, outliner.properties.magicNumber);
 
     const close = useCallback(() => {
         actions.remove(outliner.id);
@@ -92,12 +93,39 @@ export const StackContextProvider = ({
     );
 
     const evaluateNode = useCallback(
-        (node: NodeProto) => {
+        (node: NodeProto, shouldShowOutliner?: boolean, bustCache?: boolean) => {
             const event: Event = 'oc';
             const root = outliner.request?.root ?? world.featureId;
 
+            // TODO: There are at least two problems with this id:
+            //
+            //  1. It depends who opened it; it contains the id of the parent.
+            //  This is probably not ideal.
+            //
+            //  2. The stringifyied node is a big JSON blob; we probably don't
+            //  want that. It'd be better if there was a simple integer; i.e.
+            //  a hash.
+            //
+            // Instead we might consider:
+            //
+            //  const id = `${event}-${JSON.stringify(node)}`
+            //
+            // i.e. just drop the first term relating to the outliner it was
+            // opened with.
+            const id = `${outliner.id}-${event}-${JSON.stringify(node)}`
+
+            // If someone has asked to bust the (query) cache, then just
+            // generate a number that will ensure that happens. This allows,
+            // for example, the code in api/stack.ts to re-center the map
+            // based on the returned data.
+            //
+            // TODO: In the future, we would not force a re-query here, we
+            // would just be able to recenter the map based on the previous
+            // query we obtained.
+            const magicNumber = bustCache ? Date.now() : undefined;
+
             actions.add({
-                id: `${outliner.id}-${event}-${JSON.stringify(node)}`,
+                id: id,
                 world: outliner.world,
                 properties: {
                     active: true,
@@ -105,6 +133,8 @@ export const StackContextProvider = ({
                     docked: false,
                     type: 'core',
                     show: true,
+                    showOutliner: isUndefined(shouldShowOutliner) ? true : shouldShowOutliner,
+                    magicNumber: magicNumber,
                 },
                 request: {
                     root,
@@ -139,6 +169,13 @@ export const StackContextProvider = ({
         evaluateNode,
         evaluateExpressionInOutliner,
     ]);
+
+    // If we've asked to not render, then just don't return anything. Note
+    // that we must check that is is actually defined; otherwise we just show
+    // it as normal.
+    if ( !isUndefined(outliner.properties.showOutliner) && !outliner.properties.showOutliner ) {
+        return <div />
+    }
 
     return (
         <StackContext.Provider value={value}>{children}</StackContext.Provider>

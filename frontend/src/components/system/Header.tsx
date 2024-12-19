@@ -1,4 +1,11 @@
-import { Cross1Icon, Link2Icon } from '@radix-ui/react-icons';
+import {
+    Cross1Icon,
+    Link2Icon,
+    CopyIcon,
+    MagnifyingGlassIcon,
+    ComponentInstanceIcon,
+    ComponentNoneIcon,
+} from '@radix-ui/react-icons';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { omit } from 'lodash';
 import React, { HtmlHTMLAttributes, useEffect } from 'react';
@@ -6,6 +13,7 @@ import { twMerge } from 'tailwind-merge';
 
 import { IconButton } from './IconButton';
 import { TooltipContent } from './Tooltip';
+import { useStackContext } from '@/lib/context/stack';
 
 export interface HeaderProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -55,7 +63,10 @@ const Actions = React.forwardRef<
     HTMLDivElement,
     Omit<HtmlHTMLAttributes<HTMLDivElement>, 'children'> & {
         share?: boolean;
+        target?: boolean;
         close?: boolean;
+        copy?: boolean;
+        toggleVisible?: boolean;
         slotProps?: {
             share?: React.HTMLAttributes<HTMLButtonElement> & {
                 popover?: {
@@ -65,11 +76,14 @@ const Actions = React.forwardRef<
                 };
             };
             close?: React.HTMLAttributes<HTMLButtonElement>;
+            target?: React.HTMLAttributes<HTMLButtonElement>;
+            copy?: React.HTMLAttributes<HTMLButtonElement>;
+            toggleVisible?: React.HTMLAttributes<HTMLButtonElement>;
         };
     }
 >(
     (
-        { className, close = false, share = false, slotProps, ...props },
+        { className, close = false, share = false, target = false, toggleVisible = false, copy = false, slotProps, ...props },
         forwardedRef
     ) => {
         useEffect(() => {
@@ -80,6 +94,9 @@ const Actions = React.forwardRef<
                 return () => clearTimeout(timeout);
             }
         }, [slotProps?.share?.popover]);
+
+        const { outliner } = useStackContext();
+
 
         return (
             <div
@@ -107,6 +124,26 @@ const Actions = React.forwardRef<
                             </TooltipContent>
                         </PopoverPrimitive.Content>
                     </PopoverPrimitive.Root>
+                )}
+                {target && (
+                    <IconButton {...slotProps?.target}>
+                        <MagnifyingGlassIcon />
+                    </IconButton>
+                )}
+                {copy && (
+                    <IconButton {...slotProps?.copy}>
+                        <CopyIcon />
+                    </IconButton>
+                )}
+                {toggleVisible && (
+                    // TODO: Also update the icon based on the state.
+                    <IconButton {...slotProps?.toggleVisible}>
+                        { outliner && outliner.properties.show ? (
+                            <ComponentInstanceIcon />
+                        ) : (
+                            <ComponentNoneIcon />
+                        )}
+                    </IconButton>
                 )}
                 {close && (
                     <IconButton {...slotProps?.close}>

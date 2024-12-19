@@ -294,7 +294,7 @@ func (u *UIResponseJSON) AddGeoJSON(g geojson.GeoJSON) {
 type UI interface {
 	ServeStartup(request *StartupRequest, response *StartupResponseJSON, ui UI) error
 	ServeStack(request *pb.UIRequestProto, response *UIResponseJSON, ui UI) error
-	Render(response *UIResponseJSON, value interface{}, root b6.CollectionID, locked bool, ui UI) error
+	Render(response *UIResponseJSON, value interface{}, root b6.CollectionID, locked bool, ui UI, closeable bool) error
 }
 
 type FeatureIDProtoJSON pb.FeatureIDProto
@@ -428,44 +428,44 @@ func (o *OpenSourceUI) ServeStartup(request *StartupRequest, response *StartupRe
 			}
 			if i.Key() == "centroid" {
 				switch v := i.Value().(type) {
-					// Read a raw point from the yaml:
-					//
-					// collection:
-					//  - - centroid
-					//		- point: 55.9480999,-3.2000552
-					//
-					// Can be constructed, in Python, from the function `b6.ll`, like:
-					// >>> b6.ll(55.948, -3.2)
-					//
-					case b6.Geo:
-						ll := s2.LatLngFromPoint(v.Point())
-						response.MapCenter = &LatLngJSON{
-							LatE7: int(ll.Lat.E7()),
-							LngE7: int(ll.Lng.E7()),
-						}
-						response.MapZoom = DefaultMapZoom
-
-					// Tt was a FeatureID (of a point), so look it up.
-					// Note: This fails silently for non-point features.
-					case b6.FeatureID:
-						if centroid := w.FindFeatureByID(v); centroid != nil {
-							if p, ok := centroid.(b6.PhysicalFeature); ok {
-								ll := s2.LatLngFromPoint(p.Point())
-								response.MapCenter = &LatLngJSON{
-									LatE7: int(ll.Lat.E7()),
-									LngE7: int(ll.Lng.E7()),
-								}
-								response.MapZoom = DefaultMapZoom
-							}
-						}
-					default:
-						return fmt.Errorf("Couldn't interpret centroid in world %s of type %T", request.Root, i.Value())
+				// Read a raw point from the yaml:
+				//
+				// collection:
+				//  - - centroid
+				//		- point: 55.9480999,-3.2000552
+				//
+				// Can be constructed, in Python, from the function `b6.ll`, like:
+				// >>> b6.ll(55.948, -3.2)
+				//
+				case b6.Geo:
+					ll := s2.LatLngFromPoint(v.Point())
+					response.MapCenter = &LatLngJSON{
+						LatE7: int(ll.Lat.E7()),
+						LngE7: int(ll.Lng.E7()),
 					}
+					response.MapZoom = DefaultMapZoom
+
+				// It was a FeatureID (of a point), so look it up.
+				// Note: This fails silently for non-point features.
+				case b6.FeatureID:
+					if centroid := w.FindFeatureByID(v); centroid != nil {
+						if p, ok := centroid.(b6.PhysicalFeature); ok {
+							ll := s2.LatLngFromPoint(p.Point())
+							response.MapCenter = &LatLngJSON{
+								LatE7: int(ll.Lat.E7()),
+								LngE7: int(ll.Lng.E7()),
+							}
+							response.MapZoom = DefaultMapZoom
+						}
+					}
+				default:
+					return fmt.Errorf("Couldn't interpret centroid in world %s of type %T", request.Root, i.Value())
+				}
 			} else if i.Key() == "docked" {
 				if featureId, ok := i.Value().(b6.FeatureID); ok {
 					if docked := w.FindFeatureByID(featureId); docked != nil {
 						uiResponse := NewUIResponseJSON()
-						if err := ui.Render(uiResponse, docked, request.Root, true, ui); err == nil {
+						if err := ui.Render(uiResponse, docked, request.Root, true, ui, false); err == nil {
 							stripShellLinesFromResponse(uiResponse)
 							response.Docked = append(response.Docked, uiResponse)
 						} else {
@@ -516,7 +516,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 		expression, err = b6.ExpressionFromProto(request.Node)
 	}
 	if err != nil {
-		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
+		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui, true)
 		var substack pb.SubstackProto
 		fillSubstackFromError(&substack, err)
 		response.Proto.Stack.Substacks = append(response.Proto.Stack.Substacks, &substack)
@@ -536,7 +536,7 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 	}
 
 	if response.Proto.Node, err = expression.ToProto(); err != nil {
-		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
+		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui, true)
 		return nil
 	}
 
@@ -546,17 +546,17 @@ func (o *OpenSourceUI) ServeStack(request *pb.UIRequestProto, response *UIRespon
 	if err == nil {
 		if a, ok := result.(*api.AppliedChange); ok {
 			if f, ok := o.uiFeature(a.Modified, root); ok {
-				err = ui.Render(response, f, root.ToCollectionID(), request.Locked, ui)
+				err = ui.Render(response, f, root.ToCollectionID(), request.Locked, ui, true)
 			} else {
-				err = ui.Render(response, a.Modified, root.ToCollectionID(), request.Locked, ui)
+				err = ui.Render(response, a.Modified, root.ToCollectionID(), request.Locked, ui, true)
 			}
 			response.Proto.TilesChanged = true
 		} else {
-			err = ui.Render(response, result, root.ToCollectionID(), request.Locked, ui)
+			err = ui.Render(response, result, root.ToCollectionID(), request.Locked, ui, true)
 		}
 	}
 	if err != nil {
-		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui)
+		ui.Render(response, err, root.ToCollectionID(), request.Locked, ui, true)
 	}
 	return nil
 }
@@ -579,8 +579,8 @@ func (o *OpenSourceUI) uiFeature(c b6.UntypedCollection, root b6.FeatureID) (b6.
 	}
 }
 
-func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root b6.CollectionID, locked bool, ui UI) error {
-	if err := o.fillResponseFromResult(response, value, o.Worlds.FindOrCreateWorld(root.FeatureID())); err == nil {
+func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root b6.CollectionID, locked bool, ui UI, closeable bool) error {
+	if err := o.fillResponseFromResult(response, value, o.Worlds.FindOrCreateWorld(root.FeatureID()), closeable); err == nil {
 		shell := &pb.ShellLineProto{
 			Functions: make([]string, 0),
 		}
@@ -590,11 +590,11 @@ func (o *OpenSourceUI) Render(response *UIResponseJSON, value interface{}, root 
 		})
 		return nil
 	} else {
-		return o.fillResponseFromResult(response, err, o.Worlds.FindOrCreateWorld(root.FeatureID()))
+		return o.fillResponseFromResult(response, err, o.Worlds.FindOrCreateWorld(root.FeatureID()), closeable)
 	}
 }
 
-func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result interface{}, w b6.World) error {
+func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result interface{}, w b6.World, closeable bool) error {
 	p := (*pb.UIResponseProto)(response.Proto)
 	switch r := result.(type) {
 	case error:
@@ -639,14 +639,14 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 					return fillResponseFromHistogramFeature(response, c, w)
 				}
 			}
-			p.Stack.Substacks = fillSubstacksFromFeature(response, p.Stack.Substacks, r, w)
+			p.Stack.Substacks = fillSubstacksFromFeature(response, p.Stack.Substacks, r, w, closeable)
 			highlightInResponse(p, r.FeatureID())
 		}
 	case b6.FeatureID:
 		if f := w.FindFeatureByID(r); f != nil {
-			return o.fillResponseFromResult(response, f, w)
+			return o.fillResponseFromResult(response, f, w, closeable)
 		} else {
-			return o.fillResponseFromResult(response, r.String(), w)
+			return o.fillResponseFromResult(response, r.String(), w, closeable)
 		}
 	case b6.Query:
 		if q, ok := api.UnparseQuery(r); ok {
@@ -727,7 +727,7 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			p.Stack.Substacks = append(p.Stack.Substacks, &substack)
 			response.AddGeoJSON(r.ToGeoJSON())
 		default:
-			return o.fillResponseFromResult(response, r.ToGeoJSON(), w)
+			return o.fillResponseFromResult(response, r.ToGeoJSON(), w, closeable)
 		}
 	case *geojson.FeatureCollection:
 		var label string

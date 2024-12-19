@@ -389,9 +389,39 @@ func fillSubstackFromError(substack *pb.SubstackProto, err error) {
 	})
 }
 
-func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.SubstackProto, f b6.Feature, w b6.World) []*pb.SubstackProto {
+func fillSubstacksFromFeature(response *UIResponseJSON, substacks []*pb.SubstackProto, f b6.Feature, w b6.World, closeable bool) []*pb.SubstackProto {
 	substack := &pb.SubstackProto{}
-	substack.Lines = append(substack.Lines, ValueLineFromValue(f, w))
+
+	// Only allow targetting (the Search icon) if it's a thing we can
+	// compute a centroid for; i.e. a point, path, or area.
+	allowTargeting := false
+	allowToggleVisible := false
+	switch f.FeatureID().Type {
+	case b6.FeatureTypePoint:
+		allowTargeting = true
+		allowToggleVisible = true
+	case b6.FeatureTypePath:
+		allowTargeting = true
+		allowToggleVisible = true
+	case b6.FeatureTypeArea:
+		allowTargeting = true
+		allowToggleVisible = true
+	case b6.FeatureTypeCollection:
+		allowToggleVisible = true
+	}
+
+	headerLine := &pb.LineProto{
+		Line: &pb.LineProto_Header{
+			Header: &pb.HeaderLineProto{
+				Title:         AtomFromValue(f, w),
+				Close:         closeable,
+				Copy:          true,
+				Target:        allowTargeting,
+				ToggleVisible: allowToggleVisible,
+			},
+		},
+	}
+	substack.Lines = append(substack.Lines, headerLine)
 	substacks = append(substacks, substack)
 	substacks = fillSubstacksFromHistogramReferences(response, substacks, f, w)
 
