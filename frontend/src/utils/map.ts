@@ -1,6 +1,6 @@
-import { Feature, GeoJsonProperties, Geometry } from 'geojson';
-import { MapGeoJSONFeature, StyleSpecification } from 'maplibre-gl';
-import { match } from 'ts-pattern';
+import { Feature, GeoJsonProperties, Geometry } from "geojson";
+import { MapGeoJSONFeature, StyleSpecification } from "maplibre-gl";
+import { match } from "ts-pattern";
 
 /**
  * Check if two features are the same point, with a given precision.
@@ -10,18 +10,18 @@ import { match } from 'ts-pattern';
  * @returns Boolean if the features are the same point
  */
 export const isSamePositionPoints = (
-    f1: Feature<Geometry, GeoJsonProperties>,
-    f2: Feature<Geometry, GeoJsonProperties>,
-    precision: number = 6
+	f1: Feature<Geometry, GeoJsonProperties>,
+	f2: Feature<Geometry, GeoJsonProperties>,
+	precision: number = 6,
 ) => {
-    if (f1.geometry.type !== 'Point' || f2.geometry.type !== 'Point')
-        return false;
-    return (
-        f1.geometry.coordinates[0].toFixed(precision) ===
-            f2.geometry.coordinates[0].toFixed(precision) &&
-        f1.geometry.coordinates[1].toFixed(precision) ===
-            f2.geometry.coordinates[1].toFixed(precision)
-    );
+	if (f1.geometry.type !== "Point" || f2.geometry.type !== "Point")
+		return false;
+	return (
+		f1.geometry.coordinates[0].toFixed(precision) ===
+			f2.geometry.coordinates[0].toFixed(precision) &&
+		f1.geometry.coordinates[1].toFixed(precision) ===
+			f2.geometry.coordinates[1].toFixed(precision)
+	);
 };
 
 /**
@@ -30,16 +30,16 @@ export const isSamePositionPoints = (
  * @returns Feature path
  */
 export const getFeaturePath = (feature: MapGeoJSONFeature) => {
-    const { ns, id } = feature.properties;
-    const type = match(feature.geometry.type)
-        .with('Point', () => 'point')
-        .with('LineString', () => 'path')
-        .with('Polygon', () => 'area')
-        .with('MultiPolygon', () => 'area')
-        .otherwise(() => null);
-    if (ns && id && type) {
-        return `/${type}/${ns}/${BigInt(`0x${id}`)}`;
-    }
+	const { ns, id } = feature.properties;
+	const type = match(feature.geometry.type)
+		.with("Point", () => "point")
+		.with("LineString", () => "path")
+		.with("Polygon", () => "area")
+		.with("MultiPolygon", () => "area")
+		.otherwise(() => null);
+	if (ns && id && type) {
+		return `/${type}/${ns}/${BigInt(`0x${id}`)}`;
+	}
 };
 
 /**
@@ -48,13 +48,13 @@ export const getFeaturePath = (feature: MapGeoJSONFeature) => {
  * @returns Road width
  */
 export const getRoadWidth = (type: string) => {
-    return match(type)
-        .with('motorway', 'trunk', () => 1.5)
-        .with('primary', () => 1.2)
-        .with('secondary', 'tertiary', 'street', () => 0.8)
-        .with('unclassified', 'residential', 'service', () => 1)
-        .with('cycleway', 'footway', 'path', () => 0.8)
-        .otherwise(() => 1);
+	return match(type)
+		.with("motorway", "trunk", () => 1.5)
+		.with("primary", () => 1.2)
+		.with("secondary", "tertiary", "street", () => 0.8)
+		.with("unclassified", "residential", "service", () => 1)
+		.with("cycleway", "footway", "path", () => 0.8)
+		.otherwise(() => 1);
 };
 
 /**
@@ -64,19 +64,19 @@ export const getRoadWidth = (type: string) => {
  * @returns Updated map style
  */
 export const changeMapStyleSource = (
-    mapStyle: StyleSpecification,
-    source: string
+	mapStyle: StyleSpecification,
+	source: string,
 ): StyleSpecification => {
-    return {
-        ...mapStyle,
-        sources: {
-            ...mapStyle.sources,
-            diagonal: {
-                ...mapStyle.sources.diagonal,
-                tiles: [source],
-            },
-        },
-    } as StyleSpecification;
+	return {
+		...mapStyle,
+		sources: {
+			...mapStyle.sources,
+			diagonal: {
+				...mapStyle.sources.diagonal,
+				tiles: [source],
+			},
+		},
+	} as StyleSpecification;
 };
 
 /**
@@ -85,7 +85,7 @@ export const changeMapStyleSource = (
  * @returns Tile source URL
  */
 export const getTileSource = (root?: string) => {
-    return `${window.location.origin}/tiles/base/{z}/{x}/{y}.mvt${
-        root ? `?r=${root}` : ''
-    }`;
+	return `${window.location.origin}/tiles/base/{z}/{x}/{y}.mvt${
+		root ? `?r=${root}` : ""
+	}`;
 };

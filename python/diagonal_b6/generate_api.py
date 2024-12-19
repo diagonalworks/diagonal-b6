@@ -4,7 +4,6 @@ import sys
 import json
 
 from copy import copy
-from datetime import datetime
 
 SPECIAL_FUNCTIONS = ("map", "filter")
 

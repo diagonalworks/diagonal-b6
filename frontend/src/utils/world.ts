@@ -1,4 +1,4 @@
-import { FeatureIDProto, FeatureType } from '@/types/generated/api';
+import { FeatureIDProto, FeatureType } from "@/types/generated/api";
 
 /**
  * Get the feature ID for a world.
@@ -10,38 +10,38 @@ import { FeatureIDProto, FeatureType } from '@/types/generated/api';
  * getWorldFeatureId('baseline', 'diagonal.works', 'skyline-demo-05-2024') // { type: 'FeatureTypeCollection', namespace: 'diagonal.works', value: 'baseline }
  */
 export const getWorldFeatureId = ({
-    namespace,
-    type,
-    value,
+	namespace,
+	type,
+	value,
 }: {
-    namespace?: string;
-    type?: string | FeatureType;
-    value?: number;
+	namespace?: string;
+	type?: string | FeatureType;
+	value?: number;
 }): FeatureIDProto => {
-    const featureId = {
-        type: (type ?? 'FeatureTypeCollection') as unknown as FeatureType,
-        namespace: namespace ?? 'diagonal.works',
-        value: value ?? 0,
-    };
+	const featureId = {
+		type: (type ?? "FeatureTypeCollection") as unknown as FeatureType,
+		namespace: namespace ?? "diagonal.works",
+		value: value ?? 0,
+	};
 
-    return featureId;
+	return featureId;
 };
 
 export const getNamespace = (worldPath: string): string | undefined => {
-    const namespace = worldPath.match(/(?<=\/)\w*(?=\/\w*$)/)?.[0];
-    return namespace;
+	const namespace = worldPath.match(/(?<=\/)\w*(?=\/\w*$)/)?.[0];
+	return namespace;
 };
 
 export const getValue = (worldPath: string): number | undefined => {
-    const value = worldPath.match(/(?<=\/)\w*$/)?.[0];
-    return value ? +value : undefined;
+	const value = worldPath.match(/(?<=\/)\w*$/)?.[0];
+	return value ? +value : undefined;
 };
 
 export const getType = (worldPath: string): string | undefined => {
-    const type = worldPath.match(/(?<=^)\w*(?=\/)/)?.[0];
-    return type;
+	const type = worldPath.match(/(?<=^)\w*(?=\/)/)?.[0];
+	return type;
 };
 
 export const getWorldPath = (featureId: FeatureIDProto): string => {
-    return `/collection/${featureId.namespace}/${featureId.value}`;
+	return `/collection/${featureId.namespace}/${featureId.value}`;
 };

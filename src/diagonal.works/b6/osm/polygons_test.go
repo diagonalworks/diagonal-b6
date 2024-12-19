@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"diagonal.works/b6/units"
 	"diagonal.works/b6/test"
+	"diagonal.works/b6/units"
 	"github.com/golang/geo/s2"
 )
 

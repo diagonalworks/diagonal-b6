@@ -81,7 +81,7 @@ sidebar_position: 1
     misc_items = []
 
     if isVariadic:
-      misc_items.append(f" - [x] Function is _variadic_ (has a variable number of arguments.)")
+      misc_items.append(" - [x] Function is _variadic_ (has a variable number of arguments.)")
 
     if len(misc_items) > 0:
       print("#### Misc")

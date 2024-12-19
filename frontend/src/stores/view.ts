@@ -1,29 +1,29 @@
-import { ViewState } from 'react-map-gl';
-import { StateCreator, create } from 'zustand';
+import { ViewState } from "react-map-gl";
+import { StateCreator, create } from "zustand";
 
-import { usePersistURL } from '@/hooks/usePersistURL';
+import { usePersistURL } from "@/hooks/usePersistURL";
 
 /**
  * Interface representing the view store. The view store contains the map center and zoom level.
  */
 interface ViewStore {
-    view: Partial<ViewState>;
-    initialView: Partial<ViewState>;
-    actions: {
-        /**
-         * Sets the view state.
-         * @param view - The partial view state to set.
-         */
-        setView: (view: Partial<ViewState>) => void;
-    };
+	view: Partial<ViewState>;
+	initialView: Partial<ViewState>;
+	actions: {
+		/**
+		 * Sets the view state.
+		 * @param view - The partial view state to set.
+		 */
+		setView: (view: Partial<ViewState>) => void;
+	};
 }
 
 export const createViewStore: StateCreator<ViewStore> = (set) => ({
-    view: {},
-    initialView: {},
-    actions: {
-        setView: (view) => set({ view }),
-    },
+	view: {},
+	initialView: {},
+	actions: {
+		setView: (view) => set({ view }),
+	},
 });
 
 /**
@@ -36,48 +36,42 @@ export const useViewStore = create(createViewStore);
  * Type representing the URL parameters for the view.
  */
 type ViewURLParams = {
-    ll?: string;
-    z?: string;
+	ll?: string;
+	z?: string;
 };
 
 const encode = (state: Partial<ViewStore>): ViewURLParams => ({
-    ll:
-        state.view?.latitude && state.view?.longitude
-            ? `${state.view.latitude.toFixed(4)},${state.view.longitude.toFixed(
-                  4
-              )}`
-            : '',
-    z: state.view?.zoom ? state.view.zoom.toFixed(4) : '',
+	ll:
+		state.view?.latitude && state.view?.longitude
+			? `${state.view.latitude.toFixed(4)},${state.view.longitude.toFixed(4)}`
+			: "",
+	z: state.view?.zoom ? state.view.zoom.toFixed(4) : "",
 });
 
 const decode = (
-    params: ViewURLParams,
-    initial?: boolean
+	params: ViewURLParams,
+	initial?: boolean,
 ): ((state: ViewStore) => ViewStore) => {
-    return (state) => ({
-        ...state,
-        ...(initial && {
-            initialView: {
-                latitude: params.ll
-                    ? parseFloat(params.ll.split(',')[0])
-                    : undefined,
-                longitude: params.ll
-                    ? parseFloat(params.ll.split(',')[1])
-                    : undefined,
-                zoom: params.z ? parseInt(params.z) : undefined,
-            },
-        }),
-        view: {
-            ...state.view,
-            latitude: params.ll
-                ? parseFloat(params.ll.split(',')[0])
-                : state.view?.latitude,
-            longitude: params.ll
-                ? parseFloat(params.ll.split(',')[1])
-                : state.view?.longitude,
-            zoom: params.z ? parseInt(params.z) : state.view?.zoom,
-        },
-    });
+	return (state) => ({
+		...state,
+		...(initial && {
+			initialView: {
+				latitude: params.ll ? parseFloat(params.ll.split(",")[0]) : undefined,
+				longitude: params.ll ? parseFloat(params.ll.split(",")[1]) : undefined,
+				zoom: params.z ? parseInt(params.z) : undefined,
+			},
+		}),
+		view: {
+			...state.view,
+			latitude: params.ll
+				? parseFloat(params.ll.split(",")[0])
+				: state.view?.latitude,
+			longitude: params.ll
+				? parseFloat(params.ll.split(",")[1])
+				: state.view?.longitude,
+			zoom: params.z ? parseInt(params.z) : state.view?.zoom,
+		},
+	});
 };
 
 /**
@@ -85,5 +79,5 @@ const decode = (
  * @returns The view store with URL persistence.
  */
 export const useViewURLStorage = () => {
-    return usePersistURL(useViewStore, encode, decode);
+	return usePersistURL(useViewStore, encode, decode);
 };

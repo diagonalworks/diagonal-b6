@@ -1,11 +1,11 @@
-import Workspace from '@/components/Workspace';
+import Workspace from "@/components/Workspace";
 
-import { AppProvider } from './provider';
+import { AppProvider } from "./provider";
 
 export function App() {
-    return (
-        <AppProvider>
-            <Workspace />
-        </AppProvider>
-    );
+	return (
+		<AppProvider>
+			<Workspace />
+		</AppProvider>
+	);
 }

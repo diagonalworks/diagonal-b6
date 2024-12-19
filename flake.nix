@@ -139,6 +139,7 @@
 
         b6-image = make-b6-image "b6" (b6-go-packages ourGdal).everything;
         b6-minimal-image = make-b6-image "b6-minimal" (b6-go-packages ourGdal).go-executables.b6;
+        treefmtEval = treefmt-nix.lib.evalModule pkgs ./nix/treefmt.nix;
       in
       rec {
         # Development shells for hacking/building with the Makefile. Note
@@ -158,7 +159,7 @@
             protobuf
             protoc-gen-go
             protoc-gen-go-grpc
-            ( python.withPackages (ps: [ps.grpcio-tools]) )
+            (python.withPackages (ps: [ ps.grpcio-tools ]))
 
             # Go
             # Note: The vesion here should match the one in `go.mod`.
@@ -217,23 +218,23 @@
           #
           # > nix run .#run-b6 -- -world data
           run-b6 = pkgs.writeShellScriptBin "run-b6" ''
-              ${packages.b6}/bin/b6 \
-                -http 0.0.0.0:8001 \
-                -grpc 0.0.0.0:8002 \
-                -enable-v2-ui \
-                -static-v2 ${packages.frontend-dev.outPath} \
-                "$@"
-              '';
+            ${packages.b6}/bin/b6 \
+              -http 0.0.0.0:8001 \
+              -grpc 0.0.0.0:8002 \
+              -enable-v2-ui \
+              -static-v2 ${packages.frontend-dev.outPath} \
+              "$@"
+          '';
 
           run-b6-dev = pkgs.writeShellScriptBin "run-b6-dev" ''
-              ${packages.b6}/bin/b6 \
-                -http 0.0.0.0:8001 \
-                -grpc 0.0.0.0:8002 \
-                -enable-v2-ui \
-                -static-v2 ./frontend/dist \
-                -enable-vite \
-                "$@"
-              '';
+            ${packages.b6}/bin/b6 \
+              -http 0.0.0.0:8001 \
+              -grpc 0.0.0.0:8002 \
+              -enable-v2-ui \
+              -static-v2 ./frontend/dist \
+              -enable-vite \
+              "$@"
+          '';
 
           # Add an explicit 'go' entrypoint for the full go build+test.
           go = (b6-go-packages ourGdal).everything;
@@ -290,14 +291,12 @@
         ;
 
         # Run via `nix fmt`
-        formatter =
-          let
-            fmt = treefmt-nix.lib.evalModule pkgs (_: {
-              projectRootFile = "flake.nix";
-              programs.nixpkgs-fmt.enable = true;
-            });
-          in
-          fmt.config.build.wrapper;
+        formatter = treefmtEval.config.build.wrapper;
+
+        # Nix flake check
+        checks = {
+          formatting = treefmtEval.config.build.check self;
+        };
       }
       ) // {
 

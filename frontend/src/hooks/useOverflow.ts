@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 /**
  * Hook to determine if a text element is overflowing its container.
@@ -7,18 +7,16 @@ import { useEffect, useState } from 'react';
  * @returns Whether the text is overflowing
  */
 export default function useOverflow(
-    ref: React.RefObject<HTMLSpanElement>,
-    text: string
+	ref: React.RefObject<HTMLSpanElement>,
+	text: string,
 ) {
-    const [isTextOverflowing, setIsTextOverflowing] = useState(false);
+	const [isTextOverflowing, setIsTextOverflowing] = useState(false);
 
-    useEffect(() => {
-        if (ref.current) {
-            setIsTextOverflowing(
-                ref.current.scrollWidth > ref.current.clientWidth
-            );
-        }
-    }, [ref, text]);
+	useEffect(() => {
+		if (ref.current) {
+			setIsTextOverflowing(ref.current.scrollWidth > ref.current.clientWidth);
+		}
+	}, [ref, text]);
 
-    return isTextOverflowing;
+	return isTextOverflowing;
 }
