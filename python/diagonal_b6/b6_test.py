@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import os
 import s2sphere
 import subprocess
 import time
@@ -101,7 +100,7 @@ class B6Test(unittest.TestCase):
     def test_path_lengths(self):
         lengths = [length for (id, length) in self.connection(b6.find(b6.typed("path", b6.keyed("#highway"))).length())]
         self.assertGreater(len(lengths), 0)
-        for l in lengths:
+        for l in lengths: # noqa: E741
             self.assertGreater(l, 0)
             self.assertLess(l, 1000)
 

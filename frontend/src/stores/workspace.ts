@@ -1,28 +1,28 @@
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
 
-import { useTabsStore } from '@/features/scenarios/stores/tabs';
-import { usePersistURL } from '@/hooks/usePersistURL';
-import { ImmerStateCreator } from '@/lib/zustand';
+import { useTabsStore } from "@/features/scenarios/stores/tabs";
+import { usePersistURL } from "@/hooks/usePersistURL";
+import { ImmerStateCreator } from "@/lib/zustand";
 
 /**
  * Workspace store that holds data related with the workspace that wraps the tabs and the map.
  */
 interface WorkspaceStore {
-    root?: string;
-    setRoot: (root: string) => void;
+	root?: string;
+	setRoot: (root: string) => void;
 }
 
 export const createWorkspaceStore: ImmerStateCreator<
-    WorkspaceStore,
-    WorkspaceStore
+	WorkspaceStore,
+	WorkspaceStore
 > = (set) => ({
-    root: undefined,
-    setRoot: (root: string) => {
-        set((state) => {
-            state.root = root;
-        });
-    },
+	root: undefined,
+	setRoot: (root: string) => {
+		set((state) => {
+			state.root = root;
+		});
+	},
 });
 
 /**
@@ -33,26 +33,26 @@ export const createWorkspaceStore: ImmerStateCreator<
 export const useWorkspaceStore = create(immer(createWorkspaceStore));
 
 type WorkspaceURLParams = {
-    r?: string;
+	r?: string;
 };
 
 const encode = (state: Partial<WorkspaceStore>): WorkspaceURLParams => ({
-    r: state.root || '',
+	r: state.root || "",
 });
 
 const decode =
-    (params: WorkspaceURLParams): ((state: WorkspaceStore) => WorkspaceStore) =>
-    (state) => {
-        const root = params.r || state.root;
-        if (root) {
-            useTabsStore.getState().actions.setActive(root, 'left');
-        }
-        return {
-            ...state,
-            root,
-        };
-    };
+	(params: WorkspaceURLParams): ((state: WorkspaceStore) => WorkspaceStore) =>
+	(state) => {
+		const root = params.r || state.root;
+		if (root) {
+			useTabsStore.getState().actions.setActive(root, "left");
+		}
+		return {
+			...state,
+			root,
+		};
+	};
 
 export const useWorkspaceURLStorage = () => {
-    return usePersistURL(useWorkspaceStore, encode, decode);
+	return usePersistURL(useWorkspaceStore, encode, decode);
 };

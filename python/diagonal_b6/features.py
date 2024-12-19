@@ -103,7 +103,7 @@ class Feature(expression.Node):
         if value is not None:
             try:
                 return int(value)
-            except:
+            except: # noqa: E722
                 pass
         return 0
 
@@ -112,7 +112,7 @@ class Feature(expression.Node):
         if value is not None:
             try:
                 return float(value)
-            except:
+            except: # noqa: E722
                 pass
         return 0
 
@@ -287,7 +287,7 @@ def from_proto(p):
         return _from_collection_proto(p)
     elif oneof == "expression":
         return _from_expression_proto(p)
-    elif oneof == None:
+    elif oneof is None:
         return None
     raise Exception("Unexpected feature %s" % (p,))
 

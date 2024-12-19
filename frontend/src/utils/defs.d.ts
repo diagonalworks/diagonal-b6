@@ -1,4 +1,3 @@
-
 /**
  * FixMe type, use this when type will be fixed later and to avoid eslint errors for now.
  */
@@ -10,4 +9,3 @@ export type $FixMe = any;
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type $IntentionalAny = any;
-

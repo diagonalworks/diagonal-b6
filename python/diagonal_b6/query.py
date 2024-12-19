@@ -7,13 +7,13 @@ class Query(expression.Literal):
     def __init__(self, query):
         self.query = query
 
-    def tagged(self, key, value=None):        
+    def tagged(self, key, value=None):
         return self._and(tagged(key, value))
 
-    def type(self, t):        
+    def type(self, t):
         return type(t, self)
 
-    def within(self, area):        
+    def within(self, area):
         return self._and(within(area))
 
     def union(self, query):
@@ -37,9 +37,9 @@ class Query(expression.Literal):
         return self.query
 
     def to_literal_proto(self):
-        l = api_pb2.LiteralNodeProto()
-        l.queryValue.CopyFrom(self.query)
-        return l
+        p = api_pb2.LiteralNodeProto()
+        p.queryValue.CopyFrom(self.query)
+        return p
 
 def from_proto(pb):
     return Query(pb)

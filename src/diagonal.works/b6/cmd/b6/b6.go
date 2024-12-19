@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -10,9 +11,8 @@ import (
 	"os"
 	"runtime"
 	rpprof "runtime/pprof"
-	"sync"
 	"strings"
-	"errors"
+	"sync"
 
 	"diagonal.works/b6"
 	"diagonal.works/b6/api"
@@ -45,18 +45,18 @@ func main() {
 	fileIOFlag := flag.Bool("file-io", true, "Is file IO allowed from the API?")
 
 	additionalWorlds := make(map[b6.FeatureID]string)
-		flag.Func("add-world", "Additional worlds; specify like \"<feature_id> <world-arguments>\"", func(s string) error {
-			featureIdStr, worldStr, found := strings.Cut(s, " ")
-			if (found) {
-				featureId := b6.FeatureIDFromString(featureIdStr)
-				if featureId.IsValid() {
-					additionalWorlds[featureId] = worldStr
-				} else {
-					return errors.New(fmt.Sprintf("Invalid feature id: %s", featureIdStr))
-				}
-				return nil
+	flag.Func("add-world", "Additional worlds; specify like \"<feature_id> <world-arguments>\"", func(s string) error {
+		featureIdStr, worldStr, found := strings.Cut(s, " ")
+		if found {
+			featureId := b6.FeatureIDFromString(featureIdStr)
+			if featureId.IsValid() {
+				additionalWorlds[featureId] = worldStr
+			} else {
+				return errors.New(fmt.Sprintf("Invalid feature id: %s", featureIdStr))
 			}
-			return errors.New(fmt.Sprintf("Couldn't load additional world; bad string; expected one space: %s", s))
+			return nil
+		}
+		return errors.New(fmt.Sprintf("Couldn't load additional world; bad string; expected one space: %s", s))
 	})
 
 	flag.Parse()

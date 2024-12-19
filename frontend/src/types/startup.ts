@@ -1,33 +1,33 @@
-import { FeatureCollection } from 'geojson';
+import { FeatureCollection } from "geojson";
 
-import { FeatureIDProto } from './generated/api';
-import { UIResponseProto } from './generated/ui';
+import { FeatureIDProto } from "./generated/api";
+import { UIResponseProto } from "./generated/ui";
 
 export type LatLng = {
-    latE7: number;
-    lngE7: number;
+	latE7: number;
+	lngE7: number;
 };
 
 export type Docked = {
-    geoJSON: FeatureCollection[];
-    proto: UIResponseProto;
+	geoJSON: FeatureCollection[];
+	proto: UIResponseProto;
 };
 
 export type StartupRequest = {
-    z?: string;
-    ll?: string;
-    r?: string;
+	z?: string;
+	ll?: string;
+	r?: string;
 };
 
 export type StartupResponse = {
-    version?: string;
-    docked?: Docked[];
-    openDockIndex?: number;
-    mapCenter?: LatLng;
-    mapZoom?: number;
-    root?: FeatureIDProto;
-    expression?: string;
-    error?: string;
-    session: number;
-    locked?: boolean;
+	version?: string;
+	docked?: Docked[];
+	openDockIndex?: number;
+	mapCenter?: LatLng;
+	mapZoom?: number;
+	root?: FeatureIDProto;
+	expression?: string;
+	error?: string;
+	session: number;
+	locked?: boolean;
 };

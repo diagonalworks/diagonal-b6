@@ -14,7 +14,6 @@ const (
 	CamdenPBF        = "camden.osm.pbf"
 )
 
-
 func findModuleRoot(dir string) string {
 	if dir == "" {
 		panic("dir not set")
@@ -22,7 +21,7 @@ func findModuleRoot(dir string) string {
 	dir = filepath.Clean(dir)
 	// Look for enclosing go.mod.
 	for {
-			if fi, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil && !fi.IsDir() {
+		if fi, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil && !fi.IsDir() {
 			return filepath.Join(dir, "data/tests")
 		}
 		d := filepath.Dir(dir)
@@ -40,7 +39,7 @@ func testDataDirectory() string {
 		if index := strings.Index(directory, "src/diagonal.works/"); index > 0 {
 			return filepath.Join(directory[0:index], "data/tests/")
 		}
-	  return findModuleRoot(directory)
+		return findModuleRoot(directory)
 	}
 	return ""
 }
