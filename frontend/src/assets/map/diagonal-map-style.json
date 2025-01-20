@@ -305,14 +305,12 @@
             "filter": ["all", ["has", "railway"]],
             "paint": { "line-color": "#9aa4cc", "line-width": 2 }
         },
-
         {
             "id": "building",
             "type": "fill",
             "source": "diagonal",
             "source-layer": "building",
             "filter": ["all"],
-
             "paint": {
                 "fill-color": [
                     "case",
@@ -324,6 +322,27 @@
                         ["get", "b6:colour"],
                         ["literal", "rgba(255, 255, 255)"]
                     ]
+                ]
+            }
+        },
+        {
+            "id": "amenity-outline",
+            "type": "line",
+            "source": "diagonal",
+            "source-layer": "amenity",
+            "filter": ["all"],
+            "paint": {
+                "line-width": [
+                    "case",
+                    ["boolean", ["feature-state", "highlighted"], false],
+                    1,
+                    0
+                ],
+                "line-color": [
+                    "case",
+                    ["boolean", ["feature-state", "highlighted"], false],
+                    "#37589f",
+                    "#4f5a7d"
                 ]
             }
         },

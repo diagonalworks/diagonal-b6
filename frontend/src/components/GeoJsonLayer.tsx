@@ -10,6 +10,9 @@ import { useOutlinersStore } from "@/stores/outliners";
 import { World } from "@/stores/worlds";
 import { $FixMe } from "@/utils/defs";
 
+// TODO: Describe how this layer is rendered when a result returns a `geoJSON`
+// field. Point to the place in go where this happens.
+
 const Icon = ({
 	b6Icon,
 	side,

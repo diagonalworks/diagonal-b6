@@ -2,7 +2,7 @@ import {
 	Cross1Icon,
 	Link2Icon,
 	CopyIcon,
-	MagnifyingGlassIcon,
+	Crosshair2Icon,
 	ComponentInstanceIcon,
 	ComponentNoneIcon,
 } from "@radix-ui/react-icons";
@@ -135,7 +135,7 @@ const Actions = React.forwardRef<
 				)}
 				{target && (
 					<IconButton {...slotProps?.target}>
-						<MagnifyingGlassIcon />
+						<Crosshair2Icon />
 					</IconButton>
 				)}
 				{copy && (

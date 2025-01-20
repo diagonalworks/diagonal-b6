@@ -29,6 +29,12 @@ export const useHighlight = ({
 		(state) => state.actions,
 	);
 
+	// These are the layers that we can enable highlighting in. That is, we
+	// _must_ have a setting in `diagonal-map-style.json` corresponding to this
+	// layer and it's `highlighted` status as well as the layer itself appearing
+	// here.
+	const highlightableLayers = ["building", "amenity"];
+
 	const geoJsonFeatures = useMemo(() => {
 		if (!map || !features) return [];
 		return (
@@ -50,12 +56,11 @@ export const useHighlight = ({
 					.with("area", () => {
 						return (
 							features.ids?.[i].ids?.flatMap((id) => {
-								const f = findFeatureInLayer({
-									layer: "building",
-									filter: ["all"],
-									id,
+								const fs = highlightableLayers.flatMap((layer) => {
+									const f = findFeatureInLayer({ layer, filter: ["all"], id });
+									return f ? f : [];
 								});
-								return f ? f : [];
+								return fs;
 							}) ?? []
 						);
 					})

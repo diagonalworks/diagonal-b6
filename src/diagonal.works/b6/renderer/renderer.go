@@ -47,6 +47,7 @@ const (
 	BasemapLayerBuilding
 	BasemapLayerPoint
 	BasemapLayerLabel
+	BasemapLayerAmenity
 	BasemapLayerInvalid
 
 	BasemapLayerBegin = BasemapLayerBoundary
@@ -71,6 +72,8 @@ func (b BasemapLayer) String() string {
 		return "point"
 	case BasemapLayerLabel:
 		return "label"
+	case BasemapLayerAmenity:
+		return "amenity"
 	}
 	return "invalid"
 }
@@ -168,6 +171,7 @@ func (rs RenderRules) AddTags(f b6.Feature, tags []b6.Tag) []b6.Tag {
 var BasemapRenderRules = RenderRules{
 	{Tag: b6.Tag{Key: "#building", Value: b6.NewStringExpression("train_station")}, MinZoom: 8, Layer: BasemapLayerBuilding},
 	{Tag: b6.Tag{Key: "#building"}, MinZoom: 12, Layer: BasemapLayerBuilding},
+	{Tag: b6.Tag{Key: "#amenity"}, MinZoom: 12, Layer: BasemapLayerAmenity},
 	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("cycleway")}, MinZoom: 14, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("footway")}, MinZoom: 14, Layer: BasemapLayerRoad},
 	{Tag: b6.Tag{Key: "#highway", Value: b6.NewStringExpression("motorway")}, MinZoom: 8, Layer: BasemapLayerRoad},

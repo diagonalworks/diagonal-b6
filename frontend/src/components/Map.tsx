@@ -128,7 +128,12 @@ export const Map = ({
 					getLineWidth: 4,
 					getLineColor: (f: Feature) => {
 						if (f.properties["b6:colour"]) {
-							return colorToRgbArray(colors.graphite[70]);
+							if (isColorHex(f.properties["b6:colour"])) {
+								return colorToRgbArray(f.properties["b6:colour"]);
+							}
+							return colorToRgbArray(
+								COLLECTION_COLOR_SCALE(f.properties["b6:colour"]),
+							);
 						}
 						return [0, 0, 0, 0];
 					},

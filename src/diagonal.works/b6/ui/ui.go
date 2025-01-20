@@ -641,6 +641,24 @@ func (o *OpenSourceUI) fillResponseFromResult(response *UIResponseJSON, result i
 			}
 			p.Stack.Substacks = fillSubstacksFromFeature(response, p.Stack.Substacks, r, w, closeable)
 			highlightInResponse(p, r.FeatureID())
+			if p, ok := r.(b6.PhysicalFeature); ok {
+				// Note: We explicitly do _not_ allow this to be evaluated on paths. I
+				// think there's a few reasons why:
+				//
+				//	1. We probably don't want that anyway
+				//
+				//	2. It gives a `panic` like `Expected a latlng` somewhere; so
+				//	there's some assumption that gets broken for paths that can be
+				//	investigated more deeply later.
+				//
+				// Note: This means the "Toggle Visibility" button doesn't actually
+				// work properly; i.e. it doesn't show/hide the GeoJSON layer.
+				if r.FeatureID().Type == b6.FeatureTypePoint ||
+					r.FeatureID().Type == b6.FeatureTypeArea ||
+					r.FeatureID().Type == b6.FeatureTypeRelation {
+					response.AddGeoJSON(p.ToGeoJSON())
+				}
+			}
 		}
 	case b6.FeatureID:
 		if f := w.FindFeatureByID(r); f != nil {
