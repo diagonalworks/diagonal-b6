@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"sync"
 	"testing"
 
@@ -18,28 +19,25 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-// TODO: Reinstate this when the geoJSON decoding from the below todo note is
-// resolved.
-//
-// func TestMatchingFunctions(t *testing.T) {
-// 	response := sendExpressionToTestUI("find-feature /a/427900370", t)
-// 	functions := make([]string, 0)
-// 	for _, s := range response.Proto.Stack.Substacks {
-// 		for _, l := range s.Lines {
-// 			if shell := l.GetShell(); shell != nil {
-// 				for _, f := range shell.Functions {
-// 					functions = append(functions, f)
-// 				}
-// 			}
-// 		}
-// 	}
+func TestMatchingFunctions(t *testing.T) {
+	response := sendExpressionToTestUI("find-feature /a/427900370", t)
+	functions := make([]string, 0)
+	for _, s := range response.Proto.Stack.Substacks {
+		for _, l := range s.Lines {
+			if shell := l.GetShell(); shell != nil {
+				for _, f := range shell.Functions {
+					functions = append(functions, f)
+				}
+			}
+		}
+	}
 
-// 	for _, expected := range []string{"to-geojson", "closest", "get-string", "reachable"} {
-// 		if !slices.Contains(functions, expected) {
-// 			t.Errorf("Function %q not included in area features: %v", expected, functions)
-// 		}
-// 	}
-// }
+	for _, expected := range []string{"to-geojson", "closest", "get-string", "reachable"} {
+		if !slices.Contains(functions, expected) {
+			t.Errorf("Function %q not included in area features: %v", expected, functions)
+		}
+	}
+}
 
 func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 	w := &ingest.MutableWorlds{
@@ -73,19 +71,31 @@ func sendExpressionToTestUI(e string, t *testing.T) *UIResponseJSON {
 		t.Fatalf("Expected status %d, found %d", http.StatusOK, result.StatusCode)
 	}
 
-	var uiResponse UIResponseJSON
+	// NOTE: This is a hack around Go's ... interesting ... json capabilities.
+	// We need to provide a "decodable" version of `UIResponseJSON`; which is
+	// itself not decodable properly as one of the fields is an interface, not a
+	// concrete type.
+	//
+	// Ideally, we would just decode the `UIResponseJSON` type itself; but it is
+	// not decodable because of the interface (`geojson.GeoJSON`) field. As a
+	// result, we just define a new thing, decode it into that, and set that
+	// field of an actual `UIResponseJSON`; leaving the other part of that
+	// object undefined (!!). As this is only a test, it doesn't actually
+	// matter.
+	type UIResponseJSON_Decoadable struct {
+		Proto *UIResponseProtoJSON `json:"proto,omitempty"`
+	}
+
+	var decodable UIResponseJSON_Decoadable
 	d := json.NewDecoder(result.Body)
-
-	// TODO: There is a bug here in that it cannot decode the `geoJSON` field
-	// because it refers to an interface and gives no hints about how to
-	// actually decode it. I don't even see how it can compile; but it does. I
-	// think the solution, perhaps, is to define a custom UnmarshalJSON that
-	// somehow builds up the interface from the "actual" GeoJSON type. It's
-	// fairly odd.
-
-	if err := d.Decode(&uiResponse); err != nil {
+	if err := d.Decode(&decodable); err != nil {
 		t.Fatalf("Expected no error, found %s", err)
 	}
+
+	var uiResponse UIResponseJSON
+	uiResponse.Proto = decodable.Proto
+	// NOTE: uiResponse.GeoJSON here is <nil>; but we don't actually look at
+	// that in the tests; so we don't worry about it.
 
 	return &uiResponse
 }
