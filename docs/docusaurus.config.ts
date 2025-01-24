@@ -49,58 +49,58 @@ const config: Config = {
 			} satisfies Preset.Options,
 		],
 	],
-  themeConfig: {
-    navbar: {
-      title: 'b6',
-      items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'docsSidebar',
-          position: 'left',
-          label: 'Documentation',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'apiSidebar',
-          position: 'left',
-          label: 'API',
-        },
-        {
-          href: 'https://github.com/diagonal/diagonal-b6',
-          label: 'GitHub',
-          position: 'right',
-        },
-      ],
-    },
-    footer: {
-      style: 'light',
-      links: [
-        {
-          title: 'Docs',
-          items: [
-            {
-              label: 'API documentation',
-              to: '/docs/b6-api-documentation',
-            },
-          ],
-        },
-        {
-          title: 'More',
-          items: [
-            {
-              label: 'GitHub',
-              href: 'https://github.com/diagonalworks/diagonal-b6',
-            },
-          ],
-        },
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()} diagonal.works.`,
-    },
-    prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
-    },
-  } satisfies Preset.ThemeConfig,
+	themeConfig: {
+		navbar: {
+			title: "b6",
+			items: [
+				{
+					type: "docSidebar",
+					sidebarId: "docsSidebar",
+					position: "left",
+					label: "Documentation",
+				},
+				{
+					type: "docSidebar",
+					sidebarId: "apiSidebar",
+					position: "left",
+					label: "API",
+				},
+				{
+					href: "https://github.com/diagonal/diagonal-b6",
+					label: "GitHub",
+					position: "right",
+				},
+			],
+		},
+		footer: {
+			style: "light",
+			links: [
+				{
+					title: "Docs",
+					items: [
+						{
+							label: "API documentation",
+							to: "/docs/b6-api-documentation",
+						},
+					],
+				},
+				{
+					title: "More",
+					items: [
+						{
+							label: "GitHub",
+							href: "https://github.com/diagonalworks/diagonal-b6",
+						},
+					],
+				},
+			],
+			copyright: `Copyright © ${new Date().getFullYear()} diagonal.works.`,
+		},
+		prism: {
+			theme: prismThemes.github,
+			darkTheme: prismThemes.dracula,
+		},
+	} satisfies Preset.ThemeConfig,
 };
 
 export default config;
