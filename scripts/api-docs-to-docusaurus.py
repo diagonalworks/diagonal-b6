@@ -17,7 +17,7 @@ sidebar_position: 1
 ---
 """)
 
-  print("# b6 API documentation")
+  print("# API documentation")
 
   all_interfaces = [ i["Name"] for i in docs["Interfaces"] ]
   all_collections = [ i["Name"] for i in docs["Collections"] ]

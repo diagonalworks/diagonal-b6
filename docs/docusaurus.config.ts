@@ -11,6 +11,8 @@ const config: Config = {
 	// For GitHub pages deployment, it is often '/<projectName>/'
 	baseUrl: "/dagonal-b6",
 
+  tagline: "Documentation for the diagonal.works geospatial analysis engine",
+
 	// GitHub pages deployment config.
 	// If you aren't using GitHub pages, you don't need these.
 	organizationName: "diagonalworks",
@@ -60,12 +62,6 @@ const config: Config = {
 					label: "Documentation",
 				},
 				{
-					type: "docSidebar",
-					sidebarId: "apiSidebar",
-					position: "left",
-					label: "API",
-				},
-				{
 					href: "https://github.com/diagonal/diagonal-b6",
 					label: "GitHub",
 					position: "right",
@@ -78,10 +74,11 @@ const config: Config = {
 				{
 					title: "Docs",
 					items: [
-						{
-							label: "API documentation",
-							to: "/docs/b6-api-documentation",
-						},
+						{ label: "API documentation", to: "/docs/api", },
+						{ label: "Backend", to: "/docs/backend", },
+						{ label: "Frontend", to: "/docs/frontend", },
+						{ label: "Contributing", to: "/docs/contributing", },
+						{ label: "Quirks", to: "/docs/quirks", },
 					],
 				},
 				{

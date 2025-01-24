@@ -16,14 +16,6 @@ function HomepageHeader() {
 					{siteConfig.title}
 				</Heading>
 				<p className="hero__subtitle">{siteConfig.tagline}</p>
-				<div className={styles.buttons}>
-					<Link
-						className="button button--secondary button--lg"
-						to="/docs/b6-api-documentation"
-					>
-						b6 API documentation
-					</Link>
-				</div>
 			</div>
 		</header>
 	);
@@ -33,8 +25,8 @@ export default function Home(): JSX.Element {
 	const { siteConfig } = useDocusaurusContext();
 	return (
 		<Layout
-			title={`Hello from ${siteConfig.title}`}
-			description="Description will go into a meta tag in <head />"
+			title={`${siteConfig.title} documentation`}
+			description="Documentation of the diagonal-b6 geospatial computation engine"
 		>
 			<HomepageHeader />
 			<main>

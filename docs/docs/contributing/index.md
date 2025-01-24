@@ -2,7 +2,9 @@
 sidebar_position: 1
 ---
 
-# Nix
+# Contributing
+
+## Nix
 
 All the b6 go executables are able to be run via various `nix run ...`
 invocations; for example `nix run .#b6 -- -world some.index`. Note that you
@@ -23,13 +25,13 @@ executable.
 > executable, and run them together.
 
 
-## Direnv
+### Direnv
 
 TODO
 
-## Tips and tricks
+### Tips and tricks
 
-### The `combined` shell
+#### The `combined` shell
 
 The `combined` devShell is necessary for certain tasks, in particular it is
 required for running the Python tests
@@ -44,13 +46,13 @@ To enter the shell, use:
 nix develop .#combined
 ```
 
-### Build the go binaries
+#### Build the go binaries
 
 ```shell
 nix build .
 ```
 
-### Run <tt>b6-connect</tt>
+#### Run <tt>b6-connect</tt>
 
 ```shell
 nix build .#b6-connect -- \
@@ -58,7 +60,7 @@ nix build .#b6-connect -- \
       -output some.connected.index
 ```
 
-### Running the frontend with vite
+#### Running the frontend with vite
 
 This also for hot-reloading/fast frontend development, in combination with a
 backend hosting a particular dataset.

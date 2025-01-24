@@ -100,13 +100,12 @@ test: proto-go src/diagonal.works/b6/api/y.go
 	cd src/diagonal.works/b6; go test diagonal.works/b6/...
 
 clean-api-docs:
-	rm -f docs/docs/api/index.md
+	rm -f docs/docs/api.md
 
-docs: docs/docs/api/index.md b6-backend
+docs: docs/docs/api.md b6-backend
 
-docs/docs/api/index.md: clean-api-docs
-	mkdir -p docs/docs
-	bin/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py > docs/docs/api/index.md
+docs/docs/api.md: clean-api-docs
+	bin/b6-api --docs --functions | ./scripts/api-docs-to-docusaurus.py > $@
 
 all-tests: test python-test
 
