@@ -1,7 +1,3 @@
----
-sidebar_position: 0
----
-
 # Documentation
 
-Here's our documentation
+Here is a collection of documentation about b6 and the associated code.

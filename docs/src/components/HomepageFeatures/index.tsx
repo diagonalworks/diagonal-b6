@@ -17,7 +17,6 @@ const FeatureList: FeatureItem[] = [
 			<>The b6 gRPC API; most commonly consumed through the Python library.</>
 		),
 		link: "/docs/api",
-		label: "Documentation",
 	},
 	{
 		title: "Backend",
@@ -28,13 +27,23 @@ const FeatureList: FeatureItem[] = [
 			</>
 		),
 		link: "/docs/backend",
-		label: "Documentation",
 	},
 	{
 		title: "Frontend",
 		description: <>The b6 frontend, written in React, providing the map UI.</>,
 		link: "/docs/frontend",
-		label: "Documentation",
+	},
+	{
+		title: "Contributing",
+		description: (
+			<>How to contribute to the codebase; building from source, etc.</>
+		),
+		link: "/docs/contributing",
+	},
+	{
+		title: "Quirks",
+		description: <>Quirks, bugs, and known issues.</>,
+		link: "/docs/quirks",
 	},
 ];
 
@@ -45,13 +54,12 @@ function Feature({ title, Svg, description, link, label }: FeatureItem) {
 	return (
 		<div className={clsx("col col--4")}>
 			<div className="text--center padding-horiz--md">
-				<Heading as="h3">{title}</Heading>
-				<p>{description}</p>
-				<div className={styles.buttons}>
+				<Heading as="h3">
 					<Link className="button button--secondary button--lg" to={link}>
-						Docs
+						{title}
 					</Link>
-				</div>
+				</Heading>
+				<p>{description}</p>
 			</div>
 		</div>
 	);
