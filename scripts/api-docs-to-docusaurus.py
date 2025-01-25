@@ -12,11 +12,6 @@ import itertools
 if __name__ == "__main__":
   docs = json.loads(sys.stdin.read())
 
-  print("""---
-sidebar_position: 1
----
-""")
-
   print("# API documentation")
 
   all_interfaces = [ i["Name"] for i in docs["Interfaces"] ]
