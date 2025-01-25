@@ -204,4 +204,6 @@ nix run .#b6-connect -- \
       --help
 ```
 
-Note the two `--` after
+#### Code Formatting
+
+Run `nix fmt` to format all the code.
