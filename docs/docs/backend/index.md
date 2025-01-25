@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Backend
 
-## Worlds
+## [Worlds](/docs/backend/worlds)
 
 ## Features
 
@@ -12,7 +12,7 @@ sidebar_position: 1
 
 ## Indexes
 
-## Ingestion
+## [Ingesting](/docs/backend/ingest)
 
 ## UI
 
