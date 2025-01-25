@@ -1,8 +1,4 @@
----
-sidebar_position: 1
----
-
-# b6 API documentation
+# API documentation
 ## Functions
 
   This is documentation generated from the `b6-api` binary written assuming
@@ -1008,6 +1004,21 @@ Returns a tag. To return the string value of a tag, use get-string.
 #### Returns
 - [Tag](#tag)
 
+### <tt>get_centroid</tt> 
+```python title='Indicative Python type signature'
+def get_centroid(id) -> Geometry
+```
+
+Return the centroid of the given feature.
+Returns either the centroid of an invalid geometry.
+
+#### Arguments
+
+- `id` of type [Identifiable](#identifiable)
+
+#### Returns
+- [Geometry](#geometry)
+
 ### <tt>get_float</tt> 
 ```python title='Indicative Python type signature'
 def get_float(id, key) -> float64
@@ -1236,6 +1247,19 @@ Return a query that will match features that intersect a spherical cap centred o
 
 - `center` of type [Geometry](#geometry)
 - `radius` of type `float64`
+
+#### Returns
+- [Query](#query)
+
+### <tt>is_valid</tt> 
+```python title='Indicative Python type signature'
+def is_valid() -> Query
+```
+
+Keep only those features that are valid.
+
+#### Arguments
+
 
 #### Returns
 - [Query](#query)
@@ -2256,6 +2280,7 @@ Deprecated. Use intersecting-cap.
 ### <tt>Geometry</tt>
  - <tt>[centroid](#centroid)</tt>
  - <tt>[entrance_approach](#entrance_approach)</tt>
+ - <tt>[get_centroid](#get_centroid)</tt>
  - <tt>[interpolate](#interpolate)</tt>
  - <tt>[join](#join)</tt>
  - <tt>[ll](#ll)</tt>
@@ -2292,6 +2317,7 @@ Deprecated. Use intersecting-cap.
  - <tt>[debug_all_query](#debug_all_query)</tt>
  - <tt>[intersecting](#intersecting)</tt>
  - <tt>[intersecting_cap](#intersecting_cap)</tt>
+ - <tt>[is_valid](#is_valid)</tt>
  - <tt>[keyed](#keyed)</tt>
  - <tt>[or](#or)</tt>
  - <tt>[tagged](#tagged)</tt>

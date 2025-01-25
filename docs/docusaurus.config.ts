@@ -9,13 +9,15 @@ const config: Config = {
 	url: "https://diagonalworks.github.io/",
 	// Set the /<baseUrl>/ pathname under which your site is served
 	// For GitHub pages deployment, it is often '/<projectName>/'
-	baseUrl: "/dagonal-b6",
+	// baseUrl: "/dagonal-b6",
+	baseUrl: "/",
+
+	tagline: "Documentation for the diagonal.works geospatial analysis engine",
 
 	// GitHub pages deployment config.
 	// If you aren't using GitHub pages, you don't need these.
-	organizationName: "diagonalworks", // Usually your GitHub org/user name.
-	projectName: "diagonal-b6", // Usually your repo name.
-
+	organizationName: "diagonalworks",
+	projectName: "diagonal-b6",
 	onBrokenLinks: "throw",
 	onBrokenMarkdownLinks: "warn",
 
@@ -50,16 +52,15 @@ const config: Config = {
 			} satisfies Preset.Options,
 		],
 	],
-
 	themeConfig: {
 		navbar: {
 			title: "b6",
 			items: [
 				{
 					type: "docSidebar",
-					sidebarId: "tutorialSidebar",
+					sidebarId: "docsSidebar",
 					position: "left",
-					label: "Docs",
+					label: "Documentation",
 				},
 				{
 					href: "https://github.com/diagonal/diagonal-b6",
@@ -74,10 +75,11 @@ const config: Config = {
 				{
 					title: "Docs",
 					items: [
-						{
-							label: "API documentation",
-							to: "/docs/b6-api-documentation",
-						},
+						{ label: "API documentation", to: "/docs/api" },
+						{ label: "Backend", to: "/docs/backend" },
+						{ label: "Frontend", to: "/docs/frontend" },
+						{ label: "Contributing", to: "/docs/contributing" },
+						{ label: "Quirks", to: "/docs/quirks" },
 					],
 				},
 				{

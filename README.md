@@ -322,3 +322,11 @@ Within here you will have a `b6` binary to run a local b6, and also the
 
 You can read more about the template here:
 [nix/python-client/flake.nix](./nix/python-client/flake.nix)
+
+#### Running the docs with nix
+
+To just open the docs:
+
+```shell
+nix run .#b6-docs
+```
