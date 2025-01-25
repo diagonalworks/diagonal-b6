@@ -9,7 +9,8 @@ const config: Config = {
 	url: "https://diagonalworks.github.io/",
 	// Set the /<baseUrl>/ pathname under which your site is served
 	// For GitHub pages deployment, it is often '/<projectName>/'
-	baseUrl: "/dagonal-b6",
+	// baseUrl: "/dagonal-b6",
+	baseUrl: "/",
 
 	tagline: "Documentation for the diagonal.works geospatial analysis engine",
 

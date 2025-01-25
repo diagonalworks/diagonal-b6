@@ -18,6 +18,22 @@ let
     '';
   };
 
+  b6-docs = pkgs.buildNpmPackage {
+    pname = "b6-docs";
+    version = "v.0.0.0";
+    src = ./../docs;
+    npmDepsHash = "sha256-rezYk73zOaAzXRv7TC8nZT+AuxxrVCyeVEbSlax35Mw=";
+    installPhase =
+      ''
+        mv build $out
+        mkdir $out/bin
+        echo "#!/usr/bin/env bash">$out/bin/b6-docs
+        echo "echo 'Serving the b6 docs ...'">>$out/bin/b6-docs
+        echo "${pkgs.althttpd}/bin/althttpd --port 3003 --root $out">>$out/bin/b6-docs
+        chmod +x $out/bin/b6-docs
+      '';
+  };
+
   # Note: We obtain a list of all the "features" (i.e. the folders on this
   # specific directory) and use that to construct a set of derivations
   # that turn on/off every feature combination.
@@ -117,6 +133,7 @@ in
 {
   inherit
     b6-js
+    b6-docs
     frontend
     frontend-dev
     ;
