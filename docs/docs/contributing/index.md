@@ -204,6 +204,14 @@ nix run .#b6-connect -- \
       --help
 ```
 
-#### Code Formatting
+### Code Formatting
 
 Run `nix fmt` to format all the code.
+
+### Running the docs through Nix
+
+There's a simple Nix derivation to _run_ the docs:
+
+```shell
+nix run .#b6-docs
+```

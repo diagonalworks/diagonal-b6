@@ -74,6 +74,10 @@ jobs:
         nix run .#b6-ingest-osm -- --help
         nix run .#b6-connect -- --help
 
+    - name: "Can we build the docs?"
+      run: |
+        nix build .#b6-docs
+
     - name: "Test that the docker image can ingest, connect and run"
       run: |
         nix build .#b6-image
