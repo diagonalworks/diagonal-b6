@@ -11,55 +11,45 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
 	{
-	  title: 'API',
-	  // Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
-	  description: (
-	    <>
-          The b6 gRPC API; most commonly consumed through the Python library.
-	    </>
-	  ),
-      link: "/docs/api",
-      label: "Documentation",
+		title: "API",
+		// Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+		description: (
+			<>The b6 gRPC API; most commonly consumed through the Python library.</>
+		),
+		link: "/docs/api",
+		label: "Documentation",
 	},
 	{
-	  title: 'Backend',
-	  description: (
-	    <>
-          The b6 backend, written in Go, providing the webserver, gRPC API
-          server, map tiles, custom rendering, and various
-          ingest/post-processing tools.
-	    </>
-	  ),
-      link: "/docs/backend",
-      label: "Documentation",
+		title: "Backend",
+		description: (
+			<>
+				The b6 backend, written in Go, providing the webserver, gRPC API server,
+				map tiles, custom rendering, and various ingest/post-processing tools.
+			</>
+		),
+		link: "/docs/backend",
+		label: "Documentation",
 	},
 	{
-	  title: 'Frontend',
-	  description: (
-	    <>
-          The b6 frontend, written in React, providing the map UI.
-	    </>
-	  ),
-      link: "/docs/frontend",
-      label: "Documentation",
+		title: "Frontend",
+		description: <>The b6 frontend, written in React, providing the map UI.</>,
+		link: "/docs/frontend",
+		label: "Documentation",
 	},
 ];
 
 function Feature({ title, Svg, description, link, label }: FeatureItem) {
-			// <div className="text--center">
-			// 	<Svg className={styles.featureSvg} role="img" />
-			// </div>
+	// <div className="text--center">
+	// 	<Svg className={styles.featureSvg} role="img" />
+	// </div>
 	return (
 		<div className={clsx("col col--4")}>
 			<div className="text--center padding-horiz--md">
 				<Heading as="h3">{title}</Heading>
 				<p>{description}</p>
 				<div className={styles.buttons}>
-					<Link
-						className="button button--secondary button--lg"
-						to={link}
-					>
-                        Docs
+					<Link className="button button--secondary button--lg" to={link}>
+						Docs
 					</Link>
 				</div>
 			</div>
