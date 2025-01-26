@@ -30,7 +30,7 @@ jobs:
           accept-flake-config = true
           log-lines = 1000
 
-    - name: Setup Cachix cache
+    - name: "Setup Cachix cache"
       uses: cachix/cachix-action@v15
       with:
         name: diagonalworks
@@ -47,7 +47,7 @@ jobs:
 
 
   build-nix:
-    name: "Build Nix"
+    name: "Build Nix targets"
     runs-on: ubuntu-latest
     needs: [pre-build-checks]
     steps:
@@ -65,7 +65,7 @@ jobs:
           accept-flake-config = true
           log-lines = 1000
 
-    - name: Setup Cachix cache
+    - name: "Setup Cachix cache"
       uses: cachix/cachix-action@v15
       with:
         name: diagonalworks
@@ -109,7 +109,7 @@ jobs:
           accept-flake-config = true
           log-lines = 1000
 
-    - name: Setup Cachix cache
+    - name: "Setup Cachix cache"
       uses: cachix/cachix-action@v15
       with:
         name: diagonalworks
@@ -159,7 +159,7 @@ jobs:
           accept-flake-config = true
           log-lines = 1000
 
-    - name: Setup Cachix cache
+    - name: "Setup Cachix cache"
       uses: cachix/cachix-action@v15
       with:
         name: diagonalworks
@@ -227,7 +227,7 @@ jobs:
           accept-flake-config = true
           log-lines = 1000
 
-    - name: Setup Cachix cache
+    - name: "Setup Cachix cache"
       uses: cachix/cachix-action@v15
       with:
         name: diagonalworks
