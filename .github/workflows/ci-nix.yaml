@@ -254,3 +254,10 @@ jobs:
         pip install dist/*.whl
         # Is now available
         python -c "import diagonal_b6"
+
+    - name: "Upload wheel and tar.gz as artifacts"
+      uses: actions/upload-artifact@v4
+      with:
+        name: pypi-data
+        path: |
+          ./dist/*

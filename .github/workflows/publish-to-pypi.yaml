@@ -1,0 +1,56 @@
+name: Publish diagonal-b6 on PyPI
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    tags: [ "*.*.*" ]
+
+permissions:
+  packages: write
+
+jobs:
+  pypi-publish:
+    name: "Upload release to PyPI"
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/diagonal-b6
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: Setup Cachix cache
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    - name: "Build wheel"
+      run: |
+        nix develop .#combined -c make python
+
+        cd python
+
+        # Build a wheel
+        nix develop .#python -c python -m build
+
+    - name: "Publish package distributions to PyPI"
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dist/
