@@ -235,12 +235,7 @@ jobs:
 
     - name: "Build wheel"
       run: |
-        nix develop .#combined -c make python
-
-        cd python
-
-        # Build a wheel
-        nix develop .#python -c python -m build
+        nix build .#wheel
 
     - name: "Set up Python"
       uses: actions/setup-python@v5
@@ -249,8 +244,6 @@ jobs:
 
     - name: "Install wheel into ubuntu Python"
       run: |
-        cd python
-
-        pip install dist/*.whl
+        pip install result/*.whl
         # Is now available
         python -c "import diagonal_b6"

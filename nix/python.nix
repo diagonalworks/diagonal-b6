@@ -19,6 +19,27 @@ let
     inherit python;
   };
 
+  wheel = pkgs.stdenv.mkDerivation {
+    name = "b6-wheel";
+    src = ./../python;
+
+    buildInputs = with pkgs; [
+      (python312.withPackages (ps: [ ps.build ps.setuptools ]))
+    ];
+
+    patchPhase = ''
+      cat ${pyproject-file} > pyproject.toml
+    '';
+
+    buildPhase = ''
+      python -m build -n
+    '';
+
+    installPhase = ''
+      mv dist $out
+    '';
+  };
+
   # Note: This library can only be included on the `python` that is provided
   # here.
   b6-py = python: python.pkgs.buildPythonPackage ((renderedPyProject python) // {
@@ -56,4 +77,6 @@ let
     pythonImportsCheck = [ "diagonal_b6" ];
   });
 in
-b6-py
+{
+  inherit b6-py wheel;
+}

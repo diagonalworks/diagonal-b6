@@ -87,7 +87,7 @@
           };
         };
 
-        b6-py = ourGdal: import ./nix/python.nix {
+        b6-python-packages = ourGdal: import ./nix/python.nix {
           inherit
             pkgs
             pyproject-nix
@@ -97,7 +97,7 @@
 
         pythonEnv = python.withPackages (ps:
           [
-            (b6-py ourGdal python)
+            ((b6-python-packages ourGdal).b6-py python)
 
             # For `make python`
             ps.grpcio-tools
@@ -243,7 +243,7 @@
           go = (b6-go-packages ourGdal).everything;
 
           # Not an application; but can be built `nix build .#python312`.
-          python312 = b6-py ourGdal python;
+          python312 = (b6-python-packages ourGdal).b6-py python;
 
           # Docker images
           #
@@ -270,6 +270,9 @@
             b6-image
             b6-minimal-image
             ;
+
+          # Python wheel
+          wheel = (b6-python-packages ourGdal).wheel;
         }
         # All the explicit go executables
         #
