@@ -143,3 +143,5 @@ jobs:
         cd python
 
         pip install dist/*.whl
+        # Is now available
+        python -c "import diagonal_b6"
