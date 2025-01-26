@@ -260,4 +260,4 @@ jobs:
       with:
         name: pypi-data
         path: |
-          ./dist/*
+          ./python/dist/*
