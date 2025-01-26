@@ -46,8 +46,8 @@ jobs:
         git diff --exit-code
 
 
-  build-test:
-    name: "Build & test"
+  build-nix:
+    name: "Build Nix"
     runs-on: ubuntu-latest
     needs: [pre-build-checks]
     steps:
@@ -81,6 +81,40 @@ jobs:
         nix build .#frontend-with-scenarios=false,shell=false
         nix build .#frontend-with-scenarios=true,shell=true
 
+    - name: "Build Nix shells"
+      run: |
+        nix develop .#python
+        nix develop .#combined
+
+    - name: "Can we build the docs?"
+      run: |
+        nix build .#b6-docs
+
+  text-entrypoint:
+    name: "Test Nix entrypoints"
+    runs-on: ubuntu-latest
+    needs: [build-nix]
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: Setup Cachix cache
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
     - name: "Test that the nix template works"
       env:
         BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
@@ -105,22 +139,11 @@ jobs:
         nix run .#b6-ingest-osm -- --help
         nix run .#b6-connect -- --help
 
-    - name: "Can we build the docs?"
-      run: |
-        nix build .#b6-docs
-
-    - name: "Test the notebook runs"
-      run: |
-        # Note: This depends on the docker image above running
-
-        nix develop .#python \
-          -c ipython -c "%run ./python/docs/01_Search.ipynb"
-
 
   docker-images:
     name: "Test docker images"
     runs-on: ubuntu-latest
-    needs: [pre-build-checks]
+    needs: [build-nix]
     steps:
     - name: "Checkout repository"
       uses: actions/checkout@v4
@@ -176,11 +199,19 @@ jobs:
 
         curl --head localhost:8001
 
+    - name: "Test the notebook runs"
+      run: |
+        # Note: This depends on the docker image above running
+
+        nix develop .#python \
+          -c ipython -c "%run ./python/docs/01_Search.ipynb"
+
+
 
   build-wheel:
     name: "Build Python wheel"
     runs-on: ubuntu-latest
-    needs: [pre-build-checks]
+    needs: [build-nix]
     steps:
     - name: "Checkout repository"
       uses: actions/checkout@v4
