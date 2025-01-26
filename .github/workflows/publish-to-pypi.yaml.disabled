@@ -12,7 +12,6 @@ permissions:
   packages: write
 
 jobs:
-  if: false # Disabled until we can test this
   pypi-publish:
     name: "Upload release to PyPI"
     runs-on: ubuntu-latest
