@@ -12,8 +12,8 @@ on:
   pull_request:
 
 jobs:
-  build-test:
-    name: "Build & Test"
+  pre-build-checks:
+    name: "Pre-build checks"
     runs-on: ubuntu-latest
     steps:
     - name: "Checkout repository"
@@ -30,7 +30,7 @@ jobs:
           accept-flake-config = true
           log-lines = 1000
 
-    - name: Setup Cachix cache
+    - name: "Setup Cachix cache"
       uses: cachix/cachix-action@v15
       with:
         name: diagonalworks
@@ -45,6 +45,32 @@ jobs:
         nix develop .#combined --command make b6-backend docs
         git diff --exit-code
 
+
+  build-nix:
+    name: "Build Nix targets"
+    runs-on: ubuntu-latest
+    needs: [pre-build-checks]
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: "Setup Cachix cache"
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
     - name: "Build the Nix packages"
       run: |
         nix build .
@@ -54,6 +80,40 @@ jobs:
         nix build .#frontend
         nix build .#frontend-with-scenarios=false,shell=false
         nix build .#frontend-with-scenarios=true,shell=true
+
+    - name: "Build Nix shells"
+      run: |
+        nix develop .#python
+        nix develop .#combined
+
+    - name: "Can we build the docs?"
+      run: |
+        nix build .#b6-docs
+
+  text-entrypoint:
+    name: "Test Nix entrypoints"
+    runs-on: ubuntu-latest
+    needs: [build-nix]
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: "Setup Cachix cache"
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     - name: "Test that the nix template works"
       env:
@@ -79,9 +139,31 @@ jobs:
         nix run .#b6-ingest-osm -- --help
         nix run .#b6-connect -- --help
 
-    - name: "Can we build the docs?"
-      run: |
-        nix build .#b6-docs
+
+  docker-images:
+    name: "Test docker images"
+    runs-on: ubuntu-latest
+    needs: [build-nix]
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: "Setup Cachix cache"
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     - name: "Test that the docker image can ingest, connect and run"
       run: |
@@ -123,3 +205,45 @@ jobs:
 
         nix develop .#python \
           -c ipython -c "%run ./python/docs/01_Search.ipynb"
+
+
+
+  build-wheel:
+    name: "Build Python wheel"
+    runs-on: ubuntu-latest
+    needs: [build-nix]
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: "Setup Cachix cache"
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    - name: "Build wheel"
+      run: |
+        nix build .#wheel
+
+    - name: "Set up Python"
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: "Install wheel into ubuntu Python"
+      run: |
+        pip install result/*.whl
+        # Is now available
+        python -c "import diagonal_b6"

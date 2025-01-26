@@ -15,7 +15,6 @@ permissions:
 jobs:
   docker:
     name: "Build and publish b6 docker images"
-
     strategy:
       matrix:
         image: ["b6", "b6-minimal"]
