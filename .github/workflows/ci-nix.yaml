@@ -12,8 +12,8 @@ on:
   pull_request:
 
 jobs:
-  build-test:
-    name: "Build & Test"
+  pre-build-checks:
+    name: "Pre-build checks"
     runs-on: ubuntu-latest
     steps:
     - name: "Checkout repository"
@@ -44,6 +44,32 @@ jobs:
       run: |
         nix develop .#combined --command make b6-backend docs
         git diff --exit-code
+
+
+  build-test:
+    name: "Build & test"
+    runs-on: ubuntu-latest
+    needs: [pre-build-checks]
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: Setup Cachix cache
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     - name: "Build the Nix packages"
       run: |
@@ -83,6 +109,39 @@ jobs:
       run: |
         nix build .#b6-docs
 
+    - name: "Test the notebook runs"
+      run: |
+        # Note: This depends on the docker image above running
+
+        nix develop .#python \
+          -c ipython -c "%run ./python/docs/01_Search.ipynb"
+
+
+  docker-images:
+    name: "Test docker images"
+    runs-on: ubuntu-latest
+    needs: [pre-build-checks]
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: Setup Cachix cache
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
     - name: "Test that the docker image can ingest, connect and run"
       run: |
         nix build .#b6-image
@@ -117,12 +176,31 @@ jobs:
 
         curl --head localhost:8001
 
-    - name: "Test the notebook runs"
-      run: |
-        # Note: This depends on the docker image above running
 
-        nix develop .#python \
-          -c ipython -c "%run ./python/docs/01_Search.ipynb"
+  build-wheel:
+    name: "Build Python wheel"
+    runs-on: ubuntu-latest
+    needs: [pre-build-checks]
+    steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v4
+      with:
+        # This is required to get the git tags that are used by the Makefile
+        # when computing versions.
+        fetch-depth: 0
+
+    - name: "Prepare nix"
+      uses: cachix/install-nix-action@V27
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          log-lines = 1000
+
+    - name: Setup Cachix cache
+      uses: cachix/cachix-action@v15
+      with:
+        name: diagonalworks
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     - name: "Build wheel"
       run: |
