@@ -42,7 +42,12 @@ jobs:
       run: |
         nix build .#wheel
 
+        # Put the artifacts in the dist dir, so they are no longer symlinks,
+        # which seems to break the gh-action-pypi-publish action.
+        mkdir dist
+        cp ./result/* dist/
+
     - name: "Publish package distributions to PyPI"
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        packages-dir: ./result/
+        packages-dir: ./dist/
