@@ -1,3 +1,7 @@
+## v???:
+
+* Bump go to version 1.23 [#369](https://github.com/diagonalworks/diagonal-b6/pull/369)
+
 ## v0.2.3: Jan 2025
 
 * Publishing packages on PyPI via CI.
