@@ -2,8 +2,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
 
-    # We're pinned to go version 1.22.6 for now.
-    goNixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    goNixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
 
     # Pin to pnpm to 9.7.0, as there is an issue using the latest version of
     # pnpm in this project.
@@ -166,7 +165,7 @@
 
             # Go
             # Note: The vesion here should match the one in `go.mod`.
-            gopkgs.go_1_22
+            gopkgs.go
             gopkgs.gotools
             gomod2nix.packages.${system}.default # gomod2nix CLI
 
